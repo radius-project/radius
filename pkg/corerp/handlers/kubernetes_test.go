@@ -27,6 +27,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/k8sutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -568,7 +569,7 @@ func TestGetReplicaSetName(t *testing.T) {
 	require.Equal(t, "my-replicaset", replicaSetName)
 }
 
-func TestGetNewestReplicaSetForDeployment(t *testing.T) {
+func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	// Create a fake Kubernetes clientset
 	fakeClient := fake.NewSimpleClientset()
 
@@ -736,6 +737,137 @@ func TestCheckPodStatus(t *testing.T) {
 		}
 		require.Equal(t, tc.isReady, isReady)
 	}
+}
+
+func TestCheckAllPodsReady_Success(t *testing.T) {
+	// Create a fake Kubernetes clientset
+	clientset := fake.NewSimpleClientset()
+
+	ctx := context.Background()
+
+	_, err := clientset.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	replicaSet := addReplicaSetToDeployment(t, ctx, clientset, testDeployment)
+
+	// Create a pod
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod",
+			Namespace: "test-namespace",
+			Labels: map[string]string{
+				"app": "test",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "test-container",
+					Image: "test-image",
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: true,
+				},
+			},
+		},
+	}
+	_, err = clientset.CoreV1().Pods("test-namespace").Create(context.Background(), pod, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// Create an informer factory and add the deployment and replica set to the cache
+	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
+	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
+	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod)
+
+	// Create a done channel
+	doneCh := make(chan error)
+
+	// Create a handler with the fake clientset
+	handler := &kubernetesHandler{
+		clientSet: clientset,
+	}
+
+	// Call the checkAllPodsReady function
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet.GetName(), doneCh)
+
+	// Check that all pods are ready
+	require.True(t, allReady)
+}
+
+func TestCheckAllPodsReady_Fail(t *testing.T) {
+	// Create a fake Kubernetes clientset
+	clientset := fake.NewSimpleClientset()
+
+	ctx := context.Background()
+
+	_, err := clientset.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	replicaSet := addReplicaSetToDeployment(t, ctx, clientset, testDeployment)
+
+	// Create a pod
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod1",
+			Namespace: "test-namespace",
+			Labels: map[string]string{
+				"app": "test",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       replicaSet.Name,
+					Controller: to.Ptr(true),
+				},
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:  "test-container",
+					Image: "test-image",
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: false,
+				},
+			},
+		},
+	}
+	_, err = clientset.CoreV1().Pods(pod.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Create an informer factory and add the deployment and replica set to the cache
+	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
+	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
+	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod)
+
+	// Create a done channel
+	doneCh := make(chan error)
+
+	// Create a handler with the fake clientset
+	handler := &kubernetesHandler{
+		clientSet: clientset,
+	}
+
+	// Call the checkAllPodsReady function
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet.GetName(), doneCh)
+
+	// Check that all pods are ready
+	require.False(t, allReady)
 }
 
 func TestCheckDeploymentStatus_AllReady(t *testing.T) {
