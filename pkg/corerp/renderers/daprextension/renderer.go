@@ -36,7 +36,9 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-// GetDependencyIDs returns dependencies for the container datamodel passed in
+// # Function Explanation
+//
+// GetDependencyIDs returns the radius and azure dependency IDs, or an error if one occurs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, dm)
 	if err != nil {
@@ -46,7 +48,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusDependencyIDs, azureDependencyIDs, nil
 }
 
-// Render augments the container's kubernetes output resource with value for dapr sidecar extension.
+// # Function Explanation
+//
+// Render checks if the given DataModelInterface is a ContainerResource, then renders it using the Inner renderer,
+// finds the Dapr Sidecar extension if any, and updates the Kubernetes deployment with the desired annotations.
 func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {

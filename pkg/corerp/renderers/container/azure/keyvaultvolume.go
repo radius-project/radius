@@ -39,7 +39,10 @@ var (
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
 )
 
-// MakeKeyVaultVolumeSpec builds CSI volume spec for Azure Keyvault.
+// # Function Explanation
+//
+// MakeKeyVaultVolumeSpec creates a Volume and VolumeMount spec for a secret store volume using the given volumeName,
+// mountPath and spcName and returns them along with a nil error.
 func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make Volume Spec which uses the SecretProvider created above
 	volumeSpec := corev1.Volume{
@@ -67,7 +70,9 @@ func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev
 	return volumeSpec, volumeMountSpec, nil
 }
 
-// TransformSecretProviderClass mutates Kubernetes SecretProviderClass type resource.
+// # Function Explanation
+//
+// TransformSecretProviderClass updates the clientID and tenantID for azure workload identity.
 func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOptions) error {
 	spc, ok := options.Resource.Resource.(*csiv1.SecretProviderClass)
 	if !ok {
@@ -88,7 +93,10 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	return nil
 }
 
-// MakeKeyVaultSecretProviderClass builds SecretProviderClass CR for keyvault secrets.
+// # Function Explanation
+//
+// MakeKeyVaultSecretProviderClass creates a SecretProviderClass object for an Azure KeyVault resource and returns an
+// OutputResource with the ServiceAccount as a dependency.
 func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.VolumeResource, objSpec string, envOpt *renderers.EnvironmentOptions) (*rpv1.OutputResource, error) {
 	prop := res.Properties.AzureKeyVault
 
