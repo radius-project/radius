@@ -23,12 +23,12 @@ import (
 )
 
 // NewModule creates a new Radius module.
-func NewModule(options modules.Options, planeType string) *Module {
+func NewModule(options modules.Options) *Module {
 	router := chi.NewRouter()
 	router.NotFound(validator.APINotFoundHandler())
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 
-	return &Module{options: options, router: router, planeType: planeType}
+	return &Module{options: options, router: router}
 }
 
 var _ modules.Initializer = &Module{}
@@ -37,15 +37,9 @@ var _ modules.Initializer = &Module{}
 type Module struct {
 	options modules.Options
 	router  chi.Router
-
-	// TODO: https://github.com/project-radius/radius/issues/5064 remove this field.
-	//
-	// Right now this code provides functionality for both the 'radius' and 'deployments'
-	// plane. We plan to remove support for the deployments plane.
-	planeType string
 }
 
 // PlaneType returns the type of plane this module is for.
 func (m *Module) PlaneType() string {
-	return m.planeType
+	return "radius"
 }
