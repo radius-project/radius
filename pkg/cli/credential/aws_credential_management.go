@@ -80,7 +80,7 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 	if err != nil {
 		return ProviderCredentialConfiguration{}, err
 	}
-	awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
+	awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSAccessKeyCredentialProperties)
 	if !ok {
 		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", credentialName)
 	}
@@ -90,7 +90,7 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 			Name:    AWSCredential,
 			Enabled: true,
 		},
-		AWSCredentials: awsAccessKeyCredentials,
+		AWSCredentials: awsAccessKeyCredentials.GetAWSCredentialProperties(),
 	}
 	return providerCredentialConfiguration, nil
 }
