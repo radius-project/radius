@@ -20,7 +20,6 @@ set -xe
 
 REPOSITORY=$1
 VERSION=$2
-FINAL_RELEASE=$3
 
 if [[ -z "$REPOSITORY" ]]; then
   echo "Error: REPOSITORY is not set."
@@ -29,11 +28,6 @@ fi
 
 if [[ -z "$VERSION" ]]; then
   echo "Error: VERSION is not set."
-  exit 1
-fi
-
-if [[ -z "$FINAL_RELEASE" ]]; then
-  echo "Error: FINAL_RELEASE is not set."
   exit 1
 fi
 
@@ -50,7 +44,6 @@ echo "Version: ${VERSION}"
 echo "Version number: ${VERSION_NUMBER}"
 echo "Release branch name: ${RELEASE_BRANCH_NAME}"
 echo "Tag name: ${TAG_NAME}"
-echo "Final release: ${FINAL_RELEASE}"
 
 echo "Creating release branches and tags for ${REPOSITORY}..."
 
