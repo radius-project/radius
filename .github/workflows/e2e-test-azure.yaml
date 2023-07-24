@@ -188,7 +188,8 @@ jobs:
           <summary> Click here to see the list of tools in the current test run</summary>
 
           * gotestsum ${{ env.GOTESTSUM_VER }}
-          * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
           * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
           * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
 
@@ -233,7 +234,7 @@ jobs:
         continue-on-error: true
         run: |
           echo ":x: Container images build failed" >> $GITHUB_STEP_SUMMARY
-      - name: Log recipe publish status
+      - name: Log test Bicep recipe publish status
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         continue-on-error: true
         run: |
@@ -265,12 +266,12 @@ jobs:
       - name: Publish Bicep Test Recipes
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
-          make publish-test-recipes
+          make publish-test-bicep-recipes
         env:
           RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
-      - name: Log recipe publish status (success)
+      - name: Log Bicep recipe publish status (success)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         run: |
           echo ":white_check_mark: Recipe publishing succeeded" >> $GITHUB_STEP_SUMMARY
@@ -414,6 +415,9 @@ jobs:
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
+      - name: Publish Terraform test recipes
+        run: |
+          make publish-test-terraform-recipes
       - name: Get OIDC Issuer from AKS cluster
         run: |
           echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_ENV

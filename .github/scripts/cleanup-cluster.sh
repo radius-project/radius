@@ -34,12 +34,12 @@ do
 done
 
 # Delete all test namespaces.
-namespaces=$(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^ms.+' | awk '{print $1}')
+namespaces=$(kubectl get namespace | grep -E '^corerp.*|^default-.*|^radiusfunctionaltestbucket.*|^radius-test.*|^kubernetes-cli.*|^dpsb-.*|^azstorage-workload.*|^dapr-serviceinvocation|^ms.+' | awk '{print $1}')
 for ns in $namespaces
 do
     if [ -z "$ns" ]; then
         break
     fi
     echo "deleting namespaces: $ns"
-    kubectl delete namespace $ns
+    kubectl delete namespace $ns --ignore-not-found=true
 done
