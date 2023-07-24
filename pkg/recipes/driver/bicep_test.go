@@ -250,7 +250,7 @@ func Test_ContextParameterError(t *testing.T) {
 }
 
 func Test_createDeploymentID(t *testing.T) {
-	expected, err := resources.ParseResource("/planes/deployments/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
+	expected, err := resources.ParseResource("/planes/radius/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
 	require.NoError(t, err)
 
 	actual, err := createDeploymentID("/planes/radius/local/resourceGroups/cool-group/providers/Applications.Link/mongoDatabases/test-db", "test-deployment")

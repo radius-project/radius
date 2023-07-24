@@ -14,30 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package clients
+package providers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-func Test_GetProviderConfigs(t *testing.T) {
-	expectedConfig := ProviderConfig{
-		Deployments: &Deployments{
-			Type: ProviderTypeDeployments,
-			Value: Value{
-				Scope: "/planes/radius/local/resourceGroups/" + "testrg",
-			},
-		},
-		Radius: &Radius{
-			Type: ProviderTypeRadius,
-			Value: Value{
-				Scope: "/planes/radius/local/resourceGroups/" + "testrg",
-			},
-		},
+func TestKubernetesProvider_BuildConfig(t *testing.T) {
+	expectedConfig := map[string]any{
+		"config_path": clientcmd.RecommendedHomeFile,
 	}
 
-	providerConfig := NewDefaultProviderConfig("testrg")
-	require.Equal(t, providerConfig, expectedConfig)
+	p := &kubernetesProvider{}
+	config, _ := p.BuildConfig(context.Background(), nil)
+	require.Equal(t, expectedConfig, config)
+}
+
+func TestKubernetesProvider_BuildConfig_Error(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "testvalue")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
+
+	p := &kubernetesProvider{}
+	config, err := p.BuildConfig(context.Background(), nil)
+	require.Error(t, err)
+	require.Nil(t, config)
 }

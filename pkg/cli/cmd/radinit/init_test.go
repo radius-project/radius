@@ -682,10 +682,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
 				Return(nil).
 				Times(1)
-			appManagementClient.EXPECT().
-				CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-				Return(nil).
-				Times(1)
 
 			devRecipeClient := NewMockDevRecipeClient(ctrl)
 			if tc.dev {

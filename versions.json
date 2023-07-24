@@ -1,6 +1,6 @@
 {
   "stable": {
-    "version": "v0.22.0",
+    "version": "v0.23.0",
     "description": "stable is the release that we want to be the default version for users"
   },
   "latest": {

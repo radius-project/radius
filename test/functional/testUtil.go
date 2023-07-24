@@ -51,6 +51,15 @@ func GetMagpieTag() string {
 	return magpietag
 }
 
+// GetOIDCIssuer gets OIDC Issuer URI from FUNCTEST_OIDC_ISSUER environment variable.
+func GetOIDCIssuer() string {
+	oidcIssuer := os.Getenv("FUNCTEST_OIDC_ISSUER")
+	if oidcIssuer == "" {
+		return "oidcIssuer=https://radiusoidc.blob.core.windows.net/kubeoidc/"
+	}
+	return "oidcIssuer=" + oidcIssuer
+}
+
 func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
