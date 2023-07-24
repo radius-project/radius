@@ -58,6 +58,7 @@ var testDeployment = &v1.Deployment{
 		Labels: map[string]string{
 			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 		},
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 	},
 	Spec: v1.DeploymentSpec{
 		Replicas: int32Ptr(1),
@@ -354,6 +355,7 @@ func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
 			Labels: map[string]string{
 				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 			},
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas: int32Ptr(1),
@@ -395,8 +397,9 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
+			Name:        "test-deployment",
+			Namespace:   "test-namespace",
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 		Status: v1.DeploymentStatus{
 			Conditions: []v1.DeploymentCondition{
@@ -428,8 +431,9 @@ func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
+			Name:        "test-deployment",
+			Namespace:   "test-namespace",
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 		Status: v1.DeploymentStatus{
 			Conditions: []v1.DeploymentCondition{
@@ -470,8 +474,9 @@ func TestGetPodsInDeployment(t *testing.T) {
 	// Create a Deployment object
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
+			Name:        "test-deployment",
+			Namespace:   "test-namespace",
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 		Spec: v1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -490,6 +495,8 @@ func TestGetPodsInDeployment(t *testing.T) {
 			Labels: map[string]string{
 				"app": "test-app",
 			},
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
+			UID:         "1234",
 		},
 	}
 
@@ -506,6 +513,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 					Kind:       "ReplicaSet",
 					Name:       replicaset.Name,
 					Controller: to.Ptr(true),
+					UID:        "1234",
 				},
 			},
 		},
@@ -524,6 +532,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 					Kind:       "ReplicaSet",
 					Name:       "xyz",
 					Controller: to.Ptr(true),
+					UID:        "1234",
 				},
 			},
 		},
@@ -545,7 +554,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getPodsInDeployment function
-	pods, err := handler.getPodsInDeployment(ctx, informerFactory, deployment, replicaset.Name)
+	pods, err := handler.getPodsInDeployment(ctx, informerFactory, deployment, replicaset)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(pods))
 	require.Equal(t, pod1.Name, pods[0].Name)
@@ -576,8 +585,9 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	// Create a Deployment object
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
+			Name:        "test-deployment",
+			Namespace:   "test-namespace",
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 	}
 
@@ -612,10 +622,28 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 		},
 	}
 
+	// Create another ReplicaSet object with a higher revision than the other ReplicaSet
+	replicaSet3 := &v1.ReplicaSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-replicaset-3",
+			Namespace:   "test-namespace",
+			Annotations: map[string]string{"deployment.kubernetes.io/revision": "3"},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
+					Group:   v1.SchemeGroupVersion.Group,
+					Version: v1.SchemeGroupVersion.Version,
+					Kind:    "Deployment",
+				}),
+			},
+		},
+	}
+
 	// Add the ReplicaSet objects to the fake Kubernetes clientset
 	_, err := fakeClient.AppsV1().ReplicaSets(replicaSet1.Namespace).Create(context.Background(), replicaSet1, metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(context.Background(), replicaSet2, metav1.CreateOptions{})
+	require.NoError(t, err)
+	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(context.Background(), replicaSet3, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Add the Deployment object to the fake Kubernetes clientset
@@ -631,8 +659,8 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getNewestReplicaSetForDeployment function
-	replicaSetName := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
-	require.Equal(t, replicaSet1.Name, replicaSetName)
+	rs := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
+	require.Equal(t, replicaSet1.Name, rs.Name)
 }
 
 func TestCheckPodStatus(t *testing.T) {
@@ -782,9 +810,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 
 	// Create an informer factory and add the deployment and replica set to the cache
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
-	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
-	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
-	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod)
+	addTestObjects(t, clientset, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a done channel
 	doneCh := make(chan error)
@@ -795,7 +821,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 	}
 
 	// Call the checkAllPodsReady function
-	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet.GetName(), doneCh)
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet, doneCh)
 
 	// Check that all pods are ready
 	require.True(t, allReady)
@@ -851,9 +877,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 
 	// Create an informer factory and add the deployment and replica set to the cache
 	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
-	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
-	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
-	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod)
+	addTestObjects(t, clientset, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a done channel
 	doneCh := make(chan error)
@@ -864,7 +888,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 	}
 
 	// Call the checkAllPodsReady function
-	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet.GetName(), doneCh)
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet, doneCh)
 
 	// Check that all pods are ready
 	require.False(t, allReady)
@@ -880,7 +904,7 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
 
 	// Create a Pod object
-	pod1 := &corev1.Pod{
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod1",
 			Namespace: "test-namespace",
@@ -915,14 +939,12 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	}
 
 	// Add the Pod object to the fake Kubernetes clientset
-	_, err = fakeClient.CoreV1().Pods(pod1.Namespace).Create(ctx, pod1, metav1.CreateOptions{})
+	_, err = fakeClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
-	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
-	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod1)
+	addTestObjects(t, fakeClient, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
@@ -968,7 +990,7 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
 
 	// Create a Pod object
-	pod1 := &corev1.Pod{
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod1",
 			Namespace: "test-namespace",
@@ -1006,14 +1028,12 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	}
 
 	// Add the Pod object to the fake Kubernetes clientset
-	_, err = fakeClient.CoreV1().Pods(pod1.Namespace).Create(ctx, pod1, metav1.CreateOptions{})
+	_, err = fakeClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
-	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
-	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod1)
+	addTestObjects(t, fakeClient, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
@@ -1062,7 +1082,7 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
 
 	// Create a Pod object
-	pod1 := &corev1.Pod{
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pod1",
 			Namespace: "test-namespace",
@@ -1097,14 +1117,12 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 	}
 
 	// Add the Pod object to the fake Kubernetes clientset
-	_, err = fakeClient.CoreV1().Pods(pod1.Namespace).Create(ctx, pod1, metav1.CreateOptions{})
+	_, err = fakeClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
 	// Create an informer factory and add the deployment to the cache
 	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
-	informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
-	informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
-	informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod1)
+	addTestObjects(t, fakeClient, informerFactory, testDeployment, replicaSet, pod)
 
 	// Create a fake item and object
 	item := &unstructured.Unstructured{
@@ -1136,4 +1154,13 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 
 	// Check that the deployment readiness was checked
 	require.Zero(t, len(doneCh))
+}
+
+func addTestObjects(t *testing.T, fakeClient *fake.Clientset, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, replicaSet *v1.ReplicaSet, pod *corev1.Pod) {
+	err := informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	require.NoError(t, err, "Failed to add deployment to informer cache")
+	err = informerFactory.Apps().V1().ReplicaSets().Informer().GetIndexer().Add(replicaSet)
+	require.NoError(t, err, "Failed to add replica set to informer cache")
+	err = informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod)
+	require.NoError(t, err, "Failed to add pod to informer cache")
 }

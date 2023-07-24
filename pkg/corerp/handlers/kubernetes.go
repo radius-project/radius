@@ -217,39 +217,39 @@ func (handler *kubernetesHandler) addReplicaSetInformer(ctx context.Context, inf
 }
 
 func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, obj any, doneCh chan<- error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
 
 	// Get the deployment
 	deployment, err := informerFactory.Apps().V1().Deployments().Lister().Deployments(item.GetNamespace()).Get(item.GetName())
 	if err != nil {
-		logger.Info(fmt.Sprintf("Unable to find deployment %s in namespace %s", item.GetName(), item.GetNamespace()))
+		logger.Info("Unable to find deployment")
 		return
 	}
 
 	deploymentReplicaSet := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
-	if deploymentReplicaSet == "" {
-		logger.Info(fmt.Sprintf("Unable to find replica set for deployment %s in namespace %s", item.GetName(), item.GetNamespace()))
+	if deploymentReplicaSet == nil {
+		logger.Info("Unable to find replica set for deployment")
 		return
 	}
 
 	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh)
 	if !allReady {
-		logger.Info("All pods are not ready yet for deployment %s in namespace %s", item.GetName(), item.GetNamespace())
+		logger.Info("All pods are not ready yet for deployment")
 		return
 	}
 
 	// Check if the deployment is ready
-	for _, c := range deployment.Status.Conditions {
-		// check for complete deployment condition
-		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
-		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
-			logger.Info(fmt.Sprintf("Deployment status for deployment: %s in namespace: %s is: %s - %s, Reason: %s, Deployment replicaset: %s", deployment.GetName(), deployment.GetNamespace(), c.Type, c.Status, c.Reason, deploymentReplicaSet))
-
-			// ObservedGeneration should be updated to latest generation to avoid stale replicas
-			if deployment.Status.ObservedGeneration >= deployment.Generation {
-				logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready. Observed generation: %d, Generation: %d", deployment.Name, deployment.GetNamespace(), deployment.Status.ObservedGeneration, deployment.Generation))
+	if deployment.Status.ObservedGeneration == deployment.Generation {
+		// ObservedGeneration should be updated to latest generation to avoid stale replicas
+		for _, c := range deployment.Status.Conditions {
+			// check for complete deployment condition
+			// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
+			if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+				logger.Info(fmt.Sprintf("Deployment is ready. Observed generation: %d, Generation: %d, Deployment Replicaset: %s", deployment.Status.ObservedGeneration, deployment.Generation, deploymentReplicaSet))
 				doneCh <- nil
 				return
+			} else {
+				logger.Info(fmt.Sprintf("Deployment status is: %s - %s, Reason: %s, Deployment replicaset: %s", c.Type, c.Status, c.Reason, deploymentReplicaSet))
 			}
 		}
 	}
@@ -264,46 +264,37 @@ func (handler *kubernetesHandler) getReplicaSetName(pod *corev1.Pod) string {
 	return ""
 }
 
-func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object) string {
-	logger := ucplog.FromContextOrDiscard(ctx)
+func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object) *v1.ReplicaSet {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
+
+	deployment := item.(*v1.Deployment)
+	if deployment == nil {
+		return nil
+	}
 
 	// List all replicasets for this deployment
 	rl, err := informerFactory.Apps().V1().ReplicaSets().Lister().ReplicaSets(item.GetNamespace()).List(labels.Everything())
 	if err != nil {
 		// This is a valid state which will eventually be resolved. Therefore, only log the error here.
-		logger.Info(fmt.Sprintf("Unable to find replicasets for deployment %s in namespace %s", item.GetName(), item.GetNamespace()))
-		return ""
+		logger.Info(fmt.Sprintf("Unable to list replicasets for deployment: %s", err.Error()))
+		return nil
 	}
 
-	replicaSets := &v1.ReplicaSetList{}
-	for _, rs := range rl {
-		replicaSets.Items = append(replicaSets.Items, *rs)
-	}
-
-	if replicaSets == nil || len(replicaSets.Items) == 0 {
+	if len(rl) == 0 {
 		// This is a valid state which will eventually be resolved. Therefore, only log the error here.
-		logger.Info(fmt.Sprintf("Unable to get replicasets in namespace %s", item.GetNamespace()))
-		return ""
+		logger.Info("Unable to find any replicasets")
+		return nil
 	}
 
-	deployment, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
+	deploymentRevisionStr := deployment.Annotations["deployment.kubernetes.io/revision"]
+	deploymentRevision, err := strconv.ParseInt(deploymentRevisionStr, 10, 64)
 	if err != nil {
-		// This is a valid state which will eventually be resolved. Therefore, only log the error here.
-		logger.Info(fmt.Sprintf("Unable to get deployment %s in namespace %s: %s", item.GetName(), item.GetNamespace(), err.Error()))
-		return ""
-	}
-
-	if deployment == nil {
-		// This is a valid state which will eventually be resolved. Therefore, only log the error here.
-		logger.Info(fmt.Sprintf("Unable to get deployment %s in namespace %s: %s", item.GetName(), item.GetNamespace(), err.Error()))
-		return ""
+		return nil
 	}
 
 	// Find the latest ReplicaSet associated with the deployment
-	var latestRS *v1.ReplicaSet
-	var latestRevision int64 = -1
-	for i, rs := range replicaSets.Items {
-		if !metav1.IsControlledBy(&rs, deployment) {
+	for _, rs := range rl {
+		if !metav1.IsControlledBy(rs, deployment) {
 			continue
 		}
 		if rs.Annotations == nil {
@@ -319,28 +310,23 @@ func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.
 			continue
 		}
 
-		if latestRS == nil || revision > latestRevision {
-			latestRS = &replicaSets.Items[i]
-			latestRevision = revision
+		// Match the replica set revision with the deployment revision
+		if deploymentRevision == revision {
+			return rs
 		}
 	}
 
-	if latestRS == nil {
-		logger.Info(fmt.Sprintf("Unable to find any replicasets for deployment %s in namespace %s", item.GetName(), item.GetNamespace()))
-		return ""
-	}
-
-	return latestRS.Name
+	return nil
 }
 
 func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev1.Pod) (bool, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("podName", pod.Name, "namespace", pod.Namespace)
 
 	conditionPodReady := true
 	for _, cc := range pod.Status.Conditions {
 		// If the resource limits for the container cannot be satisfied, the pod will not be scheduled
 		if cc.Type == corev1.PodScheduled && cc.Status == corev1.ConditionFalse {
-			logger.Info(fmt.Sprintf("Pod %s in namespace %s is not scheduled. Reason: %s, Message: %s", pod.Name, pod.Namespace, cc.Reason, cc.Message))
+			logger.Info(fmt.Sprintf("Pod is not scheduled. Reason: %s, Message: %s", cc.Reason, cc.Message))
 			return false, fmt.Errorf("Pod %s in namespace %s is not scheduled. Reason: %s, Message: %s", pod.Name, pod.Namespace, cc.Reason, cc.Message)
 		}
 
@@ -388,7 +374,7 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 	if !conditionPodReady {
 		return false, nil
 	}
-	logger.Info(fmt.Sprintf("All containers for pod %s in namespace: %s are ready", pod.Name, pod.Namespace))
+	logger.Info("All containers for pod are ready")
 	return true, nil
 }
 
@@ -410,7 +396,7 @@ func (handler *kubernetesHandler) startInformers(ctx context.Context, item clien
 	return nil
 }
 
-func (handler *kubernetesHandler) getPodsInDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, deploymentReplicaSet string) ([]corev1.Pod, error) {
+func (handler *kubernetesHandler) getPodsInDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet) ([]corev1.Pod, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	pods := []corev1.Pod{}
@@ -422,28 +408,24 @@ func (handler *kubernetesHandler) getPodsInDeployment(ctx context.Context, infor
 		return []corev1.Pod{}, nil
 	}
 
-	podList := &corev1.PodList{}
-	for _, p := range pl {
-		podList.Items = append(podList.Items, *p)
-	}
-
 	// Filter out the pods that are not in the Deployment's current ReplicaSet
-	for _, p := range podList.Items {
-		if handler.getReplicaSetName(&p) == deploymentReplicaSet {
-			pods = append(pods, p)
+	for _, p := range pl {
+		if !metav1.IsControlledBy(p, deploymentReplicaSet) {
+			continue
 		}
+		pods = append(pods, *p)
 	}
 
 	return pods, nil
 }
 
-func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet string, doneCh chan<- error) bool {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Checking if all pods in the deployment %s in namespace %s are ready", obj.Name, obj.Namespace))
+func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- error) bool {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", obj.GetName(), "namespace", obj.GetNamespace())
+	logger.Info("Checking if all pods in the deployment are ready")
 
 	podsInDeployment, err := handler.getPodsInDeployment(ctx, informerFactory, obj, deploymentReplicaSet)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Error getting pods for deployment %s in namespace %s: %s", obj.GetName(), obj.GetNamespace(), err))
+		logger.Info(fmt.Sprintf("Error getting pods for deployment: %s", err.Error()))
 		return false
 	}
 
