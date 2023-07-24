@@ -1486,3 +1486,29 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		require.Equal(t, expectedLivenessProbe, container.LivenessProbe)
 	})
 }
+
+func Test_IsURL(t *testing.T) {
+	const valid_url = "http://examplehost:80"
+	const invalid_url = "http://abc:def"
+	const path = "/testpath/testfolder/testfile.txt"
+
+	require.True(t, isURL(valid_url))
+	require.False(t, isURL(invalid_url))
+	require.False(t, isURL(path))
+}
+
+func Test_ParseURL(t *testing.T) {
+	const valid_url = "http://examplehost:80"
+	const invalid_url = "http://abc:def"
+
+	scheme, hostname, port, err := parseURL(valid_url)
+
+	require.Equal(t, scheme, "http")
+	require.Equal(t, hostname, "examplehost")
+	require.Equal(t, port, "80")
+	require.Equal(t, err, nil)
+
+	scheme, hostname, port, err = parseURL(invalid_url)
+
+	require.NotEqual(t, err, nil)
+}
