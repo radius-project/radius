@@ -60,6 +60,9 @@ const (
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
 
 	defaultServiceAccountName = "default"
+	HTTP_SCHEME = "http"
+	HTTPS_SCHEME = "https"
+	HTTPS_PORT = 443
 )
 
 // # Function Explanation
@@ -110,7 +113,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 			resourceID, err := resources.ParseResource(connection.Source)
 
 			if err != nil {
-				return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
+				return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
 			}
 	
 			// Non-radius Azure connections that are accessible from Radius container resource.
@@ -267,11 +270,11 @@ func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerRes
 				portVal = port.Port
 			}
 
-			schemeVal := "http"
+			schemeVal := HTTP_SCHEME
 
 			// if the port is 443, use https as the default scheme.
-			if portVal == 443 {
-				schemeVal = "https"
+			if portVal == HTTPS_PORT {
+				schemeVal = HTTPS_SCHEME
 			}
 
 			// if the optional scheme value is set, use that instead of the default scheme.
