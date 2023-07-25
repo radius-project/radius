@@ -34,19 +34,26 @@ type Service struct {
 	Options HostOptions
 }
 
-// NewService of metrics package returns a new Service with the configs needed
+// # Function Explanation
+//
+// NewService creates a new Service instance with the given HostOptions.
 func NewService(options HostOptions) *Service {
 	return &Service{
 		Options: options,
 	}
 }
 
-// Name method of metrics package returns the name of the metrics service
+// # Function Explanation
+//
+// Name returns the name of the Service instance.
 func (s *Service) Name() string {
 	return "Metrics Collector"
 }
 
-// Run method of metrics package creates a new server for exposing an endpoint to collect metrics from
+// # Function Explanation
+//
+// Run sets up a Prometheus exporter, initializes metrics, creates an HTTP server and handles shutdown based on the
+// context, returning an error if one occurs.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
