@@ -221,7 +221,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.Error(t, err)
 	require.Equal(t, err.(*apiv1.ErrClientRP).Code, apiv1.CodeInvalid)
-	require.Equal(t, err.(*apiv1.ErrClientRP).Message, "'/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Equal(t, err.(*apiv1.ErrClientRP).Message, "invalid source: //subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace. Must be either a URL or a valid resourceID")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }
