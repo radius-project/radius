@@ -19,11 +19,27 @@ on:
   schedule:
     # Run twice a day
     - cron: "30 0,12 * * *"
+  pull_request:
+    branches:
+      - main
+
 env:
   AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
   # The valid resource time window in seconds to delete the test resources. 6 hours
   VALID_RESOURCE_WINDOW: 6*60*60
 jobs:
+  purge_gchr_dev:
+    name: Delete old unused container images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete 'dev' containers older than a week
+        uses: snok/container-retention-policy@v2
+        with:
+          image-names: dev/*, radius-test/*, test/*
+          cut-off: A hour ago UTC
+          account-type: org
+          org-name: project-radius
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
   purge_azure_resources:
     name: Azure resources clean-ups
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
