@@ -64,6 +64,8 @@ env:
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+  
+  RAD_BOT_ACTOR: rad-ci-bot
 
 jobs:
   build:
@@ -183,9 +185,12 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
-      - name: Login ACR - ${{ env.CACHE_REGISTRY }}
-        run: |
-          az acr login -n ${{ env.CACHE_REGISTRY }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ env.RAD_BOT_ACTOR }}
+          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
         continue-on-error: true
