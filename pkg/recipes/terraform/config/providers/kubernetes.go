@@ -31,12 +31,17 @@ const (
 
 type kubernetesProvider struct{}
 
+// # Function Explanation
+//
 // NewKubernetesProvider creates a new KubernetesProvider instance.
 func NewKubernetesProvider() Provider {
 	return &kubernetesProvider{}
 }
 
+// # Function Explanation
+//
 // BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.
+// It returns an error if the in cluster config is not present.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
 func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
 	_, err := rest.InClusterConfig()
