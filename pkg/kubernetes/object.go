@@ -30,7 +30,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-// FindDeployment finds deployment in a list of output resources
+// # Function Explanation
+//
+// FindDeployment searches through a slice of OutputResource objects and returns the first Deployment object and its
+// associated OutputResource object.
 func FindDeployment(resources []rpv1.OutputResource) (*appsv1.Deployment, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Deployment {
@@ -48,7 +51,10 @@ func FindDeployment(resources []rpv1.OutputResource) (*appsv1.Deployment, rpv1.O
 	return nil, rpv1.OutputResource{}
 }
 
-// FindService finds service in a list of output resources
+// # Function Explanation
+//
+// FindService searches through a slice of OutputResource objects and returns the first Service object found and the
+// OutputResource object it was found in.
 func FindService(resources []rpv1.OutputResource) (*corev1.Service, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Service {
@@ -66,7 +72,10 @@ func FindService(resources []rpv1.OutputResource) (*corev1.Service, rpv1.OutputR
 	return nil, rpv1.OutputResource{}
 }
 
-// FindSecret finds secret in a list of output resources
+// # Function Explanation
+//
+// FindSecret iterates through a slice of OutputResource objects and returns the first Secret object found and its
+// corresponding OutputResource object.
 func FindSecret(resources []rpv1.OutputResource) (*corev1.Secret, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Secret {
@@ -84,7 +93,10 @@ func FindSecret(resources []rpv1.OutputResource) (*corev1.Secret, rpv1.OutputRes
 	return nil, rpv1.OutputResource{}
 }
 
-// FindHttpRouteByLocalID finds a (non-root) HTTPProxy in a list of output resources, keyed by its localID
+// # Function Explanation
+//
+// FindHttpRouteByLocalID searches through a slice of OutputResources to find a HTTPProxy resource
+// with the given localID.
 func FindHttpRouteByLocalID(resources []rpv1.OutputResource, localID string) (*contourv1.HTTPProxy, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute || r.LocalID != localID {
@@ -107,7 +119,10 @@ func FindHttpRouteByLocalID(resources []rpv1.OutputResource, localID string) (*c
 	return nil, rpv1.OutputResource{}
 }
 
-// FindGateway finds a root HTTPProxy in a list of output resources
+// # Function Explanation
+//
+// FindGateway iterates through a slice of OutputResources and returns the first HTTPProxy resource found with a
+// VirtualHost set.
 func FindGateway(resources []rpv1.OutputResource) (*contourv1.HTTPProxy, rpv1.OutputResource) {
 	for _, r := range resources {
 		if r.ResourceType.Type != resourcekinds.Gateway {
@@ -130,8 +145,10 @@ func FindGateway(resources []rpv1.OutputResource) (*contourv1.HTTPProxy, rpv1.Ou
 	return nil, rpv1.OutputResource{}
 }
 
-// GetShortenedTargetPortName is used to generate a unique port name based on a resource id.
-// This is used to link up the a Service and Deployment.
+// # Function Explanation
+//
+// GetShortenedTargetPortName takes in a string and returns a shortened version of it by using a hashing algorithm.
+// This generates a unique port name based on a resource id and can be used to link up a Service and Deployment.
 func GetShortenedTargetPortName(name string) string {
 	// targetPort can only be a maximum of 15 characters long.
 	// 32 bit number should always be less than that.
@@ -140,11 +157,16 @@ func GetShortenedTargetPortName(name string) string {
 	return "a" + fmt.Sprint(h.Sum32())
 }
 
-// IsValidObjectName returns true if name is valid Kubernetes object name
+// # Function Explanation
+//
+// IsValidObjectName checks if the given string is a valid DNS1123 label.
 func IsValidObjectName(name string) bool {
 	return len(validation.IsDNS1123Label(name)) == 0
 }
 
+// # Function Explanation
+//
+// IsValidDaprObjectName checks if the given string is a valid Dapr object name and returns a boolean value.
 func IsValidDaprObjectName(name string) bool {
 	return len(validation.IsDNS1123Subdomain(name)) == 0
 }
