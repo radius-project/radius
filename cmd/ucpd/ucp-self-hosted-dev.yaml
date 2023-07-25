@@ -42,10 +42,6 @@ planes:
         Applications.Messaging: "http://localhost:8081"
         Applications.Dapr: "http://localhost:8081"
         Applications.Datastores: "http://localhost:8081"
-      kind: "UCPNative"
-  - id: "/planes/deployments/local"
-    properties:
-      resourceProviders:
         Microsoft.Resources: "http://localhost:5017"
       kind: "UCPNative"
 

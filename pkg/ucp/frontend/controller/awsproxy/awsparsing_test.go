@@ -137,7 +137,7 @@ func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierWrongDataType(t *testi
 }
 
 func Test_ExtractRegionFromURLPath_Invalid(t *testing.T) {
-	URLPath := "/planes/deployments/local/resourcegroups/localrp/providers/Microsoft.Resources/deployments/rad-deploy-06221c5e-104d-4472-bb74-876b441c7663"
+	URLPath := "/planes/radius/local/resourcegroups/localrp/providers/Microsoft.Resources/deployments/rad-deploy-06221c5e-104d-4472-bb74-876b441c7663"
 	region, errResponse := readRegionFromRequest(URLPath, "/apis/api.ucp.dev/v1alpha3")
 	require.NotNil(t, errResponse)
 	require.Empty(t, region)

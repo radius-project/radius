@@ -100,7 +100,7 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
 		{
-			Type: "deployments",
+			Type: "radius",
 			Name: "local",
 		},
 		{
@@ -291,7 +291,7 @@ func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name str
 
 	// No providers section, hence all segments are part of scopes
 	scopes := []ucpresources.ScopeSegment{
-		{Type: "deployments", Name: "local"},
+		{Type: "radius", Name: "local"},
 		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
 	types := ucpresources.TypeSegment{

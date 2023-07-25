@@ -40,8 +40,9 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 2. Make sure `rad-bicep` is downloaded (`rad bicep download`)
 3. Create a container registry (must be Azure Container Registry for now)
 4. Log-in to the container registry `az acr login -n <registry-name>`
-5. Publish test recipes by running `RECIPE_REGISTRY=<registry-name>.azurecr.io make publish-test-recipes`
-6. Create a Radius environment with `rad init` and specify the default namespace
+5. Publish Bicep test recipes by running `RECIPE_REGISTRY=<registry-name>.azurecr.io make publish-test-bicep-recipes`
+6. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
+7. Create a Radius environment with `rad init` and specify the default namespace
 
 > ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
 > test failures.
