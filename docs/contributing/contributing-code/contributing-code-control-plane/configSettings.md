@@ -233,10 +233,6 @@ planes:
         Applications.Dapr: "http://applications-rp.radius-system:5444"
         Applications.Datastores: "http://applications-rp.radius-system:5444"
         Applications.Messaging: "http://applications-rp.radius-system:5444"
-      kind: "UCPNative"
-  - id: "/planes/deployments/local"
-    properties:
-      resourceProviders:
         Microsoft.Resources: "http://bicep-de.radius-system:6443"
       kind: "UCPNative"
   - id: "/planes/aws/aws"

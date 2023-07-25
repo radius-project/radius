@@ -169,7 +169,8 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
 
@@ -240,7 +241,7 @@ jobs:
           chmod +x dist/rad-bicep
       - name: Publish Bicep Test Recipes
         run: |
-          make publish-test-recipes
+          make publish-test-bicep-recipes
         env:
           RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
@@ -270,7 +271,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,shared,samples]
+        name: [ucp,shared,msgrp,samples]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -450,6 +451,9 @@ jobs:
           append: true
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - name: Publish Terraform test recipes
+        run: |
+          make publish-test-terraform-recipes
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.

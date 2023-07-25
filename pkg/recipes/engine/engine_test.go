@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-errors/errors"
@@ -25,6 +26,8 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -36,7 +39,8 @@ func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.M
 	options := Options{
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
-			"bicep": mDriver,
+			recipes.TemplateKindBicep:     mDriver,
+			recipes.TemplateKindTerraform: mDriver,
 		},
 	}
 	engine := engine{
@@ -45,12 +49,12 @@ func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.M
 	return engine, *configLoader, *mDriver
 }
 
-func Test_Engine_Success(t *testing.T) {
+func Test_Engine_Execute_Success(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -94,6 +98,56 @@ func Test_Engine_Success(t *testing.T) {
 	require.Equal(t, result, recipeResult)
 }
 
+func Test_Engine_Terraform_Success(t *testing.T) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+	recipeResult := &recipes.RecipeOutput{
+		Resources: []string{"mongoStorageAccount", "mongoDatabase"},
+		Secrets: map[string]any{
+			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
+		},
+		Values: map[string]any{
+			"host": "testAccount1.mongo.cosmos.azure.com",
+			"port": 10255,
+		},
+	}
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:          recipes.TemplateKindTerraform,
+		TemplatePath:    "Azure/redis/azurerm",
+		TemplateVersion: "1.1.0",
+		ResourceType:    "Applications.Link/mongoDatabases",
+	}
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
+	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
+
+	result, err := engine.Execute(ctx, recipeMetadata)
+	require.NoError(t, err)
+	require.Equal(t, result, recipeResult)
+}
+
 func Test_Engine_InvalidDriver(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
@@ -108,7 +162,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -127,7 +181,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -144,7 +198,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -158,4 +212,84 @@ func Test_Engine_Load_Error(t *testing.T) {
 	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("unable to fetch namespace information"))
 	_, err := engine.Execute(ctx, recipeMetadata)
 	require.Error(t, err)
+}
+
+func Test_Engine_Delete_Success(t *testing.T) {
+	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	driver.EXPECT().Delete(ctx, outputResources).Times(1).Return(nil)
+
+	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	require.NoError(t, err)
+}
+
+func Test_Engine_Delete_Error(t *testing.T) {
+	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	driver.EXPECT().Delete(ctx, outputResources).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+
+	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	require.Error(t, err)
+}
+
+func Test_Delete_InvalidDriver(t *testing.T) {
+	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeDefinition.Driver = "invalid"
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "could not find driver invalid")
+}
+
+func Test_Delete_Lookup_Error(t *testing.T) {
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+	recipeMetadata, _, outputResources := getDeleteInputs()
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
+	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	require.Error(t, err)
+}
+
+func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		ResourceType: "Applications.Link/mongoDatabases",
+	}
+
+	outputResources := []rpv1.OutputResource{
+		{
+			LocalID: "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     "Microsoft.Resources/deployments",
+					Provider: "azure",
+				},
+			},
+		},
+	}
+	return recipeMetadata, recipeDefinition, outputResources
 }

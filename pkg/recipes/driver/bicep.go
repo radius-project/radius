@@ -31,10 +31,14 @@ import (
 	"github.com/go-logr/logr"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/util"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
@@ -48,13 +52,14 @@ const (
 var _ Driver = (*bicepDriver)(nil)
 
 // NewBicepDriver creates the new Driver for Bicep.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient) Driver {
-	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient}
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
+	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient, ResourceClient: client}
 }
 
 type bicepDriver struct {
 	ArmClientOptions *arm.ClientOptions
 	DeploymentClient *clients.ResourceDeploymentsClient
+	ResourceClient   processors.ResourceClient
 }
 
 // Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
@@ -123,6 +128,38 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	}
 
 	return &recipeResponse, nil
+}
+
+// Delete handles output resource deletion and returns an error on failure to delete.
+func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
+	if err != nil {
+		return err
+	}
+
+	// Loop over each output resource and delete in reverse dependency order
+	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
+		outputResource := orderedOutputResources[i]
+		id := outputResource.Identity.GetID()
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+			continue
+		}
+
+		err = d.ResourceClient.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+
+	}
+
+	return nil
 }
 
 // createRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
@@ -198,7 +235,7 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 	}
 
 	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
-	return resources.ParseResource(fmt.Sprintf("/planes/deployments/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
+	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 
 func createProviderConfig(resourceGroup string, envProviders coreDatamodel.Providers) clients.ProviderConfig {

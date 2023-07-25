@@ -25,6 +25,9 @@ const (
 
 // TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
 type TerraformConfig struct {
+	// Provider is the Terraform provider configuration.
+	Provider map[string]any `json:"provider,omitempty"`
+
 	// Module is the Terraform module configuration.
 	Module map[string]any `json:"module"`
 }

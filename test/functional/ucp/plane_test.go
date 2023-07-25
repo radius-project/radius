@@ -37,9 +37,9 @@ func Test_Plane_Operations(t *testing.T) {
 		apiVersion := v20220901privatepreview.Version
 		planeURL := fmt.Sprintf("%s%s?api-version=%s", url, planeID, apiVersion)
 
-		// By default, we configure default planes (radius and deployments planes) in UCP. Verify that by calling List Planes
+		// By default, we configure default planes in UCP. Verify that by calling List Planes
 		planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
-		require.Equal(t, 3, len(planes.Value))
+		require.Equal(t, 2, len(planes.Value))
 
 		t.Cleanup(func() {
 			_ = deletePlane(t, roundTripper, planeURL)

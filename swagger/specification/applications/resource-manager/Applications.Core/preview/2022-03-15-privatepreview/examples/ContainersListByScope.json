@@ -47,7 +47,9 @@
                                 "appPort": 80,
                                 "config": "config",
                                 "protocol": "http",
-                                "provides": "provides"
+                                "provides": "provides",
+                                "port": 443,
+                                "scheme": "https"
                               },
                               {
                                 "kind": "kubernetesMetadata",

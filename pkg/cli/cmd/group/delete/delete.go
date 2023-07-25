@@ -138,12 +138,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.DeleteUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
-	if err != nil {
-		return err
-	}
-
-	deleted, err := client.DeleteUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName)
+	deleted, err := client.DeleteUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
 	if err != nil {
 		return err
 	}
