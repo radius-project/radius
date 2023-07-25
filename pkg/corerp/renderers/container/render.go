@@ -131,17 +131,16 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	}
 
 	for _, port := range properties.Container.Ports {
-		// if the container has an exposed port, note that down.
-		// A single service will be generated for a container with one or more exposed ports.
-		if port.ContainerPort != 0 && port.Provides == ""{
-			needsServiceGeneration = true
-		}
-
 		provides := port.Provides
 
 		// if provides is empty, skip this port. A service for this port will be generated later on.
 		if provides == "" {
 			continue
+		}
+
+		// ensure that users cannot use DNS-SD and httproutes simultaneously.
+		if provides != "" && usesDNSSD {
+			return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("cannot use DNS-SD and httproutes simultaneously. Please use one or the other."))
 		}
 
 		resourceID, err := resources.ParseResource(provides)
