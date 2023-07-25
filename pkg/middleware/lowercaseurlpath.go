@@ -23,7 +23,10 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
-// LowercaseURLPath is the middelware to lowercase the incoming request url path.
+// # Function Explanation
+//
+// LowercaseURLPath sets the Referer header to the original URL if it is not already set, and then lowercases the URL path
+// before passing it to the next handler.
 func LowercaseURLPath(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// UCP/ARM populates "Referer" header in the request which can be used for FQDN of the resource.
