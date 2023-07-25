@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// EnvironmentDataModelToVersioned converts version agnostic environment datamodel to versioned model.
+// # Function Explanation
+//
+// EnvironmentDataModelToVersioned converts a datamodel.Environment to a versioned model interface based on the given
+// version string, returning an error if the conversion fails.
 func EnvironmentDataModelToVersioned(model *datamodel.Environment, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -39,7 +42,10 @@ func EnvironmentDataModelToVersioned(model *datamodel.Environment, version strin
 	}
 }
 
-// EnvironmentDataModelFromVersioned converts versioned environment model to datamodel.
+// # Function Explanation
+//
+// EnvironmentDataModelFromVersioned unmarshals the content into a version-specific environment resource, converts it to a
+// datamodel.Environment and returns it, or returns an error if the version is unsupported or the unmarshalling fails.
 func EnvironmentDataModelFromVersioned(content []byte, version string) (*datamodel.Environment, error) {
 	switch version {
 	case v20220315privatepreview.Version:

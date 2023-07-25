@@ -57,23 +57,32 @@ type SecretStore struct {
 	Properties *SecretStoreProperties `json:"properties"`
 }
 
-// ResourceTypeName returns the resource type name of the resource.
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name of the SecretStore instance.
 func (s *SecretStore) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the status of the SecretStore instance with the output resources from the DeploymentOutput
+// object and returns no error.
 func (s *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	s.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources from the SecretStore's Properties.
 func (s *SecretStore) OutputResources() []rpv1.OutputResource {
 	return s.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the SecretStore instance.
 func (s *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &s.Properties.BasicResourceProperties
 }
@@ -119,22 +128,30 @@ type SecretStoreListSecrets struct {
 	Data map[string]*SecretStoreDataValue `json:"data,omitempty"`
 }
 
-// ResourceTypeName returns the resource type name of the resource.
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type name of the SecretStoreListSecrets struct.
 func (s *SecretStoreListSecrets) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput applies the deployment output to the SecretStoreListSecrets instance and returns no error.
 func (s *SecretStoreListSecrets) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns nil for SecretStoreListSecrets.
 func (s *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
 	return nil
 }
 
-// ResourceMetadata returns SecretStoreListSecrets resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns nil for SecretStoreListSecrets.
 func (s *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return nil
 }
