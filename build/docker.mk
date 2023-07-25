@@ -35,6 +35,7 @@ docker-build-$(1): build-$(1)-linux-amd64
 		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 else
@@ -43,6 +44,7 @@ docker-build-$(1):
 	docker build $(2) -f $(3) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 endif
@@ -62,6 +64,7 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 		--platform linux/amd64,linux/arm64,linux/arm \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
 		--push $(2)
