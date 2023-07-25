@@ -23,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a ContainerResource struct to a DataModelInterface struct, mapping fields from the former to the latter.
 func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
@@ -73,15 +75,15 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			Protocol:      toProtocolDataModel(val.Protocol),
 			Provides:      to.String(val.Provides),
 		}
-	
+
 		if val.Port != nil {
 			port.Port = to.Int32(val.Port)
 		}
-	
+
 		if val.Scheme != nil {
 			port.Scheme = to.String(val.Scheme)
 		}
-	
+
 		ports[key] = port
 	}
 
@@ -145,7 +147,9 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
+// # Function Explanation
+//
+// ConvertFrom converts a DataModelInterface into a ContainerResource, mapping fields from the source to the destination.
 func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	c, ok := src.(*datamodel.ContainerResource)
 	if !ok {

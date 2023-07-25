@@ -23,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a VolumeResource to a DataModelInterface and returns an error if one occurs.
 func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.VolumeResource{
 		BaseResource: v1.BaseResource{
@@ -76,7 +78,10 @@ func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned VolumeResource resource.
+// # Function Explanation
+//
+// ConvertFrom converts a VolumeResource from a DataModelInterface to a VolumeResource and returns an error if the
+// conversion fails.
 func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 	resource, ok := src.(*datamodel.VolumeResource)
 	if !ok {

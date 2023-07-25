@@ -23,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts an HTTPRouteResource object to a datamodel.HTTPRoute object.
 func (src *HTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
@@ -54,7 +56,9 @@ func (src *HTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned HTTPRoute resource.
+// # Function Explanation
+//
+// ConvertFrom converts a DataModelInterface to an HTTPRouteResource, returning an error if the conversion fails.
 func (dst *HTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 	// TODO: Improve the validation.
 	route, ok := src.(*datamodel.HTTPRoute)

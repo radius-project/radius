@@ -23,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned SecretStoreResource resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a SecretStoreResource to a datamodel.SecretStore and returns it along with an error if any.
 func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SecretStore{
 		BaseResource: v1.BaseResource{
@@ -51,7 +53,9 @@ func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoreResource resource.
+// # Function Explanation
+//
+// ConvertFrom converts a datamodel.SecretStore to a SecretStoreResource, mapping fields from the source to the destination.
 func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	ss, ok := src.(*datamodel.SecretStore)
 	if !ok {
@@ -78,12 +82,17 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
+// # Function Explanation
+//
 // ConvertTo does no-op because SecretStoresClientListSecretsResponse model is used only for response.
 func (src *SecretStoresClientListSecretsResponse) ConvertTo() (v1.DataModelInterface, error) {
 	return nil, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoresClientListSecretsResponse resource.
+// # Function Explanation
+//
+// ConvertFrom converts a SecretStoreListSecrets data model into a SecretStoresClientListSecretsResponse and returns an
+// error if the conversion fails.
 func (dst *SecretStoresClientListSecretsResponse) ConvertFrom(src v1.DataModelInterface) error {
 	ss, ok := src.(*datamodel.SecretStoreListSecrets)
 	if !ok {

@@ -23,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a GatewayResource object to a DataModelInterface object.
 func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 	tls := &datamodel.GatewayPropertiesTLS{}
 	if src.Properties.TLS == nil {
@@ -90,7 +92,9 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned Gateway resource.
+// # Function Explanation
+//
+// ConvertFrom converts a DataModelInterface to a GatewayResource, mapping fields from the source to the destination.
 func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	g, ok := src.(*datamodel.Gateway)
 	if !ok {

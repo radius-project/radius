@@ -31,7 +31,9 @@ const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
 )
 
-// ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts an EnvironmentResource instance to datamodel.Environment and returns it along with an error if any.
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
@@ -118,7 +120,10 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
+// # Function Explanation
+//
+// ConvertFrom converts a datamodel.Environment to an EnvironmentResource, mapping fields and converting types as
+// necessary. It returns an error if the conversion fails.
 func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	env, ok := src.(*datamodel.Environment)
 	if !ok {
