@@ -24,7 +24,7 @@ var (
 	// AsyncCreateOrUpdateMongoDatabaseTimeout is the timeout for async create or update mongo database
 	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(10) * time.Minute
 	// AsyncDeleteMongoDatabaseTimeout is the timeout for async delete mongo database
-	AsyncDeleteMongoDatabaseTimeout = time.Duration(15) * time.Minute
+	AsyncDeleteMongoDatabaseTimeout = time.Duration(20) * time.Minute
 
 	// AsyncCreateOrUpdateSqlTimeout is the timeout for async create or update sql database
 	AsyncCreateOrUpdateSqlDatabaseTimeout = time.Duration(10) * time.Minute
