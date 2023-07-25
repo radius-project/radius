@@ -49,7 +49,7 @@ env:
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
   # ACR for storing test images
-  CACHE_REGISTRY: radiusdev.azurecr.io
+  CACHE_REGISTRY: ghcr.io/project-radius/test
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -354,6 +354,16 @@ jobs:
           # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
+          cat <<EOF > "./ghcr_secret.json"
+          {
+            "auths": {
+              "ghcr.io/project-radius": {
+                "auth": "${{ secrets.GITHUB_TOKEN }}"
+              }
+            }
+          }
+          EOF
+
           # Create KinD cluster with OIDC Issuer keys
           echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
           echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
@@ -367,6 +377,8 @@ jobs:
                 containerPath: /etc/kubernetes/pki/sa.pub
               - hostPath: ./sa.key
                 containerPath: /etc/kubernetes/pki/sa.key
+              - hostPath: ./ghcr_secret.json
+                containerPath: /var/lib/kubelet/config.json
             kubeadmConfigPatches:
             - |
               kind: ClusterConfiguration
