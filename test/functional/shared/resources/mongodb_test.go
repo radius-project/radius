@@ -130,6 +130,8 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
 // Container uses the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_RecipeParameters(t *testing.T) {
+	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/project-radius/radius/issues/5929")
+
 	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
 	name := "corerp-resources-mongodb-recipe-parameters"
 	appNamespace := "corerp-resources-mongodb-recipe-param-app"
