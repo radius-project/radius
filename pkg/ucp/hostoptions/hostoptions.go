@@ -32,15 +32,12 @@ import (
 type HostOptions struct {
 	// Config is the bootstrap configuration loaded from config file.
 	Config *UCPConfig
-
-	// DBClientFactory func(ctx context.Context) (*mongo.Database, error)
-
-	// HealthChannels supports loosely-coupled communication between the Resource Provider
-	// backend and the Health Monitor. This is part of the options for now because it's
-	// based on in-memory communication.
-	// HealthChannels healthcontract.HealthChannels
 }
 
+// # Function Explanation
+//
+// NewHostOptionsFromEnvironment reads the configuration from the given path and returns a HostOptions object, or an
+// error if the configuration could not be loaded.
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	conf, err := loadConfig(configPath)
 	if err != nil {

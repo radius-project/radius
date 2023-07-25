@@ -32,9 +32,9 @@ import (
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,7 +67,7 @@ func Test_GetAWSResource(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
@@ -103,7 +103,7 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -130,7 +130,7 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -161,7 +161,7 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

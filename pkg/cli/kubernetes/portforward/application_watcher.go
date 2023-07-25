@@ -39,6 +39,11 @@ type applicationWatcher struct {
 }
 
 // NewApplicationWatcher creates a new applicationWatcher.
+//
+// # Function Explanation
+//
+// NewApplicationWatcher creates a new applicationWatcher struct with the given options and initializes the done channel
+// and deploymentWatchers map.
 func NewApplicationWatcher(options Options) *applicationWatcher {
 	return &applicationWatcher{
 		Options: options,
@@ -49,6 +54,11 @@ func NewApplicationWatcher(options Options) *applicationWatcher {
 }
 
 // Run runs the applicationWatcher until canceled.
+//
+// # Function Explanation
+//
+// The Run function watches for changes to deployments in a given namespace that are labeled with the application name.
+// It handles added, modified, and deleted events, and returns an error if the watch fails or the context is done.
 func (aw *applicationWatcher) Run(ctx context.Context) error {
 	defer close(aw.done)
 
@@ -120,11 +130,12 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 	// - deployment has changed it's match labels: shut down and restart watcher
 	//
 	entry, ok := aw.deploymentWatchers[deployment.Name]
-	if ok && reflect.DeepEqual(deployment.Spec.Selector.MatchLabels, entry.MatchLabels) {
-		// deployment is updated but still targets the same pods: update revision
-		entry.Revision = revision
-		return
-	} else if ok {
+	if ok {
+		// deployment is updated but still targets the same pods: do nothing
+		if reflect.DeepEqual(entry.MatchLabels, deployment.Spec.Selector.MatchLabels) && entry.Revision == revision {
+			return
+		}
+
 		// deployment has changed its match labels: shut down and restart watcher
 		entry.Cancel()
 		entry.Wait()
@@ -152,6 +163,10 @@ func (aw *applicationWatcher) deleted(ctx context.Context, deployment *appsv1.De
 
 // Wait will wait for the watcher to shut down and will only return once the watcher
 // has processed all notifications.
+//
+// # Function Explanation
+//
+// Wait() blocks until the applicationWatcher's done channel is closed, indicating that the application has finished running.
 func (aw *applicationWatcher) Wait() {
 	<-aw.done
 }

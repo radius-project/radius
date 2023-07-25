@@ -125,8 +125,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								},
 							},
 							"terraform-recipe": datamodel.EnvironmentRecipeProperties{
-								TemplateKind: recipes.TemplateKindTerraform,
-								TemplatePath: "Azure/cosmosdb/azurerm",
+								TemplateKind:    recipes.TemplateKindTerraform,
+								TemplatePath:    "Azure/cosmosdb/azurerm",
+								TemplateVersion: "1.1.0",
 							},
 						},
 						linkrp.RedisCachesResourceType: {
@@ -137,8 +138,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 						linkrp.DaprStateStoresResourceType: {
 							"statestore-recipe": datamodel.EnvironmentRecipeProperties{
-								TemplateKind: recipes.TemplateKindTerraform,
-								TemplatePath: "Azure/storage/azurerm",
+								TemplateKind:    recipes.TemplateKindTerraform,
+								TemplatePath:    "Azure/storage/azurerm",
+								TemplateVersion: "1.1.0",
 							},
 						},
 					},
@@ -251,6 +253,14 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			filename: "environmentresource-missing-templatekind.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
 		},
+		{
+			filename: "environmentresource-invalid-property-templateversion.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath."},
+		},
+		{
+			filename: "environmentresource-missing-templateversion.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is a required property for templateKind: 'terraform'"},
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -322,6 +332,14 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, 1, len(versioned.Properties.Extensions))
+				if tt.filename == "environmentresourcedatamodel.json" {
+					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplatePath))
+					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateKind))
+					require.Equal(t, "1.1.0", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateVersion))
+				}
+				if tt.filename == "environmentresourcedatamodelemptyext.json" {
+					require.Nil(t, versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateVersion)
+				}
 			}
 		})
 	}

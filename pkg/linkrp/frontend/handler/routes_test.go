@@ -21,235 +21,279 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
-	"github.com/gorilla/mux"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
+	"github.com/project-radius/radius/pkg/linkrp"
+	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
+	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
+	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
+	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
+	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/stretchr/testify/require"
 )
 
-var handlerTests = []struct {
-	url        string
-	method     string
-	isAzureAPI bool
-}{
+var handlerTests = []rpctest.HandlerTestSpec{
+	// Routes for resources after Split Namespaces
 	{
-		url:        "/providers/applications.link/mongodatabases?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.messaging/rabbitmqqueues",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: rabbitmq_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq/listsecrets",
+		Method:        http.MethodPost,
 	}, {
-		url:        "/providers/applications.link/operations?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: true,
+		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/daprpubsubbrokers",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/subscriptions/00000000-0000-0000-0000-000000000000?api-version=2.0",
-		method:     http.MethodPut,
-		isAzureAPI: true,
+		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/providers/applications.link/rediscaches?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprSecretStoresResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/daprsecretstores",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprSecretStoresResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprsecretstores",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis/listsecrets?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprSecretStoresResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/providers/applications.link/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprSecretStoresResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprSecretStoresResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprSecretStoresResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprStateStoresResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/daprstatestores",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprStateStoresResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprstatestores",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprStateStoresResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq/listsecrets?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprStateStoresResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/providers/applications.link/sqldatabases?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprStateStoresResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.DaprStateStoresResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/extenders",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/extenders",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/extenders/extender",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/extenders/extender",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql/listsecrets?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/extenders/extender",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/providers/applications.link/extenders?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/extenders/extender",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/extenders?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.ExtendersResourceType, Method: extender_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.link/extenders/extender/listsecrets",
+		Method:        http.MethodPost,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/mongodatabases",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/mongodatabases",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender/listsecrets?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/providers/applications.link/daprstatestores?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.MongoDatabasesResourceType, Method: mongo_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo/listsecrets",
+		Method:        http.MethodPost,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/rediscaches",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rediscaches",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rediscaches/redis",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/providers/applications.link/daprsecretstores?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rediscaches/redis",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rediscaches/redis",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rediscaches/redis",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RedisCachesResourceType, Method: redis_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rediscaches/redis/listsecrets",
+		Method:        http.MethodPost,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/rabbitmqmessagequeues",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/providers/applications.link/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.RabbitMQMessageQueuesResourceType, Method: rabbitmq_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq/listsecrets",
+		Method:        http.MethodPost,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.link/sqldatabases",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.link/sqldatabases",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.SqlDatabasesResourceType, Method: sql_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql/listsecrets",
+		Method:        http.MethodPost,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Link/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		Path:          "/providers/applications.link/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Link/operationStatuses", Method: v1.OperationGetOperationResult},
+		Path:          "/providers/applications.link/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		Path:          "/providers/applications.messaging/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGetOperationResult},
+		Path:          "/providers/applications.messaging/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
 	},
 }
 
@@ -264,36 +308,36 @@ func TestHandlers(t *testing.T) {
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
 
-	assertRouters(t, "", true, mockSP)
-	assertRouters(t, "/api.ucp.dev", false, mockSP)
-}
-
-func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
-	r := mux.NewRouter()
-	err := AddRoutes(context.Background(), r, isARM, ctrl.Options{PathBase: pathBase, DataProvider: mockSP})
-	require.NoError(t, err)
-
-	for _, tt := range handlerTests {
-		if !isARM && tt.isAzureAPI {
-			continue
-		}
-
-		uri := "http://localhost" + pathBase + "/planes/radius/{planeName}" + tt.url
-		if isARM {
-			if tt.isAzureAPI {
-				uri = "http://localhost" + pathBase + tt.url
-			} else {
-				uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
-			}
-		}
-		if !isARM {
-			uri = "http://localhost" + pathBase + "/planes/radius/local" + tt.url
-		}
-
-		t.Run(uri, func(t *testing.T) {
-			req, _ := http.NewRequestWithContext(context.Background(), tt.method, uri, nil)
-			var match mux.RouteMatch
-			require.True(t, r.Match(req, &match), "no route found for %s", uri)
+	t.Run("UCP", func(t *testing.T) {
+		// Test handlers for UCP resources.
+		rpctest.AssertRouters(t, handlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
+			r := chi.NewRouter()
+			return r, AddRoutes(ctx, r, false, ctrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP})
 		})
-	}
+	})
+
+	t.Run("Azure", func(t *testing.T) {
+		// Add azure specific handlers.
+		azureHandlerTests := append(handlerTests, []rpctest.HandlerTestSpec{
+			{
+				OperationType:               v1.OperationType{Type: "Applications.Link/providers", Method: v1.OperationGet},
+				Path:                        "/providers/applications.link/operations",
+				Method:                      http.MethodGet,
+				WithoutRootScope:            true,
+				SkipOperationTypeValidation: true,
+			}, {
+				OperationType:               v1.OperationType{Type: "Applications.Messaging/providers", Method: v1.OperationGet},
+				Path:                        "/providers/applications.messaging/operations",
+				Method:                      http.MethodGet,
+				WithoutRootScope:            true,
+				SkipOperationTypeValidation: true,
+			},
+		}...)
+
+		// Test handlers for Azure resources
+		rpctest.AssertRouters(t, azureHandlerTests, "", "/subscriptions/00000000-0000-0000-0000-000000000000", func(ctx context.Context) (chi.Router, error) {
+			r := chi.NewRouter()
+			return r, AddRoutes(ctx, r, true, ctrl.Options{PathBase: "", DataProvider: mockSP})
+		})
+	})
 }

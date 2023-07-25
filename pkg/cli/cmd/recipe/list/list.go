@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -110,17 +111,18 @@ func (r *Runner) Run(ctx context.Context) error {
 				Name:         recipeName,
 				LinkType:     link,
 				TemplatePath: *recipeDetails.TemplatePath,
+				TemplateKind: *recipeDetails.TemplateKind,
 			}
-			// Check to ensure backwards compatibility with existing environments.
-			// Remove this in next release once users have migrated their existing environments.
-			// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
-			if recipeDetails.TemplateKind != nil {
-				recipe.TemplateKind = *recipeDetails.TemplateKind
+			if recipeDetails.TemplateVersion != nil {
+				recipe.TemplateVersion = *recipeDetails.TemplateVersion
 			}
 
 			envRecipes = append(envRecipes, recipe)
 		}
 	}
+	sort.Slice(envRecipes, func(i, j int) bool {
+		return envRecipes[i].Name < envRecipes[j].Name
+	})
 	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err

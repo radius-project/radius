@@ -23,9 +23,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -52,8 +52,10 @@ func TestLowercaseURLPath(t *testing.T) {
 
 	for _, tt := range tests {
 		w := httptest.NewRecorder()
-		r := mux.NewRouter()
-		r.Path("/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}").Methods(http.MethodPost).HandlerFunc(
+		r := chi.NewRouter()
+		r.MethodFunc(
+			http.MethodPost,
+			"/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}",
 			func(w http.ResponseWriter, r *http.Request) {
 				str := r.URL.Path + "|" + r.Header.Get(v1.RefererHeader)
 				_, _ = w.Write([]byte(str))
@@ -61,7 +63,8 @@ func TestLowercaseURLPath(t *testing.T) {
 
 		handler := LowercaseURLPath(r)
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, testHostname+tt.armid, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testHostname+tt.armid, nil)
+		require.NoError(t, err)
 		if tt.refererHeader != "" {
 			req.Header.Add(v1.RefererHeader, tt.refererHeader)
 		}
@@ -70,7 +73,7 @@ func TestLowercaseURLPath(t *testing.T) {
 
 		parsed := strings.Split(w.Body.String(), "|")
 
-		assert.Equal(t, tt.expected, parsed[0])
-		assert.Equal(t, tt.armid, parsed[1][len(testHostname):])
+		require.Equal(t, tt.expected, parsed[0])
+		require.Equal(t, tt.armid, parsed[1][len(testHostname):])
 	}
 }

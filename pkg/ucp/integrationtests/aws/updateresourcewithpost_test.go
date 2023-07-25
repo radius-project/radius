@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -37,7 +37,7 @@ import (
 )
 
 func Test_UpdateAWSResourceWithPost(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, cloudformationClient := initializeTest(t)
+	ucp, _, _, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
 
 	primaryIdentifiers := map[string]any{
 		"primaryIdentifier": []any{
@@ -90,13 +90,13 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	updateRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:put", body)
-	require.NoError(t, err, "creating request failed")
+	updateRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPost, ucp.BaseURL+testProxyRequestAWSCollectionPath+"/:put", body)
+	require.NoError(t, err, "update request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(updateRequest)
+	ctx := rpctest.NewARMRequestContext(updateRequest)
 	updateRequest = updateRequest.WithContext(ctx)
 
-	updateResponse, err := ucpClient.httpClient.Do(updateRequest)
+	updateResponse, err := ucp.Client().Do(updateRequest)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusCreated, updateResponse.StatusCode)

@@ -40,7 +40,7 @@ func NewGetOperationStatus(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetOperationStatus{ctrl.NewBaseController(opts)}, nil
 }
 
-// Run returns the async operation status.
+// Run returns the status of an asynchronous operation, or a NotFound error if the operation is not found.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
@@ -49,7 +49,7 @@ func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req
 
 	os := &manager.Status{}
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), os)
-	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
+	if err != nil && errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 

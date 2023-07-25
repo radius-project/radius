@@ -3,21 +3,21 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    control-plane: appcore-rp
-    app.kubernetes.io/name: appcore-rp
+    control-plane: applications-rp
+    app.kubernetes.io/name: applications-rp
     app.kubernetes.io/part-of: radius
-  name: appcore-rp
+  name: applications-rp
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-     app.kubernetes.io/name: appcore-rp
+     app.kubernetes.io/name: applications-rp
   template:
     metadata:
       labels:
-        control-plane: appcore-rp
-        app.kubernetes.io/name: appcore-rp
+        control-plane: applications-rp
+        app.kubernetes.io/name: applications-rp
         app.kubernetes.io/part-of: radius
       {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
@@ -26,9 +26,9 @@ spec:
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
       {{- end }}
     spec:
-      serviceAccountName: appcore-rp
+      serviceAccountName: applications-rp
       containers:
-      - name: appcore-rp
+      - name: applications-rp
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
@@ -43,13 +43,13 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
-        {{- if .Values.publicEndpointOverride}}
+        {{- if .Values.rp.publicEndpointOverride}}
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
-          value: {{ .Values.publicEndpointOverride }}
+          value: {{ .Values.rp.publicEndpointOverride }}
         {{- end }}
         ports:
         - containerPort: 5443
-          name: appcore-rp
+          name: applications-rp
           protocol: TCP
         - containerPort: 5444
           name: applink-rp
@@ -64,6 +64,8 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        - name: terraform
+          mountPath: {{ .Values.rp.terraform.path }}
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.rp.resources }}
@@ -72,4 +74,6 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: appcore-rp-config
+            name: applications-rp-config
+        - name: terraform
+          emptyDir: {}

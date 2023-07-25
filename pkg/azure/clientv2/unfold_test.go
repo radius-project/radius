@@ -30,8 +30,7 @@ import (
 
 const (
 	baseURI            = "https://127.0.0.1:49176/apis/api.ucp.dev/v1alpha3"
-	deploymentPlane    = "/planes/deployments/local"
-	resourceID         = "/resourceGroups/kind-radius-wi/providers/Microsoft.Resources/deployments/rad-deploy-test"
+	resourceID         = "/planes/radius/local/resourceGroups/kind-radius-wi/providers/Microsoft.Resources/deployments/rad-deploy-test"
 	operationsEndpoint = "/operations"
 )
 
@@ -86,7 +85,7 @@ func TestUnfoldResponseError(t *testing.T) {
 					Body:       io.NopCloser(strings.NewReader(`{ "id": null, "error": { "code": "DeploymentFailed", "target": null, "message": "At least one resource deployment operation failed." } }`)),
 					Request: &http.Request{
 						Method: http.MethodGet,
-						URL:    parseURL(t, baseURI+deploymentPlane+resourceID+operationsEndpoint+"?api-version="+apiVersion),
+						URL:    parseURL(t, baseURI+resourceID+operationsEndpoint+"?api-version="+apiVersion),
 					},
 				},
 			},
@@ -121,7 +120,7 @@ func Test_readResponseBody(t *testing.T) {
 					Body:       nil,
 					Request: &http.Request{
 						Method: http.MethodGet,
-						URL:    parseURL(t, baseURI+deploymentPlane+resourceID+operationsEndpoint+"?api-version="+apiVersion),
+						URL:    parseURL(t, baseURI+resourceID+operationsEndpoint+"?api-version="+apiVersion),
 					},
 				},
 			},

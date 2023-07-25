@@ -51,6 +51,15 @@ func GetMagpieTag() string {
 	return magpietag
 }
 
+// GetOIDCIssuer gets OIDC Issuer URI from FUNCTEST_OIDC_ISSUER environment variable.
+func GetOIDCIssuer() string {
+	oidcIssuer := os.Getenv("FUNCTEST_OIDC_ISSUER")
+	if oidcIssuer == "" {
+		return "oidcIssuer=https://radiusoidc.blob.core.windows.net/kubeoidc/"
+	}
+	return "oidcIssuer=" + oidcIssuer
+}
+
 func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
@@ -83,6 +92,16 @@ func GetRecipeVersion() string {
 		defaultVersion = "latest"
 	}
 	return "version=" + defaultVersion
+}
+
+func GetAWSAccountId() string {
+	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
+	return "awsAccountId=" + awsAccountId
+}
+
+func GetAWSRegion() string {
+	awsRegion := os.Getenv("AWS_REGION")
+	return "awsRegion=" + awsRegion
 }
 
 // GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status (e.g. "Valid", "Invalid")

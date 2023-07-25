@@ -60,7 +60,7 @@ func (c *Client) Enqueue(ctx context.Context, msg *client.Message, options ...cl
 }
 
 // Dequeue dequeues message from the in-memory queue.
-func (c *Client) Dequeue(ctx context.Context, opts ...client.DequeueOptions) (*client.Message, error) {
+func (c *Client) Dequeue(ctx context.Context, opts client.QueueClientConfig) (*client.Message, error) {
 	msg := c.queue.Dequeue()
 	if msg == nil {
 		return nil, client.ErrMessageNotFound

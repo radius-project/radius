@@ -12,7 +12,6 @@ Our release process for Radius is based on git tags. Pushing a new tag with the 
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
 - Determine the release channel This is in the form `<major>.<minor>`
 
-
 ### Creating an RC release
 
 When starting the release process, we first kick it off by creating an RC release. This is a release candidate that we can test internally before releasing to the public which we can validate samples on.
@@ -81,8 +80,7 @@ Follow the steps below to create an RC release.
    git push origin release/0.21
    ```
 
-   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
-
+   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push Applications RP and UCP containers to our container registry.
 
 ### Test tutorials and samples
 
@@ -118,9 +116,7 @@ Different cluster types to test on:
 - KinD
 - k3d (codespace environment gives this for free)
 
-
 *If we encounter an issue with an RC release, please refer to "Patching" below.*
-
 
 ### Creating the final release
 
@@ -129,6 +125,7 @@ If sample validation passes, we can start the process of creating the final rele
 1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
 
    For example, if the RC version is `v0.21.0-rc1`, the final release version would be `v0.21.0`.
+1. Create a new release note document in the [release-notes](../../release-notes/) directory. Follow the directory's README.md for instructions on how to create a new release note document. Include this file in the release version pull request.
 1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)
 1. Check the stable version marker
 
@@ -142,7 +139,7 @@ If sample validation passes, we can start the process of creating the final rele
    
    1. Create a new branch named `v0.21` from `edge`, substituting the new version number
    1. Within `docs/config.toml`:
-      - Change `baseURL` to `https://radapp.dev/` instead of `https://edge.radapp.dev/`
+      - Change `baseURL` to `https://docs.radapp.dev/` instead of `https://edge.radapp.dev/`
       - Change `version` to `v0.21` instead of `edge`, substituting the new version number
       - Change `chart_version` (Helm chart) to `0.21.0`, substituting the new version number
    1. Within `docs/layouts/partials/hooks/body-end.html`:
@@ -167,7 +164,6 @@ If sample validation passes, we can start the process of creating the final rele
 After creating a release (either an RC release or the final release), it's good to check that the release works in some small mainline scenarios and has the right versions for each container.
 
 1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.21), you can use the following URL format:
-
 
    ```sh
    Windows:
@@ -201,12 +197,12 @@ After creating a release (either an RC release or the final release), it's good 
 4. Verify that each pod running in the radius-system namespace uses the right image and tag for each of the containers.
 
    ```
-   kubectl describe pods -n radius-system -l control-plane=appcore-rp
+   kubectl describe pods -n radius-system -l control-plane=applications-rp
    kubectl describe pods -n radius-system -l control-plane=de
    kubectl describe pods -n radius-system -l control-plane=ucp
    ```
 
-   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.21 for the 0.21 release for the appcore-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/applications-rp:0.21 for the 0.21 release for the applications-rp image. The following is an example where the rad version (highlighted in yellow) does not match with the tag label (highlighted in blue), and should be raised as an error.
 
    ![Example of version and tag mismatch](images/image-label.png)
 
@@ -218,7 +214,6 @@ After creating a release (either an RC release or the final release), it's good 
    ```
 
    Confirm the bicep file deploys successfully.
-
 
 ## How releases work
 
@@ -258,3 +253,6 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    git push --tags
    ```
 
+## Cadence
+
+We follow a monthly release cadence. Any contributions that have been merged through the pull-request process will be present in the next scheduled release.

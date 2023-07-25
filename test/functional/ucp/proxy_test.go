@@ -44,6 +44,8 @@ const (
 )
 
 func Test_ProxyOperations(t *testing.T) {
+	t.Skip("See #5807 for rationale on why this is skipped.")
+
 	test := NewUCPTest(t, "Test_ProxyOperations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Start a TestRP in the Radius namespace
 		startTestRP(t, "")

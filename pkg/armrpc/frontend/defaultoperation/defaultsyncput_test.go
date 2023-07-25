@@ -26,6 +26,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
 
@@ -65,10 +66,10 @@ func TestDefaultSyncPut_Create(t *testing.T) {
 			reqModel, _, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{}, tt.getErr).
@@ -185,10 +186,10 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			_ = json.Unmarshal(testutil.ReadFixture(tt.datamodelFile), reqDataModel)
 
 			w := httptest.NewRecorder()
-			req, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(req)
+			ctx := rpctest.NewARMRequestContext(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{

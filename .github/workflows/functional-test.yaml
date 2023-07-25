@@ -58,8 +58,10 @@ env:
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
-  # The region for AWS resources.
+  # The region for AWS resources
   AWS_REGION: 'us-west-2'
+  # The AWS account ID
+  AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
@@ -167,8 +169,9 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * recipe location `${{ env.CACHE_REGISTRY}}/test/functional/corerp/recipes/<name>:${{ env.REL_VERSION }}`
-            * appcore-rp test image location: `${{ env.CACHE_REGISTRY }}/appcore-rp:${{ env.REL_VERSION }}`
+            * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
+            * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
 
             </details>
@@ -238,7 +241,7 @@ jobs:
           chmod +x dist/rad-bicep
       - name: Publish Bicep Test Recipes
         run: |
-          make publish-test-recipes
+          make publish-test-bicep-recipes
         env:
           RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
@@ -268,7 +271,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,corerp,samples]
+        name: [ucp,shared,msgrp,samples]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -415,7 +418,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/appcore-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -448,6 +451,9 @@ jobs:
           append: true
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - name: Publish Terraform test recipes
+        run: |
+          make publish-test-terraform-recipes
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -525,6 +531,6 @@ jobs:
             github.rest.issues.create({
               ...context.repo,
               title: `Scheduled functional test failed - Run ID: ${context.runId}`,
-              labels: ['bug'],
+              labels: ['bug', 'test-failure'],
               body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })

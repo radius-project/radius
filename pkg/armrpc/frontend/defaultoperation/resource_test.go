@@ -82,6 +82,9 @@ type TestResourceProperties struct {
 	PropertyB         *string               `json:"propertyB,omitempty"`
 }
 
+// # Function Explanation
+//
+// ConvertTo converts a version specific TestResource into a version-agnostic resource, TestResourceDataModel.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
@@ -107,6 +110,9 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
+// # Function Explanation
+//
+// ConvertFrom converts src version agnostic model to versioned model, TestResource.
 func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {

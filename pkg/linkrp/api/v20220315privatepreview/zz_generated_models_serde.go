@@ -1336,6 +1336,7 @@ func (r RedisCacheListSecretsResult) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", r.ConnectionString)
 	populate(objectMap, "password", r.Password)
+	populate(objectMap, "url", r.URL)
 	return json.Marshal(objectMap)
 }
 
@@ -1353,6 +1354,9 @@ func (r *RedisCacheListSecretsResult) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "password":
 				err = unpopulate(val, "Password", &r.Password)
+				delete(rawMsg, key)
+		case "url":
+				err = unpopulate(val, "URL", &r.URL)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1375,6 +1379,7 @@ func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "resources", r.Resources)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
+	populate(objectMap, "tls", r.TLS)
 	populate(objectMap, "username", r.Username)
 	return json.Marshal(objectMap)
 }
@@ -1417,6 +1422,9 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		case "tls":
+				err = unpopulate(val, "TLS", &r.TLS)
 				delete(rawMsg, key)
 		case "username":
 				err = unpopulate(val, "Username", &r.Username)
@@ -1516,6 +1524,7 @@ func (r RedisCacheSecrets) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", r.ConnectionString)
 	populate(objectMap, "password", r.Password)
+	populate(objectMap, "url", r.URL)
 	return json.Marshal(objectMap)
 }
 
@@ -1533,6 +1542,9 @@ func (r *RedisCacheSecrets) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "password":
 				err = unpopulate(val, "Password", &r.Password)
+				delete(rawMsg, key)
+		case "url":
+				err = unpopulate(val, "URL", &r.URL)
 				delete(rawMsg, key)
 		}
 		if err != nil {

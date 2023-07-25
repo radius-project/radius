@@ -13,19 +13,8 @@
             "location": "global",
             "properties": {
               "resourceProviders": {
-                "Applications.Link": "http://appcore-rp.radius-system:5444",
-                "Applications.Core": "http://appcore-rp.radius-system:5443"
-              },
-              "kind": "UCPNative"
-            }
-          },
-          {
-            "id": "/planes/deployments/local",
-            "type": "System.Planes/deployments",
-            "name": "local",
-            "location": "global",
-            "properties": {
-              "resourceProviders": {
+                "Applications.Link": "http://applications-rp.radius-system:5444",
+                "Applications.Core": "http://applications-rp.radius-system:5443",
                 "Microsoft.Resources": "http://bicep-de.radius-system:6443"
               },
               "kind": "UCPNative"

@@ -15,6 +15,9 @@ go:
 batch:
   - tag: package-core-2022-03-15-privatepreview
   - tag: package-link-2022-03-15-privatepreview
+  - tag: package-datastores-2022-03-15-privatepreview
+  - tag: package-dapr-2022-03-15-privatepreview
+  - tag: package-messaging-2022-03-15-privatepreview
 ```
 
 ### Tag: package-core-2022-03-15-privatepreview and go
@@ -33,4 +36,31 @@ Please also specify `--go-sdk-folder=<path to the root directory of your azure-s
 
 ```yaml $(tag) == 'package-link-2022-03-15-privatepreview' && $(go)
 output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/link
+```
+
+### Tag: package-dapr-2022-03-15-privatepreview and go
+
+These settings apply only when `--tag=package-dapr-2022-03-15-privatepreview --go` is specified on the command line.
+Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
+
+```yaml $(tag) == 'package-dapr-2022-03-15-privatepreview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/dapr
+```
+
+### Tag: package-datastores-2022-03-15-privatepreview and go
+
+These settings apply only when `--tag=package-datastores-2022-03-15-privatepreview --go` is specified on the command line.
+Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
+
+```yaml $(tag) == 'package-datastores-2022-03-15-privatepreview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/datastores
+```
+
+### Tag: package-messaging-2022-03-15-privatepreview and go
+
+These settings apply only when `--tag=package-messaging-2022-03-15-privatepreview --go` is specified on the command line.
+Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
+
+```yaml $(tag) == 'package-messaging-2022-03-15-privatepreview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/messaging
 ```

@@ -108,7 +108,8 @@ func TestFromSystemDataModel(t *testing.T) {
 		versioned := fromSystemDataModel(tt)
 		require.Equal(t, tt.CreatedBy, string(*versioned.CreatedBy))
 		require.Equal(t, tt.CreatedByType, string(*versioned.CreatedByType))
-		c, _ := versioned.CreatedAt.MarshalText()
+		c, err := versioned.CreatedAt.MarshalText()
+		require.NoError(t, err)
 		if tt.CreatedAt == "" {
 			tt.CreatedAt = "0001-01-01T00:00:00Z"
 		}

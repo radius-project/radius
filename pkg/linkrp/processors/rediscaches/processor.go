@@ -37,7 +37,10 @@ const (
 type Processor struct {
 }
 
-// Process implements the processors.Processor interface for RedisCache resources.
+// # Function Explanation
+//
+// Process implements the processors.Processor interface for RedisCache resources. It validates the input parameters and computes
+// the connection string and connection URI for the RedisCache resource, and applies the values from the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 
@@ -45,9 +48,15 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
+	validator.AddComputedBoolField(renderers.TLS, &resource.Properties.TLS, func() (bool, *processors.ValidationError) {
+		return p.computeSSL(resource), nil
+	})
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
 	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
 		return p.computeConnectionString(resource), nil
+	})
+	validator.AddComputedSecretField(renderers.ConnectionURIValue, &resource.Properties.Secrets.URL, func() (string, *processors.ValidationError) {
+		return p.computeConnectionURI(resource), nil
 	})
 
 	err := validator.SetAndValidate(options.RecipeOutput)
@@ -58,10 +67,13 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	return nil
 }
 
+func (p *Processor) computeSSL(resource *datamodel.RedisCache) bool {
+	return resource.Properties.Port == RedisSSLPort
+}
+
 func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) string {
-	ssl := resource.Properties.Port == RedisSSLPort
 	connectionString := fmt.Sprintf("%s:%v,abortConnect=False", resource.Properties.Host, resource.Properties.Port)
-	if ssl {
+	if resource.Properties.TLS {
 		connectionString = connectionString + ",ssl=True"
 	}
 
@@ -73,4 +85,22 @@ func (p *Processor) computeConnectionString(resource *datamodel.RedisCache) stri
 	}
 
 	return connectionString
+}
+
+func (p *Processor) computeConnectionURI(resource *datamodel.RedisCache) string {
+	// Redis connection URIs are of the form: redis://[username:password@]host[:port][/db-number][?option=value]
+	connectionURI := "redis://"
+	if resource.Properties.TLS {
+		connectionURI = "rediss://"
+	}
+
+	if resource.Properties.Username != "" {
+		connectionURI += resource.Properties.Username
+	}
+	if resource.Properties.Secrets.Password != "" {
+		connectionURI += ":" + resource.Properties.Secrets.Password + "@"
+	}
+
+	connectionURI = fmt.Sprintf("%s%s:%v/0?", connectionURI, resource.Properties.Host, resource.Properties.Port)
+	return connectionURI
 }

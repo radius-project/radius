@@ -20,6 +20,9 @@ type contextKey struct {
 	name string
 }
 
+// # Function Explanation
+//
+// String returns a string containing the name of the context key.
 func (k *contextKey) String() string {
 	return "arm context name: " + k.name
 }

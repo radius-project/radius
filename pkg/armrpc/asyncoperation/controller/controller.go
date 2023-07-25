@@ -58,7 +58,9 @@ type BaseController struct {
 	options Options
 }
 
-// NewBaseAsyncController creates BaseAsyncController instance.
+// # Function Explanation
+//
+// NewBaseAsyncController creates a new BaseController instance with the given Options for Async Operation.
 func NewBaseAsyncController(options Options) BaseController {
 	return BaseController{options}
 }

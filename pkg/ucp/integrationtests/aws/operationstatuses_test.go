@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -36,7 +36,7 @@ import (
 )
 
 func Test_GetOperationStatuses(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
+	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	cloudcontrolClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
 		output := cloudcontrol.GetResourceRequestStatusOutput{
@@ -48,13 +48,13 @@ func Test_GetOperationStatuses(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationStatuses/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSAsyncPath+"/operationStatuses/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(operationResultsRequest)
+	ctx := rpctest.NewARMRequestContext(operationResultsRequest)
 	operationResultsRequest = operationResultsRequest.WithContext(ctx)
 
-	operationResultsResponse, err := ucpClient.httpClient.Do(operationResultsRequest)
+	operationResultsResponse, err := ucp.Client().Do(operationResultsRequest)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, operationResultsResponse.StatusCode)

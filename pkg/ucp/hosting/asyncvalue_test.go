@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,6 +48,10 @@ type synchronizer struct {
 	results chan testResult
 }
 
+// # Function Explanation
+//
+// NewSynchronizer creates a new synchronizer struct with a given worker count, initializes the waitgroups and results
+// channel, and returns the synchronizer.
 func NewSynchronizer(workerCount int) *synchronizer {
 	s := &synchronizer{
 		Value:            NewAsyncValue[testValue](),
@@ -62,6 +67,10 @@ func NewSynchronizer(workerCount int) *synchronizer {
 	return s
 }
 
+// # Function Explanation
+//
+// Start launches a number of workers to get a value from a context and returns a test result with the value retrieved
+// and any errors that occurred. If the test times out before the workers complete, an error is returned.
 func (s *synchronizer) Start(ctx context.Context, t *testing.T) {
 	for i := 0; i < s.WorkerCount; i++ {
 		go func() {
@@ -90,6 +99,10 @@ func (s *synchronizer) Start(ctx context.Context, t *testing.T) {
 	}
 }
 
+// # Function Explanation
+//
+// WaitForWorkersCompleted creates a channel to wait for workers to complete and returns a channel of test
+// results or an error if the test times out.
 func (s *synchronizer) WaitForWorkersCompleted(ctx context.Context, t *testing.T) <-chan testResult {
 	completed := make(chan struct{})
 
@@ -112,8 +125,8 @@ func (s *synchronizer) WaitForWorkersCompleted(ctx context.Context, t *testing.T
 }
 
 func Test_Get_NoBlockingWhenValueSet_Value(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	asyncValue := NewAsyncValue[testValue]()
 
@@ -126,8 +139,8 @@ func Test_Get_NoBlockingWhenValueSet_Value(t *testing.T) {
 }
 
 func Test_Get_NoBlockingWhenValueSet_Err(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	asyncValue := NewAsyncValue[testValue]()
 
@@ -140,8 +153,8 @@ func Test_Get_NoBlockingWhenValueSet_Err(t *testing.T) {
 }
 
 func Test_Get_BlocksUntil_ValueSet(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	s := NewSynchronizer(10)
 	s.Start(ctx, t)
@@ -161,8 +174,8 @@ func Test_Get_BlocksUntil_ValueSet(t *testing.T) {
 }
 
 func Test_Get_BlocksUntil_ErrSet(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	s := NewSynchronizer(10)
 	s.Start(ctx, t)
@@ -183,9 +196,9 @@ func Test_Get_BlocksUntil_ErrSet(t *testing.T) {
 
 func Test_Get_BlocksUntil_Canceled(t *testing.T) {
 	// We need two contexts. We want to cancel the work done by the workers.
-	workerContext, workerCancel := context.WithCancel(context.Background())
-	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
-	defer cancel()
+	workerContext, workerCancel := testcontext.NewWithCancel(t)
+	ctx, cancel := testcontext.NewWithDeadline(t, TestTimeout)
+	t.Cleanup(cancel)
 
 	s := NewSynchronizer(10)
 	s.Start(workerContext, t)

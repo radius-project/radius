@@ -31,6 +31,12 @@ type SubscriptionResult struct {
 }
 
 // LoadSubscriptionsFromProfile reads the users Azure profile to find subscription data.
+//
+// # Function Explanation
+// 
+// LoadSubscriptionsFromProfile() reads the profile from a file, filters out the enabled subscriptions and returns a 
+// SubscriptionResult object containing the enabled subscriptions and the default subscription. If an error occurs, an 
+// error is returned.
 func LoadSubscriptionsFromProfile() (*SubscriptionResult, error) {
 	path, err := ProfilePath()
 	if err != nil {
@@ -59,6 +65,11 @@ func LoadSubscriptionsFromProfile() (*SubscriptionResult, error) {
 }
 
 // LoadSubscriptionsFromAzure uses ARM to find subscription data.
+//
+// # Function Explanation
+// 
+// LoadSubscriptionsFromAzure retrieves a list of subscriptions from Azure and returns them in a SubscriptionResult struct.
+//  It returns an error if there is an issue retrieving the list.
 func LoadSubscriptionsFromAzure(ctx context.Context, options clientv2.Options) (*SubscriptionResult, error) {
 	client, err := clientv2.NewSubscriptionsClient(&options)
 	if err != nil {

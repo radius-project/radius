@@ -8,7 +8,7 @@ Radius consists of a few processes that get deployed inside a Kubernetes cluster
 
  This includes:
 
-- Applications.Core RP / Applications.Link RP (appcore-rp) - The resource provider that handles processing of core resources as well as recipes.
+- Applications.Core RP / Applications.Link RP (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
 - Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources.
 - Deployment Engine (bicep-de) - Handles deployment orchestration for bicep files.
 
@@ -21,8 +21,8 @@ The easiest way to get started is to launch Radius using VS Code. This will give
 If you need to manually test APIs you can reach them at the following endpoints after following these instructions:
 
 - UCP: port 9000
-- AppCore RP: port 8080
-- AppLink RP: port 8081
+- AppCore Namespace: port 8080
+- AppLink Namespace: port 8081
 - Deployment Engine: port 5017
 
 ## Prerequisites

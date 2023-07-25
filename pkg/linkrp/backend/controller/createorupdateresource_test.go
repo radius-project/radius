@@ -57,6 +57,9 @@ type TestResource struct {
 	Properties TestResourceProperties `json:"properties"`
 }
 
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the status of the TestResource instance with the DeploymentOutput values.
 func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -65,14 +68,23 @@ func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
+// # Function Explanation
+//
+// OutputResources returns the OutputResources from the Status field of the Properties field of the TestResource instance.
 func (r *TestResource) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the TestResource instance.
 func (r *TestResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// Recipe returns a pointer to the LinkRecipe stored in the Properties field of the TestResource struct.
 func (t *TestResource) Recipe() *linkrp.LinkRecipe {
 	return &t.Properties.Recipe
 }
@@ -86,6 +98,9 @@ type TestResourceProperties struct {
 type SuccessProcessor struct {
 }
 
+// # Function Explanation
+//
+// Process sets a computed value and adds an output resource to the TestResource object, and returns no error.
 func (p *SuccessProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	// Simulate setting a computed value and adding an output resource.
 	data.Properties.IsProcessed = true
@@ -100,6 +115,9 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
+// # Function Explanation
+//
+// Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return processorErr
 }
@@ -152,14 +170,14 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
 				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
 			},
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: TestResourceID},
 			false,
 			nil,
 			nil,
 			nil,
 			nil,
 			nil,
-			&store.ErrNotFound{},
+			&store.ErrNotFound{ID: TestResourceID},
 		},
 		{
 			"get-error",
@@ -345,7 +363,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				data["type"] = 3 // This won't convert to our data model.
 			}
 
-			recipeMetadata := recipes.Metadata{
+			recipeMetadata := recipes.ResourceMetadata{
 				Name:          "test-recipe",
 				EnvironmentID: TestEnvironmentID,
 				ApplicationID: TestApplicationID,
@@ -371,7 +389,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			if stillPassing && tt.runtimeConfigurationErr != nil {
 				stillPassing = false
 				cfg.EXPECT().
-					LoadConfiguration(gomock.Any(), recipes.Metadata{
+					LoadConfiguration(gomock.Any(), recipes.ResourceMetadata{
 						EnvironmentID: TestEnvironmentID,
 						ApplicationID: TestApplicationID,
 						ResourceID:    TestResourceID,
@@ -388,7 +406,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					},
 				}
 				cfg.EXPECT().
-					LoadConfiguration(gomock.Any(), recipes.Metadata{
+					LoadConfiguration(gomock.Any(), recipes.ResourceMetadata{
 						EnvironmentID: TestEnvironmentID,
 						ApplicationID: TestApplicationID,
 						ResourceID:    TestResourceID,

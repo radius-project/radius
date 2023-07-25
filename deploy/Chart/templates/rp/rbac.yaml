@@ -1,9 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: appcore-rp
+  name: applications-rp
   labels:
-    app.kubernetes.io/name: appcore-rp
+    app.kubernetes.io/name: applications-rp
     app.kubernetes.io/part-of: radius
 rules:
 - apiGroups:
@@ -112,12 +112,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: appcore-rp
+  name: applications-rp
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: appcore-rp
+  name: applications-rp
 subjects:
 - kind: ServiceAccount
-  name: appcore-rp
+  name: applications-rp
   namespace: {{ .Release.Namespace }}

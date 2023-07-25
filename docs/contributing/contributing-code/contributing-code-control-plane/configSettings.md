@@ -171,7 +171,7 @@ ucp:
 
 | Key | Description | Example |
 |-----|-------------|---------|
-| resourceProviders | Resource Providers for UCP Native Plane | `http://appcore-rp.radius-system:5443` |
+| resourceProviders | Resource Providers for UCP Native Plane | `http://applications-rp.radius-system:5443` |
 | kind | The kind of plane | `Azure` |
 | url | URL to forward requests to for non UCP Native Plane | `http://localhost:7443` |
 
@@ -228,12 +228,11 @@ planes:
   - id: "/planes/radius/local"
     properties:
       resourceProviders:
-        Applications.Core: "http://appcore-rp.radius-system:5443"
-        Applications.Link: "http://appcore-rp.radius-system:5444"
-      kind: "UCPNative"
-  - id: "/planes/deployments/local"
-    properties:
-      resourceProviders:
+        Applications.Core: "http://applications-rp.radius-system:5443"
+        Applications.Link: "http://applications-rp.radius-system:5444"
+        Applications.Dapr: "http://applications-rp.radius-system:5444"
+        Applications.Datastores: "http://applications-rp.radius-system:5444"
+        Applications.Messaging: "http://applications-rp.radius-system:5444"
         Microsoft.Resources: "http://bicep-de.radius-system:6443"
       kind: "UCPNative"
   - id: "/planes/aws/aws"

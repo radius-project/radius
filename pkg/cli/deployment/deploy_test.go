@@ -43,7 +43,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 	expectedConfig.Deployments = &sdkclients.Deployments{
 		Type: "Microsoft.Resources",
 		Value: sdkclients.Value{
-			Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
+			Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 		},
 	}
 
@@ -84,7 +84,7 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 	expectedConfig.Deployments = &sdkclients.Deployments{
 		Type: "Microsoft.Resources",
 		Value: sdkclients.Value{
-			Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
+			Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 		},
 	}
 

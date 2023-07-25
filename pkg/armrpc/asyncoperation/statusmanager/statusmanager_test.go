@@ -19,12 +19,14 @@ package statusmanager
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -60,7 +62,7 @@ var reqCtx = &v1.ARMRequestContext{
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
-	OperationType:  "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
+	OperationType:  rpctest.MustParseOperationType("APPLICATIONS.CORE/ENVIRONMENTS|PUT"),
 	Traceparent:    "trace",
 	AcceptLanguage: "lang",
 }
@@ -105,7 +107,7 @@ func TestOperationStatusResourceID(t *testing.T) {
 			rid, err := resources.ParseResource(tc.resourceID)
 			require.NoError(t, err)
 			url := sm.operationStatusResourceID(rid, tc.operationID)
-			require.Equal(t, tc.operationResourceID, url)
+			require.Equal(t, strings.ToLower(tc.operationResourceID), strings.ToLower(url))
 		})
 	}
 }

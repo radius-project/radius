@@ -259,8 +259,10 @@
 ## ContainerPort
 ### Properties
 * **containerPort**: int (Required): The listening port number
+* **port**: int: Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
 * **provides**: string: Specifies a route provided by this port
+* **scheme**: string: Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value.
 
 ## ContainerVolumes
 ### Properties
@@ -380,6 +382,7 @@
 * **parameters**: any: Any object
 * **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+* **templateVersion**: string: Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this is not applicable, as the Bicep version is part of the templatePath.
 
 ## TrackedResourceTags
 ### Properties

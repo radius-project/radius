@@ -27,7 +27,8 @@
         },
         "terraform-recipe": {
           "templateKind": "terraform",
-          "templatePath": "Azure/cosmosdb/azurerm"
+          "templatePath": "Azure/cosmosdb/azurerm",
+          "templateVersion":"1.1.0"
         }
       },
       "Applications.Link/redisCaches":{
@@ -39,7 +40,8 @@
       "Applications.Link/daprStateStores":{
         "statestore-recipe": {
           "templateKind": "terraform",
-          "templatePath": "Azure/storage/azurerm"
+          "templatePath": "Azure/storage/azurerm",
+          "templateVersion":"1.1.0"
         }
       }
     },

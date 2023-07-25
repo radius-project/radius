@@ -65,7 +65,8 @@ func TestFromARMRequest(t *testing.T) {
 			rid, err := resources.ParseResource(tt.resourceID)
 			require.NoError(t, err)
 
-			serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
+			serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
+			require.NoError(t, err)
 			require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 			require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 			require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
@@ -82,7 +83,8 @@ func TestFromARMRequest(t *testing.T) {
 func TestSystemData(t *testing.T) {
 	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
 	require.NoError(t, err)
-	serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
+	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
+	require.NoError(t, err)
 
 	sysData := serviceCtx.SystemData()
 	require.NotNil(t, sysData)
@@ -95,16 +97,24 @@ func TestSystemData(t *testing.T) {
 }
 
 func TestFromContext(t *testing.T) {
-	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
-	require.NoError(t, err)
-	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
-	require.NoError(t, err)
-	ctx := context.Background()
-	newCtx := WithARMRequestContext(ctx, serviceCtx)
+	t.Run("ARMRequestContext is injected", func(t *testing.T) {
+		req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+		require.NoError(t, err)
+		serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
+		require.NoError(t, err)
+		ctx := context.Background()
+		newCtx := WithARMRequestContext(ctx, serviceCtx)
 
-	sCtx := ARMRequestContextFromContext(newCtx)
-	require.NotNil(t, sCtx)
-	require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+		sCtx := ARMRequestContextFromContext(newCtx)
+		require.NotNil(t, sCtx)
+		require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+	})
+
+	t.Run("ARMRequestContext is not injected", func(t *testing.T) {
+		require.Panics(t, func() {
+			ARMRequestContextFromContext(context.Background())
+		})
+	})
 }
 
 func TestTopQueryParam(t *testing.T) {
@@ -155,7 +165,10 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
+	if err != nil {
+		return nil, err
+	}
 	for k, v := range parsed {
 		req.Header.Add(k, v)
 	}

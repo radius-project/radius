@@ -720,6 +720,9 @@ type RedisCacheListSecretsResult struct {
 
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
+
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
 // RedisCacheProperties - RedisCache link properties
@@ -747,6 +750,9 @@ type RedisCacheProperties struct {
 
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to enable SSL connections to the Redis cache
+	TLS *bool `json:"tls,omitempty"`
 
 	// The username for Redis cache
 	Username *string `json:"username,omitempty"`
@@ -798,6 +804,9 @@ type RedisCacheSecrets struct {
 
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
+
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
 // RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate method.

@@ -36,7 +36,7 @@ func NewDefaultProviderConfig(resourceGroup string) ProviderConfig {
 		Deployments: &Deployments{
 			Type: "Microsoft.Resources",
 			Value: Value{
-				Scope: "/planes/deployments/local/resourceGroups/" + resourceGroup,
+				Scope: "/planes/radius/local/resourceGroups/" + resourceGroup,
 			},
 		},
 		Radius: &Radius{

@@ -326,11 +326,18 @@ type ContainerPort struct {
 	// REQUIRED; The listening port number
 	ContainerPort *int32 `json:"containerPort,omitempty"`
 
+	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.
+	Port *int32 `json:"port,omitempty"`
+
 	// Protocol in use by the port
 	Protocol *Protocol `json:"protocol,omitempty"`
 
 	// Specifies a route provided by this port
 	Provides *string `json:"provides,omitempty"`
+
+	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
+// to 'http' or 'https' depending on the port value.
+	Scheme *string `json:"scheme,omitempty"`
 }
 
 // ContainerProperties - Container properties
@@ -554,6 +561,10 @@ type EnvironmentRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this
+// is not applicable, as the Bicep version is part of the templatePath.
+	TemplateVersion *string `json:"templateVersion,omitempty"`
 }
 
 // EnvironmentResource - Application environment.

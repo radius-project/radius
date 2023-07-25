@@ -65,8 +65,17 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Update Env Command with invalid Azure subscriptionId arg",
+			Input:         []string{"default", "--azure-subscription-id", "subscriptionName", "--azure-resource-group", "testResourceGroup"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
 			Name:          "Update Env Command with single provider set",
-			Input:         []string{"default", "--azure-subscription-id", "testSubId", "--azure-resource-group", "testResourceGroup"},
+			Input:         []string{"default", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -75,7 +84,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name: "Update Env Command with both providers set",
-			Input: []string{"default", "--azure-subscription-id", "testSubId", "--azure-resource-group", "testResourceGroup",
+			Input: []string{"default", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup",
 				"--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount",
 			},
 			ExpectedValid: true,

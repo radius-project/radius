@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	recipes "github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // MockDriver is a mock of Driver interface.
@@ -35,8 +36,22 @@ func (m *MockDriver) EXPECT() *MockDriverMockRecorder {
 	return m.recorder
 }
 
+// Delete mocks base method.
+func (m *MockDriver) Delete(arg0 context.Context, arg1 []v1.OutputResource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockDriverMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockDriver)(nil).Delete), arg0, arg1)
+}
+
 // Execute mocks base method.
-func (m *MockDriver) Execute(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.Metadata, arg3 recipes.Definition) (*recipes.RecipeOutput, error) {
+func (m *MockDriver) Execute(arg0 context.Context, arg1 recipes.Configuration, arg2 recipes.ResourceMetadata, arg3 recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
