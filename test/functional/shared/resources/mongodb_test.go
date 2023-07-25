@@ -193,6 +193,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 // a default recipe using the context parameter generated and set by linkRP,
 // and container using the mongoDB link to connect to the underlying mongoDB resource.
 func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
+	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/project-radius/radius/issues/5929")
 	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
 	name := "corerp-resources-mongodb-recipe-context"
 	appNamespace := "corerp-resources-mongodb-recipe-context-app"
