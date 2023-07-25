@@ -394,6 +394,56 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 }
 
+func Test_Credential_Show(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
+	awsMockCredentialClient := NewMockAWSCredentialManagementClientInterface(mockCtrl)
+
+	azureStatus := ProviderCredentialConfiguration{
+		CloudProviderStatus: CloudProviderStatus{
+			Name:    AzureCredential,
+			Enabled: true,
+		},
+	}
+
+	azMockCredentialClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(azureStatus, nil).
+		Times(1)
+
+	awsStatus := ProviderCredentialConfiguration{
+		CloudProviderStatus: CloudProviderStatus{
+			Name:    AWSCredential,
+			Enabled: true,
+		},
+	}
+
+	awsMockCredentialClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		Return(awsStatus, nil).
+		Times(1)
+
+	cliCredentialClient := UCPCredentialManagementClient{
+		AzClient:  azMockCredentialClient,
+		AWSClient: awsMockCredentialClient,
+	}
+	respAz, err := cliCredentialClient.AzClient.Get(ctx, "default")
+	require.NoError(t, err)
+	require.Equal(t, "azure", respAz.CloudProviderStatus.Name)
+	require.True(t, respAz.CloudProviderStatus.Enabled)
+
+	respAWS, err := cliCredentialClient.AWSClient.Get(ctx, "default")
+	require.NoError(t, err)
+	require.Equal(t, "aws", respAWS.CloudProviderStatus.Name)
+	require.True(t, respAWS.CloudProviderStatus.Enabled)
+
+}
+
 func setupSuccessPutAzureMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAzure.EXPECT().
 		Put(gomock.Any(), gomock.Any()).

@@ -74,40 +74,27 @@ func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential uc
 // object containing the credentials or an error if the credentials could not be retrieved. If the credentials for the specified
 // cloud provider are not registered, an error of type ErrUnsupportedCloudProvider is returned.
 func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
-	var err error
+	resp, err := cpm.AWSCredentialClient.Get(ctx, AzurePlaneName, name, nil)
+	if err != nil {
+		return ProviderCredentialConfiguration{}, err
+	}
+
+	awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSAccessKeyCredentialProperties)
+	if !ok {
+		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", name)
+	}
+
 	providerCredentialConfiguration := ProviderCredentialConfiguration{
 		CloudProviderStatus: CloudProviderStatus{
-			Name:    name,
+			Name:    AWSCredential,
 			Enabled: true,
+		},
+		AWSCredentials: &ucp.AWSCredentialProperties{
+			Kind:              awsAccessKeyCredentials.Kind,
+			ProvisioningState: awsAccessKeyCredentials.ProvisioningState,
 		},
 	}
 
-	if strings.EqualFold(name, AWSCredential) {
-		// We send only the name when getting credentials from backend which we already have access to
-		resp, err := cpm.AWSCredentialClient.Get(ctx, AWSPlaneName, name, nil)
-		if err != nil {
-			return ProviderCredentialConfiguration{}, err
-		}
-		awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
-		if !ok {
-			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", name)
-		}
-		providerCredentialConfiguration.AWSCredentials = awsAccessKeyCredentials
-	} else {
-		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
-	}
-
-	// We get 404 when credential for the provider plane is not registered.
-	if clients.Is404Error(err) {
-		return ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    name,
-				Enabled: false,
-			},
-		}, nil
-	} else if err != nil {
-		return ProviderCredentialConfiguration{}, err
-	}
 	return providerCredentialConfiguration, nil
 }
 
