@@ -48,7 +48,7 @@ env:
   RAD_BOT_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
-  CONTAINER_REGISTRY: ${{ github.event.pull_request.number && 'ghcr.io/project-radius/radius-dev' || 'ghcr.io/project-radius/radius' }}
+  CONTAINER_REGISTRY: ${{ github.event.pull_request.number && 'ghcr.io/project-radius/dev' || 'ghcr.io/project-radius/radius' }}
 
 jobs:
   build:

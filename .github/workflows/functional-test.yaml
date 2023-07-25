@@ -49,7 +49,7 @@ env:
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
   # ACR for storing test images
-  CACHE_REGISTRY: ghcr.io/project-radius/radius-dev
+  CACHE_REGISTRY: ghcr.io/project-radius/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -66,6 +66,8 @@ env:
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
 
   RAD_BOT_ACTOR: rad-ci-bot
+
+  RECIPE_REGISTRY: radiusdev.azurecr.io
 
 jobs:
   build:
@@ -171,7 +173,7 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Bicep recipe location `${{ env.RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
             * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
@@ -248,7 +250,7 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          RECIPE_REGISTRY: ${{ env.RECIPE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - uses: marocchino/sticky-pull-request-comment@v2
@@ -459,7 +461,7 @@ jobs:
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
-          az acr login -n ${{ env.CACHE_REGISTRY }}
+          az acr login -n ${{ env.RECIPE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -501,7 +503,7 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          RECIPE_REGISTRY: ${{ env.RECIPE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.RECIPE_TAG_VERSION }}
       - name: Upload container logs
         if: always()

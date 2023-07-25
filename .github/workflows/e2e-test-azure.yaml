@@ -57,6 +57,9 @@ env:
 
   # ACR for storing test images
   CACHE_REGISTRY: radiusdev.azurecr.io
+
+  RECIPE_REGISTRY: radiusdev.azurecr.io
+
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -188,7 +191,7 @@ jobs:
           <summary> Click here to see the list of tools in the current test run</summary>
 
           * gotestsum ${{ env.GOTESTSUM_VER }}
-          * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * Bicep recipe location `${{ env.RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
           * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
           * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
           * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
@@ -268,7 +271,7 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          RECIPE_REGISTRY: ${{ env.RECIPE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - name: Log Bicep recipe publish status (success)
@@ -450,7 +453,7 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          RECIPE_REGISTRY: ${{ env.RECIPE_REGISTRY }}
           RECIPE_TAG_VERSION: ${{ env.RECIPE_TAG_VERSION }}
           FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
       - name: Log radius e2e test status (success)
