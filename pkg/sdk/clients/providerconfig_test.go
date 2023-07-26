@@ -27,7 +27,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 		Deployments: &Deployments{
 			Type: ProviderTypeDeployments,
 			Value: Value{
-				Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
+				Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 			},
 		},
 		Radius: &Radius{

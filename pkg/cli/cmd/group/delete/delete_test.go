@@ -76,7 +76,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(true, nil).Times(2)
+			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), "radius", "local", "testrg").Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -108,7 +108,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(false, nil).Times(2)
+			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), "radius", "local", "testrg").Return(false, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 

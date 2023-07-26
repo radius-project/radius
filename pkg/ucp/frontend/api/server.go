@@ -92,8 +92,7 @@ func DefaultModules(options modules.Options) []modules.Initializer {
 	return []modules.Initializer{
 		aws_frontend.NewModule(options),
 		azure_frontend.NewModule(options),
-		radius_frontend.NewModule(options, "radius"),
-		radius_frontend.NewModule(options, "deployments"),
+		radius_frontend.NewModule(options),
 	}
 }
 

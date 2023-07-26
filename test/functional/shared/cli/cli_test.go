@@ -63,7 +63,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	templateKind := "bicep"
 	linkType := "Applications.Link/mongoDatabases"
 	file := "testdata/corerp-redis-recipe.bicep"
-	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-recipes/redis-recipe:%s", generateUniqueTag())
+	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)

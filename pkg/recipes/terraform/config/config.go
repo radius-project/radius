@@ -23,25 +23,27 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 )
 
-// Generate Terraform configuration in JSON format for required providers and modules, and write it
-// to a file in the specified working directory. This JSON configuration is needed to initialize
-// and apply Terraform modules. See https://www.terraform.io/docs/language/syntax/json.html
+// GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
+// to a main.tf.json file in the specified working directory. This JSON configuration is needed to retrieve the Terraform
+// module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
-func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir string) error {
+// Returns path to the generated config file.
+func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string) (string, error) {
 	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	tfConfig := TerraformConfig{
 		Module: map[string]any{
-			envRecipe.Name: moduleData,
+			localModuleName: moduleData,
 		},
 	}
 
 	// Convert the Terraform config to JSON
 	jsonData, err := json.MarshalIndent(tfConfig, "", "  ")
 	if err != nil {
-		return fmt.Errorf("error marshalling JSON: %w", err)
+		return "", fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
 	// Write the JSON data to a file in the working directory.
@@ -50,16 +52,16 @@ func GenerateMainConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentD
 	configFilePath := fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 	file, err := os.Create(configFilePath)
 	if err != nil {
-		return fmt.Errorf("error creating file: %w", err)
+		return "", fmt.Errorf("error creating file: %w", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(jsonData)
 	if err != nil {
-		return fmt.Errorf("error writing to file: %w", err)
+		return "", fmt.Errorf("error writing to file: %w", err)
 	}
 
-	return nil
+	return configFilePath, nil
 }
 
 func generateModuleData(ctx context.Context, moduleSource string, moduleVersion string, envParams, resourceParams map[string]any) map[string]any {
@@ -80,4 +82,65 @@ func generateModuleData(ctx context.Context, moduleSource string, moduleVersion 
 	}
 
 	return moduleConfig
+}
+
+// AddProviders generates and adds provider configurations for requiredProviders that are supported by Radius to generate custom provider configurations.
+// The generated config is added to the existing Terraform main config file present at the configFilePath, and writes the updated configuration data back to the file.
+// requiredProviders contains a list of provider names that are required for the module.
+func AddProviders(ctx context.Context, configFilePath string, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
+	if err != nil {
+		return err
+	}
+
+	// Add generated provider configs for required providers to the existing terraform json config file
+	if len(providerConfigs) > 0 {
+		configFile, err := os.Open(configFilePath)
+		if err != nil {
+			return fmt.Errorf("error opening file %q: %w", configFilePath, err)
+		}
+		defer configFile.Close()
+
+		var tfConfig TerraformConfig
+		err = json.NewDecoder(configFile).Decode(&tfConfig)
+		if err != nil {
+			return err
+		}
+
+		tfConfig.Provider = providerConfigs
+
+		// Write the updated config data to the Terraform json config file
+		updatedConfig, err := json.MarshalIndent(tfConfig, "", "  ")
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile(configFilePath, updatedConfig, 0666)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// getProviderConfigs generates the Terraform provider configurations for the required providers.
+func getProviderConfigs(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
+	providerConfigs := make(map[string]any)
+	for _, provider := range requiredProviders {
+		builder, ok := supportedProviders[provider]
+		if !ok {
+			// No-op: For any other provider, Radius doesn't generate any custom configuration.
+			continue
+		}
+
+		config, err := builder.BuildConfig(ctx, envConfig)
+		if err != nil {
+			return nil, err
+		}
+		if len(config) > 0 {
+			providerConfigs[provider] = config
+		}
+	}
+
+	return providerConfigs, nil
 }

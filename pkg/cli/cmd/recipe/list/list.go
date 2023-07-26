@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -119,6 +120,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			envRecipes = append(envRecipes, recipe)
 		}
 	}
+	sort.Slice(envRecipes, func(i, j int) bool {
+		return envRecipes[i].Name < envRecipes[j].Name
+	})
 	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err

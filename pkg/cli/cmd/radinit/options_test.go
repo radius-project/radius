@@ -17,15 +17,18 @@ limitations under the License.
 package radinit
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/version"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +38,7 @@ func Test_enterInitOptions(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		k8s := kubernetes.NewMockInterface(ctrl)
 		helm := helm.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Dev: true}
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Dev: true, ConfigHolder: &framework.ConfigHolder{Config: viper.New()}}
 
 		initGetKubeContextSuccess(k8s)
 		initHelmMockRadiusNotInstalled(helm)
@@ -79,7 +82,7 @@ func Test_enterInitOptions(t *testing.T) {
 		prompter := prompt.NewMockInterface(ctrl)
 		k8s := kubernetes.NewMockInterface(ctrl)
 		helm := helm.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm}
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, ConfigHolder: &framework.ConfigHolder{Config: viper.New()}}
 
 		initGetKubeContextSuccess(k8s)
 		initKubeContextWithKind(prompter)
@@ -118,4 +121,75 @@ func Test_enterInitOptions(t *testing.T) {
 		}
 		require.Equal(t, expectedOptions, *options)
 	})
+
+	t.Run("existing-workspace", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		k8s := kubernetes.NewMockInterface(ctrl)
+		helm := helm.NewMockInterface(ctrl)
+
+		var yaml = `
+workspaces:
+  default: abc
+  items:
+    abc:
+      connection:
+        kind: kubernetes
+        context: cool-beans
+      scope: /a/b/c
+      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
+`
+		v, err := makeConfig(yaml)
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, ConfigHolder: &framework.ConfigHolder{Config: v}}
+
+		require.NoError(t, err)
+		initGetKubeContextSuccess(k8s)
+		initKubeContextWithKind(prompter)
+		initHelmMockRadiusNotInstalled(helm)
+		initEnvNamePrompt(prompter, "test-env")
+		initNamespacePrompt(prompter, "test-namespace")
+		initAddCloudProviderPromptNo(prompter)
+		setScaffoldApplicationPromptNo(prompter)
+
+		options, workspace, err := runner.enterInitOptions(context.Background())
+		require.NoError(t, err)
+
+		expectedWorkspace := workspaces.Workspace{
+			Name: "abc",
+			Connection: map[string]any{
+				"context": "cool-beans",
+				"kind":    workspaces.KindKubernetes,
+			},
+			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
+			Scope:       "/planes/radius/local/resourceGroups/test-env",
+			Source:      "userconfig",
+		}
+		require.Equal(t, expectedWorkspace, *workspace)
+
+		expectedOptions := initOptions{
+			Cluster: clusterOptions{
+				Context:   "kind-kind",
+				Install:   true,
+				Namespace: "radius-system",
+				Version:   version.Version(),
+			},
+			Environment: environmentOptions{
+				Create:    true,
+				Name:      "test-env",
+				Namespace: "test-namespace",
+			},
+		}
+		require.Equal(t, expectedOptions, *options)
+	})
+}
+
+func makeConfig(yaml string) (*viper.Viper, error) {
+	v := viper.New()
+	v.SetConfigType("YAML")
+	err := v.ReadConfig(bytes.NewBuffer([]byte(yaml)))
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
 }
