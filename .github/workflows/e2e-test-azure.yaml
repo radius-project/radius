@@ -57,7 +57,6 @@ env:
 
   # ACR for storing test images
   CACHE_REGISTRY: radiusdev.azurecr.io
-
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
