@@ -253,7 +253,6 @@ jobs:
           make publish-test-bicep-recipes
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
-          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           RAD_BICEP_PATH: dist
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
