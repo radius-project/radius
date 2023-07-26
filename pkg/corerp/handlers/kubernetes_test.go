@@ -560,24 +560,6 @@ func TestGetPodsInDeployment(t *testing.T) {
 	require.Equal(t, pod1.Name, pods[0].Name)
 }
 
-func TestGetReplicaSetName(t *testing.T) {
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind: "ReplicaSet",
-					Name: "my-replicaset",
-				},
-			},
-		},
-	}
-
-	handler := &kubernetesHandler{}
-	replicaSetName := handler.getReplicaSetName(pod)
-
-	require.Equal(t, "my-replicaset", replicaSetName)
-}
-
 func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	// Create a fake Kubernetes clientset
 	fakeClient := fake.NewSimpleClientset()
