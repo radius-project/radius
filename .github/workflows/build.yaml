@@ -42,6 +42,7 @@ env:
   GOTESTSUMVERSION: 1.10.0
 
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
+  # TODO_LAUNCH: Remove this variable when we opensource the repo - https://github.com/project-radius/radius/issues/5892
   DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
   # GitHub Actor for pushing images to GHCR
