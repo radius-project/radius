@@ -44,8 +44,8 @@ env:
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
   DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
-  # radius bot GitHub Account name
-  RAD_BOT_ACTOR: rad-ci-bot
+  # GitHub Actor for pushing images to GHCR
+  GHCR_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
   CONTAINER_REGISTRY: ${{ github.event.pull_request.number && 'ghcr.io/project-radius/dev' || 'ghcr.io/project-radius/radius' }}
@@ -203,7 +203,7 @@ jobs:
   # - tag the image with the PR version if the trigger was a PR
   # - push the image for pushes to master, or to a tag
 
-  # TODO: Remove 'image' job when we opensource the repo - https://github.com/project-radius/radius/issues/5892
+  # TODO_LAUNCH: Remove 'image' job when we opensource the repo - https://github.com/project-radius/radius/issues/5892
   images:
     name: Container image build
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
@@ -295,7 +295,7 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ env.RAD_BOT_ACTOR }}
+          username: ${{ env.GHCR_ACTOR }}
           password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
