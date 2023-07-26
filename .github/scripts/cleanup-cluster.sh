@@ -29,7 +29,7 @@ do
         echo "skip deletion: $r"
     else
         echo "delete resource: $r"
-        kubectl delete resources.ucp.dev $r -n radius-system
+        kubectl delete resources.ucp.dev $r -n radius-system --ignore-not-found=true
     fi
 done
 

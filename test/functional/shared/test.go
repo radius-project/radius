@@ -39,10 +39,13 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	t.Logf("Using container tag: %s - set REL_VERSION to override", tag)
 	t.Logf("Using magpie image: %s/magpiego:%s", registry, tag)
 
-	_, recipeRegistry, _ := strings.Cut(functional.GetRecipeRegistry(), "=")
-	_, recipeTag, _ := strings.Cut(functional.GetRecipeVersion(), "=")
-	t.Logf("Using recipe registry: %s - set RECIPE_REGISTRY to override", recipeRegistry)
-	t.Logf("Using recipe tag: %s - set RECIPE_TAG_VERSION to override", recipeTag)
+	_, bicepRecipeRegistry, _ := strings.Cut(functional.GetBicepRecipeRegistry(), "=")
+	_, bicepRecipeTag, _ := strings.Cut(functional.GetBicepRecipeVersion(), "=")
+	t.Logf("Using recipe registry: %s - set BICEP_RECIPE_REGISTRY to override", bicepRecipeRegistry)
+	t.Logf("Using recipe tag: %s - set BICEP_RECIPE_TAG_VERSION to override", bicepRecipeTag)
+
+	_, terraformRecipeModuleServerURL, _ := strings.Cut(functional.GetTerraformRecipeModuleServerURL(), "=")
+	t.Logf("Using terraform recipe module server URL: %s - set TF_RECIPE_MODULE_SERVER_URL to override", terraformRecipeModuleServerURL)
 
 	ctx := testcontext.New(t)
 
