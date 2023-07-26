@@ -576,8 +576,10 @@ func createParametersFile(t *testing.T) (string, func()) {
 		}
 	}
 }`
+	paramJSONBody := fmt.Sprintf(paramFileBody, registryVal)
+	t.Log(paramJSONBody)
 
-	err = os.WriteFile(paramFile.Name(), []byte(fmt.Sprintf(paramFileBody, registryVal)), os.FileMode(0755))
+	err = os.WriteFile(paramFile.Name(), []byte(paramJSONBody), os.FileMode(0755))
 	require.NoError(t, err)
 
 	return paramFile.Name(), func() {}
