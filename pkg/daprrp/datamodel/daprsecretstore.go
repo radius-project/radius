@@ -34,22 +34,31 @@ type DaprSecretStore struct {
 	linkrpdm.LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// ApplyDeploymentOutput updates the status of the secret store with the output resources from a deployment.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// OutputResources returns the OutputResources from the Properties field of the DaprSecretStore instance.
 func (r *DaprSecretStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the DaprSecretStore instance.
 func (r *DaprSecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type of the DaprSecretStore instance.
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
 	return linkrp.N_DaprSecretStoresResourceType
 }

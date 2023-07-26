@@ -26,7 +26,10 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned DaprSecretStore resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a DaprSecretStoreResource to a datamodel.DaprSecretStore and returns an error if the mode is
+// unsupported or required properties are missing.
 func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.DaprSecretStore{
 		BaseResource: v1.BaseResource{
@@ -73,7 +76,10 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned DaprSecretStore resource.
+// # Function Explanation
+//
+// ConvertFrom converts a DataModelInterface to a DaprSecretStoreResource, setting the ID, Name, Type, SystemData,
+// Location, Tags, and Properties fields.
 func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprSecretStore, ok := src.(*datamodel.DaprSecretStore)
 	if !ok {

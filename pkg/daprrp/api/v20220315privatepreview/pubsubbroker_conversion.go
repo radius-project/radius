@@ -26,7 +26,11 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a DaprPubSubBrokerResource to a DaprPubSubBroker, setting the mode, type, version, metadata,
+// environment, application, topic, and resource based on the properties of the DaprPubSubBrokerResource. It returns an
+// error if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -85,7 +89,10 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
+// # Function Explanation
+//
+// ConvertFrom converts a DataModelInterface to a DaprPubSubBrokerResource, returning an error if the mode of the
+// DaprPubSubBroker is not specified.
 func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprPubSub, ok := src.(*datamodel.DaprPubSubBroker)
 	if !ok {

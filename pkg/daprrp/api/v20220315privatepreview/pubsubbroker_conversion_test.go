@@ -137,6 +137,9 @@ func TestDaprPubSubBroker_ConvertFromValidation(t *testing.T) {
 	}
 }
 
+// # Function Explanation
+// 
+// This function returns a string with the name of the resource type.
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
 }

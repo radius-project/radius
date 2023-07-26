@@ -35,7 +35,10 @@ type DaprStateStore struct {
 	linkrpdm.LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// # Function Explanation
+//
+// DaprStateStore.ApplyDeploymentOutput updates the status, computed values, secret values and component name of the
+// DaprStateStore instance and returns no error.
 func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -46,20 +49,30 @@ func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// # Function Explanation
+//
+// Method OutputResources returns the OutputResources from the Properties field of the DaprStateStore instance.
 func (r *DaprStateStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// # Function Explanation
+//
+// ResourceMetadata returns the BasicResourceProperties of the DaprStateStore instance.
 func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
+// # Function Explanation
+//
+// ResourceTypeName returns the resource type of the DaprStateStore instance.
 func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.N_DaprStateStoresResourceType
 }
 
+// # Function Explanation
+//
+// Recipe returns a pointer to the LinkRecipe stored in the Properties of the DaprStateStore instance.
 func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
 	return &r.Properties.Recipe
 }
