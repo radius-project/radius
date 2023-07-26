@@ -122,8 +122,7 @@ jobs:
                 `DE_IMAGE=${clientPayload.de_image}\n`+
                 `DE_TAG=${clientPayload.de_tag}\n`+
                 `CHECKOUT_REPO=${github.repository}\n`+
-                `CHECKOUT_REF=refs/heads/main\n`+
-                `PR_NUMBER=${testPayload.issue.number}`
+                `CHECKOUT_REF=refs/heads/main`
               );
             }
       - name: Check out code
