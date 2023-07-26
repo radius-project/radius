@@ -159,7 +159,7 @@ func GetShortenedTargetPortName(name string) string {
 
 // # Function Explanation
 //
-// IsValidObjectName checks if the given string is a valid DNS1123 label.
+// IsValidObjectName checks if the given string is a valid Kubernetes object name.
 func IsValidObjectName(name string) bool {
 	return len(validation.IsDNS1123Label(name)) == 0
 }
