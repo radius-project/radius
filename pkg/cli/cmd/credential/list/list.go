@@ -31,6 +31,10 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad credential list` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a new Runner, and configures the command with the runner, output flag, and workspace flag.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -71,6 +75,10 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad credential list` command.
+//
+// # Function Explanation
+//
+// Validate() checks if the workspace and output format are valid and sets them in the Runner struct, returning an error if either is invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -88,6 +96,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad credential list` command.
+//
+// # Function Explanation
+//
+// Run() lists the credentials for all cloud providers for a given Radius installation and prints the results in a table format.
+// It returns an error if there is an issue with creating the credential management client or listing the credentials.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Listing credentials for all cloud providers for Radius installation %q...", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)

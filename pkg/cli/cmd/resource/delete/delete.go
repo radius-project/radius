@@ -37,6 +37,12 @@ const (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad resource delete` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for deleting a Radius resource, with flags for output, workspace, resource group,
+//
+//	and confirmation. It returns the command and a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -86,6 +92,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad resource delete` command.
+//
+// # Function Explanation
+//
+// Validate checks the workspace, scope, resource type and name, output format, and confirmation flag from the
+// command line arguments and sets them in the Runner struct. It returns an error if any of these values are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -122,6 +133,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad resource delete` command.
+//
+// # Function Explanation
+//
+// Run checks if the user has confirmed the deletion of the resource, and if so, attempts to delete the resource and
+// logs the result. If an error occurs, it is returned.
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
