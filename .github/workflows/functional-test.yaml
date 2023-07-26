@@ -28,7 +28,7 @@ on:
       - release/*
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests]
+    types: [functional-tests, de-functional-test]
 
 env:
   # Go version
@@ -64,9 +64,9 @@ env:
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-  # The DE image
+  # The Deployment Engine image
   DE_IMAGE: 'radius.azurecr.io/deployment-engine'
-  # The DE tag
+  # The Deployment Engine tag
   DE_TAG: 'latest'
 
 jobs:
@@ -114,13 +114,16 @@ jobs:
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |
-            const dePayload = context.payload.client_payload;
-            if (dePayload) {
+            const clientPayload = context.payload.client_payload;
+            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
               var fs = require('fs');
               // Set environment variables
               fs.appendFileSync(process.env.GITHUB_ENV,
-                `DE_IMAGE=${dePayload.de_image}\n`+
-                `DE_TAG=${dePayload.de_tag}\n`
+                `DE_IMAGE=${clientPayload.de_image}\n`+
+                `DE_TAG=${clientPayload.de_tag}\n`+
+                `CHECKOUT_REPO=${github.repository}\n`+
+                `CHECKOUT_REF=refs/heads/main\n`+
+                `PR_NUMBER=${testPayload.issue.number}`
               );
             }
       - name: Check out code
