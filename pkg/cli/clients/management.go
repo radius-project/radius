@@ -51,11 +51,15 @@ var (
 		linkrp.DaprSecretStoresResourceType,
 		linkrp.DaprPubSubBrokersResourceType,
 		linkrp.ExtendersResourceType,
-		linkrp.N_RabbitMQQueuesResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
 		"Applications.Core/secretStores",
+		// Resource Types after Spliting Linkrp Namespace
+		linkrp.N_RabbitMQQueuesResourceType,
+		linkrp.N_DaprStateStoresResourceType,
+		linkrp.N_DaprSecretStoresResourceType,
+		linkrp.N_DaprPubSubBrokersResourceType,
 	}
 )
 

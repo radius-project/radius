@@ -38,35 +38,116 @@ import (
 
 var handlerTests = []rpctest.HandlerTestSpec{
 	// Routes for resources after Split Namespaces
+
 	{
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.messaging/rabbitmqqueues",
 		Method:        http.MethodGet,
 	}, {
+
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues",
 		Method:        http.MethodGet,
 	}, {
+
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodGet,
 	}, {
+
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodPut,
 	}, {
+
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodPatch,
 	}, {
+
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodDelete,
 	}, {
+
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: rabbitmq_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq/listsecrets",
 		Method:        http.MethodPost,
+	},
+	{
+		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.dapr/pubsubbrokers",
+		Method:        http.MethodGet,
 	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprSecretStoresResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.dapr/secretstores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprSecretStoresResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprSecretStoresResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprSecretStoresResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprSecretStoresResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprSecretStoresResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.dapr/statestores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
+		Method:        http.MethodDelete,
+	},
+	{
 		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.link/daprpubsubbrokers",
 		Method:        http.MethodGet,
@@ -295,6 +376,15 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		Path:          "/providers/applications.messaging/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	},
+	{
+		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		Path:          "/providers/applications.dapr/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGetOperationResult},
+		Path:          "/providers/applications.dapr/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	},
 }
 
 func TestHandlers(t *testing.T) {
@@ -328,6 +418,13 @@ func TestHandlers(t *testing.T) {
 			}, {
 				OperationType:               v1.OperationType{Type: "Applications.Messaging/providers", Method: v1.OperationGet},
 				Path:                        "/providers/applications.messaging/operations",
+				Method:                      http.MethodGet,
+				WithoutRootScope:            true,
+				SkipOperationTypeValidation: true,
+			},
+			{
+				OperationType:               v1.OperationType{Type: "Applications.Dapr/providers", Method: v1.OperationGet},
+				Path:                        "/providers/applications.dapr/operations",
 				Method:                      http.MethodGet,
 				WithoutRootScope:            true,
 				SkipOperationTypeValidation: true,
