@@ -102,6 +102,9 @@ model RabbitMQMessageQueueProperties extends BasicResourceProperties {
   @doc("The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link")
   recipe?: Recipe;
 
+  @doc("Specifies whether to enable SSL connections to the RabbitMQ")  
+  tls?: boolean;
+
 }
 
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use camelCase"

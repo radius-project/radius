@@ -66,6 +66,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 					VHost:                "test-vhost",
 					Port:                 5672,
 					Username:             "test-user",
+					TLS:                  true,
 					Secrets: datamodel.RabbitMQSecrets{
 						URI:      "connection://string",
 						Password: "password",
@@ -100,6 +101,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
 					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					TLS:                  false,
 					Recipe: linkrp.LinkRecipe{
 						Name: "rabbitmq",
 						Parameters: map[string]any{
@@ -152,6 +154,7 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 					VHost:                to.Ptr("test-vhost"),
 					Port:                 to.Ptr(int32(5672)),
 					Username:             to.Ptr("test-user"),
+					TLS:                  to.Ptr(true),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -185,6 +188,7 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 					VHost:                to.Ptr("test-vhost"),
 					Port:                 to.Ptr(int32(5672)),
 					Username:             to.Ptr("test-user"),
+					TLS:                  to.Ptr(false),
 					Recipe: &Recipe{
 						Name: to.Ptr("rabbitmq"),
 						Parameters: map[string]any{

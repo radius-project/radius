@@ -77,6 +77,7 @@ type RabbitMQMessageQueueProperties struct {
 	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
 	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	TLS                  bool                        `json:"tls,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

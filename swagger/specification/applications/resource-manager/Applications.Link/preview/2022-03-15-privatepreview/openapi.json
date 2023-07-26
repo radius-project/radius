@@ -2059,6 +2059,10 @@
         "recipe": {
           "$ref": "#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to enable SSL connections to the RabbitMQ"
         }
       },
       "description": "RabbitMQMessageQueue link properties",

@@ -32,6 +32,7 @@
         "port": 5672,
         "vHost": "test-vhost",
         "username": "test-user",
+        "tls":false,
         "recipe": {
             "name": "rabbitmq",
             "parameters":{

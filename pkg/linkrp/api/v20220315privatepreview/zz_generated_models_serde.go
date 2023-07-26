@@ -1154,6 +1154,7 @@ func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "resources", r.Resources)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
+	populate(objectMap, "tls", r.TLS)
 	populate(objectMap, "username", r.Username)
 	populate(objectMap, "vHost", r.VHost)
 	return json.Marshal(objectMap)
@@ -1200,6 +1201,9 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		case "tls":
+				err = unpopulate(val, "TLS", &r.TLS)
 				delete(rawMsg, key)
 		case "username":
 				err = unpopulate(val, "Username", &r.Username)

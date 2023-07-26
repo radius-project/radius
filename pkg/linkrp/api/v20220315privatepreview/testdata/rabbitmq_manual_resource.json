@@ -15,6 +15,7 @@
         "vHost": "test-vhost",
         "port": 5672,
         "username": "test-user",
+        "tls":true,
         "secrets": {
             "uri": "connection://string",
             "password":"password"

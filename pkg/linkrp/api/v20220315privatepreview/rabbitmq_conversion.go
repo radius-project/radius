@@ -65,6 +65,7 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 	converted.Properties.Username = to.String(properties.Username)
 	converted.Properties.Queue = to.String(properties.Queue)
 	converted.Properties.VHost = to.String(properties.VHost)
+	converted.Properties.TLS = to.Bool(properties.TLS)
 	err = converted.VerifyInputs()
 	if err != nil {
 		return nil, err
@@ -109,6 +110,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		VHost:                to.Ptr(rabbitmq.Properties.VHost),
 		Username:             to.Ptr(rabbitmq.Properties.Username),
 		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
+		TLS:                  to.Ptr(rabbitmq.Properties.TLS),
 	}
 	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)

@@ -51,6 +51,7 @@ func Test_Process(t *testing.T) {
 					"port":     port,
 					"username": username,
 					"vHost":    vHost,
+					"tls":      true,
 				},
 				Secrets: map[string]any{
 					"password": password,
@@ -68,13 +69,14 @@ func Test_Process(t *testing.T) {
 			"port":     port,
 			"username": username,
 			"vHost":    vHost,
+			"tls":      true,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"password": {
 				Value: password,
 			},
 			"uri": {
-				Value: "amqp://test-user:test-password@test-host:5672/test-vHost",
+				Value: "amqps://test-user:test-password@test-host:5672/test-vHost",
 			},
 		}
 
@@ -105,6 +107,7 @@ func Test_Process(t *testing.T) {
 			"host":     host,
 			"port":     port,
 			"username": username,
+			"tls":      false,
 		}
 		require.NoError(t, err)
 		require.Equal(t, expectedValues, resource.ComputedValues)
@@ -149,6 +152,7 @@ func Test_Process(t *testing.T) {
 			"host":     "new-host",
 			"port":     int32(5671),
 			"username": "new-user",
+			"tls":      true,
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{
 			"password": {

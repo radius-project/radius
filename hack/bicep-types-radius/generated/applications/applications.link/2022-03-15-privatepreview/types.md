@@ -259,6 +259,7 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the rabbitMQ resource
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **tls**: bool: Specifies whether to enable SSL connections to the RabbitMQ
 * **username**: string: Username to use when connecting to the target rabbitMQ
 * **vHost**: string: The vHost of the RabbitMQ instance
 

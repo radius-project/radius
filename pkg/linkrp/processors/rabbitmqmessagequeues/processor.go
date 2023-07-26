@@ -27,6 +27,8 @@ import (
 
 const (
 	Queue = "queue"
+	// RabbitMQSSLPort is the default port for RabbitMQ SSL connections.
+	RabbitMQSSLPort = 5671
 )
 
 // Processor is a processor for RabbitMQQueue resources.
@@ -47,8 +49,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
 	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
 	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
+	validator.AddComputedBoolField(renderers.TLS, &resource.Properties.TLS, func() (bool, *processors.ValidationError) {
+		return p.computeSSL(resource), nil
+	})
 	validator.AddComputedSecretField(renderers.URI, &resource.Properties.Secrets.URI, func() (string, *processors.ValidationError) {
-		return p.computeConnectionString(resource), nil
+		return p.computeConnectionURI(resource), nil
 	})
 
 	err := validator.SetAndValidate(options.RecipeOutput)
@@ -59,6 +64,14 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 	return nil
 }
 
-func (p *Processor) computeConnectionString(resource *datamodel.RabbitMQMessageQueue) string {
-	return fmt.Sprintf("amqp://%s:%s@%s:%v/%s", resource.Properties.Username, resource.Properties.Secrets.Password, resource.Properties.Host, resource.Properties.Port, resource.Properties.VHost)
+func (p *Processor) computeConnectionURI(resource *datamodel.RabbitMQMessageQueue) string {
+	rabbitMQProtocol := "amqp"
+	if resource.Properties.TLS {
+		rabbitMQProtocol = "amqps"
+	}
+	return fmt.Sprintf("%s://%s:%s@%s:%v/%s", rabbitMQProtocol, resource.Properties.Username, resource.Properties.Secrets.Password, resource.Properties.Host, resource.Properties.Port, resource.Properties.VHost)
+}
+
+func (p *Processor) computeSSL(resource *datamodel.RabbitMQMessageQueue) bool {
+	return resource.Properties.Port == RabbitMQSSLPort
 }

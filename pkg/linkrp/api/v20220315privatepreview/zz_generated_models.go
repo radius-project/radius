@@ -642,6 +642,9 @@ type RabbitMQMessageQueueProperties struct {
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
+	// Specifies whether to enable SSL connections to the RabbitMQ
+	TLS *bool `json:"tls,omitempty"`
+
 	// Username to use when connecting to the target rabbitMQ
 	Username *string `json:"username,omitempty"`
 
