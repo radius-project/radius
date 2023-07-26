@@ -361,16 +361,8 @@ jobs:
           # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          AUTHKEY=$(echo -n ${{ env.RAD_BOT_ACTOR }}:${{ secrets.GH_RAD_CI_BOT_PAT }}|base64)
-          cat <<EOF > "./ghcr_secret.json"
-          {
-            "auths": {
-              "ghcr.io/project-radius": {
-                "auth": "$AUTHKEY"
-              }
-            }
-          }
-          EOF
+          AUTHKEY=$(echo -n "${{ env.RAD_BOT_ACTOR }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
           echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
