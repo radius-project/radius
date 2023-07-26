@@ -19,9 +19,6 @@ on:
   schedule:
     # Run twice a day
     - cron: "30 0,12 * * *"
-  pull_request:
-    branches:
-      - main
 
 env:
   AZURE_RG_DELETE_LIST_FILE: 'az_rg_list.txt'
@@ -35,8 +32,8 @@ jobs:
       - name: Delete 'dev' containers older than a week
         uses: snok/container-retention-policy@v2
         with:
-          image-names: dev/*, radius-test/*, test/*
-          cut-off: 1 hour ago UTC
+          image-names: dev/*
+          cut-off: A week ago UTC
           account-type: org
           org-name: project-radius
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
