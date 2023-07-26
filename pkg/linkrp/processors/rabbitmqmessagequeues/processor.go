@@ -53,7 +53,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 		return p.computeSSL(resource), nil
 	})
 	validator.AddComputedSecretField(renderers.URI, &resource.Properties.Secrets.URI, func() (string, *processors.ValidationError) {
-		return p.computeConnectionURI(resource), nil
+		return p.computeURI(resource), nil
 	})
 
 	err := validator.SetAndValidate(options.RecipeOutput)
@@ -64,12 +64,16 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RabbitMQMes
 	return nil
 }
 
-func (p *Processor) computeConnectionURI(resource *datamodel.RabbitMQMessageQueue) string {
+func (p *Processor) computeURI(resource *datamodel.RabbitMQMessageQueue) string {
 	rabbitMQProtocol := "amqp"
 	if resource.Properties.TLS {
 		rabbitMQProtocol = "amqps"
 	}
-	return fmt.Sprintf("%s://%s:%s@%s:%v/%s", rabbitMQProtocol, resource.Properties.Username, resource.Properties.Secrets.Password, resource.Properties.Host, resource.Properties.Port, resource.Properties.VHost)
+	usernamePassword := ""
+	if resource.Properties.Username != "" || resource.Properties.Secrets.Password != "" {
+		usernamePassword = fmt.Sprintf("%s:%s@", resource.Properties.Username, resource.Properties.Secrets.Password)
+	}
+	return fmt.Sprintf("%s://%s%s:%v/%s", rabbitMQProtocol, usernamePassword, resource.Properties.Host, resource.Properties.Port, resource.Properties.VHost)
 }
 
 func (p *Processor) computeSSL(resource *datamodel.RabbitMQMessageQueue) bool {
