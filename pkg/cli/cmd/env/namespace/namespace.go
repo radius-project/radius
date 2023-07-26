@@ -31,6 +31,11 @@ type Impl struct {
 }
 
 // Ensure sure namespace is available
+//
+// # Function Explanation
+//
+// ValidateNamespace creates a Kubernetes client and checks if the given namespace exists. If it does not exist, creates it.
+// If unsuccessful, returns an error.
 func (i *Impl) ValidateNamespace(ctx context.Context, namespace string) error {
 	client, _, err := kubernetes.NewClientset("")
 	if err != nil {

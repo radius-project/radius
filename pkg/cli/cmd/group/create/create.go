@@ -34,6 +34,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad group create` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner to handle the command's logic, which is used to create a new
+// resource group.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -78,6 +83,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad group create` command.
+//
+// # Function Explanation
+//
+// Validate checks if the given command and arguments are valid, and if so, sets the resource group name and workspace in the
+// Runner struct. It returns an error if the resource group name is invalid or if the workspace or resource group cannot be found.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -101,6 +111,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad group create` command.
+//
+// # Function Explanation
+//
+// Run creates a resource group in the workspace and returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
