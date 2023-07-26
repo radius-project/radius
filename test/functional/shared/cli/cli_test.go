@@ -562,7 +562,7 @@ func Test_CLI_Delete(t *testing.T) {
 }
 
 func createParametersFile(t *testing.T) (string, func()) {
-	paramFile, err := os.CreateTemp("", "")
+	paramFile, err := os.CreateTemp("./testdata", "tmp-*-parameters.json")
 	require.NoError(t, err)
 
 	registryVal, _ := functional.SetDefault()

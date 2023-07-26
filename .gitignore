@@ -40,6 +40,8 @@ kcp.exe
 docs/.hugo_build.lock
 main
 
+test/functional/shared/cli/testdata/tmp-*
+
 .vscode/
 .DS_Store
 .idea/
