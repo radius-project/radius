@@ -580,9 +580,7 @@ func createParametersFile(t *testing.T) (string, func()) {
 	err = os.WriteFile(paramFile.Name(), []byte(fmt.Sprintf(paramFileBody, registryVal)), os.FileMode(0755))
 	require.NoError(t, err)
 
-	return paramFile.Name(), func() {
-		os.Remove(paramFile.Name())
-	}
+	return paramFile.Name(), func() {}
 }
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
