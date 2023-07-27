@@ -269,7 +269,6 @@ jobs:
   # publish_image is building and publishing images to GHCR.
   publish_images:
     name: Build and publish container images
-    if: github.event_name != 'pull_request'
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Check out code
