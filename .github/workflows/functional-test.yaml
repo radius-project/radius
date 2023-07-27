@@ -48,8 +48,9 @@ env:
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
-  # ACR for storing test images
+  # ACR for storing test images and recipes
   CACHE_REGISTRY: radiusdev.azurecr.io
+  BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -68,6 +69,8 @@ env:
   DE_IMAGE: 'radius.azurecr.io/deployment-engine'
   # The Deployment Engine tag
   DE_TAG: 'latest'
+  # Server where terraform test modules are deployed
+  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
 
 jobs:
   build:
@@ -190,8 +193,8 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
-            * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
+            * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
             * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
@@ -265,8 +268,7 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
-          RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
@@ -302,7 +304,7 @@ jobs:
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
-      RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -505,8 +507,6 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
-          RECIPE_TAG_VERSION: ${{ env.RECIPE_TAG_VERSION }}
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
