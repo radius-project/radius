@@ -46,8 +46,10 @@ type kubernetesConnection struct {
 	roundTripper http.RoundTripper
 }
 
-// NewKubernetesConnectionFromConfig creates a KubernetesConnection from the provided Kubernetes
-// configuration.
+// # Function Explanation
+//
+// NewKubernetesConnectionFromConfig creates a new Kubernetes connection from a given configuration and returns a
+// Connection and an error if one occurs.
 func NewKubernetesConnectionFromConfig(config *rest.Config) (Connection, error) {
 	// Make a copy of the configuration because we are going to edit it.
 	copied := *config
@@ -66,6 +68,8 @@ func NewKubernetesConnectionFromConfig(config *rest.Config) (Connection, error) 
 	return &kubernetesConnection{endpoint: endpoint, roundTripper: roundTripper}, nil
 }
 
+// # Function Explanation
+//
 // Client returns an http.Client for communicating with Radius. This satisfies both the
 // autorest.Sender interface (autorest Track1 Go SDK) and policy.Transporter interface
 // (autorest Track2 Go SDK).
@@ -73,6 +77,8 @@ func (c *kubernetesConnection) Client() *http.Client {
 	return &http.Client{Transport: c.roundTripper}
 }
 
+// # Function Explanation
+//
 // Endpoint returns the endpoint (aka. base URL) of the Radius API. This definitely includes
 // the URL scheme and authority, and may include path segments.
 func (c *kubernetesConnection) Endpoint() string {

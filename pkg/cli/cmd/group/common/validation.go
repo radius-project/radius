@@ -24,6 +24,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clierrors"
 )
 
+// # Function Explanation
+//
+// ValidateResourceGroupName checks if the given resource group name is between 1 and 90 characters long, does not end with
+// a period, and only contains alphanumerics, underscores, parentheses, hyphens, and periods, and returns an error if any
+// of these conditions are not met.
 func ValidateResourceGroupName(resourceGroupName string) error {
 	if len(resourceGroupName) < 1 || len(resourceGroupName) > 90 {
 		return clierrors.Message("Resource group name should be between 1 and 90 characters long.")

@@ -26,8 +26,10 @@ const (
 	ResourceGroupsSegment = "/resourcegroups"
 )
 
-// NormalizePath is the middelware to normalize the case in planes and resourcegroups segments and preserve the case
-// for the rest of the URL
+// # Function Explanation
+//
+// NormalizePath replaces any occurrences of "planes" and "resourcegroups" in the URL path with the correct case
+// and preserves the case for the rest of the URL.
 // For example, the user could specify the url as /Planes/radius/local/resourceGroups/abc and this
 // will translate it to: /planes/radius/local/resourcegroups/abc
 func NormalizePath(next http.Handler) http.Handler {

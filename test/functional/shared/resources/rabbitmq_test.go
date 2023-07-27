@@ -83,7 +83,7 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest", functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest", functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
