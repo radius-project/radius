@@ -36,7 +36,10 @@ type PrometheusExporter struct {
 	Handler http.Handler
 }
 
-// NewPrometheusExporter builds and returns prometheus exporter used for metrics collection
+// # Function Explanation
+//
+// NewPrometheusExporter creates a PrometheusExporter instance with a MeterProvider and a Handler,
+// and returns it along with any errors.
 func NewPrometheusExporter(options *MetricsProviderOptions) (*PrometheusExporter, error) {
 	exporter, err := prometheus.New()
 	if err != nil {
