@@ -561,8 +561,8 @@ func Test_CLI_Delete(t *testing.T) {
 	})
 }
 
-func createParametersFile(t *testing.T) (string, func()) {
-	paramFile, err := os.CreateTemp("./testdata", "tmp-*-parameters.json")
+func createParametersFile(t *testing.T) string {
+	paramFile, err := os.CreateTemp(t.TempDir(), "tmp-*-parameters.json")
 	require.NoError(t, err)
 
 	registryVal, _ := functional.SetDefault()
@@ -582,9 +582,7 @@ func createParametersFile(t *testing.T) (string, func()) {
 	err = os.WriteFile(paramFile.Name(), []byte(paramJSONBody), os.FileMode(0755))
 	require.NoError(t, err)
 
-	return paramFile.Name(), func() {
-		os.Remove(paramFile.Name())
-	}
+	return paramFile.Name()
 }
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
@@ -594,9 +592,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli-parameters.bicep"
 	name := "kubernetes-cli-params"
 
-	parameterFile, cleanup := createParametersFile(t)
-	defer cleanup()
-	parameterFilePath := filepath.Join(cwd, parameterFile)
+	parameterFilePath := filepath.Join(cwd, createParametersFile(t))
 
 	// corerp-kubernetes-cli-parameters.parameters.json uses radiusdev.azurecr.io as a registry parameter.
 	// Use the specified tag only if the test uses radiusdev.azurecr.io registry. Otherwise, use latest tag.
