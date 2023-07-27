@@ -322,9 +322,6 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
 	}
 
-	typeParts := strings.Split(ResourceType, "/")
-	resourceTypeSuffix := typeParts[len(typeParts)-1]
-
 	// create the ports that will be exposed by the service.
 	ports := []corev1.ServicePort{}
 	for i, port := range containerPortValues {
