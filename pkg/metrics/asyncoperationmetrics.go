@@ -67,7 +67,10 @@ func newAsyncOperationMetrics() *asyncOperationMetrics {
 	}
 }
 
-// Init initializes the async operation metrics.
+// # Function Explanation
+//
+// Init initializes the counters and value recorders for asyncOperationMetrics and returns an error if any of the
+// initialization fails.
 func (a *asyncOperationMetrics) Init() error {
 	meter := global.MeterProvider().Meter("async-operation-metrics")
 
@@ -95,7 +98,10 @@ func (a *asyncOperationMetrics) Init() error {
 	return nil
 }
 
-// RecordQueuedAsyncOperation records metric when an async operation is queued successfully.
+// # Function Explanation
+//
+// RecordQueuedAsyncOperation records the number of queued async operations with resource type and operation type attributes.
+// It should be called when an async operation is queued successfully.
 func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) {
 	if a.counters[QueuedAsyncOperationCount] != nil {
 		serviceCtx := v1.ARMRequestContextFromContext(ctx)
@@ -106,21 +112,29 @@ func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) 
 	}
 }
 
-// RecordAsyncOperation records metric when an async operation is completed.
+// # Function Explanation
+//
+// RecordAsyncOperation records the number of async operations. If an error occurs, it is returned. It should be called
+// when an async operation is completed.
 func (a *asyncOperationMetrics) RecordAsyncOperation(ctx context.Context, req *ctrl.Request, res *ctrl.Result) {
 	if a.counters[AsyncOperationCount] != nil {
 		a.counters[AsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newCommonAttributes(req, res)...))
 	}
 }
 
-// RecordExtendedAsyncOperation records metric when an async operation is extended.
+// # Function Explanation
+//
+// RecordExtendedAsyncOperation increments the ExtendedAsyncOperationCount metric for the given request. It should
+// be called with an async operation is extended.
 func (a *asyncOperationMetrics) RecordExtendedAsyncOperation(ctx context.Context, req *ctrl.Request) {
 	if a.counters[ExtendedAsyncOperationCount] != nil {
 		a.counters[ExtendedAsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newCommonAttributes(req, nil)...))
 	}
 }
 
-// RecordAsyncOperationDuration records metric for async operation duration.
+// # Function Explanation
+//
+// RecordAsyncOperationDuration records the duration of an asynchronous operation in milliseconds.
 func (a *asyncOperationMetrics) RecordAsyncOperationDuration(ctx context.Context, req *ctrl.Request, startTime time.Time) {
 	if a.valueRecorders[AsnycOperationDuration] != nil {
 		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
