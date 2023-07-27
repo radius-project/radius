@@ -26,6 +26,8 @@ type HostOptions struct {
 	Config *provider.ProfilerProviderOptions
 }
 
+// # Function Explanation
+//
 // NewHostOptionsFromEnvironment of profiler/hostoptions package returns the HostOptions for profiler service.
 func NewHostOptionsFromEnvironment(options hostoptions.ProviderConfig) HostOptions {
 	return HostOptions{

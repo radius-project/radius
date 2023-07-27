@@ -27,7 +27,9 @@ type HostOptions struct {
 	Config *provider.MetricsProviderOptions
 }
 
-// NewHostOptionsFromEnvironment of metrics/hostoptions package returns the HostOptions for metrics service.
+// # Function Explanation
+//
+// NewHostOptionsFromEnvironment creates a new HostOptions object from a ProviderConfig object.
 func NewHostOptionsFromEnvironment(options hostoptions.ProviderConfig) HostOptions {
 	return HostOptions{
 		Config: &options.MetricsProvider,

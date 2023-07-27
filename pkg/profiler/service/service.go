@@ -30,6 +30,8 @@ type Service struct {
 	Options HostOptions
 }
 
+// # Function Explanation
+//
 // NewService of profiler package returns a new Service with the configs needed
 func NewService(options HostOptions) *Service {
 	return &Service{
@@ -37,12 +39,17 @@ func NewService(options HostOptions) *Service {
 	}
 }
 
-// Name method of profiler package returns the name of the profiler service
+// # Function Explanation
+//
+// Name returns the name of the profiler service.
 func (s *Service) Name() string {
 	return "pprof profiler"
 }
 
-// Run method of profiler package creates a new server for exposing an endpoint to collect profiler from
+// # Function Explanation
+//
+// Run starts the profiler server that exposes an endpoint to collect profiler from. It
+// handles shutdown based on the context, and returns an error if the server fails to start.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
