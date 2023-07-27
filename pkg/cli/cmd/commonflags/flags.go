@@ -39,43 +39,74 @@ const (
 	ClearEnvAWSFlag = "clear-aws"
 )
 
+// # Function Explanation
+//
+// AddOutputFlag adds a flag to the given command that allows the user to specify the output format of the command's output.
 func AddOutputFlag(cmd *cobra.Command) {
 	description := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	cmd.Flags().StringP("output", "o", output.DefaultFormat, description)
 }
 
+// # Function Explanation
+//
+// AddWorkspaceFlag adds a flag to the given command that allows the user to specify a workspace name.
 func AddWorkspaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
 }
 
+// # Function Explanation
+//
+// AddResourceGroupFlag adds a flag to the given command that allows the user to specify a Radius resource group name.
 func AddResourceGroupFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("group", "g", "", "The resource group name")
 }
 
+// # Function Explanation
+//
+// AddApplicationNameFlag adds a flag to the given command that allows the user to specify an application name.
 func AddApplicationNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("application", "a", "", "The application name")
 }
 
+// # Function Explanation
+//
+// AddConfirmationFlag adds a flag to the given command that allows the user to confirm an action with a boolean value.
 func AddConfirmationFlag(cmd *cobra.Command) {
 	cmd.Flags().BoolP("yes", "y", false, "The confirmation flag")
 }
 
+// # Function Explanation
+//
+// AddEnvironmentNameFlag adds a flag to the given command that allows the user to specify an environment name.
 func AddEnvironmentNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("environment", "e", "", "The environment name")
 }
 
+// # Function Explanation
+//
+// AddNamespaceFlag adds a flag to the given command that allows the user to specify a Kubernetes namespace.
 func AddNamespaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("namespace", "n", "", "The Kubernetes namespace")
 }
 
+// # Function Explanation
+//
+// AddParameterFlag adds a flag to the given command that allows the user to specify parameters for the deployment.
 func AddParameterFlag(cmd *cobra.Command) {
 	cmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
 
+// # Function Explanation
+//
+// AddLinkTypeFlag adds a flag to the given command that allows the user to specify the type of the link this recipe can be consumed by.
 func AddLinkTypeFlag(cmd *cobra.Command) {
 	cmd.Flags().String("link-type", "", "Specify the type of the link this recipe can be consumed by")
 }
 
+// # Function Explanation
+//
+// AddAzureScopeFlags adds flags to a command to specify an Azure subscription and resource group, and marks them as
+// required together, as well as mutually exclusive with a flag to clear environment variables.
 func AddAzureScopeFlags(cmd *cobra.Command) {
 	AddAzureSubscriptionFlag(cmd)
 	AddAzureResourceGroupFlag(cmd)
@@ -84,14 +115,25 @@ func AddAzureScopeFlags(cmd *cobra.Command) {
 	cmd.MarkFlagsMutuallyExclusive(AzureResourceGroupFlag, ClearEnvAzureFlag)
 }
 
+// # Function Explanation
+//
+// AddAzureSubscriptionFlag adds a flag to the given command that allows the user to specify an Azure subscription ID.
 func AddAzureSubscriptionFlag(cmd *cobra.Command) {
 	cmd.Flags().String(AzureSubscriptionIdFlag, "", "The subscription ID where Azure resources will be deployed")
 }
 
+// # Function Explanation
+//
+// AddAzureResourceGroupFlag adds a flag to the given command that allows the user to specify the resource group where
+// Azure resources will be deployed.
 func AddAzureResourceGroupFlag(cmd *cobra.Command) {
 	cmd.Flags().String(AzureResourceGroupFlag, "", "The resource group where Azure resources will be deployed")
 }
 
+// # Function Explanation
+//
+// "AddAWSScopeFlags" adds flags to a Cobra command to set the AWS region and account ID, and marks them as required
+// together, as well as mutually exclusive with the ClearEnvAWSFlag.
 func AddAWSScopeFlags(cmd *cobra.Command) {
 	AddAWSRegionFlag(cmd)
 	AddAWSAccountFlag(cmd)
@@ -100,14 +142,23 @@ func AddAWSScopeFlags(cmd *cobra.Command) {
 	cmd.MarkFlagsMutuallyExclusive(AWSAccountIdFlag, ClearEnvAWSFlag)
 }
 
+// # Function Explanation
+//
+// AddAWSRegionFlag adds a flag to the given command that allows the user to specify the AWS region where resources will be deployed.
 func AddAWSRegionFlag(cmd *cobra.Command) {
 	cmd.Flags().String(AWSRegionFlag, "", "The region where AWS resources will be deployed")
 }
 
+// # Function Explanation
+//
+// AddAWSAccountFlag adds a flag to the given command that allows the user to specify an AWS account ID.
 func AddAWSAccountFlag(cmd *cobra.Command) {
 	cmd.Flags().String(AWSAccountIdFlag, "", "The account ID where AWS resources will be deployed")
 }
 
+// # Function Explanation
+//
+// AddKubeContextFlagVar adds a flag to the given command that allows the user to specify a Kubernetes context to use.
 func AddKubeContextFlagVar(cmd *cobra.Command, ref *string) {
 	cmd.Flags().StringVar(ref, "kubecontext", "", "The Kubernetes context to use, will use the default if unset")
 }
