@@ -40,7 +40,7 @@ name: E2E test on Azure
 on:
   schedule:
     # Run every 1 hours
-    - cron: "0 0/1 * * *"
+    - cron: "0 * * * *"
   pull_request:
     branches:
       - main
