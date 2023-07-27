@@ -131,22 +131,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	}
 
 	for _, port := range properties.Container.Ports {
-		// if the container has an exposed port, note that down.
-		// A single service will be generated for a container with one or more exposed ports.
-		if port.ContainerPort != 0 && port.Provides == ""{
-			needsServiceGeneration = true
-		}
-
 		provides := port.Provides
 
 		// if provides is empty, skip this port. A service for this port will be generated later on.
 		if provides == "" {
 			continue
-		}
-
-		// ensure that users cannot use DNS-SD and httproutes simultaneously.
-		if provides != "" && usesDNSSD {
-			return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("cannot use DNS-SD and httproutes simultaneously. Please use one or the other."))
 		}
 
 		resourceID, err := resources.ParseResource(provides)
@@ -406,14 +395,14 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		}
 	}
 
-	if usesDNSSD {
-		// handles case where container has source field structured as a URL.
-		for connectionName, connection := range properties.Connections {
-			source := connection.Source
-			if source == "" {
-				continue
-			}
+	for connectionName, connection := range properties.Connections {
+		source := connection.Source
+		if source == "" {
+			continue
+		}
 
+		// handles case where container has source field structured as a URL.
+		if (isURL(source)) {
 			// parse source into scheme, hostname, and port.
 			scheme, hostname, port, err := parseURL(source)
 			if err != nil {
@@ -430,8 +419,6 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
 			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
 		}
-
-		usesDNSSD = false
 	}
 
 	// We build the environment variable list in a stable order for testability
