@@ -396,7 +396,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
-	require.Empty(t, output.ComputedValues)
+	require.Len(t, output.ComputedValues, 4)
 	require.Empty(t, output.SecretValues)
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -416,7 +416,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 		require.Equal(t, expected, port)
 
 	})
-	require.Len(t, output.Resources, 3)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
