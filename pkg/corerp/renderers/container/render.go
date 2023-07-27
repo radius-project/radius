@@ -96,16 +96,14 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	// in the future... eg: volumes
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
+
+	// ensure that users cannot use DNS-SD and httproutes simultaneously.
 	for _, connection := range properties.Connections {
-
-		// if source is a URL (example: 'http://containerx:3000'), use DNS-SD.
 		if (isURL(connection.Source)) {
-			usesDNSSD = true
+			continue
 		} else {
-			// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id). So, we use httproutes.
-			// All of these cases are handled by resources.ParseResource(). 
+			// if the source is not a URL, it either a resourceID or invalid.
 			resourceID, err := resources.ParseResource(connection.Source)
-
 			if err != nil {
 				return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
 			}
@@ -124,22 +122,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	}
 
 	for _, port := range properties.Container.Ports {
-		// if the container has an exposed port, note that down.
-		// A single service will be generated for a container with one or more exposed ports.
-		if port.ContainerPort != 0 && port.Provides == ""{
-			needsServiceGeneration = true
-		}
-
 		provides := port.Provides
 
 		// if provides is empty, skip this port. A service for this port will be generated later on.
 		if provides == "" {
 			continue
-		}
-
-		// ensure that users cannot use DNS-SD and httproutes simultaneously.
-		if provides != "" && usesDNSSD {
-			return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("cannot use DNS-SD and httproutes simultaneously. Please use one or the other."))
 		}
 
 		resourceID, err := resources.ParseResource(provides)
@@ -180,8 +167,34 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
-
 	properties := resource.Properties
+
+	// this flag is used to indicate whether or not this resource needs a service to be generated.
+	// this flag is triggered when a container has an exposed port(s), but no 'provides' field.
+	var needsServiceGeneration = false
+
+	// check if connections are valid
+	for _, connection := range properties.Connections {
+
+		// if source is a URL, it is valid (example: 'http://containerx:3000').
+		if (isURL(connection.Source)) {
+			continue
+		}
+
+		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id). 
+		_, err := resources.ParseResource(connection.Source)
+		if err != nil {
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
+		}
+	}
+
+	for _, port := range properties.Container.Ports {
+		// if the container has an exposed port, note that down.
+		// A single service will be generated for a container with one or more exposed ports.
+		if port.ContainerPort != 0 && port.Provides == "" {
+			needsServiceGeneration = true
+		}
+	}
 
 	appId, err := resources.ParseResource(properties.Application)
 	if err != nil {
@@ -416,14 +429,14 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		}
 	}
 
-	if usesDNSSD {
-		// handles case where container has source field structured as a URL.
-		for connectionName, connection := range properties.Connections {
-			source := connection.Source
-			if source == "" {
-				continue
-			}
+	for connectionName, connection := range properties.Connections {
+		source := connection.Source
+		if source == "" {
+			continue
+		}
 
+		// handles case where container has source field structured as a URL.
+		if (isURL(source)) {
 			// parse source into scheme, hostname, and port.
 			scheme, hostname, port, err := parseURL(source)
 			if err != nil {
@@ -440,8 +453,6 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
 			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
 		}
-
-		usesDNSSD = false
 	}
 
 	// We build the environment variable list in a stable order for testability
