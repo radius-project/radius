@@ -40,7 +40,7 @@ name: E2E test on Azure
 on:
   schedule:
     # Run every 1 hours
-    - cron: "0 0/1 * * *"
+    - cron: "0 * * * *"
   pull_request:
     branches:
       - main
@@ -57,6 +57,7 @@ env:
 
   # ACR for storing test images and recipes
   CACHE_REGISTRY: radiusdev.azurecr.io
+  # Container registry for storing recipe artifacts
   BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
@@ -71,8 +72,8 @@ env:
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
-  # The valid radius build time window in seconds to rebuild radius. 12 hours = 12 * 60 * 60 = 43200
-  VALID_RADIUS_BUILD_WINDOW: 43200
+  # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
+  VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The AKS cluster name
   AKS_CLUSTER_NAME: 'radiuse2e00-aks'
@@ -272,6 +273,7 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - name: Log Bicep recipe publish status (success)
