@@ -457,6 +457,7 @@ jobs:
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
+          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/project-radius/radius/issues/5892
           az acr login -n ${{ env.BICEP_RECIPE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
