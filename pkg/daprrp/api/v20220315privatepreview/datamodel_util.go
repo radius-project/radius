@@ -163,16 +163,16 @@ func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference 
 	return resources
 }
 
-func loadTestData(testfile string) ([]byte, error) {
+func unmarshalTimeString(ts string) *time.Time {
+	var tt timeRFC3339
+	_ = tt.UnmarshalText([]byte(ts))
+	return (*time.Time)(&tt)
+}
+
+func LoadTestData(testfile string) ([]byte, error) {
 	d, err := os.ReadFile(testfile)
 	if err != nil {
 		return nil, err
 	}
 	return d, nil
-}
-
-func unmarshalTimeString(ts string) *time.Time {
-	var tt timeRFC3339
-	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(&tt)
 }

@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// daprstatestores contains the resource processor for Dapr State Stores. See the processors package for more information.
+// statestores contains the resource processor for Dapr State Stores. See the processors package for more information.
 package statestores

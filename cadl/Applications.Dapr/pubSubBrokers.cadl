@@ -35,23 +35,23 @@ using OpenAPI;
 namespace Applications.Dapr;
 @doc("Dapr PubSubBroker portable resource properties")
 model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
-  @doc("Provisioning state of the daprPubSubBroker resource at the time the operation was called")
+  @doc("Provisioning state of the Dapr PubSubBroker portable resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
   @doc("Specifies how the underlying service/resource is provisioned and managed.")
   resourceProvisioning?: ResourceProvisioning;
 
-  @doc("Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec")
+  @doc("Metadata for the Dapr PubSubBroker resource. This should match the values specified in Dapr component spec")
   metadata?: object;
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker portable resource")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Dapr PubSubBroker portable resource")
   recipe?: Recipe;
 
-  @doc("A collection of references to resources associated with the daprPubSubBroker")
+  @doc("A collection of references to resources associated with the Dapr PubSubBroker")
   resources?: ResourceReference[];
 
-  @doc("DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.")
+  @doc("Dapr PubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.")
   type?: string;
 
   @doc("Dapr component version")
@@ -60,7 +60,7 @@ model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
 
 @doc("Dapr PubSubBroker portable resource")
 model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
-  @doc("DaprPubSubBroker name")
+  @doc("Dapr PubSubBroker name")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$")
   @key("daprPubSubBrokerName")

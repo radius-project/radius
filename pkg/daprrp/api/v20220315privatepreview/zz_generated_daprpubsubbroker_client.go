@@ -58,7 +58,7 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprPubSubBrokerName - DaprPubSubBroker name
+// daprPubSubBrokerName - Dapr PubSubBroker name
 // resource - Resource create parameters.
 // options - DaprPubSubBrokerClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokerClient.CreateOrUpdate
 // method.
@@ -116,7 +116,7 @@ func (client *DaprPubSubBrokerClient) createOrUpdateHandleResponse(resp *http.Re
 // BeginDelete - Deletes an existing DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprPubSubBrokerName - DaprPubSubBroker name
+// daprPubSubBrokerName - Dapr PubSubBroker name
 // options - DaprPubSubBrokerClientBeginDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginDelete
 // method.
 func (client *DaprPubSubBrokerClient) BeginDelete(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientBeginDeleteOptions) (*runtime.Poller[DaprPubSubBrokerClientDeleteResponse], error) {
@@ -173,7 +173,7 @@ func (client *DaprPubSubBrokerClient) deleteCreateRequest(ctx context.Context, d
 // Get - Retrieves information about a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprPubSubBrokerName - DaprPubSubBroker name
+// daprPubSubBrokerName - Dapr PubSubBroker name
 // options - DaprPubSubBrokerClientGetOptions contains the optional parameters for the DaprPubSubBrokerClient.Get method.
 func (client *DaprPubSubBrokerClient) Get(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientGetOptions) (DaprPubSubBrokerClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, daprPubSubBrokerName, options)

@@ -55,7 +55,7 @@ var (
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
 		"Applications.Core/secretStores",
-		// Resource Types after Spliting Linkrp Namespace
+		// Resource Types after Splitting Linkrp Namespace
 		linkrp.N_RabbitMQQueuesResourceType,
 		linkrp.N_DaprStateStoresResourceType,
 		linkrp.N_DaprSecretStoresResourceType,

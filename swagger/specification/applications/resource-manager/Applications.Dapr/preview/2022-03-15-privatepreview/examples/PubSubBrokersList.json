@@ -23,7 +23,7 @@
             {
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprPubSub1",
               "name": "daprPubSub1",
-              "type": "Applications.Dapr/daprPubSubBrokers",
+              "type": "Applications.Dapr/pubSubBrokers",
               "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",

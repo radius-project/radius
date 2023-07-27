@@ -58,7 +58,7 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprStateStoreName - DaprStateStore name
+// daprStateStoreName - Dapr StateStore name
 // resource - Resource create parameters.
 // options - DaprStateStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoreClient.CreateOrUpdate
 // method.
@@ -116,7 +116,7 @@ func (client *DaprStateStoreClient) createOrUpdateHandleResponse(resp *http.Resp
 // BeginDelete - Deletes an existing DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprStateStoreName - DaprStateStore name
+// daprStateStoreName - Dapr StateStore name
 // options - DaprStateStoreClientBeginDeleteOptions contains the optional parameters for the DaprStateStoreClient.BeginDelete
 // method.
 func (client *DaprStateStoreClient) BeginDelete(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientBeginDeleteOptions) (*runtime.Poller[DaprStateStoreClientDeleteResponse], error) {
@@ -173,7 +173,7 @@ func (client *DaprStateStoreClient) deleteCreateRequest(ctx context.Context, dap
 // Get - Retrieves information about a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprStateStoreName - DaprStateStore name
+// daprStateStoreName - Dapr StateStore name
 // options - DaprStateStoreClientGetOptions contains the optional parameters for the DaprStateStoreClient.Get method.
 func (client *DaprStateStoreClient) Get(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientGetOptions) (DaprStateStoreClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, daprStateStoreName, options)

@@ -35,20 +35,20 @@ using OpenAPI;
 namespace Applications.Dapr;
 @doc("Dapr StateStore portable resource properties")
 model DaprStateStoreProperties extends BasicDaprResourceProperties {
-  @doc("Provisioning state of the DaprStateStore portable resourc at the time the operation was called")
+  @doc("Provisioning state of the DaprStateStore portable resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
   @doc("Specifies how the underlying service/resource is provisioned and managed.")
   resourceProvisioning?: ResourceProvisioning;
 
-  @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
+  @doc("Metadata for the Dapr StateStore resource. This should match the values specified in Dapr component spec")
   metadata?: object;
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the daprStateStore portable resource")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Dapr StateStore portable resource")
   recipe?: Recipe;
 
-  @doc("A collection of references to resources associated with the state store")
+  @doc("A collection of references to resources associated with the Dapr StateStore")
   resources?: ResourceReference[];
 
   @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
@@ -60,7 +60,7 @@ model DaprStateStoreProperties extends BasicDaprResourceProperties {
 
 @doc("Dapr StateStore portable resource")
 model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
-  @doc("DaprStateStore name")
+  @doc("Dapr StateStore name")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$")
   @key("daprStateStoreName")

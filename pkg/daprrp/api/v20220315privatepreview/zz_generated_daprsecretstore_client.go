@@ -58,7 +58,7 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprSecretStoreName - DaprSecretStore name
+// daprSecretStoreName - Dapr SecretStore name
 // resource - Resource create parameters.
 // options - DaprSecretStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprSecretStoreClient.CreateOrUpdate
 // method.
@@ -116,7 +116,7 @@ func (client *DaprSecretStoreClient) createOrUpdateHandleResponse(resp *http.Res
 // Delete - Deletes an existing DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprSecretStoreName - DaprSecretStore name
+// daprSecretStoreName - Dapr SecretStore name
 // options - DaprSecretStoreClientDeleteOptions contains the optional parameters for the DaprSecretStoreClient.Delete method.
 func (client *DaprSecretStoreClient) Delete(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientDeleteOptions) (DaprSecretStoreClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, daprSecretStoreName, options)
@@ -169,7 +169,7 @@ func (client *DaprSecretStoreClient) deleteHandleResponse(resp *http.Response) (
 // Get - Retrieves information about a DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprSecretStoreName - DaprSecretStore name
+// daprSecretStoreName - Dapr SecretStore name
 // options - DaprSecretStoreClientGetOptions contains the optional parameters for the DaprSecretStoreClient.Get method.
 func (client *DaprSecretStoreClient) Get(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientGetOptions) (DaprSecretStoreClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, daprSecretStoreName, options)

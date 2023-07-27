@@ -45,9 +45,9 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
-* **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the daprPubSubBroker
+* **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the Dapr PubSubBroker
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **type**: string: DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
+* **type**: string: Dapr PubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
 ## Recipe
@@ -87,7 +87,7 @@
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **type**: string: Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+* **type**: string: Dapr SecretStore type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string: Dapr component version
 
 ## TrackedResourceTags
@@ -104,7 +104,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
-* **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the state store
+* **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the Dapr StateStore
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version

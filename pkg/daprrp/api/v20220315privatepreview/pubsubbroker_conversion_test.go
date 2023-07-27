@@ -112,7 +112,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &DaprPubSubBrokerResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -139,18 +139,18 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 		{
 			"pubsubbroker_invalidmanual_resource.json",
 			&v1.ErrClientRP{},
-			"code BadRequest: err multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual",
+			"code BadRequest: err error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual",
 		},
 		{
 			"pubsubbroker_invalidrecipe_resource.json",
 			&v1.ErrClientRP{},
-			"code BadRequest: err multiple errors were found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)",
+			"code BadRequest: err error(s) found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)",
 		},
 	}
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &DaprStateStoreResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -246,7 +246,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.DaprPubSubBroker{}
 			err = json.Unmarshal(rawPayload, resource)

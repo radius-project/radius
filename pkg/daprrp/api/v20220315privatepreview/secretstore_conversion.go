@@ -91,15 +91,10 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 
 		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
-	if len(msgs) == 1 {
+	if len(msgs) > 0 {
 		return nil, &v1.ErrClientRP{
 			Code:    v1.CodeInvalid,
-			Message: msgs[0],
-		}
-	} else if len(msgs) > 1 {
-		return nil, &v1.ErrClientRP{
-			Code:    v1.CodeInvalid,
-			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
+			Message: fmt.Sprintf("error(s) found:\n\t%v", strings.Join(msgs, "\n\t")),
 		}
 	}
 

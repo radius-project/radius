@@ -36,7 +36,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + payload)
+			rawPayload, err := LoadTestData("./testdata/" + payload)
 			require.NoError(t, err)
 			versionedResource := &DaprStateStoreResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -100,13 +100,13 @@ func TestDaprStateStore_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 		errType error
 		message string
 	}{
-		{"statestore_invalidvalues_resource.json", &v1.ErrClientRP{}, "code BadRequest: err multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
-		{"statestore_invalidrecipe_resource.json", &v1.ErrClientRP{}, "code BadRequest: err multiple errors were found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)"},
+		{"statestore_invalidvalues_resource.json", &v1.ErrClientRP{}, "code BadRequest: err error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
+		{"statestore_invalidrecipe_resource.json", &v1.ErrClientRP{}, "code BadRequest: err error(s) found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)"},
 	}
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &DaprStateStoreResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -129,7 +129,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + payload)
+			rawPayload, err := LoadTestData("./testdata/" + payload)
 			require.NoError(t, err)
 			resource := &datamodel.DaprStateStore{}
 			err = json.Unmarshal(rawPayload, resource)

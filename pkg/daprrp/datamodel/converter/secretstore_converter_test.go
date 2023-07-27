@@ -28,7 +28,7 @@ import (
 )
 
 // Validates type conversion between versioned client side data model and RP data model.
-func TestSecretStoreDataModelToVersioned(t *testing.T) {
+func TestDaprSecretStoreDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
@@ -36,13 +36,13 @@ func TestSecretStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstoreresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/secretstore_manual_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprSecretStoreResource{},
 			nil,
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/secretstore_manual_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -51,7 +51,8 @@ func TestSecretStoreDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
+			require.NoError(t, err)
 			dm := &datamodel.DaprSecretStore{}
 			_ = json.Unmarshal(c, dm)
 			am, err := SecretStoreDataModelToVersioned(dm, tc.apiVersion)
@@ -65,24 +66,29 @@ func TestSecretStoreDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func TestSecretStoreDataModelFromVersioned(t *testing.T) {
+func TestDaprSecretStoreDataModelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string
 		apiVersion         string
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstoreresource.json",
+			"../../api/v20220315privatepreview/testdata/secretstore_manual_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/secretstoreresource-invalid.json",
+			"../../api/v20220315privatepreview/testdata/secretstore_invalidrecipe_resource.json",
 			"2022-03-15-privatepreview",
 			errors.New("json: cannot unmarshal number into Go struct field DaprSecretStoreProperties.properties.version of type string"),
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/secretstore_invalidvalues_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/secretstore_invalidvalues_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -90,7 +96,8 @@ func TestSecretStoreDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.versionedModelFile)
+			c, err := v20220315privatepreview.LoadTestData(tc.versionedModelFile)
+			require.NoError(t, err)
 			dm, err := SecretStoreDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)

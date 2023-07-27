@@ -38,43 +38,35 @@ import (
 
 var handlerTests = []rpctest.HandlerTestSpec{
 	// Routes for resources after Split Namespaces
-
 	{
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.messaging/rabbitmqqueues",
 		Method:        http.MethodGet,
 	}, {
-
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues",
 		Method:        http.MethodGet,
 	}, {
-
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodGet,
 	}, {
-
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodPut,
 	}, {
-
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodPatch,
 	}, {
-
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodDelete,
 	}, {
-
 		OperationType: v1.OperationType{Type: linkrp.N_RabbitMQQueuesResourceType, Method: rabbitmq_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq/listsecrets",
 		Method:        http.MethodPost,
-	},
-	{
+	}, {
 		OperationType: v1.OperationType{Type: linkrp.N_DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.dapr/pubsubbrokers",
 		Method:        http.MethodGet,

@@ -105,7 +105,7 @@
             "name": "daprPubSubBrokerName",
             "in": "path",
             "required": true,
-            "description": "DaprPubSubBroker name",
+            "description": "Dapr PubSubBroker name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -144,7 +144,7 @@
             "name": "daprPubSubBrokerName",
             "in": "path",
             "required": true,
-            "description": "DaprPubSubBroker name",
+            "description": "Dapr PubSubBroker name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -205,7 +205,7 @@
             "name": "daprPubSubBrokerName",
             "in": "path",
             "required": true,
-            "description": "DaprPubSubBroker name",
+            "description": "Dapr PubSubBroker name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -294,7 +294,7 @@
             "name": "daprSecretStoreName",
             "in": "path",
             "required": true,
-            "description": "DaprSecretStore name",
+            "description": "Dapr SecretStore name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -333,7 +333,7 @@
             "name": "daprSecretStoreName",
             "in": "path",
             "required": true,
-            "description": "DaprSecretStore name",
+            "description": "Dapr SecretStore name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -394,7 +394,7 @@
             "name": "daprSecretStoreName",
             "in": "path",
             "required": true,
-            "description": "DaprSecretStore name",
+            "description": "Dapr SecretStore name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -479,7 +479,7 @@
             "name": "daprStateStoreName",
             "in": "path",
             "required": true,
-            "description": "DaprStateStore name",
+            "description": "Dapr StateStore name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -518,7 +518,7 @@
             "name": "daprStateStoreName",
             "in": "path",
             "required": true,
-            "description": "DaprStateStore name",
+            "description": "Dapr StateStore name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -579,7 +579,7 @@
             "name": "daprStateStoreName",
             "in": "path",
             "required": true,
-            "description": "DaprStateStore name",
+            "description": "Dapr StateStore name",
             "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -696,7 +696,7 @@
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the daprPubSubBroker resource at the time the operation was called",
+          "description": "Provisioning state of the Dapr PubSubBroker portable resource at the time the operation was called",
           "readOnly": true
         },
         "resourceProvisioning": {
@@ -705,11 +705,11 @@
         },
         "metadata": {
           "$ref": "#/definitions/object",
-          "description": "Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec"
+          "description": "Metadata for the Dapr PubSubBroker resource. This should match the values specified in Dapr component spec"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker portable resource"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Dapr PubSubBroker portable resource"
         },
         "resources": {
           "type": "array",
@@ -717,11 +717,11 @@
             "$ref": "#/definitions/ResourceReference"
           },
           "x-cadl-name": "ResourceReference[]",
-          "description": "A collection of references to resources associated with the daprPubSubBroker"
+          "description": "A collection of references to resources associated with the Dapr PubSubBroker"
         },
         "type": {
           "type": "string",
-          "description": "DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format."
+          "description": "Dapr PubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format."
         },
         "version": {
           "type": "string",
@@ -788,7 +788,7 @@
         },
         "type": {
           "type": "string",
-          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+          "description": "Dapr SecretStore type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
         },
         "version": {
           "type": "string",
@@ -796,11 +796,11 @@
         },
         "metadata": {
           "$ref": "#/definitions/object",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+          "description": "Metadata for the Dapr SecretStore resource. This should match the values specified in Dapr component spec"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprSecretStore portable resource"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Dapr SecretStore portable resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -862,7 +862,7 @@
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the DaprStateStore portable resourc at the time the operation was called",
+          "description": "Provisioning state of the DaprStateStore portable resource at the time the operation was called",
           "readOnly": true
         },
         "resourceProvisioning": {
@@ -871,11 +871,11 @@
         },
         "metadata": {
           "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
+          "description": "Metadata for the Dapr StateStore resource. This should match the values specified in Dapr component spec"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore portable resource"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Dapr StateStore portable resource"
         },
         "resources": {
           "type": "array",
@@ -883,7 +883,7 @@
             "$ref": "#/definitions/ResourceReference"
           },
           "x-cadl-name": "ResourceReference[]",
-          "description": "A collection of references to resources associated with the state store"
+          "description": "A collection of references to resources associated with the Dapr StateStore"
         },
         "type": {
           "type": "string",

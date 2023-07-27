@@ -69,19 +69,19 @@ type DaprPubSubBrokerProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec
+	// Metadata for the Dapr PubSubBroker resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the Dapr PubSubBroker portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// A collection of references to resources associated with the daprPubSubBroker
+	// A collection of references to resources associated with the Dapr PubSubBroker
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
+	// Dapr PubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
 
 	// Dapr component version
@@ -91,7 +91,7 @@ type DaprPubSubBrokerProperties struct {
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the daprPubSubBroker resource at the time the operation was called
+	// READ-ONLY; Provisioning state of the Dapr PubSubBroker portable resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
@@ -161,16 +161,16 @@ type DaprSecretStoreProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	// Metadata for the Dapr SecretStore resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the daprSecretStore portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the Dapr SecretStore portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	// Dapr SecretStore type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 	Type *string `json:"type,omitempty"`
 
 	// Dapr component version
@@ -251,16 +251,16 @@ type DaprStateStoreProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Metadata for the state store resource. This should match the values specified in Dapr component spec
+	// Metadata for the Dapr StateStore resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the Dapr StateStore portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// A collection of references to resources associated with the state store
+	// A collection of references to resources associated with the Dapr StateStore
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
@@ -273,7 +273,7 @@ type DaprStateStoreProperties struct {
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the DaprStateStore portable resourc at the time the operation was called
+	// READ-ONLY; Provisioning state of the DaprStateStore portable resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.

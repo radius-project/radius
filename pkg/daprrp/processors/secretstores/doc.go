@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// daprsecretstores contains the resource processor for Dapr Secret Stores. See the processors package for more information.
+// secretstores contains the resource processor for Dapr Secret Stores. See the processors package for more information.
 package secretstores
