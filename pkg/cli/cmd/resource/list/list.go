@@ -32,6 +32,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad resource list` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner to list resources of a specified type in an application or the
+// default environment, and adds flags for application name, resource group, output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -87,6 +92,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad resource list` command.
+//
+// # Function Explanation
+//
+// Validate checks the command line args, workspace, scope, application name, resource type and output format, and
+// returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -123,6 +133,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad resource list` command.
+//
+// # Function Explanation
+//
+// Run checks if an application name is provided and if so, checks if the application exists in the workspace, then
+// lists all resources of the specified type in the application, and finally writes the resources to the output in the
+// specified format. If no application name is provided, it lists all resources of the specified type. An error is
+// returned if the application does not exist in the workspace.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {

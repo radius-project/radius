@@ -22,6 +22,10 @@ type DependencyGraph struct {
 	setsByKey map[string]set
 }
 
+// # Function Explanation
+//
+// Lookup returns the DependencySet associated with the given key if it exists, and a boolean indicating
+// whether the key was found.
 func (dg DependencyGraph) Lookup(key string) (DependencySet, bool) {
 	item, ok := dg.setsByKey[key]
 	return item, ok
@@ -45,14 +49,23 @@ type set struct {
 	dependencies []string
 }
 
+// # Function Explanation
+//
+// Key returns the key of the item in the set.
 func (s set) Key() string {
 	return s.item.Key()
 }
 
+// # Function Explanation
+//
+// Item returns the DependencyItem stored in the set.
 func (s set) Item() DependencyItem {
 	return s.item
 }
 
+// # Function Explanation
+//
+// GetDirectDependencies returns a slice of DependencySet objects that are direct dependencies of the set.
 func (s set) GetDirectDependencies() []DependencySet {
 	results := []DependencySet{}
 	for _, d := range s.dependencies {
@@ -63,6 +76,9 @@ func (s set) GetDirectDependencies() []DependencySet {
 	return results
 }
 
+// # Function Explanation
+//
+// GetTransitiveDependencies returns a slice of DependencySet objects that are transitively dependent on the set.
 func (s set) GetTransitiveDependencies() []DependencySet {
 	transitive := map[string]bool{
 		// Start with 'self' as part of the set to break cycles, we'll remove it later.
