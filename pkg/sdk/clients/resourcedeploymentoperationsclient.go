@@ -38,7 +38,10 @@ type ResourceDeploymentOperationsClient struct {
 	baseURI  string
 }
 
-// NewResourceDeploymentOperationsClient creates an instance of the DeploymentsClient.
+// # Function Explanation
+//
+// NewResourceDeploymentOperationsClient creates a new ResourceDeploymentOperationsClient with the provided options and
+// returns it, or returns an error if the client creation fails.
 func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymentOperationsClient, error) {
 	if options.BaseURI == "" {
 		return nil, errors.New("baseURI cannot be empty")
@@ -62,7 +65,9 @@ func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymen
 	}, nil
 }
 
-// List gets all deployments operations for a deployment.
+// # Function Explanation
+//
+// List retrieves a list of deployment operations for a given resource ID and API version. It returns an error if the list retrieval fails.
 // Parameters:
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
 // top - the number of results to return.
@@ -88,6 +93,9 @@ func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, reso
 	return result, nil
 }
 
+// # Function Explanation
+//
+// NewListPager creates a pager to iterate over the list of deployment operations for a given resource.
 func (client *ResourceDeploymentOperationsClient) NewListPager(resourceID string, apiVersion string, options *armresources.DeploymentOperationsClientListOptions) *runtime.Pager[armresources.DeploymentOperationsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[armresources.DeploymentOperationsClientListResponse]{
 		More: func(page armresources.DeploymentOperationsClientListResponse) bool {
