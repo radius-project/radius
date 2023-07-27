@@ -48,7 +48,8 @@ func (s *Service) Name() string {
 
 // # Function Explanation
 //
-// Run starts the profiler server and handles shutdown based on the context, returning an error if the server fails to start.
+// Run starts the profiler server that exposes an endpoint to collect profiler from. It
+// handles shutdown based on the context, and returns an error if the server fails to start.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

@@ -45,15 +45,16 @@ func NewService(options HostOptions) *Service {
 
 // # Function Explanation
 //
-// Name returns the name of the Service instance.
+// Name returns the name of the metrics service.
 func (s *Service) Name() string {
 	return "Metrics Collector"
 }
 
 // # Function Explanation
 //
-// Run sets up a Prometheus exporter, initializes metrics, creates an HTTP server and handles shutdown based on the
-// context, returning an error if one occurs.
+// Run creates a new server for exposing an endpoint to collect metrics from. It sets up a
+// Prometheus exporter, initializes metrics, creates an HTTP server and handles shutdown based
+// on the context, returning an error if one occurs.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
