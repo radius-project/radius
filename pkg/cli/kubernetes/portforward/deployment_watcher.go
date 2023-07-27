@@ -173,7 +173,7 @@ func (dw *deploymentWatcher) updated(ctx context.Context, pod *corev1.Pod, stale
 	// There's an additional consideration when the pod that's being changed is the one we're watching.
 	//
 	// - If the pod we're watching is being deleted then shut down our watch.
-	// - If the pod we'ere watching is being updated then notify the pod watcher.
+	// - If the pod we're watching is being updated then notify the pod watcher.
 	if dw.podWatcher != nil && dw.podWatcher.Pod.Name == pod.Name && pod.DeletionTimestamp != nil {
 		dw.podWatcher.Cancel()
 		close(dw.podWatcher.Updated)
@@ -202,21 +202,23 @@ func (dw *deploymentWatcher) deleted(ctx context.Context, pod *corev1.Pod) {
 }
 
 func (dw *deploymentWatcher) ensureWatcher(ctx context.Context) {
-	if dw.podWatcher == nil {
-		if len(dw.pods) > 0 {
-			pod := dw.selectBestPod()
+	if dw.podWatcher != nil {
+		return
+	}
 
-			ctx, cancel := context.WithCancel(ctx)
-			dw.podWatcher = NewPodWatcher(dw.Options, pod, cancel)
+	if len(dw.pods) > 0 {
+		pod := dw.selectBestPod()
 
-			// will run until canceled
-			go func() { _ = dw.podWatcher.Run(ctx) }()
-		} else {
-			// No pods available, wait and try again
-			_, err := dw.Options.Out.Write([]byte("No active pods available for port-forwarding.\n"))
-			if err != nil {
-				return
-			}
+		ctx, cancel := context.WithCancel(ctx)
+		dw.podWatcher = NewPodWatcher(dw.Options, pod, cancel)
+
+		// will run until canceled
+		go func() { _ = dw.podWatcher.Run(ctx) }()
+	} else {
+		// No pods available, wait and try again
+		_, err := dw.Options.Out.Write([]byte("No active pods available for port-forwarding.\n"))
+		if err != nil {
+			return
 		}
 	}
 }
