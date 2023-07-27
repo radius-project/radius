@@ -173,15 +173,17 @@ func NormalizeDaprResourceName(name string) string {
 
 // # Function Explanation
 //
-// ConvertResourceTypeToLabelValue replaces the first occurrence of "/" with "-" in the given string and returns the
-// modified string. Example: Applications.Core/containers becomes Applications.Core-Containers
+// ConvertResourceTypeToLabelValue converts the given string to a value that Kubernetes allows i.e.
+// it replaces the first occurrence of "/" with "-" and returns the modified string.
+// Example: Applications.Core/containers becomes Applications.Core-Containers
 func ConvertResourceTypeToLabelValue(resourceType string) string {
 	return strings.Replace(resourceType, "/", "-", 1)
 }
 
 // # Function Explanation
 //
-// ConvertLabelToResourceType replaces the first occurrence of "-" with "/" in the given string and returns the result.
+// ConvertLabelToResourceType converts from kubernetes label value to Radius resource type i.e.
+// it replaces the first occurrence of "-" with "/" in the given string and returns the result.
 // Example: Applications.Core-containers becomes Applications.Core/Containers
 func ConvertLabelToResourceType(labelValue string) string {
 	return strings.Replace(labelValue, "-", "/", 1)
