@@ -151,6 +151,13 @@ func (m *summaryModel) Init() tea.Cmd {
 // Update implements the update function for tea.Model. This will be called when a message is received by the model.
 //
 // It's safe to update internal state inside this function. View will be called afterwards to draw the UI.
+//
+// # Function Explanation
+//
+// "summaryModel.Update" handles messages and state transitions, and returns the next model and command based on the type
+// of message received. If the message is a KeyCtrlC, KeyEsc, or KeyEnter, the result is set accordingly and the command is
+//
+//	set to Quit. Otherwise, the message is ignored and no command is returned.
 func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// This function handles messages and state transitions. We don't need to update
 	// any UI here, just return the next model and command.
@@ -279,6 +286,11 @@ func (m *progressModel) Init() tea.Cmd {
 // Update implements the update function for tea.Model. This will be called when a message is received by the model.
 //
 // It's safe to update internal state inside this function. View will be called afterwards to draw the UI.
+//
+// # Function Explanation
+//
+// Update updates the internal state of the progressModel when it receives a progressMsg or spinner.TickMsg,
+// and returns a tea.Cmd to quit the program if the progress is complete.
 func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -303,6 +315,11 @@ func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implments the view function for tea.Model. This will be called after Init and after each call to Update to
 // draw the UI.
+//
+// # Function Explanation
+//
+// View builds a string containing a summary of the progress of a GO program, including the installation of
+// Kubernetes, the creation of an environment, the scaffolding of an application, and the updating of configuration.
 func (m *progressModel) View() string {
 	options := m.options
 
