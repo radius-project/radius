@@ -23,7 +23,7 @@
             {
                 "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore1",
                 "name": "daprStateStore1",
-                "type": "Applications.Dapr/daprStateStores",
+                "type": "Applications.Dapr/stateStores",
                 "location": "global",
                 "properties": {
                   "provisioningState": "Succeeded",
@@ -36,7 +36,7 @@
             {
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore2",
               "name": "daprStateStore2",
-              "type": "Applications.Dapr/daprStateStores",
+              "type": "Applications.Dapr/stateStores",
               "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",
@@ -53,7 +53,7 @@
             {
                 "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore3",
                 "name": "daprStateStore3",
-                "type": "Applications.Dapr/daprStateStores",
+                "type": "Applications.Dapr/stateStores",
                 "location": "global",
                 "properties": {
                   "provisioningState": "Succeeded",

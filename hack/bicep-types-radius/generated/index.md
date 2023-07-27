@@ -25,14 +25,14 @@
 * [2022-03-15-privatepreview](applications/applications.core/2022-03-15-privatepreview/types.md#resource-applicationscorevolumes2022-03-15-privatepreview)
 
 ## applications.dapr
-### applications.dapr/daprpubsubbrokers
-* [2022-03-15-privatepreview](applications/applications.dapr/2022-03-15-privatepreview/types.md#resource-applicationsdaprdaprpubsubbrokers2022-03-15-privatepreview)
+### applications.dapr/pubsubbrokers
+* [2022-03-15-privatepreview](applications/applications.dapr/2022-03-15-privatepreview/types.md#resource-applicationsdaprpubsubbrokers2022-03-15-privatepreview)
 
-### applications.dapr/daprsecretstores
-* [2022-03-15-privatepreview](applications/applications.dapr/2022-03-15-privatepreview/types.md#resource-applicationsdaprdaprsecretstores2022-03-15-privatepreview)
+### applications.dapr/secretstores
+* [2022-03-15-privatepreview](applications/applications.dapr/2022-03-15-privatepreview/types.md#resource-applicationsdaprsecretstores2022-03-15-privatepreview)
 
-### applications.dapr/daprstatestores
-* [2022-03-15-privatepreview](applications/applications.dapr/2022-03-15-privatepreview/types.md#resource-applicationsdaprdaprstatestores2022-03-15-privatepreview)
+### applications.dapr/statestores
+* [2022-03-15-privatepreview](applications/applications.dapr/2022-03-15-privatepreview/types.md#resource-applicationsdaprstatestores2022-03-15-privatepreview)
 
 ## applications.datastores
 ### applications.datastores/mongodatabases
