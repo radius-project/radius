@@ -331,7 +331,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		ports = append(ports, corev1.ServicePort{
 			Name:       containerPortNames[i],
 			Port:       port,
-			TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resourceTypeSuffix + resource.Name)),
+			TargetPort: intstr.FromString(containerPortNames[i]),
 			Protocol:  corev1.ProtocolTCP,
 		})
 	}
@@ -348,7 +348,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 			Annotations: renderers.GetAnnotations(ctx, options),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, resource.Name),
+			Selector: kubernetes.MakeSelectorLabels(appId.Name(), resource.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: ports,
 		},
