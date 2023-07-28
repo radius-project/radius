@@ -26,7 +26,8 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a RabbitMQQueueResource to a datamodel.RabbitMQQueue and returns it or an error if the inputs are invalid.
+// ConvertTo converts a versionined RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
+// and returns it or an error if the inputs are invalid.
 func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQQueue{
 		BaseResource: v1.BaseResource{
@@ -75,7 +76,8 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to a RabbitMQQueueResource, returning an error if the conversion fails.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versioned RabbitMQQueueResource,
+// returning an error if the conversion fails.
 func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	rabbitmq, ok := src.(*datamodel.RabbitMQQueue)
 	if !ok {
@@ -106,7 +108,8 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 
 // # Function Explanation
 //
-// ConvertFrom converts a datamodel.RabbitMQSecrets to a RabbitMQSecrets, returning an error if the conversion fails.
+// ConvertFrom converts a version-agnostic datamodel.RabbitMQSecrets to a versioned RabbitMQSecrets,
+// returning an error if the conversion fails.
 func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	rabbitMQSecrets, ok := src.(*datamodel.RabbitMQSecrets)
 	if !ok {
@@ -119,7 +122,7 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 
 // # Function Explanation
 //
-// ConvertTo converts a RabbitMQSecrets object to a datamodel.RabbitMQSecrets object.
+// ConvertTo converts a versoined RabbitMQSecrets object to a version-agnostic datamodel.RabbitMQSecrets object.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
 		ConnectionString: to.String(src.ConnectionString),
