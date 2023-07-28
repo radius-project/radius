@@ -60,7 +60,7 @@ env:
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The filename of the pod state log
-  POD_STATE_LOG_FILENAME: dist/pod-states.txt
+  POD_STATE_LOG_FILENAME: pod-states.txt
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources

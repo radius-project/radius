@@ -17,6 +17,6 @@ runs:
     - name: Upload pod state file
       uses: actions/upload-artifact@v3
       with:
-        name: pod-states.txt
+        name: ${{ inputs.pod_state_log_filename }}
         path: |
           ${{ inputs.pod_state_log_filename }}
