@@ -18,9 +18,10 @@ package credential
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clierrors"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
@@ -173,15 +174,11 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 // "Delete"  checks if the credential for the provider plane is registered and returns true if not found, otherwise
 // returns false and an error if one occurs.
 func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
-	_, err := cpm.AzureCredentialClient.Delete(ctx, AzurePlaneName, name, nil)
-
-	// We get 404 when credential for the provider plane is not registered.
-	if clients.Is404Error(err) {
-		// return false if not found.
-		return false, nil
-	} else if err != nil {
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+	_, err := cpm.AzureCredentialClient.Delete(ctxWithResp, AzurePlaneName, name, nil)
+	if err != nil {
 		return false, err
 	}
-
-	return true, nil
+	return respFromCtx.StatusCode != 204, nil
 }
