@@ -33,7 +33,7 @@ jobs:
         uses: snok/container-retention-policy@v2
         with:
           image-names: dev/*
-          cut-off: A week ago UTC
+          cut-off: 2 days ago UTC
           account-type: org
           org-name: project-radius
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
