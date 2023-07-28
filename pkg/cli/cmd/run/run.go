@@ -179,6 +179,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Namespace:       namespace,
 			KubeContext:     kubeContext,
 			StatusChan:      status,
+			Out:             os.Stdout,
 		})
 	})
 
