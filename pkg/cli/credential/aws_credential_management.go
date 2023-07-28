@@ -41,6 +41,11 @@ const (
 	infoRequiredTemplate = "required info %s"
 )
 
+type AWSCredentialProperties struct {
+	// AccessKeyID is the access key ID for the AWS credential.
+	AccessKeyID *string
+}
+
 // AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClientInterface interface {
 	// Get gets the credential registered with the given ucp provider plane.
@@ -91,7 +96,9 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 			Name:    AWSCredential,
 			Enabled: true,
 		},
-		AWSCredentials: awsAccessKeyCredentials.GetAWSCredentialProperties(),
+		AWSCredentials: &AWSCredentialProperties{
+			AccessKeyID: awsAccessKeyCredentials.AccessKeyID,
+		},
 	}
 	return providerCredentialConfiguration, nil
 }

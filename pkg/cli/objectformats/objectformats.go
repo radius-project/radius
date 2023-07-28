@@ -187,6 +187,14 @@ func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions 
 					Heading:  "Status",
 					JSONPath: "{ .Enabled }",
 				},
+				{
+					Heading:  "ClientID",
+					JSONPath: "{ .AzureCredentials.ClientID }",
+				},
+				{
+					Heading:  "TenantID",
+					JSONPath: "{ .AzureCredentials.TenantID }",
+				},
 			},
 		}
 	} else if strings.EqualFold(credentialType, "aws") {
@@ -199,6 +207,10 @@ func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions 
 				{
 					Heading:  "Status",
 					JSONPath: "{ .Enabled }",
+				},
+				{
+					Heading:  "AccessKeyID",
+					JSONPath: "{ .AWSCredentials.AccessKeyID }",
 				},
 			},
 		}

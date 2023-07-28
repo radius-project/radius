@@ -65,10 +65,21 @@ type ProviderCredentialConfiguration struct {
 	CloudProviderStatus
 
 	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AzureCredentials *ucp.AzureCredentialProperties
+	AzureCredentials *AzureCredentialProperties
 
 	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AWSCredentials *ucp.AWSCredentialProperties
+	AWSCredentials *AWSCredentialProperties
+}
+
+type AzureCredentialProperties struct {
+	// clientId for ServicePrincipal
+	ClientID *string
+
+	// The credential kind
+	Kind *string
+
+	// tenantId for ServicePrincipal
+	TenantID *string
 }
 
 // ErrUnsupportedCloudProvider represents error when the cloud provider is not supported by radius.
@@ -130,7 +141,11 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 			Name:    AzureCredential,
 			Enabled: true,
 		},
-		AzureCredentials: azureServicePrincipal.GetAzureCredentialProperties(),
+		AzureCredentials: &AzureCredentialProperties{
+			ClientID: azureServicePrincipal.ClientID,
+			Kind:     azureServicePrincipal.Kind,
+			TenantID: azureServicePrincipal.TenantID,
+		},
 	}
 
 	return providerCredentialConfiguration, nil
