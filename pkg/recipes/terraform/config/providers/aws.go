@@ -28,9 +28,7 @@ import (
 )
 
 const (
-	AWSProviderName    = "aws"
-	AWSProviderSource  = "hashicorp/aws"
-	AWSProviderVersion = "~> 4.0" // TODO make it configurable
+	AWSProviderName = "aws"
 )
 
 type awsProvider struct{}
@@ -62,14 +60,6 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 	}
 
 	return config, nil
-}
-
-// BuildRequiredProvider generates the Terraform required_provider configuration for AWS provider.
-func (p *awsProvider) BuildRequiredProvider() ProviderDefinition {
-	return ProviderDefinition{
-		Source:  AWSProviderSource,
-		Version: AWSProviderVersion,
-	}
 }
 
 // parseAWSScope parses an AWS provider scope and returns the associated region

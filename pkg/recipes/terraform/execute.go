@@ -123,7 +123,7 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 		return fmt.Errorf("recipe name cannot be empty")
 	}
 
-	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
+	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName, options.EnvConfig)
 	if err != nil {
 		return err
 	}
@@ -139,11 +139,6 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 
 	// Add the required providers to the terraform configuration
 	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
-		return err
-	}
-
-	err = config.AddTerraformDefinition(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig, options.ResourceRecipe)
-	if err != nil {
 		return err
 	}
 

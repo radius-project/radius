@@ -16,8 +16,6 @@ limitations under the License.
 
 package config
 
-import "github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
-
 const (
 	moduleSourceKey  = "source"
 	moduleVersionKey = "version"
@@ -36,7 +34,5 @@ type TerraformConfig struct {
 }
 
 type TerraformDefinition struct {
-	RequiredProviders map[string]providers.ProviderDefinition `json:"required_providers"`
-	Backend           map[string]interface{}                  `json:"backend"`
-	RequiredVersion   string                                  `json:"required_version"`
+	Backend map[string]interface{} `json:"backend"`
 }

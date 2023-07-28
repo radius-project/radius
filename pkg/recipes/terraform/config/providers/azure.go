@@ -28,9 +28,7 @@ import (
 )
 
 const (
-	AzureProviderName    = "azurerm"
-	AzureProviderSoruce  = "hashicorp/azurerm"
-	AzureProviderVersion = "~> 3.0.2" // TODO make it configurable
+	AzureProviderName = "azurerm"
 )
 
 type azureProvider struct{}
@@ -65,14 +63,6 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 	config["subscription_id"] = subscriptionID
 
 	return config, nil
-}
-
-// BuildRequiredProvider generates the Terraform required_provider configuration for Azure provider.
-func (p *azureProvider) BuildRequiredProvider() ProviderDefinition {
-	return ProviderDefinition{
-		Source:  AzureProviderSoruce,
-		Version: AzureProviderVersion,
-	}
 }
 
 // parseAzureScope parses an Azure provider scope and returns the associated subscription id

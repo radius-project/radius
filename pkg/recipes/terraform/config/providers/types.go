@@ -30,9 +30,6 @@ type Provider interface {
 	// Returns a map of Terraform provider name to values representing the provider configuration.
 	// Returns an error if the provider configuration cannot be generated.
 	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error)
-	// BuildRequiredProvider generates the Terraform required_provider configuration for the provider.
-	// Returns required provider definition with source and version information.
-	BuildRequiredProvider() ProviderDefinition
 }
 
 // GetSupportedTerraformProviders returns a map of Terraform provider names to provider config builder.
@@ -44,9 +41,4 @@ func GetSupportedTerraformProviders() map[string]Provider {
 		AzureProviderName:      NewAzureProvider(),
 		KubernetesProviderName: NewKubernetesProvider(),
 	}
-}
-
-type ProviderDefinition struct {
-	Source  string `json:"source"`
-	Version string `json:"version"`
 }

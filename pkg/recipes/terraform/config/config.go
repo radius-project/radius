@@ -29,19 +29,21 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-const (
-	terraformVersion = "1.1.0" // TODO make it configurable
-)
-
 // GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
 // to a main.tf.json file in the specified working directory. This JSON configuration is needed to retrieve the Terraform
 // module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
 // Returns path to the generated config file.
-func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string) (string, error) {
+func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string, configuration *recipes.Configuration) (string, error) {
 	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
-
+	backend, err := generateKubernetesBackendConfig(resourceRecipe.ResourceID, configuration.Runtime.Kubernetes.Namespace)
+	if err != nil {
+		return "", err
+	}
 	tfConfig := TerraformConfig{
+		Terraform: TerraformDefinition{
+			Backend: backend,
+		},
 		Module: map[string]any{
 			localModuleName: moduleData,
 		},
@@ -128,54 +130,6 @@ func AddProviders(ctx context.Context, configFilePath string, requiredProviders 
 	}
 
 	return nil
-}
-
-// AddTerraformDefinition generates and adds required terraform version, backed information and required providers supported by radius to the Terraform main config file present at the configFilePath.
-func AddTerraformDefinition(ctx context.Context, configFilePath string, requiredProviders []string, supportedProviders map[string]providers.Provider, configuration *recipes.Configuration, recipe *recipes.ResourceMetadata) error {
-	backend, err := generateKubernetesBackendConfig(recipe.ResourceID, configuration.Runtime.Kubernetes.Namespace)
-	if err != nil {
-		return err
-	}
-	configFile, err := os.Open(configFilePath)
-	if err != nil {
-		return fmt.Errorf("error opening file %q: %w", configFilePath, err)
-	}
-	defer configFile.Close()
-	var tfConfig TerraformConfig
-	err = json.NewDecoder(configFile).Decode(&tfConfig)
-	if err != nil {
-		return err
-	}
-	tfConfig.Terraform = TerraformDefinition{
-		RequiredProviders: getRequiredProvidersDetails(requiredProviders, supportedProviders),
-		Backend:           backend,
-		RequiredVersion:   ">= " + terraformVersion,
-	}
-	// Write the updated config data to the Terraform json config file
-	updatedConfig, err := json.MarshalIndent(tfConfig, "", "  ")
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(configFilePath, updatedConfig, 0666)
-	if err != nil {
-		return err
-	}
-	return err
-}
-
-// getRequiredProvidersDetails adds source and version information for the provider names that are required for the module.
-func getRequiredProvidersDetails(requiredProviders []string, supportedProviders map[string]providers.Provider) map[string]providers.ProviderDefinition {
-	providerConfigs := make(map[string]providers.ProviderDefinition)
-	for _, provider := range requiredProviders {
-		builder, ok := supportedProviders[provider]
-		if !ok {
-			// No-op: For any other provider, Radius doesn't generate any custom configuration.
-			continue
-		}
-		config := builder.BuildRequiredProvider()
-		providerConfigs[provider] = config
-	}
-	return providerConfigs
 }
 
 // getProviderConfigs generates the Terraform provider configurations for the required providers.
