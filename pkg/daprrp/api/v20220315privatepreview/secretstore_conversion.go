@@ -28,8 +28,8 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a DaprSecretStoreResource to a datamodel.DaprSecretStore and returns an error if the mode is
-// unsupported or required properties are missing.
+// ConvertTo converts a versioned DaprSecretStoreResource to a version-agnostic datamodel.DaprSecretStore and
+// returns an error if the mode is unsupported or required properties are missing.
 func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.DaprSecretStore{
 		BaseResource: v1.BaseResource{
@@ -78,8 +78,8 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to a DaprSecretStoreResource, setting the ID, Name, Type, SystemData,
-// Location, Tags, and Properties fields.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versionined DaprSecretStoreResource. It returns
+// an error if the mode is unsupported or required properties are missing.
 func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprSecretStore, ok := src.(*datamodel.DaprSecretStore)
 	if !ok {

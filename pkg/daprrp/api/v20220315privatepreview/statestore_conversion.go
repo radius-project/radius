@@ -12,7 +12,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a DaprStateStoreResource to a DaprStateStore and returns an error if the required
+// ConvertTo converts a versioned DaprStateStoreResource to a version-agnostic data model and returns an error if the required
 // properties are not present.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
@@ -72,8 +72,8 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to a DaprStateStoreResource and returns an error if the conversion fails or
-// the mode of the DaprStateStore is not specified.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versioned DaprStateStoreResource and returns an
+// error if the conversion fails or the mode of the DaprStateStore is not specified.
 func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprStateStore, ok := src.(*datamodel.DaprStateStore)
 	if !ok {

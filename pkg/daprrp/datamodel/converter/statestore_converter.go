@@ -26,7 +26,7 @@ import (
 
 // # Function Explanation
 //
-// StateStoreDataModelToVersioned converts a datamodel.DaprStateStore to a versioned model interface based on the
+// StateStoreDataModelToVersioned converts a version-agnostic datamodel.DaprStateStore to a versioned model interface based on the
 // version string provided, or returns an error if the version is not supported.
 func StateStoreDataModelToVersioned(model *datamodel.DaprStateStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -43,7 +43,7 @@ func StateStoreDataModelToVersioned(model *datamodel.DaprStateStore, version str
 // # Function Explanation
 //
 // StateStoreDataModelFromVersioned unmarshals a JSON byte slice into a DaprStateStoreResource struct, then converts it to
-// a DaprStateStore struct and returns it, or an error if the version is unsupported.
+// a version-agnostic DaprStateStore struct and returns it, or an error if the version is unsupported.
 func StateStoreDataModelFromVersioned(content []byte, version string) (*datamodel.DaprStateStore, error) {
 	switch version {
 	case v20220315privatepreview.Version:

@@ -28,9 +28,8 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a DaprPubSubBrokerResource to a DaprPubSubBroker, setting the mode, type, version, metadata,
-// environment, application, topic, and resource based on the properties of the DaprPubSubBrokerResource. It returns an
-// error if the mode is not specified or if the required properties for the mode are not specified.
+// ConvertTo converts a versioned DaprPubSubBrokerResource to a version-agnostic DaprPubSubBroker. It returns an error
+// if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -91,8 +90,8 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to a DaprPubSubBrokerResource, returning an error if the mode of the
-// DaprPubSubBroker is not specified.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versioned DaprPubSubBrokerResource,
+// returning an error if the conversion fails.
 func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprPubSub, ok := src.(*datamodel.DaprPubSubBroker)
 	if !ok {
