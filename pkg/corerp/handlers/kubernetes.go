@@ -182,7 +182,6 @@ func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerF
 func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
-
 	// Add event handlers to the pod informer
 	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh)
 
@@ -203,32 +202,32 @@ func (handler *kubernetesHandler) startInformers(ctx context.Context, item clien
 }
 
 // Check if all the pods in the deployment are ready
-func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- error) {
+func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- error) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
 
 	// Get the deployment
 	deployment, err := informerFactory.Apps().V1().Deployments().Lister().Deployments(item.GetNamespace()).Get(item.GetName())
 	if err != nil {
 		logger.Info("Unable to find deployment")
-		return
+		return false
 	}
 
 	deploymentReplicaSet := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
 	if deploymentReplicaSet == nil {
 		logger.Info("Unable to find replica set for deployment")
-		return
+		return false
 	}
 
 	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh)
 	if !allReady {
 		logger.Info("All pods are not ready yet for deployment")
-		return
+		return false
 	}
 
 	// Check if the deployment is ready
 	if deployment.Status.ObservedGeneration != deployment.Generation {
 		logger.Info(fmt.Sprintf("Deployment status is not ready: Observed generation: %d, Generation: %d, Deployment Replicaset: %s", deployment.Status.ObservedGeneration, deployment.Generation, deploymentReplicaSet.Name))
-		return
+		return false
 	}
 
 	// ObservedGeneration should be updated to latest generation to avoid stale replicas
@@ -238,20 +237,21 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
 			logger.Info(fmt.Sprintf("Deployment is ready. Observed generation: %d, Generation: %d, Deployment Replicaset: %s", deployment.Status.ObservedGeneration, deployment.Generation, deploymentReplicaSet.Name))
 			doneCh <- nil
-			return
+			return true
 		} else {
 			logger.Info(fmt.Sprintf("Deployment status is: %s - %s, Reason: %s, Deployment replicaset: %s", c.Type, c.Status, c.Reason, deploymentReplicaSet.Name))
 		}
 	}
+	return false
 }
 
 // Gets the current replica set for the deployment
 func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment) *v1.ReplicaSet {
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", deployment.Name, "namespace", deployment.Namespace)
-
 	if deployment == nil {
 		return nil
 	}
+
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", deployment.Name, "namespace", deployment.Namespace)
 
 	// List all replicasets for this deployment
 	rl, err := informerFactory.Apps().V1().ReplicaSets().Lister().ReplicaSets(deployment.Namespace).List(labels.Everything())
@@ -387,6 +387,8 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 					message += " LastTerminationState: " + cs.LastTerminationState.Terminated.Message
 				}
 				return false, fmt.Errorf("Container state is 'Waiting' Reason: %s, Message: %s", cs.State.Waiting.Reason, message)
+			} else {
+				return false, nil
 			}
 		} else if cs.State.Running == nil {
 			// The container is not yet running

@@ -39,29 +39,18 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func int32Ptr(i int32) *int32 { return &i }
-
-type workqueueItem struct {
-	key  string
-	obj  interface{}
-	meta *metav1.ObjectMeta
-}
-
 var testDeployment = &v1.Deployment{
 	TypeMeta: metav1.TypeMeta{
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
 	},
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "test-deployment",
-		Namespace: "test-namespace",
-		Labels: map[string]string{
-			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-		},
+		Name:        "test-deployment",
+		Namespace:   "test-namespace",
 		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 	},
 	Spec: v1.DeploymentSpec{
-		Replicas: int32Ptr(1),
+		Replicas: to.Ptr(int32(1)),
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app": "test",
@@ -173,7 +162,7 @@ func TestPut(t *testing.T) {
 
 	for _, tc := range putTests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.TODO()
+			ctx := context.Background()
 
 			handler := kubernetesHandler{
 				client:              k8sutil.NewFakeKubeClient(nil),
@@ -200,7 +189,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		TypeMeta: metav1.TypeMeta{
@@ -345,7 +334,7 @@ func TestConvertToUnstructured(t *testing.T) {
 }
 
 func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
@@ -358,7 +347,7 @@ func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
 			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		},
 		Spec: v1.DeploymentSpec{
-			Replicas: int32Ptr(1),
+			Replicas: to.Ptr(int32(1)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": "test",
@@ -393,7 +382,7 @@ func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
 }
 
 func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -427,7 +416,7 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 }
 
 func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -651,8 +640,18 @@ func TestCheckPodStatus(t *testing.T) {
 			Name:      "test-pod",
 			Namespace: "test-namespace",
 		},
-		Status: corev1.PodStatus{
-			Conditions: []corev1.PodCondition{
+		Status: corev1.PodStatus{},
+	}
+
+	podTests := []struct {
+		podCondition    []corev1.PodCondition
+		containerStatus []corev1.ContainerStatus
+		isReady         bool
+		expectedError   string
+	}{
+		{
+			// Pod is unschedulable
+			podCondition: []corev1.PodCondition{
 				{
 					Type:    corev1.PodScheduled,
 					Status:  corev1.ConditionFalse,
@@ -660,39 +659,19 @@ func TestCheckPodStatus(t *testing.T) {
 					Message: "0/1 nodes are available: 1 Insufficient cpu.",
 				},
 			},
-			ContainerStatuses: []corev1.ContainerStatus{
-				{
-					Name:  "test-container",
-					Ready: true,
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
-				},
-			},
-		},
-	}
-	podTests := []struct {
-		podCondition    corev1.PodCondition
-		containerStatus corev1.ContainerStatus
-		isReady         bool
-		expectedError   string
-	}{
-		{
-			podCondition: corev1.PodCondition{
-				Type:    corev1.PodScheduled,
-				Status:  corev1.ConditionFalse,
-				Reason:  "Unschedulable",
-				Message: "0/1 nodes are available: 1 Insufficient cpu.",
-			},
 			isReady:       false,
 			expectedError: "Pod test-pod in namespace test-namespace is not scheduled. Reason: Unschedulable, Message: 0/1 nodes are available: 1 Insufficient cpu.",
 		},
 		{
-			containerStatus: corev1.ContainerStatus{
-				State: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						Reason:  "Error",
-						Message: "Container terminated due to an error",
+			// Container is in Terminated state
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Reason:  "Error",
+							Message: "Container terminated due to an error",
+						},
 					},
 				},
 			},
@@ -700,11 +679,15 @@ func TestCheckPodStatus(t *testing.T) {
 			expectedError: "Container state is 'Terminated' Reason: Error, Message: Container terminated due to an error",
 		},
 		{
-			containerStatus: corev1.ContainerStatus{
-				State: corev1.ContainerState{
-					Waiting: &corev1.ContainerStateWaiting{
-						Reason:  "CrashLoopBackOff",
-						Message: "Back-off 5m0s restarting failed container=test-container pod=test-pod",
+			// Container is in CrashLoopBackOff state
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "CrashLoopBackOff",
+							Message: "Back-off 5m0s restarting failed container=test-container pod=test-pod",
+						},
 					},
 				},
 			},
@@ -712,21 +695,97 @@ func TestCheckPodStatus(t *testing.T) {
 			expectedError: "Container state is 'Waiting' Reason: CrashLoopBackOff, Message: Back-off 5m0s restarting failed container=test-container pod=test-pod",
 		},
 		{
-			containerStatus: corev1.ContainerStatus{
-				State: corev1.ContainerState{
-					Running: &corev1.ContainerStateRunning{},
+			// Container is in ErrImagePull state
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "ErrImagePull",
+							Message: "Cannot pull image",
+						},
+					},
 				},
-				Ready: false,
+			},
+			isReady:       false,
+			expectedError: "Container state is 'Waiting' Reason: ErrImagePull, Message: Cannot pull image",
+		},
+		{
+			// Container is in ImagePullBackOff state
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "ImagePullBackOff",
+							Message: "ImagePullBackOff",
+						},
+					},
+				},
+			},
+			isReady:       false,
+			expectedError: "Container state is 'Waiting' Reason: ImagePullBackOff, Message: ImagePullBackOff",
+		},
+		{
+			// No container statuses available
+			isReady:       false,
+			expectedError: "",
+		},
+		{
+			// Container is in Waiting state but not a terminally failed state
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "ContainerCreating",
+							Message: "Container is being created",
+						},
+					},
+					Ready: false,
+				},
 			},
 			isReady:       false,
 			expectedError: "",
 		},
 		{
-			containerStatus: corev1.ContainerStatus{
-				State: corev1.ContainerState{
-					Running: &corev1.ContainerStateRunning{},
+			// Container's Running state is nil
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Running: nil,
+					},
+					Ready: false,
 				},
-				Ready: true,
+			},
+			isReady:       false,
+			expectedError: "",
+		},
+		{
+			// Readiness check is not yet passed
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+					Ready: false,
+				},
+			},
+			isReady:       false,
+			expectedError: "",
+		},
+		{
+			// Container is in Ready state
+			podCondition: nil,
+			containerStatus: []corev1.ContainerStatus{
+				{
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+					Ready: true,
+				},
 			},
 			isReady:       true,
 			expectedError: "",
@@ -736,8 +795,8 @@ func TestCheckPodStatus(t *testing.T) {
 	ctx := context.Background()
 	handler := &kubernetesHandler{}
 	for _, tc := range podTests {
-		pod.Status.Conditions[0] = tc.podCondition
-		pod.Status.ContainerStatuses[0] = tc.containerStatus
+		pod.Status.Conditions = tc.podCondition
+		pod.Status.ContainerStatuses = tc.containerStatus
 		isReady, err := handler.checkPodStatus(ctx, pod)
 		if tc.expectedError != "" {
 			require.Error(t, err)
@@ -951,7 +1010,79 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	err = <-doneCh
 
 	// Check that the deployment readiness was checked
+	require.Nil(t, err)
+}
+
+func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
+	// Create a fake Kubernetes fakeClient
+	fakeClient := fake.NewSimpleClientset()
+
+	ctx := context.Background()
+	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
+
+	// Create a Pod object
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod1",
+			Namespace: "test-namespace",
+			Labels: map[string]string{
+				"app": "test",
+			},
+		},
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
+				{
+					Type:   corev1.PodScheduled,
+					Status: corev1.ConditionTrue,
+				},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: true,
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+				},
+			},
+		},
+	}
+
+	// Add the Pod object to the fake Kubernetes clientset
+	_, err = fakeClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	require.NoError(t, err, "Failed to create Pod: %v", err)
+
+	// Create an informer factory and add the deployment to the cache
+	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
+	err = informerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(testDeployment)
+	require.NoError(t, err, "Failed to add deployment to informer cache")
+	err = informerFactory.Core().V1().Pods().Informer().GetIndexer().Add(pod)
+	require.NoError(t, err, "Failed to add pod to informer cache")
+	// Note: No replica set added
+
+	// Create a fake item and object
+	item := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":      "test-deployment",
+				"namespace": "test-namespace",
+			},
+		},
+	}
+
+	// Create a done channel
+	doneCh := make(chan error, 1)
+
+	// Call the checkDeploymentStatus function
+	handler := &kubernetesHandler{
+		clientSet: fakeClient,
+	}
+
+	allReady := handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+
+	// Check that the deployment readiness was checked
+	require.False(t, allReady)
 }
 
 func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
@@ -1035,7 +1166,7 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	require.Equal(t, err.Error(), "Container state is 'Terminated' Reason: Error, Message: Container terminated due to an error")
 }
 
-func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
+func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 	// Modify testDeployment to have a different generation than the observed generation
 	testDeployment.Generation = 2
 
@@ -1112,6 +1243,91 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 
 	// Check that the deployment readiness was checked
 	require.Zero(t, len(doneCh))
+}
+
+func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
+	// Create a fake Kubernetes fakeClient
+	fakeClient := fake.NewSimpleClientset()
+
+	ctx := context.Background()
+	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
+
+	// Create a Pod object
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pod1",
+			Namespace: "test-namespace",
+			Labels: map[string]string{
+				"app": "test",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Kind:       "ReplicaSet",
+					Name:       replicaSet.Name,
+					Controller: to.Ptr(true),
+				},
+			},
+		},
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
+				{
+					Type:   corev1.PodScheduled,
+					Status: corev1.ConditionTrue,
+				},
+			},
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:  "test-container",
+					Ready: true,
+					State: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{},
+					},
+				},
+			},
+		},
+	}
+
+	// Add the Pod object to the fake Kubernetes clientset
+	_, err = fakeClient.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	require.NoError(t, err, "Failed to create Pod: %v", err)
+
+	// Create an informer factory and add the deployment to the cache
+	informerFactory := informers.NewSharedInformerFactory(fakeClient, 0)
+	addTestObjects(t, fakeClient, informerFactory, testDeployment, replicaSet, pod)
+
+	testDeployment.Status = v1.DeploymentStatus{
+		Conditions: []v1.DeploymentCondition{
+			{
+				Type:    v1.DeploymentProgressing,
+				Status:  corev1.ConditionFalse,
+				Reason:  "NewReplicaSetAvailable",
+				Message: "Deployment has minimum availability",
+			},
+		},
+	}
+
+	// Create a fake item and object
+	item := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":      "test-deployment",
+				"namespace": "test-namespace",
+			},
+		},
+	}
+
+	// Create a done channel
+	doneCh := make(chan error, 1)
+
+	// Call the checkDeploymentStatus function
+	handler := &kubernetesHandler{
+		clientSet: fakeClient,
+	}
+
+	ready := handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+	require.False(t, ready)
 }
 
 func addTestObjects(t *testing.T, fakeClient *fake.Clientset, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, replicaSet *v1.ReplicaSet, pod *corev1.Pod) {
