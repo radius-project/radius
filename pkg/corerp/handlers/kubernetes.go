@@ -192,13 +192,15 @@ func (handler *kubernetesHandler) startDeploymentInformer(ctx context.Context, i
 		},
 	}
 
-	deploymentInformer.AddEventHandler(handlers)
+	_, err := deploymentInformer.AddEventHandler(handlers)
+	if err != nil {
+		return err
+	}
 	informers.Start(ctx.Done())
 
 	// Wait for the deployment informer's cache to be synced.
 	if !cache.WaitForCacheSync(ctx.Done(), deploymentInformer.HasSynced) {
-		err := fmt.Errorf("cache sync is failed for deployment informer: name: %s, namespace %s", item.GetName(), item.GetNamespace())
-		return err
+		return fmt.Errorf("cache sync is failed for deployment informer: name: %s, namespace %s", item.GetName(), item.GetNamespace())
 	}
 
 	return nil
