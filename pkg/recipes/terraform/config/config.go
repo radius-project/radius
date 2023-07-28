@@ -18,12 +18,19 @@ package config
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+)
+
+const (
+	terraformVersion = "1.1.0" // TODO make it configurable
 )
 
 // GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
@@ -123,6 +130,52 @@ func AddProviders(ctx context.Context, configFilePath string, requiredProviders 
 	return nil
 }
 
+func AddTerraformDefinition(ctx context.Context, configFilePath string, requiredProviders []string, supportedProviders map[string]providers.Provider, configuration *recipes.Configuration, recipe *recipes.ResourceMetadata) error {
+	backend, err := generateKubernetesBackendConfig(recipe.ResourceID, configuration.Runtime.Kubernetes.Namespace)
+	if err != nil {
+		return err
+	}
+	configFile, err := os.Open(configFilePath)
+	if err != nil {
+		return fmt.Errorf("error opening file %q: %w", configFilePath, err)
+	}
+	defer configFile.Close()
+	var tfConfig TerraformConfig
+	err = json.NewDecoder(configFile).Decode(&tfConfig)
+	if err != nil {
+		return err
+	}
+	tfConfig.Terraform = TerraformDefinition{
+		RequiredProviders: getRequiredProvidersDetails(requiredProviders, supportedProviders),
+		Backend:           backend,
+		RequiredVersion:   ">= " + terraformVersion,
+	}
+	// Write the updated config data to the Terraform json config file
+	updatedConfig, err := json.MarshalIndent(tfConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(configFilePath, updatedConfig, 0666)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func getRequiredProvidersDetails(requiredProviders []string, supportedProviders map[string]providers.Provider) map[string]providers.ProviderDefinition {
+	providerConfigs := make(map[string]providers.ProviderDefinition)
+	for _, provider := range requiredProviders {
+		builder, ok := supportedProviders[provider]
+		if !ok {
+			// No-op: For any other provider, Radius doesn't generate any custom configuration.
+			continue
+		}
+		config := builder.BuildRequiredProvider()
+		providerConfigs[provider] = config
+	}
+	return providerConfigs
+}
+
 // getProviderConfigs generates the Terraform provider configurations for the required providers.
 func getProviderConfigs(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) (map[string]any, error) {
 	providerConfigs := make(map[string]any)
@@ -143,4 +196,39 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 	}
 
 	return providerConfigs, nil
+}
+
+func GenerateSecretSuffix(resourceID string) (string, error) {
+	parsedID, err := resources.Parse(resourceID)
+	if err != nil {
+		return "", err
+	}
+
+	name := parsedID.Name()
+	maxResourceNameLen := 22
+	if len(name) >= maxResourceNameLen {
+		name = name[:maxResourceNameLen]
+	}
+
+	hasher := sha1.New()
+	_, _ = hasher.Write([]byte(strings.ToLower(parsedID.String())))
+	hash := hasher.Sum(nil)
+
+	suffix := fmt.Sprintf("%s.%x", name, hash)
+
+	return suffix, nil
+}
+
+func generateKubernetesBackendConfig(resourceID, namespace string) (map[string]interface{}, error) {
+	secretSuffix, err := GenerateSecretSuffix(resourceID)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"kubernetes": map[string]interface{}{
+			"config_path":   "~/.kube/config",
+			"secret_suffix": secretSuffix,
+			"namespace":     namespace,
+		},
+	}, nil
 }

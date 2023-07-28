@@ -28,7 +28,9 @@ import (
 )
 
 const (
-	AWSProviderName = "aws"
+	AWSProviderName    = "aws"
+	AWSProviderSource  = "hashicorp/aws"
+	AWSProviderVersion = "~> 4.0" // TODO make it configurable
 )
 
 type awsProvider struct{}
@@ -60,6 +62,12 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 	}
 
 	return config, nil
+}
+func (p *awsProvider) BuildRequiredProvider() ProviderDefinition {
+	return ProviderDefinition{
+		Source:  AWSProviderSource,
+		Version: AWSProviderVersion,
+	}
 }
 
 // parseAWSScope parses an AWS provider scope and returns the associated region

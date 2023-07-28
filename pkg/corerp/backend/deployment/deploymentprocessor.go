@@ -397,7 +397,6 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 
 		return envOpts, nil
 	}
-
 	if dp.k8sClient != nil {
 		// Find the public endpoint of the cluster (External IP or hostname of the contour-envoy service)
 		var services corev1.ServiceList

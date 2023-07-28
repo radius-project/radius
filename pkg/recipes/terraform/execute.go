@@ -24,11 +24,13 @@ import (
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewExecutor creates a new Executor to execute a Terraform recipe.
@@ -80,10 +82,31 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	if err != nil {
 		return nil, err
 	}
-
+	err = verifyKubernetesSecret(ctx, options)
+	if err != nil {
+		return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
+	}
 	return nil, nil
 }
-
+func verifyKubernetesSecret(ctx context.Context, options Options) error {
+	contextName, err := kubernetes.GetContextFromConfigFileIfExists("", "")
+	if err != nil {
+		return err
+	}
+	k8s, _, err := kubernetes.NewClientset(contextName)
+	if err != nil {
+		return err
+	}
+	secretSuffix, err := config.GenerateSecretSuffix(options.ResourceRecipe.ResourceID)
+	if err != nil {
+		return err
+	}
+	_, err = k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, secretSuffix, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -123,6 +146,11 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 
 	// Add the required providers to the terraform configuration
 	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
+		return err
+	}
+
+	err = config.AddTerraformDefinition(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig, options.ResourceRecipe)
+	if err != nil {
 		return err
 	}
 

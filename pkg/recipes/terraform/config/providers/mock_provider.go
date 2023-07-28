@@ -49,3 +49,17 @@ func (mr *MockProviderMockRecorder) BuildConfig(arg0, arg1 interface{}) *gomock.
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildConfig", reflect.TypeOf((*MockProvider)(nil).BuildConfig), arg0, arg1)
 }
+
+// BuildRequiredProvider mocks base method.
+func (m *MockProvider) BuildRequiredProvider() ProviderDefinition {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BuildRequiredProvider")
+	ret0, _ := ret[0].(ProviderDefinition)
+	return ret0
+}
+
+// BuildRequiredProvider indicates an expected call of BuildRequiredProvider.
+func (mr *MockProviderMockRecorder) BuildRequiredProvider() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildRequiredProvider", reflect.TypeOf((*MockProvider)(nil).BuildRequiredProvider))
+}

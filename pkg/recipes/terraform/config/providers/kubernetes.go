@@ -26,7 +26,9 @@ import (
 )
 
 const (
-	KubernetesProviderName = "kubernetes"
+	KubernetesProviderName    = "kubernetes"
+	KubernetesProviderSource  = "hashicorp/kubernetes"
+	KubernetesProviderVersion = "~> 2.0" // TODO make it configurable
 )
 
 type kubernetesProvider struct{}
@@ -54,4 +56,11 @@ func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes
 	// No additional config is needed if in cluster config is present.
 	// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs#in-cluster-config
 	return nil, nil
+}
+
+func (p *kubernetesProvider) BuildRequiredProvider() ProviderDefinition {
+	return ProviderDefinition{
+		Source:  KubernetesProviderSource,
+		Version: KubernetesProviderVersion,
+	}
 }

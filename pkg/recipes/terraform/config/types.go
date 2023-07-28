@@ -16,6 +16,8 @@ limitations under the License.
 
 package config
 
+import "github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
+
 const (
 	moduleSourceKey  = "source"
 	moduleVersionKey = "version"
@@ -25,9 +27,16 @@ const (
 
 // TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
 type TerraformConfig struct {
+	Terraform TerraformDefinition `json:"terraform"`
 	// Provider is the Terraform provider configuration.
 	Provider map[string]any `json:"provider,omitempty"`
 
 	// Module is the Terraform module configuration.
 	Module map[string]any `json:"module"`
+}
+
+type TerraformDefinition struct {
+	RequiredProviders map[string]providers.ProviderDefinition `json:"required_providers"`
+	Backend           map[string]interface{}                  `json:"backend"`
+	RequiredVersion   string                                  `json:"required_version"`
 }
