@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_credentials "github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -57,35 +58,64 @@ func newMockAzureCredentialsProvider() *mockAzureCredentialsProvider {
 // an AzureCredential or an error if the credentials are empty.
 func (p *mockAzureCredentialsProvider) Fetch(ctx context.Context, planeName, name string) (*ucp_credentials.AzureCredential, error) {
 	if p.testCredential == nil {
+		return nil, &secret.ErrNotFound{}
+	}
+
+	if p.testCredential.TenantID == "" && p.testCredential.ClientID == "" && p.testCredential.ClientSecret == "" {
+		return p.testCredential, nil
+	}
+
+	if p.testCredential.TenantID == "" {
 		return nil, errors.New("failed to fetch credential")
 	}
+
 	return p.testCredential, nil
 }
 
-func TestAzureProvider_BuildConfig(t *testing.T) {
+func TestAzureProvider_BuildConfig_InvalidScope_Error(t *testing.T) {
+	envConfig := &recipes.Configuration{
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "/test-sub/resourceGroups/test-rg",
+			},
+		},
+	}
+	p := &azureProvider{}
+	config, err := p.BuildConfig(testcontext.New(t), envConfig)
+	require.Nil(t, config)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "code BadRequest: err Invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope")
+}
+
+func TestAzureProvider_ParseScope(t *testing.T) {
 	tests := []struct {
-		desc           string
-		envConfig      *recipes.Configuration
-		expectedConfig map[string]any
-		expectedErrMsg string
+		desc                 string
+		envConfig            *recipes.Configuration
+		expectedSubscription string
+		expectedErrMsg       string
 	}{
 		{
-			desc:      "nil config",
-			envConfig: nil,
-			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
+			desc: "valid config scope",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+					},
+				},
 			},
-			expectedErrMsg: "",
+			expectedSubscription: testSubscription,
 		},
 		{
-			desc: "empty config",
+			desc:                 "nil config - no error",
+			envConfig:            nil,
+			expectedSubscription: "",
+		},
+		{
+			desc: "missing Azure provider config - no error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{},
 			},
-			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
-			},
-			expectedErrMsg: "",
+			expectedSubscription: "",
 		},
 		{
 			desc: "missing Azure provider scope - no error",
@@ -94,117 +124,45 @@ func TestAzureProvider_BuildConfig(t *testing.T) {
 					Azure: datamodel.ProvidersAzure{},
 				},
 			},
-			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
+			expectedSubscription: "",
+		},
+		{
+			desc: "missing subscription segment - error",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/test-sub/resourceGroups/test-rg",
+					},
+				},
 			},
-			expectedErrMsg: "code BadRequest: err Invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscriptionID is required in the scope",
+			expectedSubscription: "",
+			expectedErrMsg:       "code BadRequest: err Invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope",
+		},
+		{
+			desc: "invalid scope - error",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					Azure: datamodel.ProvidersAzure{
+						Scope: "invalid",
+					},
+				},
+			},
+			expectedSubscription: "",
+			expectedErrMsg:       "code BadRequest: err Invalid Azure provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &azureProvider{}
-			config := p.BuildConfig(testcontext.New(t), tt.envConfig)
-			require.Equal(t, len(tt.expectedConfig), len(config))
-		})
-	}
-}
-
-func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
-	tests := []struct {
-		desc           string
-		subscriptionID string
-		credentials    ucp_credentials.AzureCredential
-		expectedConfig map[string]any
-	}{
-		{
-			desc:           "valid config",
-			subscriptionID: testSubscription,
-			credentials:    testAzureCredentials,
-			expectedConfig: map[string]any{
-				AzureFeaturesParam:     map[string]any{},
-				AzureSubIDParam:        testSubscription,
-				AzureClientIDParam:     testAzureCredentials.ClientID,
-				AzureClientSecretParam: testAzureCredentials.ClientSecret,
-				AzureTenantIDParam:     testAzureCredentials.TenantID,
-			},
-		},
-		{
-			desc:        "missing subscription",
-			credentials: testAzureCredentials,
-			expectedConfig: map[string]any{
-				AzureFeaturesParam:     map[string]any{},
-				AzureClientIDParam:     testAzureCredentials.ClientID,
-				AzureClientSecretParam: testAzureCredentials.ClientSecret,
-				AzureTenantIDParam:     testAzureCredentials.TenantID,
-			},
-		},
-		{
-			desc:           "missing credentials",
-			subscriptionID: testSubscription,
-			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
-				AzureSubIDParam:    testSubscription,
-			},
-		},
-		{
-			desc: "invalid credentials",
-			credentials: ucp_credentials.AzureCredential{
-				ClientID:     "",
-				ClientSecret: testAzureCredentials.ClientSecret,
-				TenantID:     testAzureCredentials.TenantID,
-			},
-			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			p := &azureProvider{}
-			azConfig := map[string]any{
-				AzureFeaturesParam: map[string]any{},
+			subscription, err := p.parseScope(testcontext.New(t), tt.envConfig)
+			if tt.expectedErrMsg != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedSubscription, subscription)
 			}
-			config := p.generateProviderConfigMap(testcontext.New(t), azConfig, &tt.credentials, tt.subscriptionID)
-			require.Equal(t, len(tt.expectedConfig), len(config))
-			require.Equal(t, tt.expectedConfig[AzureFeaturesParam], config[AzureFeaturesParam])
-			require.Equal(t, tt.expectedConfig[AzureSubIDParam], config[AzureSubIDParam])
-			require.Equal(t, tt.expectedConfig[AzureClientIDParam], config[AzureClientIDParam])
-			require.Equal(t, tt.expectedConfig[AzureClientSecretParam], config[AzureClientSecretParam])
-			require.Equal(t, tt.expectedConfig[AzureTenantIDParam], config[AzureTenantIDParam])
-		})
-	}
-}
-
-func TestAzureProvider_ParseScope(t *testing.T) {
-	tests := []struct {
-		desc                 string
-		scope                string
-		expectedSubscription string
-	}{
-		{
-			desc:                 "valid scope",
-			scope:                "/subscriptions/test-sub/resourceGroups/test-rg",
-			expectedSubscription: testSubscription,
-		},
-		{
-			desc:                 "empty scope",
-			scope:                "",
-			expectedSubscription: "",
-		},
-		{
-			desc:                 "invalid scope",
-			scope:                "/test-sub/resourceGroups/test-rg",
-			expectedSubscription: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			p := &azureProvider{}
-			region, _ := p.parseScope(testcontext.New(t), tt.scope)
-			require.Equal(t, tt.expectedSubscription, region)
 		})
 	}
 }
@@ -222,20 +180,106 @@ func TestAzureProvider_getCredentialsProvider(t *testing.T) {
 		secretProviderOptions: secretProviderOptions,
 		ucpConn:               connection,
 	}
-	azureCredentialProvider := provider.getCredentialsProvider(testcontext.New(t))
+	azureCredentialProvider, _ := provider.getCredentialsProvider()
 	require.NotNil(t, azureCredentialProvider)
 }
 
-func TestAzureProvider_FetchCredentials_Success(t *testing.T) {
+func TestFetchAzureCredentials_Success(t *testing.T) {
 	credentialsProvider := newMockAzureCredentialsProvider()
-	c := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
+	c, _ := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
 	require.NotNil(t, c)
 	require.Equal(t, testAzureCredentials, *c)
 }
 
-func TestAzureProvider_FetchCredentialsError(t *testing.T) {
+func TestFetchAzureCredentialsNotFound_Success(t *testing.T) {
 	credentialsProvider := newMockAzureCredentialsProvider()
 	credentialsProvider.testCredential = nil
-	c := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
+	c, err := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
+	require.NoError(t, err)
 	require.Nil(t, c)
+}
+
+func TestAzureFetchCredentialsEmptyValues_Success(t *testing.T) {
+	credentialsProvider := newMockAzureCredentialsProvider()
+	credentialsProvider.testCredential.TenantID = ""
+	credentialsProvider.testCredential.ClientID = ""
+	credentialsProvider.testCredential.ClientSecret = ""
+	c, err := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
+	require.NoError(t, err)
+	require.Nil(t, c)
+}
+
+func TestFetchAzureCredentialsError_Failure(t *testing.T) {
+	credentialsProvider := newMockAzureCredentialsProvider()
+	credentialsProvider.testCredential.TenantID = ""
+	c, err := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
+	require.Error(t, err)
+	require.Nil(t, c)
+}
+
+func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
+	tests := []struct {
+		desc           string
+		subscription   string
+		credentials    ucp_credentials.AzureCredential
+		expectedConfig map[string]any
+	}{
+		{
+			desc:         "valid config",
+			subscription: testSubscription,
+			credentials:  testAzureCredentials,
+			expectedConfig: map[string]any{
+				AzureFeaturesParam:     map[string]any{},
+				AzureSubIDParam:        testSubscription,
+				AzureTenantIDParam:     testAzureCredentials.TenantID,
+				AzureClientIDParam:     testAzureCredentials.ClientID,
+				AzureClientSecretParam: testAzureCredentials.ClientSecret,
+			},
+		},
+		{
+			desc:        "missing subscription",
+			credentials: testAzureCredentials,
+			expectedConfig: map[string]any{
+				AzureFeaturesParam:     map[string]any{},
+				AzureTenantIDParam:     testAzureCredentials.TenantID,
+				AzureClientIDParam:     testAzureCredentials.ClientID,
+				AzureClientSecretParam: testAzureCredentials.ClientSecret,
+			},
+		},
+		{
+			desc:         "missing credentials",
+			subscription: testSubscription,
+			expectedConfig: map[string]any{
+				AzureFeaturesParam: map[string]any{},
+				AzureSubIDParam:    testSubscription,
+			},
+		},
+		{
+			desc: "invalid credentials",
+			credentials: ucp_credentials.AzureCredential{
+				TenantID:     "",
+				ClientID:     testAzureCredentials.ClientID,
+				ClientSecret: testAzureCredentials.ClientSecret,
+			},
+			expectedConfig: map[string]any{
+				AzureFeaturesParam: map[string]any{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			p := &azureProvider{}
+			azConfig := map[string]any{
+				AzureFeaturesParam: map[string]any{},
+			}
+			config := p.generateProviderConfigMap(azConfig, &tt.credentials, tt.subscription)
+			require.Equal(t, len(tt.expectedConfig), len(config))
+			require.Equal(t, tt.expectedConfig[AzureFeaturesParam], config[AzureFeaturesParam])
+			require.Equal(t, tt.expectedConfig[AzureSubIDParam], config[AzureSubIDParam])
+			require.Equal(t, tt.expectedConfig[AzureClientIDParam], config[AzureClientIDParam])
+			require.Equal(t, tt.expectedConfig[AzureClientSecretParam], config[AzureClientSecretParam])
+			require.Equal(t, tt.expectedConfig[AzureTenantIDParam], config[AzureTenantIDParam])
+		})
+	}
 }

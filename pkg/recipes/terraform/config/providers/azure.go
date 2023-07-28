@@ -27,11 +27,12 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// Provider's config parameter need to match the values expected by Terraform
+// Provider's config parameters need to match the values expected by Terraform
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
 const (
 	AzureProviderName      = "azurerm"
@@ -54,67 +55,94 @@ func NewAzureProvider(ucpConn sdk.Connection, secretProviderOptions ucp_provider
 
 // BuildConfig generates the Terraform provider configuration for Azure provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
-func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) map[string]any {
+func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
 	// features block is required for Azure provider even if it is empty
 	// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
-	azureConfig := map[string]any{
+	config := map[string]any{
 		AzureFeaturesParam: map[string]any{},
 	}
 
+	subscriptionID, err := p.parseScope(ctx, envConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	credentialsProvider, err := p.getCredentialsProvider()
+	if err != nil {
+		return nil, err
+	}
+	credentials, err := fetchAzureCredentials(ctx, credentialsProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	return p.generateProviderConfigMap(config, credentials, subscriptionID), nil
+}
+
+// parseScope parses an Azure provider scope and returns the associated subscription id
+// Example scope: /subscriptions/test-sub/resourceGroups/test-rg
+func (p *azureProvider) parseScope(ctx context.Context, envConfig *recipes.Configuration) (subscriptionID string, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if (envConfig == nil) || (envConfig.Providers == datamodel.Providers{}) || (envConfig.Providers.Azure == datamodel.ProvidersAzure{}) || envConfig.Providers.Azure.Scope == "" {
 		logger.Info("Azure provider scope is not configured on the Environment, skipping Azure subscriptionID configuration.")
-		return azureConfig
+		return "", nil
 	}
 
-	subscriptionID, _ := p.parseScope(ctx, envConfig.Providers.Azure.Scope)
-	credentials := fetchAzureCredentials(ctx, p.getCredentialsProvider(ctx))
-
-	return p.generateProviderConfigMap(ctx, azureConfig, credentials, subscriptionID)
-}
-
-func (p *azureProvider) generateProviderConfigMap(ctx context.Context, configMap map[string]any, credentials *credentials.AzureCredential, subscriptionID string) map[string]any {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	if credentials != nil && credentials.ClientID != "" && credentials.TenantID != "" && credentials.ClientSecret != "" {
-		configMap[AzureClientIDParam] = credentials.ClientID
-		configMap[AzureClientSecretParam] = credentials.ClientSecret
-		configMap[AzureTenantIDParam] = credentials.TenantID
-	} else {
-		logger.Info("Azure credentials provider is not configured on the Environment, skipping credentials configuration.")
-	}
-
-	return configMap
-}
-
-func (p *azureProvider) parseScope(ctx context.Context, scope string) (subscriptionID string, err error) {
-	// logger := ucplog.FromContextOrDiscard(ctx)
+	scope := envConfig.Providers.Azure.Scope
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
 		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid Azure provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error()))
 	}
 
-	return parsedScope.FindScope(resources.SubscriptionsSegment), nil
-}
-
-func (p *azureProvider) getCredentialsProvider(ctx context.Context) *credentials.AzureCredentialProvider {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	azureCredentialProvider, err := credentials.NewAzureCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
-	if err != nil {
-		logger.Info(fmt.Sprintf("Error creating Azure credential provider, skipping credentials configuration. Err: %s ", err.Error()))
-		return nil
+	subscription := parsedScope.FindScope(resources.SubscriptionsSegment)
+	if subscription == "" {
+		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid Azure provider scope %q is configured on the Environment, subscription is required in the scope", scope))
 	}
 
-	return azureCredentialProvider
+	return subscription, nil
 }
 
-// fetchAzureCredentials Fetches Azure credentials from UCP. Returns nil if an error is received or the credentials are empty.
-func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credentials.CredentialProvider[credentials.AzureCredential]) *credentials.AzureCredential {
+func (p *azureProvider) getCredentialsProvider() (*credentials.AzureCredentialProvider, error) {
+	azureCredentialProvider, err := credentials.NewAzureCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
+	if err != nil {
+		return nil, err
+	}
+
+	return azureCredentialProvider, nil
+}
+
+// fetchAzureCredentials Fetches Azure credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.
+func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credentials.CredentialProvider[credentials.AzureCredential]) (*credentials.AzureCredential, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	credentials, err := azureCredentialsProvider.Fetch(context.Background(), credentials.AzureCloud, "default")
 	if err != nil {
-		logger.Info(fmt.Sprintf("Error fetching Azure credentials, skipping credentials configuration. Err: %s", err.Error()))
-		return nil
+		notFound := &secret.ErrNotFound{}
+		if notFound.Is(err) {
+			logger.Info("Azure credentials are not registered to the Environment, skipping credentials configuration.")
+			return nil, nil
+		}
+
+		return nil, err
 	}
 
-	return credentials
+	if credentials == nil || credentials.ClientID == "" || credentials.TenantID == "" || credentials.ClientSecret == "" {
+		logger.Info("Azure credentials are not registered to the Environment, skipping credentials configuration.")
+		return nil, nil
+	}
+
+	return credentials, nil
+}
+
+func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, credentials *credentials.AzureCredential, subscriptionID string) map[string]any {
+	if subscriptionID != "" {
+		configMap[AzureSubIDParam] = subscriptionID
+	}
+
+	if credentials != nil && credentials.ClientID != "" && credentials.TenantID != "" && credentials.ClientSecret != "" {
+		configMap[AzureClientIDParam] = credentials.ClientID
+		configMap[AzureClientSecretParam] = credentials.ClientSecret
+		configMap[AzureTenantIDParam] = credentials.TenantID
+	}
+
+	return configMap
 }

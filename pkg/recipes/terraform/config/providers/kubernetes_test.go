@@ -30,6 +30,17 @@ func TestKubernetesProvider_BuildConfig(t *testing.T) {
 	}
 
 	p := &kubernetesProvider{}
-	config := p.BuildConfig(context.Background(), nil)
+	config, err := p.BuildConfig(context.Background(), nil)
+	require.NoError(t, err)
 	require.Equal(t, expectedConfig, config)
+}
+
+func TestKubernetesProvider_BuildConfig_Error(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "testvalue")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
+
+	p := &kubernetesProvider{}
+	config, err := p.BuildConfig(context.Background(), nil)
+	require.Error(t, err)
+	require.Nil(t, config)
 }

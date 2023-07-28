@@ -47,7 +47,7 @@ type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
 	ucpConn *sdk.Connection
 
-	// secretProvider is the secret store provider to manage credentials tracked by UCP.
+	// secretProviderOptions contains provider information of the secret to managed credentials tracked by UCP.
 	secretProviderOptions ucp_provider.SecretProviderOptions
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_credentials "github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -55,30 +56,64 @@ func newMockAWSCredentialsProvider() *mockAWSCredentialsProvider {
 // an AWSCredential or an error if the credentials are empty.
 func (p *mockAWSCredentialsProvider) Fetch(ctx context.Context, planeName, name string) (*ucp_credentials.AWSCredential, error) {
 	if p.testCredential == nil {
+		return nil, &secret.ErrNotFound{}
+	}
+
+	if p.testCredential.AccessKeyID == "" && p.testCredential.SecretAccessKey == "" {
+		return p.testCredential, nil
+	}
+
+	if p.testCredential.AccessKeyID == "" {
 		return nil, errors.New("failed to fetch credential")
 	}
+
 	return p.testCredential, nil
 }
 
-func TestAWSProvider_BuildConfig(t *testing.T) {
+func TestAWSProvider_BuildConfig_InvalidScope_Error(t *testing.T) {
+	envConfig := &recipes.Configuration{
+		Providers: datamodel.Providers{
+			AWS: datamodel.ProvidersAWS{
+				Scope: "/planes/aws/aws/accounts/0000/test-region",
+			},
+		},
+	}
+	p := &awsProvider{}
+	config, err := p.BuildConfig(testcontext.New(t), envConfig)
+	require.Nil(t, config)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "code BadRequest: err Invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope")
+}
+
+func TestAWSProvider_ParseScope(t *testing.T) {
 	tests := []struct {
 		desc           string
 		envConfig      *recipes.Configuration
-		expectedConfig map[string]any
+		expectedRegion string
 		expectedErrMsg string
 	}{
 		{
-			desc:           "nil config",
-			envConfig:      nil,
-			expectedConfig: nil,
+			desc: "valid config scope",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
+					},
+				},
+			},
+			expectedRegion: testRegion,
 		},
 		{
-			desc: "empty config",
+			desc:           "nil config - no error",
+			envConfig:      nil,
+			expectedRegion: "",
+		},
+		{
+			desc: "missing AWS provider config - no error",
 			envConfig: &recipes.Configuration{
 				Providers: datamodel.Providers{},
 			},
-			expectedConfig: nil,
-			expectedErrMsg: "",
+			expectedRegion: "",
 		},
 		{
 			desc: "missing AWS provider scope - no error",
@@ -87,18 +122,96 @@ func TestAWSProvider_BuildConfig(t *testing.T) {
 					AWS: datamodel.ProvidersAWS{},
 				},
 			},
-			expectedConfig: nil,
-			expectedErrMsg: "",
+			expectedRegion: "",
+		},
+		{
+			desc: "missing region segment - error",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/0000/test-region",
+					},
+				},
+			},
+			expectedRegion: "",
+			expectedErrMsg: "code BadRequest: err Invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope",
+		},
+		{
+			desc: "invalid scope - error",
+			envConfig: &recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "invalid",
+					},
+				},
+			},
+			expectedRegion: "",
+			expectedErrMsg: "code BadRequest: err Invalid AWS provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
-			config := p.BuildConfig(testcontext.New(t), tt.envConfig)
-			require.Equal(t, len(tt.expectedConfig), len(config))
+			region, err := p.parseScope(testcontext.New(t), tt.envConfig)
+			if tt.expectedErrMsg != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.expectedErrMsg)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedRegion, region)
+			}
 		})
 	}
+}
+
+func TestAwsProvider_getCredentialsProvider(t *testing.T) {
+	secretProviderOptions := ucp_provider.SecretProviderOptions{
+		Provider: ucp_provider.TypeKubernetesSecret,
+	}
+
+	endpoint := "http://test.endpoint.com"
+	connection, err := sdk.NewDirectConnection(endpoint)
+	require.NoError(t, err)
+
+	provider := &awsProvider{
+		secretProviderOptions: secretProviderOptions,
+		ucpConn:               connection,
+	}
+	awsCredentialProvider, _ := provider.getCredentialsProvider()
+	require.NotNil(t, awsCredentialProvider)
+}
+
+func TestFetchAWSCredentials_Success(t *testing.T) {
+	credentialsProvider := newMockAWSCredentialsProvider()
+	c, _ := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
+	require.NotNil(t, c)
+	require.Equal(t, testAWSCredentials, *c)
+}
+
+func TestFetchAWSCredentialsNotFound_Success(t *testing.T) {
+	credentialsProvider := newMockAWSCredentialsProvider()
+	credentialsProvider.testCredential = nil
+	c, err := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
+	require.NoError(t, err)
+	require.Nil(t, c)
+}
+
+func TestFetchAWSCredentialsEmptyAccessKeys_Success(t *testing.T) {
+	credentialsProvider := newMockAWSCredentialsProvider()
+	credentialsProvider.testCredential.AccessKeyID = ""
+	credentialsProvider.testCredential.SecretAccessKey = ""
+	c, err := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
+	require.NoError(t, err)
+	require.Nil(t, c)
+}
+
+func TestFetchAWSCredentialsError_Failure(t *testing.T) {
+	credentialsProvider := newMockAWSCredentialsProvider()
+	credentialsProvider.testCredential.AccessKeyID = ""
+	c, err := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
+	require.Error(t, err)
+	require.Nil(t, c)
 }
 
 func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
@@ -146,74 +259,11 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
-			config := p.generateProviderConfigMap(testcontext.New(t), &tt.credentials, tt.region)
+			config := p.generateProviderConfigMap(&tt.credentials, tt.region)
 			require.Equal(t, len(tt.expectedConfig), len(config))
 			require.Equal(t, tt.expectedConfig[AWSRegionParam], config[AWSRegionParam])
 			require.Equal(t, tt.expectedConfig[AWSAccessKeyParam], config[AWSAccessKeyParam])
 			require.Equal(t, tt.expectedConfig[AWSSecretKeyParam], config[AWSSecretKeyParam])
 		})
 	}
-}
-
-func TestAWSProvider_ParseScope(t *testing.T) {
-	tests := []struct {
-		desc           string
-		scope          string
-		expectedRegion string
-	}{
-		{
-			desc:           "valid scope",
-			scope:          "/planes/aws/aws/accounts/0000/regions/test-region",
-			expectedRegion: testRegion,
-		},
-		{
-			desc:           "empty scope",
-			scope:          "",
-			expectedRegion: "",
-		},
-		{
-			desc:           "invalid scope",
-			scope:          "/planes/aws/aws/accounts/0000/test-region",
-			expectedRegion: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			p := &awsProvider{}
-			region, _ := p.parseScope(testcontext.New(t), tt.scope)
-			require.Equal(t, tt.expectedRegion, region)
-		})
-	}
-}
-
-func TestAwsProvider_getCredentialsProvider(t *testing.T) {
-	secretProviderOptions := ucp_provider.SecretProviderOptions{
-		Provider: ucp_provider.TypeKubernetesSecret,
-	}
-
-	endpoint := "http://test.endpoint.com"
-	connection, err := sdk.NewDirectConnection(endpoint)
-	require.NoError(t, err)
-
-	provider := &awsProvider{
-		secretProviderOptions: secretProviderOptions,
-		ucpConn:               connection,
-	}
-	awsCredentialProvider := provider.getCredentialsProvider(testcontext.New(t))
-	require.NotNil(t, awsCredentialProvider)
-}
-
-func TestFetchCredentials_Success(t *testing.T) {
-	credentialsProvider := newMockAWSCredentialsProvider()
-	c := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
-	require.NotNil(t, c)
-	require.Equal(t, testAWSCredentials, *c)
-}
-
-func TestFetchCredentialsErrorSucceeds(t *testing.T) {
-	credentialsProvider := newMockAWSCredentialsProvider()
-	credentialsProvider.testCredential = nil
-	c := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
-	require.Nil(t, c)
 }
