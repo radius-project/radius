@@ -537,6 +537,8 @@ jobs:
             --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes --verbose
+      - name: Log and upload pod states
+        uses: ./.github/actions/log-pod-states
   report-failure:
     name: Report test failure
     needs: [build, tests]
@@ -554,21 +556,3 @@ jobs:
               labels: ['bug', 'test-failure'],
               body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
-  log-pod-states:
-    name: Log pod states
-    needs: [build, tests]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
-    # if: failure()
-    steps:
-      - uses: azure/setup-kubectl@v3
-        with:
-          version: 'v1.25.0'
-      - name: Log pod states
-        run: |
-          ./.github/scripts/log-pod-states.sh ${{ env.POD_STATE_LOG_FILENAME }}
-      - name: Upload pod state file
-        uses: actions/upload-artifact@v3
-        with:
-          name: pod-states.txt
-          path: |
-            ${{ env.POD_STATE_LOG_FILENAME }}

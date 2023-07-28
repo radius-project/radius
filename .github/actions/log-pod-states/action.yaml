@@ -1,0 +1,22 @@
+name: "Log pod states"
+description: "Logs and uploads pod states"
+inputs:
+  POD_STATE_LOG_FILENAME:
+    description: 'The filename for the pod state log'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: azure/setup-kubectl@v3
+      with:
+        version: "v1.25.0"
+    - name: Log pod states
+      shell: bash
+      run: |
+        ./.github/scripts/log-pod-states.sh ${{ inputs.POD_STATE_LOG_FILENAME }}
+    - name: Upload pod state file
+      uses: actions/upload-artifact@v3
+      with:
+        name: pod-states.txt
+        path: |
+          ${{ inputs.POD_STATE_LOG_FILENAME }}
