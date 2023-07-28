@@ -53,8 +53,7 @@ const (
 
 // CloudProviderStatus is the representation of a cloud provider configuration.
 type CloudProviderStatus struct {
-
-	// Name is the name/kind of the provider. For right now this only supports Azure.
+	// Name is the name/kind of the provider. For right now this only supports Azure and AWS.
 	Name string
 
 	// Enabled is the enabled/disabled status of the provider.
@@ -172,9 +171,9 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 	}
 
 	res := []CloudProviderStatus{}
-	for _, provider := range providerList {
+	if len(providerList) > 0 {
 		res = append(res, CloudProviderStatus{
-			Name:    *provider.Name,
+			Name:    AzureCredential,
 			Enabled: true,
 		})
 	}

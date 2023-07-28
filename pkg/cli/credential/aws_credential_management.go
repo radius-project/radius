@@ -124,9 +124,9 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 	}
 
 	res := []CloudProviderStatus{}
-	for _, provider := range providerList {
+	if len(providerList) > 0 {
 		res = append(res, CloudProviderStatus{
-			Name:    *provider.Name,
+			Name:    AWSCredential,
 			Enabled: true,
 		})
 	}
