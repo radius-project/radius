@@ -24,13 +24,14 @@ import (
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // NewExecutor creates a new Executor to execute a Terraform recipe.
@@ -49,7 +50,7 @@ type executor struct {
 	ucpConn *sdk.Connection
 }
 
-func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
+func (e *executor) Deploy(ctx context.Context, options Options, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Install Terraform
@@ -82,21 +83,13 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	if err != nil {
 		return nil, err
 	}
-	err = verifyKubernetesSecret(ctx, options)
+	err = verifyKubernetesSecret(ctx, options, k8sClientSet)
 	if err != nil {
 		return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
 	}
 	return nil, nil
 }
-func verifyKubernetesSecret(ctx context.Context, options Options) error {
-	contextName, err := kubernetes.GetContextFromConfigFileIfExists("", "")
-	if err != nil {
-		return err
-	}
-	k8s, _, err := kubernetes.NewClientset(contextName)
-	if err != nil {
-		return err
-	}
+func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface) error {
 	secretSuffix, err := config.GenerateSecretSuffix(options.ResourceRecipe.ResourceID)
 	if err != nil {
 		return err

@@ -31,13 +31,20 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
+	"k8s.io/client-go/kubernetes"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions) Driver {
-	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn), options: options}
+func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) Driver {
+	return &terraformDriver{
+		terraformExecutor: terraform.NewExecutor(&ucpConn),
+		options:           options,
+		k8sClient:         k8sClient,
+		k8sClientSet:      k8sClientSet,
+	}
 }
 
 // Options represents the options required for execution of Terraform driver.
@@ -50,9 +57,12 @@ type TerraformOptions struct {
 type terraformDriver struct {
 	// terraformExecutor is used to execute Terraform commands - deploy, destroy, etc.
 	terraformExecutor terraform.TerraformExecutor
-
 	// options contains options required to execute a Terraform recipe, such as the path to the directory mounted to the container where Terraform can be executed in sub directories.
 	options TerraformOptions
+	// k8sClient is the Kubernetes controller runtime client.
+	k8sClient controller_runtime.Client
+	// k8sClientSet is the Kubernetes client.
+	k8sClientSet kubernetes.Interface
 }
 
 // Execute deploys a Terraform recipe by using the Terraform CLI through terraform-exec
@@ -92,7 +102,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		EnvConfig:      &configuration,
 		ResourceRecipe: &recipe,
 		EnvRecipe:      &definition,
-	})
+	}, d.k8sClient, d.k8sClientSet)
 	if err != nil {
 		return nil, err
 	}

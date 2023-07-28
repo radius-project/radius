@@ -38,7 +38,7 @@ func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	ctrl := gomock.NewController(t)
 	tfExecutor := terraform.NewMockTerraformExecutor(ctrl)
 
-	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}}
+	driver := terraformDriver{tfExecutor, TerraformOptions{Path: t.TempDir()}, nil, nil}
 
 	return *tfExecutor, driver
 }
@@ -94,7 +94,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, options, nil, nil).Times(1).Return(expectedOutput, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
@@ -122,7 +122,7 @@ func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 		EnvRecipe:      &envRecipe,
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
+	tfExecutor.EXPECT().Deploy(ctx, options, nil, nil).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
 	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
@@ -155,7 +155,7 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any(), nil, nil).Times(1).Return(expectedOutput, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)

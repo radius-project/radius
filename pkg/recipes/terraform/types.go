@@ -20,13 +20,15 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/recipes"
+	"k8s.io/client-go/kubernetes"
+	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 //go:generate mockgen -destination=./mock_executor.go -package=terraform -self_package github.com/project-radius/radius/pkg/recipes/terraform github.com/project-radius/radius/pkg/recipes/terraform TerraformExecutor
 
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
-	Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error)
+	Deploy(ctx context.Context, options Options, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) (*recipes.RecipeOutput, error)
 }
 
 // Options represents the options required to build inputs to interact with Terraform.

@@ -112,7 +112,7 @@ func (s *Service) Run(ctx context.Context) error {
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
 				Path: s.Options.Config.Terraform.Path,
-			}),
+			}, s.KubeClient, s.KubeClientSet),
 		},
 	})
 
