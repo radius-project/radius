@@ -179,7 +179,7 @@ func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// User has confirmed
 			copy := *m
 			copy.result = resultConfimed
-			return &copy, tea.Quit // TODO: quit.
+			return &copy, tea.Quit
 		}
 	}
 
