@@ -60,3 +60,6 @@ cadl/node_modules
 
 # terraform state
 .terraform/
+
+# temporary test files starting with tmp-
+tmp-*
