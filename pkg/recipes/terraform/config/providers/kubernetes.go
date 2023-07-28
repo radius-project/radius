@@ -58,6 +58,7 @@ func (p *kubernetesProvider) BuildConfig(ctx context.Context, envConfig *recipes
 	return nil, nil
 }
 
+// BuildRequiredProvider generates the Terraform required_provider configuration for Kubernetes provider.
 func (p *kubernetesProvider) BuildRequiredProvider() ProviderDefinition {
 	return ProviderDefinition{
 		Source:  KubernetesProviderSource,

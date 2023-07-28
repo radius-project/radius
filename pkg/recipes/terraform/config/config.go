@@ -130,6 +130,7 @@ func AddProviders(ctx context.Context, configFilePath string, requiredProviders 
 	return nil
 }
 
+// AddTerraformDefinition generates and adds required terraform version, backed information and required providers supported by radius to the Terraform main config file present at the configFilePath.
 func AddTerraformDefinition(ctx context.Context, configFilePath string, requiredProviders []string, supportedProviders map[string]providers.Provider, configuration *recipes.Configuration, recipe *recipes.ResourceMetadata) error {
 	backend, err := generateKubernetesBackendConfig(recipe.ResourceID, configuration.Runtime.Kubernetes.Namespace)
 	if err != nil {
@@ -162,6 +163,7 @@ func AddTerraformDefinition(ctx context.Context, configFilePath string, required
 	return err
 }
 
+// getRequiredProvidersDetails adds source and version information for the provider names that are required for the module.
 func getRequiredProvidersDetails(requiredProviders []string, supportedProviders map[string]providers.Provider) map[string]providers.ProviderDefinition {
 	providerConfigs := make(map[string]providers.ProviderDefinition)
 	for _, provider := range requiredProviders {
@@ -198,6 +200,7 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 	return providerConfigs, nil
 }
 
+// GenerateSecretSuffix returns a unique string from the resourceID which is used as key for kubernetes secret in defining terraform backend.
 func GenerateSecretSuffix(resourceID string) (string, error) {
 	parsedID, err := resources.Parse(resourceID)
 	if err != nil {
@@ -219,6 +222,7 @@ func GenerateSecretSuffix(resourceID string) (string, error) {
 	return suffix, nil
 }
 
+// generateKubernetesBackendConfig returns terraform backend configuration to be added into the terraform config file.
 func generateKubernetesBackendConfig(resourceID, namespace string) (map[string]interface{}, error) {
 	secretSuffix, err := GenerateSecretSuffix(resourceID)
 	if err != nil {

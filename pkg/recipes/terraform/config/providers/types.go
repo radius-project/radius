@@ -30,6 +30,8 @@ type Provider interface {
 	// Returns a map of Terraform provider name to values representing the provider configuration.
 	// Returns an error if the provider configuration cannot be generated.
 	BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error)
+	// BuildRequiredProvider generates the Terraform required_provider configuration for the provider.
+	// Returns required provider definition with source and version information.
 	BuildRequiredProvider() ProviderDefinition
 }
 

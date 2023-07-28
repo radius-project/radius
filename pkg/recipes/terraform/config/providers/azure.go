@@ -67,6 +67,7 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 	return config, nil
 }
 
+// BuildRequiredProvider generates the Terraform required_provider configuration for Azure provider.
 func (p *azureProvider) BuildRequiredProvider() ProviderDefinition {
 	return ProviderDefinition{
 		Source:  AzureProviderSoruce,

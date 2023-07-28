@@ -63,6 +63,8 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 
 	return config, nil
 }
+
+// BuildRequiredProvider generates the Terraform required_provider configuration for AWS provider.
 func (p *awsProvider) BuildRequiredProvider() ProviderDefinition {
 	return ProviderDefinition{
 		Source:  AWSProviderSource,
