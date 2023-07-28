@@ -18,7 +18,6 @@ package portforward
 
 import (
 	"context"
-	"sort"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,15 +27,19 @@ import (
 	k8sclient "k8s.io/client-go/kubernetes"
 )
 
+const (
+	revisionAnnotation = "deployment.kubernetes.io/revision"
+)
+
 // findStaleReplicaSets finds stale ReplicaSets that we should ignore.
 //
 // This will list all ReplicaSets that are members of the application, then group them by
-// owner (Deployment) then sort them by timestamp and return the old ones.
+// owner (Deployment) and return the ReplicaSets that does not match the provided desiredRevision.
 //
 // This is useful because we frequently run a port-forward right after completion of a Radius
 // deployment. We want to make sure we're port-forwarding to fresh replicas, not the ones
 // that are being scaled-down.
-func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, namespace string, applicationName string) (map[string]bool, error) {
+func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, namespace, applicationName, desiredRevision string) (map[string]bool, error) {
 	outdated := map[string]bool{}
 
 	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{applicationName})
@@ -63,20 +66,13 @@ func findStaleReplicaSets(ctx context.Context, client k8sclient.Interface, names
 	}
 
 	for _, values := range grouped {
-		// Sort in place
-		sort.Slice(values, func(i, j int) bool {
-			// Sort by CreationTimestamp using name as tiebreaker
-			if values[i].CreationTimestamp.Equal(&values[j].CreationTimestamp) {
-				return values[i].Name < values[j].Name
+		for _, replicaSet := range values {
+			revision, ok := replicaSet.Annotations[revisionAnnotation]
+			// If the annotation is missing, we assume it's outdated.
+			// If the annotation is present, but the revision is not the one we want, we assume it's outdated.
+			if !ok || revision != desiredRevision {
+				outdated[replicaSet.Name] = true
 			}
-
-			// Newest first
-			return !values[i].CreationTimestamp.Before(&values[j].CreationTimestamp)
-		})
-
-		// Skip newest, add rest to outdated list
-		for _, set := range values[1:] {
-			outdated[set.Name] = true
 		}
 	}
 
