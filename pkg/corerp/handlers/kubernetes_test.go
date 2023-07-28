@@ -937,14 +937,6 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 			},
 		},
 	}
-	obj := &workqueueItem{
-		key: item.GetName(),
-		obj: testDeployment,
-		meta: &metav1.ObjectMeta{
-			Name:      item.GetName(),
-			Namespace: item.GetNamespace(),
-		},
-	}
 
 	// Create a done channel
 	doneCh := make(chan error, 1)
@@ -954,7 +946,7 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	go handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
+	go handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 
 	err = <-doneCh
 
@@ -1026,14 +1018,6 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 			},
 		},
 	}
-	obj := &workqueueItem{
-		key: item.GetName(),
-		obj: testDeployment,
-		meta: &metav1.ObjectMeta{
-			Name:      item.GetName(),
-			Namespace: item.GetNamespace(),
-		},
-	}
 
 	// Create a done channel
 	doneCh := make(chan error, 1)
@@ -1043,7 +1027,7 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	go handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
+	go handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 	err = <-doneCh
 
 	// Check that the deployment readiness was checked
@@ -1115,14 +1099,6 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 			},
 		},
 	}
-	obj := &workqueueItem{
-		key: item.GetName(),
-		obj: testDeployment,
-		meta: &metav1.ObjectMeta{
-			Name:      item.GetName(),
-			Namespace: item.GetNamespace(),
-		},
-	}
 
 	// Create a done channel
 	doneCh := make(chan error, 1)
@@ -1132,7 +1108,7 @@ func TestCheckDeploymentStatus_ObserverGenerationMismatch(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	handler.checkDeploymentStatus(ctx, informerFactory, item, obj, doneCh)
+	handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 
 	// Check that the deployment readiness was checked
 	require.Zero(t, len(doneCh))

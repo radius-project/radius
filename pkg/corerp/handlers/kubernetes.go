@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -169,52 +168,42 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	}
 }
 
-func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	informers := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
-
-	// Add event handlers to the pod informer
-	informers.Core().V1().Pods().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			handler.checkDeploymentStatus(ctx, informers, item, obj, doneCh)
+			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 		},
 		UpdateFunc: func(_, newObj any) {
-			handler.checkDeploymentStatus(ctx, informers, item, newObj, doneCh)
+			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 		},
 	})
+}
+
+func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
+
+	// Add event handlers to the pod informer
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh)
 
 	// Add event handlers to the deployment informer
-	informers.Apps().V1().Deployments().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			handler.checkDeploymentStatus(ctx, informers, item, obj, doneCh)
-		},
-		UpdateFunc: func(_, obj any) {
-			handler.checkDeploymentStatus(ctx, informers, item, obj, doneCh)
-		},
-	})
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().Deployments().Informer(), item, doneCh)
 
 	// Add event handlers to the replicaset informer
-	informers.Apps().V1().ReplicaSets().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj any) {
-			handler.checkDeploymentStatus(ctx, informers, item, obj, doneCh)
-		},
-		UpdateFunc: func(_, obj any) {
-			handler.checkDeploymentStatus(ctx, informers, item, obj, doneCh)
-		},
-	})
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().ReplicaSets().Informer(), item, doneCh)
 
 	// Start the informers
-	informers.Start(ctx.Done())
+	informerFactory.Start(ctx.Done())
 
 	// Wait for the deployment and pod informer's cache to be synced.
-	informers.WaitForCacheSync(ctx.Done())
+	informerFactory.WaitForCacheSync(ctx.Done())
 
 	logger.Info(fmt.Sprintf("Informers started and caches synced for deployment: %s in namespace: %s", item.GetName(), item.GetNamespace()))
 	return nil
 }
 
 // Check if all the pods in the deployment are ready
-func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, obj any, doneCh chan<- error) {
+func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- error) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
 
 	// Get the deployment
@@ -237,33 +226,35 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 	}
 
 	// Check if the deployment is ready
-	if deployment.Status.ObservedGeneration == deployment.Generation {
-		// ObservedGeneration should be updated to latest generation to avoid stale replicas
-		for _, c := range deployment.Status.Conditions {
-			// check for complete deployment condition
-			// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
-			if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
-				logger.Info(fmt.Sprintf("Deployment is ready. Observed generation: %d, Generation: %d, Deployment Replicaset: %s", deployment.Status.ObservedGeneration, deployment.Generation, deploymentReplicaSet.Name))
-				doneCh <- nil
-				return
-			} else {
-				logger.Info(fmt.Sprintf("Deployment status is: %s - %s, Reason: %s, Deployment replicaset: %s", c.Type, c.Status, c.Reason, deploymentReplicaSet.Name))
-			}
+	if deployment.Status.ObservedGeneration != deployment.Generation {
+		logger.Info(fmt.Sprintf("Deployment status is not ready: Observed generation: %d, Generation: %d, Deployment Replicaset: %s", deployment.Status.ObservedGeneration, deployment.Generation, deploymentReplicaSet.Name))
+		return
+	}
+
+	// ObservedGeneration should be updated to latest generation to avoid stale replicas
+	for _, c := range deployment.Status.Conditions {
+		// check for complete deployment condition
+		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
+		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
+			logger.Info(fmt.Sprintf("Deployment is ready. Observed generation: %d, Generation: %d, Deployment Replicaset: %s", deployment.Status.ObservedGeneration, deployment.Generation, deploymentReplicaSet.Name))
+			doneCh <- nil
+			return
+		} else {
+			logger.Info(fmt.Sprintf("Deployment status is: %s - %s, Reason: %s, Deployment replicaset: %s", c.Type, c.Status, c.Reason, deploymentReplicaSet.Name))
 		}
 	}
 }
 
 // Gets the current replica set for the deployment
-func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object) *v1.ReplicaSet {
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
+func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment) *v1.ReplicaSet {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", deployment.Name, "namespace", deployment.Namespace)
 
-	deployment := item.(*v1.Deployment)
 	if deployment == nil {
 		return nil
 	}
 
 	// List all replicasets for this deployment
-	rl, err := informerFactory.Apps().V1().ReplicaSets().Lister().ReplicaSets(item.GetNamespace()).List(labels.Everything())
+	rl, err := informerFactory.Apps().V1().ReplicaSets().Lister().ReplicaSets(deployment.Namespace).List(labels.Everything())
 	if err != nil {
 		// This is a valid state which will eventually be resolved. Therefore, only log the error here.
 		logger.Info(fmt.Sprintf("Unable to list replicasets for deployment: %s", err.Error()))
@@ -272,15 +263,10 @@ func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.
 
 	if len(rl) == 0 {
 		// This is a valid state which will eventually be resolved. Therefore, only log the error here.
-		logger.Info("Unable to find any replicasets")
 		return nil
 	}
 
-	deploymentRevisionStr := deployment.Annotations["deployment.kubernetes.io/revision"]
-	deploymentRevision, err := strconv.ParseInt(deploymentRevisionStr, 10, 64)
-	if err != nil {
-		return nil
-	}
+	deploymentRevision := deployment.Annotations["deployment.kubernetes.io/revision"]
 
 	// Find the latest ReplicaSet associated with the deployment
 	for _, rs := range rl {
@@ -290,13 +276,8 @@ func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.
 		if rs.Annotations == nil {
 			continue
 		}
-		revisionStr, ok := rs.Annotations["deployment.kubernetes.io/revision"]
+		revision, ok := rs.Annotations["deployment.kubernetes.io/revision"]
 		if !ok {
-			continue
-		}
-
-		revision, err := strconv.ParseInt(revisionStr, 10, 64)
-		if err != nil {
 			continue
 		}
 
@@ -323,12 +304,13 @@ func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informe
 
 	allReady := true
 	for _, pod := range podsInDeployment {
-		status, err := handler.checkPodStatus(ctx, &pod)
+		podReady, err := handler.checkPodStatus(ctx, &pod)
 		if err != nil {
 			// Terminate the deployment and return the error encountered
 			doneCh <- err
+			return false
 		}
-		if !status {
+		if !podReady {
 			allReady = false
 		}
 	}
