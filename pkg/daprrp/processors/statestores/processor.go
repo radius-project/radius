@@ -18,6 +18,7 @@ package statestores
 
 import (
 	"context"
+	"errors"
 
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -40,13 +41,21 @@ type Processor struct {
 // Process validates resource properties, and applies output values from the recipe output. If the resource is being
 // provisioned manually, it creates a Dapr component in Kubernetes.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprStateStore, options processors.Options) error {
+	daprInstalled, err := datamodel.IsDaprInstalled(ctx, p.Client)
+	if err != nil {
+		return err
+	}
+	if !daprInstalled {
+		return errors.New(datamodel.DaprMissingError)
+	}
+
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddComputedStringField("componentName", &resource.Properties.ComponentName, func() (string, *processors.ValidationError) {
 		return kubernetes.NormalizeDaprResourceName(resource.Name), nil
 	})
 
-	err := validator.SetAndValidate(options.RecipeOutput)
+	err = validator.SetAndValidate(options.RecipeOutput)
 	if err != nil {
 		return err
 	}
