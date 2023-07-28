@@ -1,22 +1,24 @@
 import radius as radius
 
 param magpieimage string
+
+param location string = resourceGroup().location
 param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-environment-recipes-env'
+  name: 'daprrp-environment-secretstore-recipes-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-environment-recipes-env'
+      namespace: 'daprrp-environment-secretstore-recipes-env'
     }
     recipes: {
-      'Applications.Link/daprStateStores': {
+      'Applications.Dapr/secretStores': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/dapr-state-store:${version}'
+          templatePath: '${registry}/test/functional/shared/recipes/dapr-secret-store:${version}'
         }
       }
     }
@@ -24,25 +26,26 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-sts-recipe'
+  name: 'daprrp-resources-secretstore-recipe'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-dapr-sts-recipe'
+        namespace: 'daprrp-resources-secretstore-recipe'
       }
     ]
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-ctnr-old'
+resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'gnrc-scs-ctnr-recipe'
+  location: location
   properties: {
     application: app.id
     connections: {
-      daprstatestore: {
-        source: statestore.id
+      daprsecretstore: {
+        source: secretstore.id
       }
     }
     container: {
@@ -56,17 +59,18 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'dapr-sts-recipe-ctnr'
+        appId: 'gnrc-ss-ctnr-recipe'
         appPort: 3000
       }
     ]
   }
 }
 
-resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-old'
+resource secretstore 'Applications.Dapr/secretStores@2022-03-15-privatepreview' = {
+  name: 'gnrc-scs-recipe'
+  location: location
   properties: {
-    application: app.id
     environment: env.id
+    application: app.id
   }
 }

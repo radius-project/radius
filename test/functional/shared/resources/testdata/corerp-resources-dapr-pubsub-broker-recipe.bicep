@@ -5,7 +5,7 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-env'
+  name: 'dpsb-recipe-env-old'
   properties: {
     compute: {
       kind: 'kubernetes'
@@ -24,7 +24,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-app'
+  name: 'dpsb-recipe-app-old'
   properties: {
     environment: env.id
     extensions: [
@@ -37,7 +37,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-app-ctnr'
+  name: 'dpsb-recipe-app-ctnr-old'
   properties: {
     application: app.id
     connections: {
@@ -64,7 +64,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource pubsubBroker 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe'
+  name: 'dpsb-recipe-old'
   properties: {
     application: app.id
     environment: env.id

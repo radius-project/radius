@@ -5,19 +5,19 @@ param environment string
 param namespace string = 'default'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-statestore-manual'
+  name: 'dpsb-manual-app'
   properties: {
     environment: environment
   }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-ctnr-old'
+  name: 'dpsb-manual-app-ctnr'
   properties: {
     application: app.id
     connections: {
-      daprstatestore: {
-        source: statestore.id
+      daprpubsub: {
+        source: pubsubBroker.id
       }
     }
     container: {
@@ -31,7 +31,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'gnrc-sts-ctnr'
+        appId: 'dpsb-manual-app-ctnr'
         appPort: 3000
       }
     ]
@@ -39,23 +39,23 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 
-module redis 'modules/redis-selfhost.bicep' = {
-  name: 'dapr-sts-manual-redis-deployment-old'
+module redis '../../../shared/resources/testdata/modules/redis-selfhost.bicep' = {
+  name: 'dpsb-manual-redis-deployment'
   params: {
-    name: 'dapr-sts-manual-redis'
+    name: 'dpsb-manual-redis'
     namespace: namespace
     application: app.name
   }
 }
 
 
-resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-old'
+resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2022-03-15-privatepreview' = {
+  name: 'dpsb-manual'
   properties: {
     application: app.id
     environment: environment
     resourceProvisioning: 'manual'
-    type: 'state.redis'
+    type: 'pubsub.redis'
     metadata: {
       redisHost: '${redis.outputs.host}:${redis.outputs.port}'
       redisPassword: ''

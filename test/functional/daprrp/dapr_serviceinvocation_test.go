@@ -26,9 +26,9 @@ import (
 )
 
 func Test_DaprServiceInvocation(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-serviceinvocation.bicep"
+	template := "resources/testdata/daprrp-resources-serviceinvocation.bicep"
 	name := "dapr-serviceinvocation"
-	appNamespace := "default-dapr-serviceinvocation"
+	appNamespace := "default-serviceinvocation"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -40,12 +40,12 @@ func Test_DaprServiceInvocation(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "dapr-frontend-old",
+						Name: "dapr-frontend",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dapr-backend-old",
+						Name: "dapr-backend",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -54,8 +54,8 @@ func Test_DaprServiceInvocation(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-frontend-old"),
-						validation.NewK8sPodForResource(name, "dapr-backend-old"),
+						validation.NewK8sPodForResource(name, "dapr-frontend"),
+						validation.NewK8sPodForResource(name, "dapr-backend"),
 					},
 				},
 			},

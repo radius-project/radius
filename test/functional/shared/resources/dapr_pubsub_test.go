@@ -29,8 +29,8 @@ import (
 
 func Test_DaprPubSubBroker_Manual(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-broker-manual.bicep"
-	name := "dpsb-manual-app"
-	appNamespace := "default-dpsb-manual-app"
+	name := "dpsb-manual-app-old"
+	appNamespace := "default-dpsb-manual-app-old"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -38,17 +38,17 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dpsb-manual-app",
+						Name: "dpsb-manual-app-old",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "dpsb-manual-app-ctnr",
+						Name: "dpsb-manual-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-manual",
-						Type: validation.DaprPubSubBrokersResource,
+						Name: "dpsb-manual-old",
+						Type: validation.O_DaprPubSubBrokersResource,
 						App:  name,
 					},
 				},
@@ -56,9 +56,9 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-manual-app-ctnr"),
-						validation.NewK8sPodForResource(name, "dpsb-manual-redis").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dpsb-manual-redis").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dpsb-manual-app-ctnr-old"),
+						validation.NewK8sPodForResource(name, "dpsb-manual-redis-old").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dpsb-manual-redis-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -70,8 +70,8 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 
 func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-broker-recipe.bicep"
-	name := "dpsb-recipe-app"
-	appNamespace := "dpsb-recipe-env"
+	name := "dpsb-recipe-app-old"
+	appNamespace := "dpsb-recipe-env-old"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -79,22 +79,22 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dpsb-recipe-env",
+						Name: "dpsb-recipe-env-old",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "dpsb-recipe-app",
+						Name: "dpsb-recipe-app-old",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-recipe-app-ctnr",
+						Name: "dpsb-recipe-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-recipe",
-						Type: validation.DaprPubSubBrokersResource,
+						Name: "dpsb-recipe-old",
+						Type: validation.O_DaprPubSubBrokersResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
@@ -112,7 +112,7 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-recipe-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dpsb-recipe-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},

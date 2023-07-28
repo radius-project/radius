@@ -5,15 +5,15 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-environment-recipes-env'
+  name: 'daprrp-environment-recipes-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-environment-recipes-env'
+      namespace: 'daprrp-environment-recipes-env'
     }
     recipes: {
-      'Applications.Link/daprStateStores': {
+      'Applications.Dapr/stateStores': {
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/dapr-state-store:${version}'
@@ -24,20 +24,20 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-sts-recipe'
+  name: 'daprrp-resources-sts-recipe'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-dapr-sts-recipe'
+        namespace: 'daprrp-resources-sts-recipe'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-ctnr-old'
+  name: 'dapr-sts-recipe-ctnr'
   properties: {
     application: app.id
     connections: {
@@ -63,8 +63,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-old'
+resource statestore 'Applications.Dapr/stateStores@2022-03-15-privatepreview' = {
+  name: 'dapr-sts-recipe'
   properties: {
     application: app.id
     environment: env.id
