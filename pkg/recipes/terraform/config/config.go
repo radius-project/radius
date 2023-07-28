@@ -160,7 +160,8 @@ func GenerateSecretSuffix(resourceID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	id := parsedID.String()
+	fmt.Println(id)
 	name := parsedID.Name()
 	maxResourceNameLen := 22
 	if len(name) >= maxResourceNameLen {

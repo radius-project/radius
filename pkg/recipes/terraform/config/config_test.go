@@ -17,10 +17,13 @@ limitations under the License.
 package config
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -543,4 +546,19 @@ func TestAddProviders_WriteConfigFileError(t *testing.T) {
 	// Assert that AddProviders returns an error.
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "permission denied")
+}
+
+func TestGenerateSecretSuffix_invalid_resourceid(t *testing.T) {
+	_, err := GenerateSecretSuffix("/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis")
+	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
+}
+
+func TestGenerateSecretSuffix_with_lengthy_resource_name(t *testing.T) {
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/invalid-redis-cache-name"
+	act, err := GenerateSecretSuffix(resourceID)
+	require.NoError(t, err)
+	hasher := sha1.New()
+	_, _ = hasher.Write([]byte(strings.ToLower(resourceID)))
+	hash := hasher.Sum(nil)
+	require.Equal(t, act, "invalid-redis-cache-na."+fmt.Sprintf("%x", hash))
 }
