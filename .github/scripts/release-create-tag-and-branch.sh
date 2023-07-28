@@ -18,7 +18,19 @@
 
 set -xe
 
+# does_tag_exist checks if a tag exists in the remote repository
+function does_tag_exist() {
+  if git ls-remote --tags origin $1 | grep -q $1; then
+    true
+  else
+    false
+  fi
+}
+
+# Repo to create tags and branches for (e.g. radius)
 REPOSITORY=$1
+
+# Tag version (e.g. v0.1.0)
 VERSION=$2
 
 if [[ -z "$REPOSITORY" ]]; then
@@ -40,12 +52,17 @@ RELEASE_BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
 # TAG_NAME should be the version (e.g. v0.1.0)
 TAG_NAME=$VERSION
 
+if does_tag_exist $TAG_NAME; then
+  echo "Tag $TAG_NAME already exists in the remote repository $REPOSITORY. Skipping..."
+  exit 0
+fi
+
 echo "Version: ${VERSION}"
 echo "Version number: ${VERSION_NUMBER}"
 echo "Release branch name: ${RELEASE_BRANCH_NAME}"
 echo "Tag name: ${TAG_NAME}"
 
-echo "Creating release branches and tags for ${REPOSITORY}..."
+echo "Creating release branch and tags for ${REPOSITORY}..."
 
 pushd $REPOSITORY
 RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME)

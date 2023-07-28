@@ -24,6 +24,7 @@ on:
       - 'versions.yaml'
 
 env:
+  REPOS: 'radius,bicep,deployment-engine,recipes'
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
 
 jobs:
@@ -63,30 +64,19 @@ jobs:
         run: |
           git config --global user.name "Radius CI Bot"
           git config --global user.email "radiuscoreteam@service.microsoft.com"
-      - name: Get release version from versions.yaml
-        id: getReleaseVersion
+      - name: Get supported versions from versions.yaml
+        id: getSupportedVersions
         uses: mikefarah/yq@v4.34.2
         with:
-          cmd: yq '.supported[0].version' versions.yaml
+          # Get a comma-separated list of supported versions
+          cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
       - name: Generate release summary
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
-          echo "* Release driver: $GITHUB_ACTOR "> $GITHUB_STEP_SUMMARY
-          echo "* Release version: ${{ steps.getReleaseVersion.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "* Release driver: $GITHUB_ACTOR ">> $GITHUB_STEP_SUMMARY
+          echo "* Repos: ${{ env.REPOS }}" >> $GITHUB_STEP_SUMMARY
+          echo "* Supported versions: ${{ steps.getSupportedVersions.outputs.result }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
-      - name: Release project-radius/radius version ${{ steps.getReleaseVersion.outputs.result }}
+      - name: Create tags and branches
         run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh radius ${{ steps.getReleaseVersion.outputs.result }}
-        if: success()
-      - name: Release project-radius/bicep version ${{ steps.getReleaseVersion.outputs.result }}
-        run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh bicep ${{ steps.getReleaseVersion.outputs.result }}
-        if: success()
-      - name: Release project-radius/deployment-engine version ${{ steps.getReleaseVersion.outputs.result }}
-        run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh deployment-engine ${{ steps.getReleaseVersion.outputs.result }}
-        if: success()
-      - name: Release project-radius/recipes version ${{ steps.getReleaseVersion.outputs.result }}
-        run: |
-          ./radius/.github/scripts/release-create-repo-tag.sh recipes ${{ steps.getReleaseVersion.outputs.result }}
-        if: success()
+          ./.github/scripts/release-create-tags-and-branches.sh ${{ env.REPOS }} ${{ steps.getSupportedVersions.outputs.result }}
