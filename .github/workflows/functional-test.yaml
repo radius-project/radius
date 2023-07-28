@@ -129,7 +129,7 @@ jobs:
               fs.appendFileSync(process.env.GITHUB_ENV,
                 `DE_IMAGE=${clientPayload.de_image}\n`+
                 `DE_TAG=${clientPayload.de_tag}\n`+
-                `CHECKOUT_REPO=${github.repository}\n`+
+                `CHECKOUT_REPO=${{ github.repository }}\n`+
                 `CHECKOUT_REF=refs/heads/main`
               );
             }
