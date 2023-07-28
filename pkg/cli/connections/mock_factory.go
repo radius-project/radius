@@ -30,7 +30,6 @@ type MockFactory struct {
 	ApplicationsManagementClient clients.ApplicationsManagementClient
 	CredentialManagementClient   cli_credential.CredentialManagementClient
 	DiagnosticsClient            clients.DiagnosticsClient
-	// TODO support other client types when needed.
 }
 
 // # Function Explanation
