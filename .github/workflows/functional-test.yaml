@@ -67,6 +67,8 @@ env:
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+  # The repository name
+  REPO_NAME: '${{ github.repository }}'
   # The Deployment Engine image
   DE_IMAGE: 'radius.azurecr.io/deployment-engine'
   # The Deployment Engine tag
@@ -129,7 +131,7 @@ jobs:
               fs.appendFileSync(process.env.GITHUB_ENV,
                 `DE_IMAGE=${clientPayload.de_image}\n`+
                 `DE_TAG=${clientPayload.de_tag}\n`+
-                `CHECKOUT_REPO=${github.repository}\n`+
+                `CHECKOUT_REPO=${process.env.REPO_NAME}\n`+
                 `CHECKOUT_REF=refs/heads/main`
               );
             }
