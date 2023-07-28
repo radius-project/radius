@@ -94,7 +94,7 @@ func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes
 	if err != nil {
 		return err
 	}
-	_, err = k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, secretSuffix, metav1.GetOptions{})
+	_, err = k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, "tfstate-default-"+secretSuffix, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
