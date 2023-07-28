@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tf-module-server
+  labels:
+    app.kubernetes.io/name: tf-module-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tf-module-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tf-module-server
+    spec:
+      containers:
+      - image: nginx:1.25
+        name: nginx
+        # nginx will serve files found in this directory.
+        volumeMounts:
+        - name: content
+          mountPath: /usr/share/nginx/html
+        # Applying some limits here to ensure we don't starve other test workloads
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "100m"
+          limits:
+            memory: "300Mi"
+            cpu: "200m"
+      volumes:
+      - name: content
+        configMap:
+          name: tf-module-server-content
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tf-module-server
+  labels:
+    app.kubernetes.io/name: tf-module-server
+spec:
+  ports:
+    - name: http
+      port: 80
+  selector:
+    app.kubernetes.io/name: tf-module-server

@@ -28,6 +28,11 @@ import (
 )
 
 // NewCommand creates an instance of the `rad install kubernetes` command and runner.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a new Runner object, which is used to install Radius onto a Kubernetes cluster.
+// It also adds flags to the command for setting values, reinstalling, and specifying a Helm chart.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -74,6 +79,11 @@ type Runner struct {
 }
 
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with Helm and Output fields initialized with the HelmInterface and Output
+// objects returned by the Factory's GetHelmInterface and GetOutput methods respectively.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		Helm:   factory.GetHelmInterface(),
@@ -87,6 +97,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad install kubernetes` command.
+//
+// # Function Explanation
+//
+// Run checks if a Radius installation exists, and if it does, it either skips the installation or reinstalls it
+// depending on the "Reinstall" flag. If no installation is found, it installs the version of Radius corresponding
+// to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
