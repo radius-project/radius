@@ -100,7 +100,10 @@ type ResourceDeploymentsClient struct {
 	baseURI  string
 }
 
-// NewDeploymentsClient creates an instance of the ResourceDeploymentClient.
+// # Function Explanation
+//
+// NewResourceDeploymentsClient creates a new ResourceDeploymentsClient with the provided options and returns an error if
+// the options are invalid.
 func NewResourceDeploymentsClient(options *Options) (*ResourceDeploymentsClient, error) {
 	if options.BaseURI == "" {
 		return nil, errors.New("baseURI cannot be empty")
@@ -129,7 +132,10 @@ type ClientCreateOrUpdateResponse struct {
 	armresources.DeploymentExtended
 }
 
-// CreateOrUpdate creates a deployment or updates the existing deployment.
+// # Function Explanation
+//
+// CreateOrUpdate creates a request to create or update a deployment and returns a poller to
+// track the progress of the operation.
 func (client *ResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")

@@ -78,12 +78,13 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 		return err
 	}
 
-	/* The following routes will be configured in upcoming PRs
-	err = AddDatastoresRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
+	err = AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
-	err = AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
+
+	/* The following routes will be configured in upcoming PRs
+	err = AddDatastoresRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -257,9 +258,9 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	// 1. For collection scope routers (xxxPlaneRouter and xxxResourceGroupRouter), register validator at HandlerOptions.Middlewares.
 	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
 
-	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprpubsubbrokers", validator)
-	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers", validator)
-	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprpubsubbrokers/{daprPubSubBrokerName}", validator)
+	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/pubsubbrokers", validator)
+	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers", validator)
+	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{daprPubSubBrokerName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -349,9 +350,9 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}
 
-	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprsecretstores", validator)
-	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores", validator)
-	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprsecretstores/{daprSecretStoreName}", validator)
+	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/secretstores", validator)
+	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores", validator)
+	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{daprSecretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -441,9 +442,9 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 	}...)
 
-	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/daprstatestores", validator)
-	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores", validator)
-	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/daprstatestores/{daprStateStoreName}", validator)
+	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/statestores", validator)
+	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores", validator)
+	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{daprStateStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{

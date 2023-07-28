@@ -73,7 +73,7 @@ func Test_Extender_Recipe(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetRecipeRegistry(), functional.GetRecipeVersion()),
+			Executor: step.NewDeployExecutor(template, functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -119,8 +119,8 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 				fmt.Sprintf("bucketName=%s", bucketName),
 				functional.GetAWSAccountId(),
 				functional.GetAWSRegion(),
-				functional.GetRecipeRegistry(),
-				functional.GetRecipeVersion(),
+				functional.GetBicepRecipeRegistry(),
+				functional.GetBicepRecipeVersion(),
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
