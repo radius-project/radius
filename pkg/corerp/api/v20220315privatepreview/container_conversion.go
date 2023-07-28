@@ -330,7 +330,6 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 }
 
 func toKindDataModel(kind *Kind) datamodel.IAMKind {
-	// TODO: This always returns datamodel.KindAzure. Why?
 	switch *kind {
 	case KindAzure:
 		return datamodel.KindAzure
