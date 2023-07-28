@@ -1,7 +1,7 @@
 name: "Log pod states"
 description: "Logs and uploads pod states"
 inputs:
-  POD_STATE_LOG_FILENAME:
+  pod_state_log_filename:
     description: 'The filename for the pod state log'
     required: true
 runs:
@@ -13,10 +13,10 @@ runs:
     - name: Log pod states
       shell: bash
       run: |
-        ./.github/scripts/log-pod-states.sh ${{ inputs.POD_STATE_LOG_FILENAME }}
+        ./.github/scripts/log-pod-states.sh ${{ inputs.pod_state_log_filename }}
     - name: Upload pod state file
       uses: actions/upload-artifact@v3
       with:
         name: pod-states.txt
         path: |
-          ${{ inputs.POD_STATE_LOG_FILENAME }}
+          ${{ inputs.pod_state_log_filename }}

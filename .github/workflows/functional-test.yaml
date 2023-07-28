@@ -538,7 +538,10 @@ jobs:
             --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
             --yes --verbose
       - name: Log and upload pod states
+        if: always()
         uses: ./.github/actions/log-pod-states
+        with:
+          pod_state_log_filename: ${{ env.POD_STATE_LOG_FILENAME }}
   report-failure:
     name: Report test failure
     needs: [build, tests]
