@@ -36,7 +36,6 @@ type applicationWatcher struct {
 
 	done               chan struct{}
 	deploymentWatchers map[string]*deploymentWatcher
-	staleReplicaSets   map[string]bool
 }
 
 // NewApplicationWatcher creates a new applicationWatcher.
@@ -67,11 +66,6 @@ func (aw *applicationWatcher) Run(ctx context.Context) error {
 	// This can include the user's Radius containers as well as any Kubernetes resources that are labeled
 	// as part of the application (eg: something created with a recipe).
 	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{aw.Options.ApplicationName})
-	if err != nil {
-		return err
-	}
-
-	aw.staleReplicaSets, err = findStaleReplicaSets(ctx, aw.Options.Client, aw.Options.Namespace, aw.Options.ApplicationName)
 	if err != nil {
 		return err
 	}
@@ -127,25 +121,31 @@ func (aw *applicationWatcher) updated(ctx context.Context, deployment *appsv1.De
 		return
 	}
 
+	revision := deployment.Annotations[revisionAnnotation]
+
 	// There are 3 cases to handle here:
 	//
 	// - deployment is new: need to create a watcher
-	// - deployment is updated but still targets the same pods: do nothing
-	// - deployment has changed it's match labels: shut down and restart watcher
+	// - deployment is updated, but still targets the same pods and revision: do nothing
+	// - deployment is updated, but targets different pods or revision: need to restart watcher
 	//
 	entry, ok := aw.deploymentWatchers[deployment.Name]
-	if ok && reflect.DeepEqual(deployment.Spec.Selector.MatchLabels, entry.MatchLabels) {
-		// deployment is updated but still targets the same pods: do nothing
-		return
-	} else if ok {
-		// deployment has changed its match labels: shut down and restart watcher
+
+	// deployment already exists
+	if ok {
+		// deployment is updated, but still targets the same pods and revision: do nothing
+		if reflect.DeepEqual(entry.MatchLabels, deployment.Spec.Selector.MatchLabels) && entry.Revision == revision {
+			return
+		}
+
+		// deployment is updated, but targets different pods or revision: need to restart watcher
 		entry.Cancel()
 		entry.Wait()
 	}
 
 	// if we get here, it's time to create a new watcher
 	ctx, cancel := context.WithCancel(ctx)
-	entry = NewDeploymentWatcher(aw.Options, deployment.Spec.Selector.MatchLabels, aw.staleReplicaSets, cancel)
+	entry = NewDeploymentWatcher(aw.Options, deployment.Spec.Selector.MatchLabels, revision, cancel)
 
 	aw.deploymentWatchers[deployment.Name] = entry
 

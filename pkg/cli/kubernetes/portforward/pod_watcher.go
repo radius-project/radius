@@ -160,7 +160,7 @@ func (pw *podWatcher) sendPortNotifications(forwarder forwarder, kind StatusKind
 		containerName := pw.Pod.Labels[kubernetes.LabelRadiusResource]
 		replicaName := pw.Pod.Name
 
-		// If this is not a Radius resource then use a hueristic to get the deployment name.
+		// If this is not a Radius resource then use a heuristic to get the deployment name.
 		if containerName == "" {
 			containerName, _, _ = strings.Cut(replicaName, "-")
 		}

@@ -79,7 +79,7 @@ func (client *DaprSecretStoreClient) CreateOrUpdate(ctx context.Context, daprSec
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *DaprSecretStoreClient) createOrUpdateCreateRequest(ctx context.Context, daprSecretStoreName string, resource DaprSecretStoreResource, options *DaprSecretStoreClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/daprSecretStores/{daprSecretStoreName}"
+	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{daprSecretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprSecretStoreName == "" {
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
@@ -135,7 +135,7 @@ func (client *DaprSecretStoreClient) Delete(ctx context.Context, daprSecretStore
 
 // deleteCreateRequest creates the Delete request.
 func (client *DaprSecretStoreClient) deleteCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/daprSecretStores/{daprSecretStoreName}"
+	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{daprSecretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprSecretStoreName == "" {
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
@@ -188,7 +188,7 @@ func (client *DaprSecretStoreClient) Get(ctx context.Context, daprSecretStoreNam
 
 // getCreateRequest creates the Get request.
 func (client *DaprSecretStoreClient) getCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/daprSecretStores/{daprSecretStoreName}"
+	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{daprSecretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprSecretStoreName == "" {
 		return nil, errors.New("parameter daprSecretStoreName cannot be empty")
@@ -248,7 +248,7 @@ func (client *DaprSecretStoreClient) NewListByRootScopePager(options *DaprSecret
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *DaprSecretStoreClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprSecretStoreClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/daprSecretStores"
+	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
