@@ -26,7 +26,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a versionined RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
+// ConvertTo converts a versioned RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
 // and returns it or an error if the inputs are invalid.
 func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQQueue{
@@ -122,7 +122,7 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 
 // # Function Explanation
 //
-// ConvertTo converts a versoined RabbitMQSecrets object to a version-agnostic datamodel.RabbitMQSecrets object.
+// ConvertTo converts a versioned RabbitMQSecrets object to a version-agnostic datamodel.RabbitMQSecrets object.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
 		ConnectionString: to.String(src.ConnectionString),
