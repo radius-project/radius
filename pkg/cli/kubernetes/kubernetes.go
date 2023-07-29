@@ -89,20 +89,14 @@ func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	return client, merged, err
 }
 
-// NewRuntimeClient creates a new runtime client.
-//
-// # Function Explanation
-//
-// NewRuntimeClient attempts to create a kubernetes client using a given context and scheme, retrying up to 3 times if an
-// error occurs. If the client cannot be created after 3 retries, an error is returned.
+// NewRuntimeClient creates a kubernetes client using a given context and scheme.
 func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
 
-	var c client.Client
-	c, err = client.New(merged, client.Options{Scheme: scheme})
+	c, err := client.New(merged, client.Options{Scheme: scheme})
 	if err != nil {
 		output.LogInfo("failed to create runtime client due to error: %v", err)
 		return nil, err
