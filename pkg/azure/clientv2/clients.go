@@ -33,7 +33,7 @@ import (
 var defaultClientOptions = &arm.ClientOptions{
 	ClientOptions: azcore.ClientOptions{
 		Retry: policy.RetryOptions{
-			MaxRetries: 10, // TODO: Find the better retry number.
+			MaxRetries: 10,
 		},
 	},
 }
