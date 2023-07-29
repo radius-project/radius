@@ -221,3 +221,59 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_Container_FailDueToNonExistentImage(t *testing.T) {
+	template := "testdata/corerp-resources-container-nonexistent-container-image.bicep"
+	name := "corerp-resources-container-badimage"
+	appNamespace := "corerp-resources-container-badimage-app"
+	cliError := "Internal"
+	innerError := []string{"ErrImagePull", "ImagePullBackOff"}
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor:                               step.NewDeployErrorExecutor(template, cliError, innerError, "magpieimage=non-existent-image"),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-cntr-badimage"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
+	template := "testdata/corerp-resources-container-bad-healthprobe.bicep"
+	name := "corerp-resources-container-bad-healthprobe"
+	appNamespace := "corerp-resources-container-bad-healthprobe-app"
+	cliError := "Internal"
+	innerError := []string{"CrashLoopBackOff"}
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor:                               step.NewDeployErrorExecutor(template, cliError, innerError, functional.GetMagpieImage()),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-cntr-bad-healthprobe"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
