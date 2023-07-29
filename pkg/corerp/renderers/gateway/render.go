@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -50,8 +51,13 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	gtwyProperties := gateway.Properties
 
 	// Get all httpRoutes that are used by this gateway
-	for _, httpRoute := range gtwyProperties.Routes {
-		resourceID, err := resources.ParseResource(httpRoute.Destination)
+	for _, route := range gtwyProperties.Routes {
+		// Skip if destination is a URL. DNS-SD will resolve the route.
+		if (isURL(route.Destination)) {
+			continue
+		}
+
+		resourceID, err := resources.ParseResource(route.Destination)
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
@@ -139,6 +145,8 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 
 	sslPassthrough := false
 	var contourTLSConfig *contourv1.TLS
+
+	// configure TLS if it is enabled
 	if gateway.Properties.TLS != nil {
 		sslPassthrough = gateway.Properties.TLS.SSLPassthrough
 
@@ -310,6 +318,7 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			port = int32(routePort)
 		}
 
+		// TODO: refactor for routeName to support URL as well
 		routeName, err := getRouteName(&route)
 		if err != nil {
 			return []rpv1.OutputResource{}, err
@@ -353,6 +362,7 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			continue
 		}
 
+		// TODO: generate httpProxy object for destinations that are specified as URLs as well as resourceIDs.
 		httpProxyObject := &contourv1.HTTPProxy{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "HTTPProxy",
@@ -391,6 +401,17 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
+	// if isURL, then name is <scheme>-<hostname>-<port> (DNS-SD case)
+	if isURL(route.Destination) {
+		u, err := url.Parse(route.Destination)
+		if err != nil {
+			return "", v1.NewClientErrInvalidRequest(err.Error())
+		}
+
+		return fmt.Sprintf("%s-%s-%s", u.Scheme, u.Hostname(), u.Port()), nil
+	}
+
+	// if not URL, then name is the resourceID (HTTProute case)
 	resourceID, err := resources.ParseResource(route.Destination)
 	if err != nil {
 		return "", v1.NewClientErrInvalidRequest(err.Error())
@@ -466,4 +487,15 @@ func getPublicEndpoint(hostname string, port string, isHttps bool) string {
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, authority)
+}
+
+func isURL(input string) bool {
+	_, err := url.ParseRequestURI(input)
+	fmt.Println(err)
+	fmt.Println(input)
+	// if first character is a slash, it's not a URL. It's a path.
+	if (err != nil || input[0] == '/') {
+		return false
+	}
+	return true
 }
