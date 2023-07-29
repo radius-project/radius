@@ -64,7 +64,7 @@ require (
 	github.com/stern/stern v1.25.0
 	github.com/stretchr/testify v1.8.4
 	github.com/vippsas/go-cosmosdb v0.0.0-20230118095602-f4e4b9f1c352
-	github.com/wI2L/jsondiff v0.4.0
+	github.com/wI2L/jsondiff v0.2.0
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.etcd.io/etcd/server/v3 v3.5.9
 	go.mongodb.org/mongo-driver v1.12.0
@@ -92,6 +92,12 @@ require (
 	oras.land/oras-go/v2 v2.2.1
 	sigs.k8s.io/controller-runtime v0.15.0
 	sigs.k8s.io/secrets-store-csi-driver v1.3.4
+)
+
+require (
+	github.com/tidwall/gjson v1.14.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 )
 
 require (
