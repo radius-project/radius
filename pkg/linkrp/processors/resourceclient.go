@@ -235,19 +235,19 @@ func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id reso
 	gvk, namespace, _, err := identity.RequireKubernetes()
 	if err != nil {
 		// We don't expect this to fail, but just in case....
-		return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+		return "", fmt.Errorf("1 - could not find API version for type %q: %w", id.Type(), err)
 	}
 
 	var resourceLists []*v1.APIResourceList
 	if namespace == "" {
 		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredResources()
 		if err != nil {
-			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+			return "", fmt.Errorf("2 - could not find API version for type %q: %w", id.Type(), err)
 		}
 	} else {
 		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredNamespacedResources()
 		if err != nil {
-			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+			return "", fmt.Errorf("3 - could not find API version for type %q: %w", id.Type(), err)
 		}
 	}
 
