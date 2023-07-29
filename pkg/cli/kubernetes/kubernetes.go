@@ -32,6 +32,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/kubeutil"
@@ -49,13 +51,14 @@ func init() {
 	_ = apiextv1.AddToScheme(Scheme)
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = contourv1.AddToScheme(Scheme)
+
+	// Must set the logger to use controller-runtime.
+	runtimelog.SetLogger(zap.New())
 }
 
-// NewDynamicClient creates a dynamic resource Kubernetes client.
-//
 // # Function Explanation
 //
-// NewDynamicClient creates a new dynamic client using the given context and returns it, or returns an error if one occurs.
+// NewDynamicClient creates a new dynamic client by context name, otherwise returns an error.
 func NewDynamicClient(context string) (dynamic.Interface, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
@@ -70,11 +73,9 @@ func NewDynamicClient(context string) (dynamic.Interface, error) {
 	return client, err
 }
 
-// NewClientset creates the typed Kubernetes client and return rest client config.
-//
 // # Function Explanation
 //
-// NewClientset creates a new Kubernetes client and config based on the given context, and returns them along with any errors encountered.
+// NewClientset creates a new Kubernetes client and rest client config by context name.
 func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
