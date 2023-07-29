@@ -28,7 +28,7 @@ on:
       - release/*
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests]
+    types: [functional-tests, de-functional-test]
 
 env:
   # Go version
@@ -48,8 +48,11 @@ env:
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
-  # ACR for storing test images
-  CACHE_REGISTRY: radiusdev.azurecr.io
+  # Container registry for storing test images and recipes
+  CACHE_REGISTRY: ghcr.io/project-radius/dev
+  # Container registry for storing recipe artifacts
+  # TODO_LAUNCH: Change it to ghcr.io/project-radius/dev - https://github.com/project-radius/radius/issues/5892
+  BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -64,6 +67,15 @@ env:
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+  # The Deployment Engine image
+  DE_IMAGE: 'radius.azurecr.io/deployment-engine'
+  # The Deployment Engine tag
+  DE_TAG: 'latest'
+  # Server where terraform test modules are deployed
+  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+
+  # GitHub Actor for pushing images to GHCR
+  GHCR_ACTOR: rad-ci-bot
 
 jobs:
   build:
@@ -102,6 +114,23 @@ jobs:
                 `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
                 `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
                 `PR_NUMBER=${testPayload.issue.number}`
+              );
+            }
+      - name: Set DE image and tag (repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const clientPayload = context.payload.client_payload;
+            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `DE_IMAGE=${clientPayload.de_image}\n`+
+                `DE_TAG=${clientPayload.de_tag}\n`+
+                `CHECKOUT_REPO=${{ github.repository }}\n`+
+                `CHECKOUT_REF=refs/heads/main`
               );
             }
       - name: Check out code
@@ -169,10 +198,11 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * Bicep recipe location `${{ env.CACHE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
-            * Terraform recipe location `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local/<name>.zip` (in cluster)
+            * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
+            * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
 
             </details>
             
@@ -183,9 +213,12 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
-      - name: Login ACR - ${{ env.CACHE_REGISTRY }}
-        run: |
-          az acr login -n ${{ env.CACHE_REGISTRY }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_ACTOR }}
+          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
         continue-on-error: true
@@ -243,8 +276,8 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
-          RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
@@ -280,7 +313,7 @@ jobs:
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
-      RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -354,6 +387,9 @@ jobs:
           # AZURE_OIDC_ISSUER
           eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
+          AUTHKEY=$(echo -n "${{ env.GHCR_ACTOR }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
+
           # Create KinD cluster with OIDC Issuer keys
           echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
           echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
@@ -367,6 +403,8 @@ jobs:
                 containerPath: /etc/kubernetes/pki/sa.pub
               - hostPath: ./sa.key
                 containerPath: /etc/kubernetes/pki/sa.key
+              - hostPath: ./ghcr_secret.json
+                containerPath: /var/lib/kubelet/config.json
             kubeadmConfigPatches:
             - |
               kind: ClusterConfiguration
@@ -418,7 +456,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -441,7 +479,8 @@ jobs:
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
-          az acr login -n ${{ env.CACHE_REGISTRY }}
+          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/project-radius/radius/issues/5892
+          az acr login -n ${{ env.BICEP_RECIPE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -475,6 +514,7 @@ jobs:
 
           make test-functional-${{ matrix.name }}
         env:
+          DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
@@ -483,8 +523,8 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          RECIPE_REGISTRY: ${{ env.CACHE_REGISTRY }}
-          RECIPE_TAG_VERSION: ${{ env.RECIPE_TAG_VERSION }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3

@@ -27,10 +27,11 @@ const (
 	ProviderTypeRadius = "Radius"
 )
 
-// NewDefaultProviderConfig creates a new ProviderConfig for use with ResourceDeploymentsClient.
+// # Function Explanation
 //
-// The default config will include configuration for Radius resources, Kuberenetes resources, and Bicep modules.
-// AWS and Azure resources must be added separately.
+// NewDefaultProviderConfig creates a ProviderConfig instance with two fields, Deployments and Radius, and sets their values
+// based on the resourceGroup parameter. The default config will include configuration for Radius resources, Kuberenetes resources,
+// and Bicep modules. AWS and Azure resources must be added separately.
 func NewDefaultProviderConfig(resourceGroup string) ProviderConfig {
 	config := ProviderConfig{
 		Deployments: &Deployments{

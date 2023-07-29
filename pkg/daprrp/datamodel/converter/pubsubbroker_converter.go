@@ -18,7 +18,6 @@ package converter
 
 import (
 	"encoding/json"
-	"os"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
@@ -53,17 +52,13 @@ func PubSubBrokerDataModelFromVersioned(content []byte, version string) (*datamo
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
+
 		return dm.(*datamodel.DaprPubSubBroker), err
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
 	}
-}
-
-func loadTestData(testfile string) []byte {
-	d, err := os.ReadFile(testfile)
-	if err != nil {
-		return nil
-	}
-	return d
 }

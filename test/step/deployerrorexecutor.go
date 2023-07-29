@@ -33,22 +33,24 @@ import (
 var _ Executor = (*DeployErrorExecutor)(nil)
 
 type DeployErrorExecutor struct {
-	Description       string
-	Template          string
-	Parameters        []string
-	ExpectedErrorCode string
+	Description        string
+	Template           string
+	Parameters         []string
+	ExpectedErrorCode  string
+	ExpectedInnerError []string
 
 	// Application sets the `--application` command-line parameter. This is needed in cases where
 	// the application is not defined in bicep.
 	Application string
 }
 
-func NewDeployErrorExecutor(template string, errCode string, parameters ...string) *DeployErrorExecutor {
+func NewDeployErrorExecutor(template string, errCode string, innerError []string, parameters ...string) *DeployErrorExecutor {
 	return &DeployErrorExecutor{
-		Description:       fmt.Sprintf("deploy %s", template),
-		Template:          template,
-		Parameters:        parameters,
-		ExpectedErrorCode: errCode,
+		Description:        fmt.Sprintf("deploy %s", template),
+		Template:           template,
+		Parameters:         parameters,
+		ExpectedErrorCode:  errCode,
+		ExpectedInnerError: innerError,
 	}
 }
 
@@ -75,6 +77,10 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	ok := errors.As(err, &cliErr)
 	require.True(t, ok)
 	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
+
+	if len(d.ExpectedInnerError) > 0 {
+		unpackErrorAndMatch(err, d.ExpectedInnerError)
+	}
 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }

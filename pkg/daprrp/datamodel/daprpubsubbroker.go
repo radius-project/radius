@@ -19,25 +19,25 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// DaprPubSubBroker represents DaprPubSubBroker link resource.
+// DaprPubSubBroker represents Dapr PubSubBroker portable resource.
 type DaprPubSubBroker struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
 	Properties DaprPubSubBrokerProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	linkrpdm.LinkMetadata
+	// LinkMetadata represents internal DataModel properties common to all portable resource types.
+	linkrp_dm.LinkMetadata
 }
 
 // # Function Explanation
 //
-// ApplyDeploymentOutput updates the Properties of the DaprPubSubBroker instance with the
-// DeployedOutputResources of the DeploymentOutput instance.
+// ApplyDeploymentOutput applies the properties changes based on the deployment output. It updates the
+// OutputResources of the DaprPubSubBroker resource with the output resources from a DeploymentOutput object.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
@@ -52,7 +52,7 @@ func (r *DaprPubSubBroker) OutputResources() []rpv1.OutputResource {
 
 // # Function Explanation
 //
-// ResourceMetadata returns the BasicResourceProperties of the DaprPubSubBroker instance.
+// ResourceMetadata returns the BasicResourceProperties of the Dapr PubSubBroker resource i.e. application resources metadata.
 func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
@@ -64,15 +64,36 @@ func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return linkrp.N_DaprPubSubBrokersResourceType
 }
 
-// DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.
+// # Function Explanation
+//
+// Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
+func (r *DaprPubSubBroker) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
+	return &r.Properties.Recipe
+}
+
+// DaprPubSubBrokerProperties represents the properties of Dapr PubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Topic    string            `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
-	Mode     linkrpdm.LinkMode `json:"mode"`
-	Metadata map[string]any    `json:"metadata,omitempty"`
-	Recipe   linkrp.LinkRecipe `json:"recipe"`
-	Resource string            `json:"resource,omitempty"`
-	Type     string            `json:"type,omitempty"`
-	Version  string            `json:"version,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// Metadata of the Dapr Pub/Sub Broker resource.
+	Metadata map[string]any `json:"metadata,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the Dapr Pub/Sub Broker resource.
+	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+
+	// List of the resource IDs that support the Dapr Pub/Sub Broker resource.
+	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+
+	// Type of the Dapr Pub/Sub Broker resource.
+	Type string `json:"type,omitempty"`
+
+	// Version of the Dapr Pub/Sub Broker resource.
+	Version string `json:"version,omitempty"`
 }

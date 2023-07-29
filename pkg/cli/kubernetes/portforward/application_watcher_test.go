@@ -52,7 +52,7 @@ func Test_ApplicationWatcher_Updated_HandleNewDeployment(t *testing.T) {
 	aw := NewApplicationWatcher(Options{Client: client})
 	defer stopDeploymentWatchers(aw)
 
-	aw.updated(context.Background(), createDeployment("test", "1"))
+	aw.updated(context.Background(), createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 }
 
@@ -64,12 +64,12 @@ func Test_ApplicationWatcher_Updated_HandleUnchangedDeployment(t *testing.T) {
 	defer stopDeploymentWatchers(aw)
 
 	// Step 1: Add a deployment
-	aw.updated(ctx, createDeployment("test", "1"))
+	aw.updated(ctx, createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 	existing := aw.deploymentWatchers["test"]
 
 	// Step 2: Update the deployment but don't change the selector
-	aw.updated(ctx, createDeployment("test", "1"))
+	aw.updated(ctx, createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 	updated := aw.deploymentWatchers["test"]
 
@@ -77,7 +77,7 @@ func Test_ApplicationWatcher_Updated_HandleUnchangedDeployment(t *testing.T) {
 	require.Same(t, existing, updated)
 }
 
-func Test_ApplicationWatcher_Updated_HandleChangedDeployment(t *testing.T) {
+func Test_ApplicationWatcher_Updated_HandleChangedDeployment_MatchLabels(t *testing.T) {
 	ctx := testcontext.New(t)
 	client, _ := createDeploymentWatchFakes()
 
@@ -85,12 +85,37 @@ func Test_ApplicationWatcher_Updated_HandleChangedDeployment(t *testing.T) {
 	defer stopDeploymentWatchers(aw)
 
 	// Step 1: Add a deployment
-	aw.updated(ctx, createDeployment("test", "1"))
+	aw.updated(ctx, createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 	existing := aw.deploymentWatchers["test"]
 
 	// Step 2: Update the deployment and change the selector
-	aw.updated(ctx, createDeployment("test", "2"))
+	aw.updated(ctx, createDeployment("test", "2", "1"))
+
+	require.Contains(t, aw.deploymentWatchers, "test")
+	updated := aw.deploymentWatchers["test"]
+
+	// Should not be the same instance
+	require.NotSame(t, existing, updated)
+
+	// first watcher should have been canceled
+	existing.Wait()
+}
+
+func Test_ApplicationWatcher_Updated_HandleChangedDeployment_Revision(t *testing.T) {
+	ctx := testcontext.New(t)
+	client, _ := createDeploymentWatchFakes()
+
+	aw := NewApplicationWatcher(Options{Client: client})
+	defer stopDeploymentWatchers(aw)
+
+	// Step 1: Add a deployment
+	aw.updated(ctx, createDeployment("test", "1", "1"))
+	require.Contains(t, aw.deploymentWatchers, "test")
+	existing := aw.deploymentWatchers["test"]
+
+	// Step 2: Update the deployment and change the selector
+	aw.updated(ctx, createDeployment("test", "1", "2"))
 
 	require.Contains(t, aw.deploymentWatchers, "test")
 	updated := aw.deploymentWatchers["test"]
@@ -110,12 +135,12 @@ func Test_ApplicationWatcher_Deleted(t *testing.T) {
 	defer stopDeploymentWatchers(aw)
 
 	// Step 1: Add a deployment
-	aw.updated(ctx, createDeployment("test", "1"))
+	aw.updated(ctx, createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 	existing := aw.deploymentWatchers["test"]
 
 	// Step 2: Delete the deployment
-	aw.deleted(ctx, createDeployment("test", "1"))
+	aw.deleted(ctx, createDeployment("test", "1", "1"))
 	require.NotContains(t, aw.deploymentWatchers, "test")
 
 	// watcher should have been canceled
@@ -129,10 +154,13 @@ func stopDeploymentWatchers(aw *applicationWatcher) {
 	}
 }
 
-func createDeployment(name string, value string) *appsv1.Deployment {
+func createDeployment(name, value, revision string) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Name: name,
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": revision,
+			},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{

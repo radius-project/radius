@@ -42,8 +42,8 @@ func SecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version s
 
 // # Function Explanation
 //
-// SecretStoreDataModelFromVersioned takes in a byte slice and a version string and returns a pointer to a
-// version-agnostic datamodel or an error if the version is unsupported.
+// SecretStoreDataModelFromVersioned unmarshals a JSON content into a versionined DaprSecretStoreResource object and then converts
+// it to a version-agnostic DaprSecretStore object, returning an error if either of these steps fail.
 func SecretStoreDataModelFromVersioned(content []byte, version string) (*datamodel.DaprSecretStore, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -52,6 +52,9 @@ func SecretStoreDataModelFromVersioned(content []byte, version string) (*datamod
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.DaprSecretStore), err
 
 	default:

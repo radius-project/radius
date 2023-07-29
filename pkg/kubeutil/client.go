@@ -27,7 +27,10 @@ import (
 	csidriver "sigs.k8s.io/secrets-store-csi-driver/apis/v1alpha1"
 )
 
-// NewRuntimeClient creates new kubernetes clients.
+// # Function Explanation
+//
+// NewRuntimeClient creates a new runtime client using the given config and adds the
+// required resource schemes to the client.
 func NewRuntimeClient(config *rest.Config) (runtimeclient.Client, error) {
 	scheme := runtime.NewScheme()
 

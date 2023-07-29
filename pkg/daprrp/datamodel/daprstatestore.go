@@ -19,26 +19,25 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// DaprStateStore represents DaprStateStore link resource.
+// DaprStateStore represents DaprStateStore portable resource.
 type DaprStateStore struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
 	Properties DaprStateStoreProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	linkrpdm.LinkMetadata
+	// LinkMetadata represents internal DataModel properties common to all portable types.
+	linkrp_dm.LinkMetadata
 }
 
 // # Function Explanation
 //
-// DaprStateStore.ApplyDeploymentOutput updates the status, computed values, secret values and component name of the
-// DaprStateStore instance and returns no error.
+// ApplyDeploymentOutput updates the DaprStateStore resource with the DeploymentOutput values.
 func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -51,29 +50,32 @@ func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 
 // # Function Explanation
 //
-// Method OutputResources returns the OutputResources from the Properties field of the DaprStateStore instance.
+// OutputResources returns the OutputResources from the Properties of the DaprStateStore resource.
 func (r *DaprStateStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // # Function Explanation
 //
-// ResourceMetadata returns the BasicResourceProperties of the DaprStateStore instance.
+// ResourceMetadata returns the BasicResourceProperties of the DaprStateStore resource i.e. application resources metadata.
 func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type of the DaprStateStore instance.
+// ResourceTypeName returns the resource type of the DaprStateStore resource.
 func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 	return linkrp.N_DaprStateStoresResourceType
 }
 
 // # Function Explanation
 //
-// Recipe returns a pointer to the LinkRecipe stored in the Properties of the DaprStateStore instance.
+// Recipe returns the recipe information of the resource. It returns nil if the ResourceProvisioning is set to manual.
 func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
+	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+		return nil
+	}
 	return &r.Properties.Recipe
 }
 
@@ -81,10 +83,11 @@ func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
 type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Mode     linkrpdm.LinkMode `json:"mode,omitempty"`
-	Metadata map[string]any    `json:"metadata,omitempty"`
-	Recipe   linkrp.LinkRecipe `json:"recipe,omitempty"`
-	Resource string            `json:"resource,omitempty"`
-	Type     string            `json:"type,omitempty"`
-	Version  string            `json:"version,omitempty"`
+	// Specifies how the underlying service/resource is provisioned and managed
+	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Metadata             map[string]any              `json:"metadata,omitempty"`
+	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Type                 string                      `json:"type,omitempty"`
+	Version              string                      `json:"version,omitempty"`
 }

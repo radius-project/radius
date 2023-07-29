@@ -34,6 +34,9 @@ var (
 	supportedProviders = []string{azure.ProviderDisplayName, aws.ProviderDisplayName}
 )
 
+// # Function Explanation
+//
+// ValidateCloudProviderName checks if the given string is a supported cloud provider and returns an error if it is not.
 func ValidateCloudProviderName(name string) error {
 	for _, provider := range supportedProviders {
 		if strings.EqualFold(name, provider) {
