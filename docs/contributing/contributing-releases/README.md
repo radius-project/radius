@@ -127,6 +127,10 @@ If sample validation passes, we can start the process of creating the final rele
    For example, if the RC version is `v0.21.0-rc1`, the final release version would be `v0.21.0`.
 1. Create a new release note document in the [release-notes](../../release-notes/) directory. Follow the directory's README.md for instructions on how to create a new release note document. Include this file in the release version pull request.
 1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview)
+   ```bash
+   $ az login
+   $ az cdn endpoint purge --subscription 66d1209e-1382-45d3-99bb-650e6bf63fc0 --resource-group assets --name radius --profile-name Radius --content-paths "/*"
+   ```
 1. Check the stable version marker
 
    The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.

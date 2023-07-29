@@ -32,10 +32,8 @@ const (
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
 
-	// TODO: Are we removing this too?
 	LabelManagedByRadiusRP = "radius-rp"
 
-	// TODO: Are we removing this too?
 	FieldManager = "radius-rp"
 	ControlPlane = "radius-control-plane"
 
