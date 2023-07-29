@@ -32,8 +32,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/kubeutil"
@@ -51,9 +49,6 @@ func init() {
 	_ = apiextv1.AddToScheme(Scheme)
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = contourv1.AddToScheme(Scheme)
-
-	// Must set the logger to use controller-runtime.
-	runtimelog.SetLogger(zap.New())
 }
 
 // # Function Explanation

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package kubernetes
 
 import (
@@ -43,10 +44,10 @@ func NewOpenAPIv3Doc(opts armrpc_controller.Options) (armrpc_controller.Controll
 // # Function Explanation
 //
 // Run() responds to a request to /apis/api.ucp.dev/v1alpha3/openapi/v3 with a 200 OK response and a swagger
-// (openapi v3) doc, without logging every request.
+// (openapi v3) doc.
 func (e *OpenAPIv3Doc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	// Required for the K8s scenario, we are required to respond to a request
-	// to /apis/api.ucp.dev/v1alpha3/openapi/v3 with a 200 OK response and a swagger (openapi v2)
+	// to /apis/api.ucp.dev/v1alpha3/openapi/v3 with a 200 OK response and a swagger (openapi v3)
 	// doc.
 	//
 	// We don't need this for any functionality, but it will make the API server happy.
