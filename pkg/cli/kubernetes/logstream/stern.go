@@ -80,6 +80,9 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		Template:   template.Must(template.New("output").Funcs(functionTable()).Parse(outputFormat)),
 		Out:        options.Out,
 		ErrOut:     options.Out,
+
+		// Limit the concurren tlog request to 5. This is the default value of the stern CLI.
+		MaxLogRequests: 5,
 	}
 
 	// This is the only Radius-specific customization we make.
