@@ -81,8 +81,8 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		Out:        options.Out,
 		ErrOut:     options.Out,
 
-		// Limit the concurren tlog request to 5. This is the default value of the stern CLI.
-		MaxLogRequests: 5,
+		// Limit the concurrent log request to 10.
+		MaxLogRequests: 10,
 	}
 
 	// This is the only Radius-specific customization we make.
