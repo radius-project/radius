@@ -96,6 +96,7 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	discoveryClient.UseLegacyDiscovery = true
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
