@@ -96,6 +96,9 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Use legacy discovery client to avoid the issue of missing apiVersion in the discovery response.
+	// Otherwise, we get this error - "unable to retrieve the complete list of server APIs:
+	// api.ucp.dev/v1alpha3: stale GroupVersion discovery: api.ucp.dev/v1alpha3".
 	discoveryClient.UseLegacyDiscovery = true
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
