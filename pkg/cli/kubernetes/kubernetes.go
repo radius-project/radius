@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -103,15 +102,9 @@ func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client
 	}
 
 	var c client.Client
-	for i := 0; i < 2; i++ {
-		c, err = client.New(merged, client.Options{Scheme: scheme})
-		if err != nil {
-			output.LogInfo(fmt.Errorf("failed to get a kubernetes client: %w", err).Error())
-			time.Sleep(15 * time.Second)
-		}
-	}
+	c, err = client.New(merged, client.Options{Scheme: scheme})
 	if err != nil {
-		output.LogInfo("aborting runtime client creation after 3 retries")
+		output.LogInfo("failed to create runtime client due to error: %v", err)
 		return nil, err
 	}
 
