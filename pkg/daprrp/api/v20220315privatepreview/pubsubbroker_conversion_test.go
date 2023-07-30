@@ -279,18 +279,3 @@ func TestDaprPubSubBroker_ConvertFromValidation(t *testing.T) {
 		require.ErrorAs(t, tc.err, &err)
 	}
 }
-
-// # Function Explanation
-// 
-// This function returns a string with the name of the resource type.
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
-func loadTestData(testfile string) []byte {
-	d, err := os.ReadFile("./testdata/" + testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
