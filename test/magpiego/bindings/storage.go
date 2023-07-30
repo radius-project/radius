@@ -15,6 +15,11 @@ import (
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
 )
 
+// # Function Explanation
+//
+// StorageBinding checks for required environment variables, creates a credential and a client, creates a container and
+// marks it for deletion.
+//
 // requires the following environment variables:
 // - CONNECTION_STORAGE_ACCOUNT
 func StorageBinding(envParams map[string]string) BindingStatus {
@@ -119,6 +124,11 @@ func newClientAssertionCredential(tenantID, clientID, authorityHost, file string
 }
 
 // GetToken implements the TokenCredential interface
+//
+// # Function Explanation
+//
+// // clientAssertionCredential.GetToken retrieves an access token from the confidential client and returns it as an
+// azcore.AccessToken. If an error occurs, it is returned.
 func (c *clientAssertionCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	// get the token from the confidential client
 	token, err := c.client.AcquireTokenByCredential(ctx, opts.Scopes)
