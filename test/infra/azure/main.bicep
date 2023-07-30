@@ -49,11 +49,17 @@ param azureMonitorWorkspaceLocation string = 'westus2'
 @description('Specifies the name of aks cluster. Default is {prefix}-aks.')
 param aksClusterName string = '${prefix}-aks'
 
+@description('Enables Azure Monitor Workspace and Grafana dashboard. Default is true.')
+param grafanaEnabled bool = true
+
 @description('Specifies the object id to assign Grafana administrator role. Can be the object id of AzureAD user or group.')
 param grafanaAdminObjectId string
 
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
 param grafanaDashboardName string = '${prefix}-dashboard'
+
+@description('Specifies whether to run bootstrap script after resources are deployed. Default is true.')
+param radiusBootStrap bool = true
 
 param defaultTags object = {
   radius: 'infra'
@@ -72,7 +78,7 @@ module logAnalyticsWorkspace './modules/loganalytics-workspace.bicep' = {
 }
 
 // Deploy Azure Monitor Workspace for metrics.
-resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = {
+resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = if (grafanaEnabled) {
   name: azureMonitorWorkspaceName
   location: azureMonitorWorkspaceLocation
   properties: {}
@@ -97,12 +103,14 @@ module aksCluster './modules/akscluster.bicep' = {
     daprEnabled: true
     daprHaEnabled: false
     oidcIssuerProfileEnabled: true
+    imageCleanerEnabled: true
+    imageCleanerIntervalHours: 24
     tags: defaultTags
   }
 }
 
 // Deploy Grafana dashboard.
-module grafanaDashboard './modules/grafana.bicep' = {
+module grafanaDashboard './modules/grafana.bicep' = if (grafanaEnabled) {
   name: grafanaDashboardName
   params:{
     name: grafanaDashboardName
@@ -116,7 +124,7 @@ module grafanaDashboard './modules/grafana.bicep' = {
 }
 
 // Deploy data collection for metrics.
-module dataCollection './modules/datacollection.bicep' = {
+module dataCollection './modules/datacollection.bicep' = if (grafanaEnabled) {
   name: 'dataCollection'
   params:{
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
@@ -131,7 +139,7 @@ module dataCollection './modules/datacollection.bicep' = {
 }
 
 // Deploy alert rules using prometheus metrics.
-module alertManagement './modules/alert-management.bicep' = {
+module alertManagement './modules/alert-management.bicep' = if (grafanaEnabled) {
   name: 'alertManagement'
   params:{
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
@@ -150,7 +158,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-05-01' existing = 
 }
 
 // Deploy configmap for prometheus metrics.
-module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
+module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = if (grafanaEnabled) {
   name: 'metrics-configmap'
   params: {
     kubeConfig: aks.listClusterAdminCredential().kubeconfigs[0].value
@@ -161,7 +169,7 @@ module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
 }
 
 // Run deployment script to bootstrap the cluster for Radius.
-module deploymentScript './modules/deployment-script.bicep' = {
+module deploymentScript './modules/deployment-script.bicep' = if (radiusBootStrap) {
   name: 'deploymentScript'
   params: {
     name: 'radiusBootStrap'

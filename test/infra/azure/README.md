@@ -24,6 +24,23 @@ This directory includes the Bicep templates to deploy the following resources on
     az account set -s [Subscription Id]
     ```
 
+1. Enable `Microsoft.ContainerService/EnableImageCleanerPreview` feature flag
+    
+    This cleans up unused container images in each node, which can occur the security vulnerability. Visit https://aka.ms/aks/image-cleaner to learn more about image cleaner.
+
+    ```bash
+    # Register feature flag.
+    az feature register --namespace "Microsoft.ContainerService" --name "EnableImageCleanerPreview"
+
+    # Ensure that the feature flag is `Registered`.
+    az feature show --namespace "Microsoft.ContainerService" --name "EnableImageCleanerPreview"
+
+    # Re-register resource provider.
+    az provider register --namespace Microsoft.ContainerService
+    ```
+
+    > Note: When you enable the feature flag first in your subscription, it will take some time to be propagated.
+
 1. Create resource group:
     ```bash
     az group create --location [Location Name] --resource-group [Resource Group Name]
