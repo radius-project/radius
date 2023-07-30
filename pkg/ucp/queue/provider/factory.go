@@ -65,7 +65,7 @@ func initAPIServer(ctx context.Context, name string, opt QueueProviderOptions) (
 		Scheme: scheme,
 
 		// The client will log info the console that we don't really care about.
-		Opts: runtimeclient.WarningHandlerOptions{
+		WarningHandler: runtimeclient.WarningHandlerOptions{
 			SuppressWarnings: true,
 		},
 	}

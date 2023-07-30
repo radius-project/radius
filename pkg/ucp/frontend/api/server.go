@@ -50,7 +50,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -160,7 +159,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
 		"ucp",
-		otelhttp.WithMeterProvider(global.MeterProvider()),
+		otelhttp.WithMeterProvider(otel.GetMeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	// TODO: This is the workaround to fix the high cardinality of otelhttp.

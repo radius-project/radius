@@ -169,7 +169,9 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 }
 
 func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 		},
@@ -177,6 +179,10 @@ func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerF
 			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 		},
 	})
+
+	if err != nil {
+		logger.Error(err, "failed to add event handler")
+	}
 }
 
 func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
