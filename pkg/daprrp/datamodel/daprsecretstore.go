@@ -36,8 +36,7 @@ type DaprSecretStore struct {
 
 // # Function Explanation
 //
-// ApplyDeploymentOutput updates the Status.OutputResources field of Properties with the DeployedOutputResources
-// from the DeploymentOutput and returns no error.
+// ApplyDeploymentOutput updates the status of the secret store with the output resources from a deployment.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
