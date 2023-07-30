@@ -676,6 +676,9 @@ func Test_RecipeCommands(t *testing.T) {
 	test.Test(t)
 }
 
+// # Function Explanation
+//
+// GetAvailablePort attempts to find an available port on the localhost and returns it, or returns an error if it fails.
 func GetAvailablePort() (int, error) {
 	address, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {
@@ -690,6 +693,10 @@ func GetAvailablePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
+// # Function Explanation
+//
+// DeleteAppWithoutDeletingResources creates a client to delete an application without deleting its resources and returns
+// an error if one occurs.
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options shared.RPTestOptions, applicationName string) error {
 	client := options.ManagementClient
 	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
