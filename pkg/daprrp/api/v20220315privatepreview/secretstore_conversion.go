@@ -103,7 +103,8 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts from version-agnostic datamodel to the versioned DaprSecretStore resource.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versionined DaprSecretStoreResource. It returns
+// an error if the mode is unsupported or required properties are missing.
 func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprSecretStore, ok := src.(*datamodel.DaprSecretStore)
 	if !ok {

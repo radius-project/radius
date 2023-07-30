@@ -45,7 +45,7 @@ func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error
 
 // # Function Explanation
 //
-// OutputResources returns the OutputResources of the Dapr PubSubBroker resource.
+// OutputResources returns the OutputResources from the Properties of the DaprPubSubBroker instance.
 func (r *DaprPubSubBroker) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
@@ -59,7 +59,7 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type of the Dapr PubSubBroker resource.
+// ResourceTypeName returns a string representing the resource type.
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return linkrp.N_DaprPubSubBrokersResourceType
 }
