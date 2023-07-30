@@ -64,7 +64,7 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		Scheme: scheme,
 
 		// The client will log info the console that we don't really care about.
-		Opts: runtimeclient.WarningHandlerOptions{
+		WarningHandler: runtimeclient.WarningHandlerOptions{
 			SuppressWarnings: true,
 		},
 	}
