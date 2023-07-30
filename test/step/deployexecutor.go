@@ -41,6 +41,9 @@ type DeployExecutor struct {
 	Application string
 }
 
+// # Function Explanation
+//
+// NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
@@ -49,15 +52,24 @@ func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	}
 }
 
+// # Function Explanation
+//
+// WithApplication sets the application name for the DeployExecutor instance and returns the same instance.
 func (d *DeployExecutor) WithApplication(application string) *DeployExecutor {
 	d.Application = application
 	return d
 }
 
+// # Function Explanation
+//
+// GetDescription returns the Description field of the DeployExecutor instance.
 func (d *DeployExecutor) GetDescription() string {
 	return d.Description
 }
 
+// # Function Explanation
+//
+// Execute deploys an application from a template file using the provided parameters and logs the deployment process.
 func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
