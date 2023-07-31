@@ -38,12 +38,14 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
 	applicationName       = "test-app"
 	applicationResourceID = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
 	resourceName          = "test-container"
 	envVarName1           = "TEST_VAR_1"
 	envVarValue1          = "TEST_VALUE_1"
@@ -54,6 +56,32 @@ const (
 	tempVolName      = "TempVolume"
 	tempVolMountPath = "/tmpfs"
 	testResourceID   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
+
+	// User Inputs for testing labels and annotations
+	envAnnotationKey1 = "env.ann1"
+	envAnnotationKey2 = "env.ann2"
+	envAnnotationVal1 = "env.annval1"
+	envAnnotationVal2 = "env.annval2"
+
+	envLabelKey1 = "env.lbl1"
+	envLabelKey2 = "env.lbl2"
+	envLabelVal1 = "env.lblval1"
+	envLabelVal2 = "env.lblval2"
+
+	appAnnotationKey1 = "app.ann1"
+	appAnnotationKey2 = "app.ann2"
+	appAnnotationVal1 = "app.annval1"
+	appAnnotationVal2 = "app.annval2"
+
+	appLabelKey1 = "app.lbl1"
+	appLabelKey2 = "app.lbl2"
+	appLabelVal1 = "env.lblval1"
+	appLabelVal2 = "env.lblval2"
+
+	overrideKey1 = "test.ann1"
+	overrideKey2 = "test.lbl1"
+	overrideVal1 = "override.app.annval1"
+	overrideVal2 = "override.app.lblval1"
 )
 
 var (
@@ -1511,4 +1539,150 @@ func Test_ParseURL(t *testing.T) {
 	scheme, hostname, port, err = parseURL(invalid_url)
 
 	require.NotEqual(t, err, nil)
+}
+
+func Test_DNS_Service_Generation(t *testing.T) {
+	containerPortNumber := 80
+	schemeVal := "http"
+	t.Run("verify service generation", func(t *testing.T) {
+		// testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
+		properties := datamodel.ContainerProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Application: applicationResourceID,
+			},
+			Container: datamodel.Container{
+				Image: "someimage:latest",
+				Ports: map[string]datamodel.ContainerPort{
+					"web": {
+						ContainerPort: int32(containerPortNumber),
+						Provides:      makeResourceID(t, "Applications.Core/httpRoutes", "C").String(),
+					},
+				},
+				// Volumes: map[string]datamodel.VolumeProperties{
+				// 	"vol1": {
+				// 		Kind: datamodel.Persistent,
+				// 		Persistent: &datamodel.PersistentVolume{
+				// 			VolumeBase: datamodel.VolumeBase{
+				// 				MountPath: "/tmpfs",
+				// 			},
+				// 			Source: testStorageResourceID,
+				// 		},
+				// 	},
+				// },
+			},
+		}
+
+		resource := makeResource(t, properties)
+
+		// dependencies := map[string]renderers.RendererDependency{}
+		ctx := testcontext.New(t)
+		renderer := Renderer{}
+		// why do i need getRenderOptions here? What is the diff between 0,1,2 for options?
+		output, err := renderer.Render(ctx, resource, getRenderOptions(2))
+
+		require.NoError(t, err)
+		// shouldnt this generate 1 output resource?
+		require.Len(t, output.Resources, 3)
+		require.Empty(t, output.SecretValues)
+
+		expectedServicePort := corev1.ServicePort{
+			Name:       resourceName,
+			Port:       int32(containerPortNumber),
+			TargetPort: intstr.FromInt(containerPortNumber),
+			Protocol:   "TCP",
+		}
+		expectedValues := map[string]rpv1.ComputedValueReference{
+			"hostname": {Value: kubernetes.NormalizeResourceName(resourceName)},
+			"port":     {Value: containerPortNumber},
+			"scheme":   {Value: schemeVal},
+			"url":      {Value: fmt.Sprintf("%s://%s:%d", schemeVal, kubernetes.NormalizeResourceName(resource.Name), containerPortNumber)},
+		}
+
+		// why is my output.ComputedValues empty?
+		require.Equal(t, expectedValues, output.ComputedValues)
+
+		service, outputResource := kubernetes.FindService(output.Resources)
+		expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
+
+		require.Equal(t, expectedOutputResource, outputResource)
+		require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)
+		require.Equal(t, "", service.Namespace)
+		require.Equal(t, kubernetes.MakeSelectorLabels(applicationName, resource.Name), service.Spec.Selector)
+		require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
+		require.Len(t, service.Spec.Ports, 1)
+
+		servicePort := service.Spec.Ports[0]
+		require.Equal(t, expectedServicePort, servicePort)
+	})
+}
+
+func getRenderOptions(opt int) renderers.RenderOptions {
+	/*
+		opt: 1 - Env KubeMetadata
+		opt: 2 - Env and App KubeMetadata
+	*/
+
+	dependencies := map[string]renderers.RendererDependency{}
+	option := renderers.RenderOptions{Dependencies: dependencies}
+	if !(opt == 1 || opt == 2) {
+		return option
+	}
+
+	option.Environment = renderers.EnvironmentOptions{
+		KubernetesMetadata: &datamodel.KubeMetadataExtension{
+			Annotations: getSetUpMaps(true).envKubeMetadataExt.Annotations,
+			Labels:      getSetUpMaps(true).envKubeMetadataExt.Labels,
+		}}
+
+	if opt == 2 {
+		option.Application = renderers.ApplicationOptions{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
+				Annotations: getSetUpMaps(false).appKubeMetadataExt.Annotations,
+				Labels:      getSetUpMaps(false).appKubeMetadataExt.Labels,
+			}}
+	}
+
+	return option
+}
+
+func getSetUpMaps(envOnly bool) *setupMaps {
+	setupMap := setupMaps{}
+
+	envKubeMetadataExt := &datamodel.KubeMetadataExtension{
+		Annotations: map[string]string{
+			envAnnotationKey1: envAnnotationVal1,
+			envAnnotationKey2: envAnnotationVal2,
+			overrideKey1:      envAnnotationVal1,
+		},
+		Labels: map[string]string{
+			envLabelKey1: envLabelVal1,
+			envLabelKey2: envLabelVal2,
+			overrideKey2: envLabelVal1,
+		},
+	}
+	appKubeMetadataExt := &datamodel.KubeMetadataExtension{
+		Annotations: map[string]string{
+			appAnnotationKey1: appAnnotationVal1,
+			appAnnotationKey2: appAnnotationVal2,
+			overrideKey1:      overrideVal1,
+		},
+		Labels: map[string]string{
+			appLabelKey1: appLabelVal1,
+			appLabelKey2: appLabelVal2,
+			overrideKey2: overrideVal2,
+		},
+	}
+
+	setupMap.envKubeMetadataExt = envKubeMetadataExt
+
+	if !envOnly {
+		setupMap.appKubeMetadataExt = appKubeMetadataExt
+	}
+
+	return &setupMap
+}
+
+type setupMaps struct {
+	envKubeMetadataExt *datamodel.KubeMetadataExtension
+	appKubeMetadataExt *datamodel.KubeMetadataExtension
 }
