@@ -33,7 +33,7 @@ jobs:
         uses: snok/container-retention-policy@v2
         with:
           image-names: dev/*
-          cut-off: A week ago UTC
+          cut-off: 3 days ago UTC
           account-type: org
           org-name: project-radius
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -60,7 +60,7 @@ jobs:
           current_time=$(date +%s)
           hours_ago=$((current_time - ${{ env.VALID_RESOURCE_WINDOW }}))
           while IFS=$'\t' read -r name creation_time; do
-            if [[ ! "$name" =~ ^"radius-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
+            if [[ ! "$name" =~ ^"samplestest-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
               continue
             fi
 

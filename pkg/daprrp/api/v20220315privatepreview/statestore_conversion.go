@@ -94,8 +94,8 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts from version-agnostic datamodel to the versioned DaprStateStore resource and returns an error if the
-// conversion fails.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versioned DaprStateStoreResource and returns an
+// error if the conversion fails or the mode of the DaprStateStore is not specified.
 func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprStateStore, ok := src.(*datamodel.DaprStateStore)
 	if !ok {

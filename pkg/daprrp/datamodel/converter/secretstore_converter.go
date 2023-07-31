@@ -26,8 +26,8 @@ import (
 
 // # Function Explanation
 //
-// SecretStoreDataModelToVersioned converts a DaprSecretStore data model to a versioned model interface based on the version provided,
-// and returns an error if the version is unsupported.
+// SecretStoreDataModelToVersioned converts a version-agnostic datamodel.DaprSecretStore to a versioned model based on the version
+// string, returning an error if the version is not supported.
 func SecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -42,8 +42,8 @@ func SecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version s
 
 // # Function Explanation
 //
-// SecretStoreDataModelFromVersioned unmarshals a JSON content into a DaprSecretStoreResource object and then converts
-// it to a DaprSecretStore object, returning an error if either of these steps fail.
+// SecretStoreDataModelFromVersioned unmarshals a JSON content into a versionined DaprSecretStoreResource object and then converts
+// it to a version-agnostic DaprSecretStore object, returning an error if either of these steps fail.
 func SecretStoreDataModelFromVersioned(content []byte, version string) (*datamodel.DaprSecretStore, error) {
 	switch version {
 	case v20220315privatepreview.Version:

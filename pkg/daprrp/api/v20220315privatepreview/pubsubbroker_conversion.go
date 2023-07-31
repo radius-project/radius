@@ -30,8 +30,8 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel, validating the input
-// and returning an error if any of the validation checks fail.
+// ConvertTo converts a versioned DaprPubSubBrokerResource to a version-agnostic DaprPubSubBroker. It returns an error
+// if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
