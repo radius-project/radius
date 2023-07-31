@@ -119,7 +119,7 @@ func TestGenerateTFConfigFile(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]any{
@@ -134,8 +134,8 @@ func TestGenerateTFConfigFile(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -159,7 +159,7 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
 	envRecipe.Parameters = nil
 	resourceRecipe.Parameters = nil
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]any{
@@ -171,8 +171,8 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -221,7 +221,7 @@ func TestAddProviders_Success(t *testing.T) {
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	awsProviderConfig := map[string]any{
 		"region": "test-region",
@@ -251,8 +251,8 @@ func TestAddProviders_Success(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -282,7 +282,7 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	envConfig.Providers = datamodel.Providers{
 		AWS: datamodel.ProvidersAWS{
@@ -302,8 +302,8 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -332,7 +332,7 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
 	envConfig.Providers = datamodel.Providers{}
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	// Expected config shouldn't contain any provider config
 	expectedTFConfig := TerraformConfig{
@@ -348,8 +348,8 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -379,7 +379,7 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	envConfig.Providers = datamodel.Providers{
 		AWS: datamodel.ProvidersAWS{
@@ -404,8 +404,8 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -435,7 +435,7 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe, envConfig := getTestInputs()
 	envConfig.Providers = datamodel.Providers{}
-	secret_suffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
 	require.NoError(t, err)
 	azureProviderConfig := map[string]any{
 		"features": map[string]any{},
@@ -457,8 +457,8 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 		Terraform: TerraformDefinition{
 			Backend: map[string]interface{}{
 				"kubernetes": map[string]interface{}{
-					"config_path":   "~/.kube/config",
-					"secret_suffix": secret_suffix,
+					"config_path":   clientcmd.RecommendedHomeFile,
+					"secret_suffix": secretSuffix,
 					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
 				},
 			},
@@ -549,7 +549,7 @@ func TestAddProviders_WriteConfigFileError(t *testing.T) {
 }
 
 func TestGenerateSecretSuffix_invalid_resourceid(t *testing.T) {
-	_, err := GenerateSecretSuffix("/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis")
+	_, err := GenerateSecretSuffix("invalid")
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
 

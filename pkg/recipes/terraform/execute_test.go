@@ -87,13 +87,22 @@ func TestGenerateConfig_MissingWorkingDirectory(t *testing.T) {
 	ctx := testcontext.New(t)
 	workingDir := "/invalid-dir"
 	execPath := filepath.Join(workingDir, "terraform")
-
+	envConfig := recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "app-namespace",
+			},
+		},
+	}
 	options := Options{
 		EnvRecipe: &recipes.EnvironmentDefinition{
 			Name:         "test-recipe",
 			TemplatePath: "test/module/source",
 		},
-		ResourceRecipe: &recipes.ResourceMetadata{},
+		EnvConfig: &envConfig,
+		ResourceRecipe: &recipes.ResourceMetadata{
+			ResourceID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+		},
 	}
 
 	err := generateConfig(ctx, workingDir, execPath, options)
@@ -106,13 +115,22 @@ func TestGenerateConfig_InvalidExecPath(t *testing.T) {
 	// Create a temporary test directory.
 	workingDir := t.TempDir()
 	execPath := filepath.Join(workingDir, "terraform")
-
+	envConfig := recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "app-namespace",
+			},
+		},
+	}
 	options := Options{
 		EnvRecipe: &recipes.EnvironmentDefinition{
 			Name:         "test-recipe",
 			TemplatePath: "test/module/source",
 		},
-		ResourceRecipe: &recipes.ResourceMetadata{},
+		ResourceRecipe: &recipes.ResourceMetadata{
+			ResourceID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+		},
+		EnvConfig: &envConfig,
 	}
 
 	err := generateConfig(ctx, workingDir, execPath, options)

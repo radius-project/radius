@@ -27,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
@@ -185,7 +186,7 @@ func generateKubernetesBackendConfig(resourceID, namespace string) (map[string]i
 	}
 	return map[string]interface{}{
 		"kubernetes": map[string]interface{}{
-			"config_path":   "~/.kube/config",
+			"config_path":   clientcmd.RecommendedHomeFile,
 			"secret_suffix": secretSuffix,
 			"namespace":     namespace,
 		},

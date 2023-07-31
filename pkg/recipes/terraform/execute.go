@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -85,7 +86,11 @@ func (e *executor) Deploy(ctx context.Context, options Options, k8sClient contro
 	}
 	err = verifyKubernetesSecret(ctx, options, k8sClientSet)
 	if err != nil {
-		return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
+		} else {
+			return nil, err
+		}
 	}
 	return nil, nil
 }
