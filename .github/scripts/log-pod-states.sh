@@ -26,9 +26,9 @@ if [ -z "$FILENAME" ]; then
 fi
 
 touch $FILENAME
-echo "========== kubectl get pods -A ==========\n" >> $FILENAME
+echo "========== kubectl get pods -A ==========" >> $FILENAME
 kubectl get pods -A >> $FILENAME
-echo "=========================================\n\n" >> $FILENAME
-echo "========== kubectl describe pods -A ==========\n" >> $FILENAME
+echo "=========================================" >> $FILENAME
+echo "========== kubectl describe pods -A ==========" >> $FILENAME
 kubectl describe pods -A >> $FILENAME
 echo "==============================================" >> $FILENAME
