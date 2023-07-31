@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
@@ -123,12 +122,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	providers, err := client.Get(ctx, r.Kind)
-	if clients.Is404Error(err) {
-		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 
+	if providers.Enabled == false {
+		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
+	}
 	err = r.Output.WriteFormatted(r.Format, providers, objectformats.GetCloudProviderTableFormat(r.Kind))
 	if err != nil {
 		return err
