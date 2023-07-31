@@ -40,12 +40,12 @@ func Test_DaprSecretStore_Manual_Generic(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gnrc-scs-ctnr-old",
+						Name: "gnrc-scs-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs-manual-old",
+						Name: "gnrc-scs-manual",
 						Type: validation.O_DaprSecretStoresResource,
 						App:  name,
 					},
@@ -54,7 +54,7 @@ func Test_DaprSecretStore_Manual_Generic(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-old"),
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
 					},
 				},
 			},
@@ -80,12 +80,12 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gnrc-scs-ctnr-recipe-old",
+						Name: "gnrc-scs-ctnr-recipe",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs-recipe-old",
+						Name: "gnrc-scs-recipe",
 						Type: validation.O_DaprSecretStoresResource,
 						App:  name,
 					},
@@ -94,7 +94,7 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").ValidateLabels(false),
 					},
 				},
 			},

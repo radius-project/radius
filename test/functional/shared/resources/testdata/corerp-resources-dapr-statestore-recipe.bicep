@@ -37,7 +37,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-ctnr-old'
+  name: 'dapr-sts-recipe-ctnr'
   properties: {
     application: app.id
     connections: {
@@ -64,7 +64,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-old'
+  name: 'dapr-sts-recipe'
   properties: {
     application: app.id
     environment: env.id

@@ -42,12 +42,12 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "dapr-sts-manual-ctnr-old",
+						Name: "dapr-sts-manual-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dapr-sts-manual-old",
+						Name: "dapr-sts-manual",
 						Type: validation.O_DaprStateStoresResource,
 						App:  name,
 					},
@@ -56,11 +56,11 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-sts-manual-ctnr-old"),
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-ctnr"),
 
 						// Deployed as supporting resources using Kubernetes Bicep extensibility.
-						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis-old").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis").ValidateLabels(false),
 					},
 				},
 			},
@@ -90,12 +90,12 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "dapr-sts-recipe-ctnr-old",
+						Name: "dapr-sts-recipe-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dapr-sts-recipe-old",
+						Name: "dapr-sts-recipe",
 						Type: validation.O_DaprStateStoresResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
@@ -114,7 +114,7 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr").ValidateLabels(false),
 					},
 				},
 			},

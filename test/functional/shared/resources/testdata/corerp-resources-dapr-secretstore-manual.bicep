@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'gnrc-scs-ctnr-old'
+  name: 'gnrc-scs-ctnr'
   properties: {
     application: app.id
     connections: {
@@ -42,7 +42,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
-  name: 'gnrc-scs-manual-old'
+  name: 'gnrc-scs-manual'
   location: location
   properties: {
     environment: environment

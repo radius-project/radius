@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-ctnr-old'
+  name: 'dapr-sts-manual-ctnr'
   properties: {
     application: app.id
     connections: {
@@ -40,7 +40,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 
 module redis 'modules/redis-selfhost.bicep' = {
-  name: 'dapr-sts-manual-redis-deployment-old'
+  name: 'dapr-sts-manual-redis-deployment'
   params: {
     name: 'dapr-sts-manual-redis'
     namespace: namespace
@@ -50,7 +50,7 @@ module redis 'modules/redis-selfhost.bicep' = {
 
 
 resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-old'
+  name: 'dapr-sts-manual'
   properties: {
     application: app.id
     environment: environment

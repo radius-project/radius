@@ -5,7 +5,7 @@ param environment string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dapr-serviceinvocation-old'
+  name: 'dapr-serviceinvocation'
   location: location
   properties: {
     environment: environment
@@ -13,7 +13,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-frontend-old'
+  name: 'dapr-frontend'
   location: location
   properties: {
     application: app.id
@@ -39,7 +39,7 @@ resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-backend-old'
+  name: 'dapr-backend'
   location: location
   properties: {
     application: app.id
