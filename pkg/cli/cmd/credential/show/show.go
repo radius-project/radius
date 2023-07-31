@@ -124,7 +124,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	providers, err := client.Get(ctx, r.Kind)
 	if clients.Is404Error(err) {
-		return clierrors.Message("The cloud provider %q could not be found.", r.Kind)
+		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
 	} else if err != nil {
 		return err
 	}

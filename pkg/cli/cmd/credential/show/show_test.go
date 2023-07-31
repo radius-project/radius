@@ -166,7 +166,7 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
-			require.Equal(t, "The cloud provider \"azure\" could not be found.", err.Error())
+			require.Equal(t, "The credentials for cloud provider \"azure\" could not be found.", err.Error())
 		})
 	})
 	t.Run("Show aws provider", func(t *testing.T) {
@@ -233,7 +233,7 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
-			require.Equal(t, "The cloud provider \"aws\" could not be found.", err.Error())
+			require.Equal(t, "The credentials for cloud provider \"aws\" could not be found.", err.Error())
 		})
 	})
 
