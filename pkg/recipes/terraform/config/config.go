@@ -160,9 +160,9 @@ func GenerateSecretSuffix(resourceID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	id := parsedID.String()
-	fmt.Println(id)
 	name := parsedID.Name()
+	// Terraform enforces a character limit of 63 characters on the suffix for state file stored in kubernetes secret.
+	// First 22 characters of the resource name is used as part of suffix as hash generated from resource id is 40 characters long and its concatenated with the resource name.
 	maxResourceNameLen := 22
 	if len(name) >= maxResourceNameLen {
 		name = name[:maxResourceNameLen]
