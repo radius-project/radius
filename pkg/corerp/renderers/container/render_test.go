@@ -1542,8 +1542,8 @@ func Test_ParseURL(t *testing.T) {
 }
 
 func Test_DNS_Service_Generation(t *testing.T) {
-	containerPortNumber := 80
-	schemeVal := "http"
+	var containerPortNumber int32 = 80
+	schemeVal := "http" 
 	t.Run("verify service generation", func(t *testing.T) {
 		// testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 		properties := datamodel.ContainerProperties{
@@ -1555,40 +1555,24 @@ func Test_DNS_Service_Generation(t *testing.T) {
 				Ports: map[string]datamodel.ContainerPort{
 					"web": {
 						ContainerPort: int32(containerPortNumber),
-						Provides:      makeResourceID(t, "Applications.Core/httpRoutes", "C").String(),
 					},
 				},
-				// Volumes: map[string]datamodel.VolumeProperties{
-				// 	"vol1": {
-				// 		Kind: datamodel.Persistent,
-				// 		Persistent: &datamodel.PersistentVolume{
-				// 			VolumeBase: datamodel.VolumeBase{
-				// 				MountPath: "/tmpfs",
-				// 			},
-				// 			Source: testStorageResourceID,
-				// 		},
-				// 	},
-				// },
 			},
 		}
 
 		resource := makeResource(t, properties)
-
-		// dependencies := map[string]renderers.RendererDependency{}
 		ctx := testcontext.New(t)
 		renderer := Renderer{}
-		// why do i need getRenderOptions here? What is the diff between 0,1,2 for options?
 		output, err := renderer.Render(ctx, resource, getRenderOptions(2))
 
 		require.NoError(t, err)
-		// shouldnt this generate 1 output resource?
-		require.Len(t, output.Resources, 3)
+		require.Len(t, output.Resources, 4)
 		require.Empty(t, output.SecretValues)
 
 		expectedServicePort := corev1.ServicePort{
-			Name:       resourceName,
-			Port:       int32(containerPortNumber),
-			TargetPort: intstr.FromInt(containerPortNumber),
+			Name:       "web",
+			Port:       containerPortNumber,
+			TargetPort: intstr.FromString("web"),
 			Protocol:   "TCP",
 		}
 		expectedValues := map[string]rpv1.ComputedValueReference{
@@ -1598,7 +1582,6 @@ func Test_DNS_Service_Generation(t *testing.T) {
 			"url":      {Value: fmt.Sprintf("%s://%s:%d", schemeVal, kubernetes.NormalizeResourceName(resource.Name), containerPortNumber)},
 		}
 
-		// why is my output.ComputedValues empty?
 		require.Equal(t, expectedValues, output.ComputedValues)
 
 		service, outputResource := kubernetes.FindService(output.Resources)
