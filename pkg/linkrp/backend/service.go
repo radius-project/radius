@@ -98,7 +98,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3)".
-	discoveryClient.UseLegacyDiscovery = true
+	discoveryClient.UseLegacyDiscovery = false
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
