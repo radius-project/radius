@@ -80,6 +80,9 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		Template:   template.Must(template.New("output").Funcs(functionTable()).Parse(outputFormat)),
 		Out:        options.Out,
 		ErrOut:     options.Out,
+
+		// Limit the concurrent log request to 10.
+		MaxLogRequests: 10,
 	}
 
 	// This is the only Radius-specific customization we make.

@@ -25,7 +25,10 @@ import (
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// PatchNamespace creates a namespace if it does not exist.
+// # Function Explanation
+//
+// PatchNamespace creates a new namespace with the given name and labels it with the given label, then applies it to the
+// cluster. It returns an error if the patch operation fails.
 func PatchNamespace(ctx context.Context, client runtime_client.Client, namespace string) error {
 	ns := &unstructured.Unstructured{
 		Object: map[string]any{

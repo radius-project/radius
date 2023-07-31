@@ -26,7 +26,6 @@ import (
 // ConvertTo converts from the versioned Application resource to version-agnostic datamodel.
 func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	// TODO: Improve the validation.
 	converted := &datamodel.Application{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -65,7 +64,6 @@ func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Application resource.
 func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
-	// TODO: Improve the validation.
 	app, ok := src.(*datamodel.Application)
 	if !ok {
 		return v1.ErrInvalidModelConversion

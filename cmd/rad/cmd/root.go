@@ -79,6 +79,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -164,6 +166,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Must set the default logger to use controller-runtime.
+	runtimelog.SetLogger(zap.New())
 
 	RootCmd.PersistentFlags().StringVar(&ConfigHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 

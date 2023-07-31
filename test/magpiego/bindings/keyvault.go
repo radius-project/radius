@@ -48,7 +48,5 @@ func KeyVaultBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "failed to get the secret"}
 	}
 
-	// TODO: Should we delete the secret?
-
 	return BindingStatus{true, "secrets accessed"}
 }

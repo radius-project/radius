@@ -45,6 +45,11 @@ const (
 	// This is required by the Kubernetes API Server.
 	OperationTypeKubernetesOpenAPIV2Doc = "KUBERNETESOPENAPIV2DOC"
 
+	// OperationTypeKubernetesOpenAPIV3Doc is the operation type for the required OpenAPI v3 discovery document.
+	//
+	// This is required by the Kubernetes API Server.
+	OperationTypeKubernetesOpenAPIV3Doc = "KUBERNETESOPENAPIV3DOC"
+
 	// OperationTypeKubernetesDiscoveryDoc is the operation type for the required Kubernetes API discovery document.
 	OperationTypeKubernetesDiscoveryDoc = "KUBERNETESDISCOVERYDOC"
 
@@ -100,6 +105,13 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV2Doc, Method: v1.OperationGet},
 				Method:            v1.OperationGet,
 				ControllerFactory: kubernetes_ctrl.NewOpenAPIv2Doc,
+			},
+			{
+				ParentRouter:      router,
+				Path:              "/openapi/v3",
+				OperationType:     &v1.OperationType{Type: OperationTypeKubernetesOpenAPIV3Doc, Method: v1.OperationGet},
+				Method:            v1.OperationGet,
+				ControllerFactory: kubernetes_ctrl.NewOpenAPIv3Doc,
 			},
 			{
 				ParentRouter:      router,

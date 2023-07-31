@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -80,4 +81,20 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
+}
+
+func unpackErrorAndMatch(err error, failWithAny []string) bool {
+	for _, errString := range failWithAny {
+		cliErr := err.(*radcli.CLIError)
+		for _, detail := range cliErr.ErrorResponse.Error.Details {
+			if detail.Code != "OK" {
+				for _, innerDetail := range detail.Details {
+					if strings.Contains(innerDetail.Message, errString) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }

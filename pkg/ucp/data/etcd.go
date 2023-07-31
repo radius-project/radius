@@ -88,10 +88,10 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 
 		logger.Info(fmt.Sprintf("etcd will listen on ports %d %d", *peerPort, *clientPort))
 
-		config.APUrls = []url.URL{makeURL(*peerPort)}
-		config.LPUrls = []url.URL{makeURL(*peerPort)}
-		config.ACUrls = []url.URL{makeURL(*clientPort)}
-		config.LCUrls = []url.URL{makeURL(*clientPort)}
+		config.AdvertisePeerUrls = []url.URL{makeURL(*peerPort)}
+		config.ListenPeerUrls = []url.URL{makeURL(*peerPort)}
+		config.AdvertiseClientUrls = []url.URL{makeURL(*clientPort)}
+		config.ListenClientUrls = []url.URL{makeURL(*clientPort)}
 
 		// Needs to be updated based on the ports that were chosen
 		config.ForceNewCluster = true
