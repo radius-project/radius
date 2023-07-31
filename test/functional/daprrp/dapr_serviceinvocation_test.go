@@ -28,7 +28,7 @@ import (
 func Test_DaprServiceInvocation(t *testing.T) {
 	template := "resources/testdata/daprrp-resources-serviceinvocation.bicep"
 	name := "dapr-serviceinvocation"
-	appNamespace := "default-serviceinvocation"
+	appNamespace := "default-dapr-serviceinvocation"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{

@@ -27,8 +27,8 @@ import (
 
 func Test_DaprSecretStore_Manual(t *testing.T) {
 	template := "resources/testdata/daprrp-resources-secretstore-manual.bicep"
-	name := "daprrp-resources-secretstore-manual"
-	appNamespace := "default-daprrp-resources-secretstore-manual"
+	name := "daprrp-rs-secretstore-manual"
+	appNamespace := "default-daprrp-rs-secretstore-manual"
 
 	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
 		{
@@ -67,8 +67,8 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 
 func Test_DaprSecretStore_Recipe(t *testing.T) {
 	template := "resources/testdata/daprrp-resources-secretstore-recipe.bicep"
-	name := "daprrp-resources-secretstore-recipe"
-	appNamespace := "daprrp-resources-secretstore-recipe"
+	name := "daprrp-rs-secretstore-recipe"
+	appNamespace := "daprrp-rs-secretstore-recipe"
 
 	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
 		{

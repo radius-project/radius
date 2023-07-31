@@ -7,12 +7,12 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'daprrp-environment-secretstore-recipes-env'
+  name: 'daprrp-env-secretstore-recipes-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'daprrp-environment-secretstore-recipes-env'
+      namespace: 'daprrp-env-secretstore-recipes-env'
     }
     recipes: {
       'Applications.Dapr/secretStores': {
@@ -26,13 +26,13 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'daprrp-resources-secretstore-recipe'
+  name: 'daprrp-rs-secretstore-recipe'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'daprrp-resources-secretstore-recipe'
+        namespace: 'daprrp-rs-secretstore-recipe'
       }
     ]
   }

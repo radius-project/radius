@@ -5,12 +5,12 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'daprrp-environment-recipes-env'
+  name: 'daprrp-env-recipes-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'daprrp-environment-recipes-env'
+      namespace: 'daprrp-env-recipes-env'
     }
     recipes: {
       'Applications.Dapr/stateStores': {
@@ -24,13 +24,13 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'daprrp-resources-sts-recipe'
+  name: 'daprrp-rs-sts-recipe'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'daprrp-resources-sts-recipe'
+        namespace: 'daprrp-rs-sts-recipe'
       }
     ]
   }

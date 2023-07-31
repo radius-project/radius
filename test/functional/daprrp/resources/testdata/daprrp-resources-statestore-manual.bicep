@@ -5,7 +5,7 @@ param environment string
 param namespace string = 'default'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'daprrp-resources-statestore-manual'
+  name: 'daprrp-rs-statestore-manual'
   properties: {
     environment: environment
   }

@@ -29,8 +29,8 @@ import (
 
 func Test_DaprStateStore_Manual(t *testing.T) {
 	template := "resources/testdata/daprrp-resources-statestore-manual.bicep"
-	name := "daprrp-resources-statestore-manual"
-	appNamespace := "default-daprrp-resources-statestore-manual"
+	name := "daprrp-rs-statestore-manual"
+	appNamespace := "default-daprrp-rs-statestore-manual"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -38,7 +38,7 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "daprrp-resources-statestore-manual",
+						Name: "daprrp-rs-statestore-manual",
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -72,8 +72,8 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 
 func Test_DaprStateStore_Recipe(t *testing.T) {
 	template := "resources/testdata/daprrp-resources-statestore-recipe.bicep"
-	name := "daprrp-resources-sts-recipe"
-	appNamespace := "daprrp-environment-recipes-env"
+	name := "daprrp-rs-sts-recipe"
+	appNamespace := "daprrp-env-recipes-env"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -81,11 +81,11 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "daprrp-environment-recipes-env",
+						Name: "daprrp-env-recipes-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "daprrp-resources-sts-recipe",
+						Name: "daprrp-rs-sts-recipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},

@@ -5,7 +5,7 @@ param environment string
 param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'daprrp-resources-component-name-conflict'
+  name: 'daprrp-rs-component-name-conflict'
   location: 'global'
   properties: {
     environment: environment

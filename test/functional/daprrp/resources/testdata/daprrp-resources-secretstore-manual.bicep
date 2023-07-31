@@ -7,7 +7,7 @@ param environment string
 param location string = resourceGroup().location
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'daprrp-resources-secretstore-manual'
+  name: 'daprrp-rs-secretstore-manual'
   location: location
   properties: {
     environment: environment
