@@ -268,23 +268,23 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-type ContainerPorts struct {
-	containerPortValues []int32
-	containerPortNames []string
+type containerPorts struct {
+	values []int32
+	names []string
 }
 
-func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerResource) (map[string]rpv1.ComputedValueReference, ContainerPorts, error) {
+func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerResource) (map[string]rpv1.ComputedValueReference, containerPorts, error) {
 	serviceComputedValues := map[string]rpv1.ComputedValueReference{}
-	containerPorts := ContainerPorts{
-		containerPortValues: []int32{},
-		containerPortNames: []string{},
+	containerPorts := containerPorts{
+		values: []int32{},
+		names: []string{},
 	}
 		
 		// Assumes container has 1 exposed port.
 		for portName, port := range resource.Properties.Container.Ports {
 			// store portNames and portValues for use in service generation.
-			containerPorts.containerPortNames = append(containerPorts.containerPortNames, portName)
-			containerPorts.containerPortValues = append(containerPorts.containerPortValues, port.ContainerPort)
+			containerPorts.names = append(containerPorts.names, portName)
+			containerPorts.values = append(containerPorts.values, port.ContainerPort)
 			
 			// if the optional port value is set, use that instead of the containerPort.
 			portVal := port.ContainerPort
@@ -323,7 +323,7 @@ func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerRes
 	return serviceComputedValues, containerPorts, nil
 }
 
-func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts ContainerPorts) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -331,11 +331,11 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 
 	// create the ports that will be exposed by the service.
 	ports := []corev1.ServicePort{}
-	for i, port := range containerPorts.containerPortValues {
+	for i, port := range containerPorts.values {
 		ports = append(ports, corev1.ServicePort{
-			Name:       containerPorts.containerPortNames[i],
+			Name:       containerPorts.names[i],
 			Port:       port,
-			TargetPort: intstr.FromString(containerPorts.containerPortNames[i]),
+			TargetPort: intstr.FromString(containerPorts.names[i]),
 			Protocol:  corev1.ProtocolTCP,
 		})
 	}
