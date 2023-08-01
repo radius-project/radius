@@ -102,7 +102,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: for right now we assume the environment is in the default resource group.
 	r.Scope, err = resources.ParseScope(r.Workspace.Scope)
 	if err != nil {
 		return err

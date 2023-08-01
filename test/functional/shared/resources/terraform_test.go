@@ -19,31 +19,39 @@ package resource_test
 import (
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprComponentNameConflict(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
-	name := "corerp-resources-dapr-component-name-conflict"
+// Test_TerraformRecipe_HelloWorld covers the most basic possible terraform recipe scenario:
+//
+// - Create an extender resource using an empty Terraform recipe.
+// - This way Terraform is executed, but no resources are created.
+// - Since extender has no requirements on the Radius side, it will succeed.
+func Test_TerraformRecipe_HelloWorld(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-helloworld.bicep"
+	name := "corerp-resources-terraform-helloworld"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
+			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-dapr-component-name-conflict",
+						Name: "corerp-resources-terraform-helloworld",
 						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "corerp-resources-terraform-helloworld",
+						Type: validation.ExtendersResource,
 					},
 				},
 			},
-			K8sObjects: &validation.K8sObjectSet{},
+			K8sObjects:           &validation.K8sObjectSet{},
+			SkipResourceDeletion: true,
 		},
 	})
-	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
-
 	test.Test(t)
 }
