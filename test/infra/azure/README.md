@@ -26,13 +26,24 @@ This directory includes the Bicep templates to deploy the following resources on
 
 1. Enable `Microsoft.ContainerService/EnableImageCleanerPreview` feature flag
     
-    This cleans up unused container images in each node, which can occur the security vulnerability. Visit https://aka.ms/aks/image-cleaner to learn more about image cleaner.
+    This cleans up unused container images in each node, which can cause the security vulnerabilities. Visit https://aka.ms/aks/image-cleaner to learn more about image cleaner.
 
     ```bash
+    # Check the feature flag to see if it is 'Registered'. If the status is 'Registered', you can skip this step. 
+    az feature show --namespace "Microsoft.ContainerService" --name "EnableImageCleanerPreview"
+    {
+      "id": "/subscriptions/<subscriptionid>/providers/Microsoft.Features/providers/Microsoft.ContainerService/features/EnableImageCleanerPreview",
+      "name": "Microsoft.ContainerService/EnableImageCleanerPreview",
+      "properties": {
+        "state": "Registered"
+      },
+      "type": "Microsoft.Features/providers/features"
+    }
+
     # Register feature flag.
     az feature register --namespace "Microsoft.ContainerService" --name "EnableImageCleanerPreview"
 
-    # Ensure that the feature flag is `Registered`.
+    # Ensure that the feature flag is 'Registered'.
     az feature show --namespace "Microsoft.ContainerService" --name "EnableImageCleanerPreview"
 
     # Re-register resource provider.
@@ -50,9 +61,10 @@ This directory includes the Bicep templates to deploy the following resources on
 
 1. Deploy main.bicep:
     ```bash
-    az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaAdminObjectId='[Admin Object Id]'
+    az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaEnabled='[Grafana Enabled]' grafanaAdminObjectId='[Admin Object Id]'
     ```
     - **[Admin Object Id]**: Set the object ID of the Grafana Admin user or group. To find the object id, search for the admin user or group name on [AAD Portal Overview search box](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id or run `az ad signed-in-user show` to get your own user object id.
+    - **[Grafana Enabled]**: Set `true` if you want to install Prometheus and Grafana dashboard. `false` is recommended if you do not need to see metrics to reduce the resource cost.
 
 ## References
 

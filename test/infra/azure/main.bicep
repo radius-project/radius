@@ -58,8 +58,8 @@ param grafanaAdminObjectId string
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
 param grafanaDashboardName string = '${prefix}-dashboard'
 
-@description('Specifies whether to run bootstrap script after resources are deployed. Default is true.')
-param radiusBootStrap bool = true
+@description('Specifies whether to install the required tools for running Radius. Default is true.')
+param installKubernetesDependencies bool = true
 
 param defaultTags object = {
   radius: 'infra'
@@ -169,10 +169,10 @@ module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = if (grafa
 }
 
 // Run deployment script to bootstrap the cluster for Radius.
-module deploymentScript './modules/deployment-script.bicep' = if (radiusBootStrap) {
+module deploymentScript './modules/deployment-script.bicep' = if (installKubernetesDependencies) {
   name: 'deploymentScript'
   params: {
-    name: 'radiusBootStrap'
+    name: 'installKubernetesDependencies'
     clusterName: aksCluster.outputs.name
     resourceGroupName: resourceGroup().name
     subscriptionId: subscription().subscriptionId
