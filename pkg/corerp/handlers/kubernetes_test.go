@@ -650,19 +650,6 @@ func TestCheckPodStatus(t *testing.T) {
 		expectedError   string
 	}{
 		{
-			// Pod is unschedulable
-			podCondition: []corev1.PodCondition{
-				{
-					Type:    corev1.PodScheduled,
-					Status:  corev1.ConditionFalse,
-					Reason:  "Unschedulable",
-					Message: "0/1 nodes are available: 1 Insufficient cpu.",
-				},
-			},
-			isReady:       false,
-			expectedError: "Pod test-pod in namespace test-namespace is not scheduled. Reason: Unschedulable, Message: 0/1 nodes are available: 1 Insufficient cpu.",
-		},
-		{
 			// Container is in Terminated state
 			podCondition: nil,
 			containerStatus: []corev1.ContainerStatus{

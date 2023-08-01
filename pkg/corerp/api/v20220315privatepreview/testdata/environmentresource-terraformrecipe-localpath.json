@@ -17,7 +17,7 @@
         "Applications.Link/mongoDatabases":{
           "cosmos-recipe": {
             "templateKind": "terraform",
-            "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongo"
+            "templatePath": "../not-allowed/"
           }
         }
       }

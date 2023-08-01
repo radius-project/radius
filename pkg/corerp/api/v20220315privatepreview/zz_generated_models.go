@@ -553,7 +553,7 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep
+	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
 	TemplateKind *string `json:"templateKind,omitempty"`
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
@@ -562,8 +562,9 @@ type EnvironmentRecipeProperties struct {
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 
-	// Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this
-// is not applicable, as the Bicep version is part of the templatePath.
+	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources. For Bicep this is not applicable, as the Bicep version
+// is part of the templatePath.
 	TemplateVersion *string `json:"templateVersion,omitempty"`
 }
 

@@ -360,12 +360,6 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 
 	conditionPodReady := true
 	for _, cc := range pod.Status.Conditions {
-		// If the resource limits for the container cannot be satisfied, the pod will not be scheduled
-		if cc.Type == corev1.PodScheduled && cc.Status == corev1.ConditionFalse {
-			logger.Info(fmt.Sprintf("Pod is not scheduled. Reason: %s, Message: %s", cc.Reason, cc.Message))
-			return false, fmt.Errorf("Pod %s in namespace %s is not scheduled. Reason: %s, Message: %s", pod.Name, pod.Namespace, cc.Reason, cc.Message)
-		}
-
 		if cc.Type == corev1.PodReady && cc.Status != corev1.ConditionTrue {
 			// Do not return false here else if the pod transitions to a crash loop backoff state,
 			// we won't be able to detect that condition.
