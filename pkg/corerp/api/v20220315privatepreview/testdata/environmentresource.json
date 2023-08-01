@@ -29,6 +29,10 @@
           "templateKind": "terraform",
           "templatePath": "Azure/cosmosdb/azurerm",
           "templateVersion":"1.1.0"
+        },
+        "terraform-without-version":{
+          "templateKind": "terraform",
+          "templatePath": "http://example.com/myrecipe.zip"
         }
       },
       "Applications.Link/redisCaches":{

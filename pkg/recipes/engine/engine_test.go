@@ -17,10 +17,10 @@ limitations under the License.
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/go-errors/errors"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"

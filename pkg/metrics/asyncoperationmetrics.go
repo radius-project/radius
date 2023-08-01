@@ -25,9 +25,9 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -72,7 +72,7 @@ func newAsyncOperationMetrics() *asyncOperationMetrics {
 // Init initializes the counters and value recorders for asyncOperationMetrics and returns an error if any of the
 // initialization fails.
 func (a *asyncOperationMetrics) Init() error {
-	meter := global.MeterProvider().Meter("async-operation-metrics")
+	meter := otel.GetMeterProvider().Meter("async-operation-metrics")
 
 	var err error
 	a.counters[QueuedAsyncOperationCount], err = meter.Int64Counter(QueuedAsyncOperationCount)

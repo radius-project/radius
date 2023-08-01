@@ -25,7 +25,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
@@ -40,7 +39,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
+	"github.com/go-logr/logr"
 	etcdclient "go.etcd.io/etcd/client/v3"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const serviceName = "applications.core"
@@ -102,6 +104,9 @@ func main() {
 		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
 	defer flush()
+
+	// Must set the logger before using controller-runtime.
+	runtimelog.SetLogger(logger)
 
 	if enableAsyncWorker {
 		logger.Info("Enable AsyncRequestProcessWorker.")

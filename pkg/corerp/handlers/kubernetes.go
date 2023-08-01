@@ -169,7 +169,9 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 }
 
 func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
-	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 		},
@@ -177,6 +179,10 @@ func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerF
 			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 		},
 	})
+
+	if err != nil {
+		logger.Error(err, "failed to add event handler")
+	}
 }
 
 func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
@@ -349,12 +355,6 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 
 	conditionPodReady := true
 	for _, cc := range pod.Status.Conditions {
-		// If the resource limits for the container cannot be satisfied, the pod will not be scheduled
-		if cc.Type == corev1.PodScheduled && cc.Status == corev1.ConditionFalse {
-			logger.Info(fmt.Sprintf("Pod is not scheduled. Reason: %s, Message: %s", cc.Reason, cc.Message))
-			return false, fmt.Errorf("Pod %s in namespace %s is not scheduled. Reason: %s, Message: %s", pod.Name, pod.Namespace, cc.Reason, cc.Message)
-		}
-
 		if cc.Type == corev1.PodReady && cc.Status != corev1.ConditionTrue {
 			// Do not return false here else if the pod transitions to a crash loop backoff state,
 			// we won't be able to detect that condition.
