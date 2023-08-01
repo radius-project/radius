@@ -191,7 +191,12 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	for _, port := range properties.Container.Ports {
 		// if the container has an exposed port, note that down.
 		// A single service will be generated for a container with one or more exposed ports.
-		if port.ContainerPort != 0 && port.Provides == "" {
+		if port.ContainerPort == 0 {
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort."))
+		}
+
+		// if the container has an exposed port, but no 'provides' field, it requires DNS service generation.
+		if port.Provides == "" {
 			needsServiceGeneration = true
 		}
 	}
@@ -280,7 +285,6 @@ func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerRes
 		names: []string{},
 	}
 		
-		// Assumes container has 1 exposed port.
 		for portName, port := range resource.Properties.Container.Ports {
 			// store portNames and portValues for use in service generation.
 			containerPorts.names = append(containerPorts.names, portName)
