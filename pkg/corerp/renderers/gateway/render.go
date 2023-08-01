@@ -318,7 +318,6 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			port = int32(routePort)
 		}
 
-		// TODO: refactor for routeName to support URL as well
 		routeName, err := getRouteName(&route)
 		if err != nil {
 			return []rpv1.OutputResource{}, err
@@ -362,7 +361,6 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			continue
 		}
 
-		// TODO: generate httpProxy object for destinations that are specified as URLs as well as resourceIDs.
 		httpProxyObject := &contourv1.HTTPProxy{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "HTTPProxy",
