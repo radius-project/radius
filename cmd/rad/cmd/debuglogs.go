@@ -74,18 +74,28 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Capturing logs from the Radius workspace \"%s\"\n", w.Name)
 
 	pods, err := k8sClient.CoreV1().Pods("radius-system").List(cmd.Context(), v1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", k8slabels.LabelPartOf, k8slabels.ControlPlane),
+		LabelSelector: fmt.Sprintf("%s=%s", k8slabels.LabelPartOf, k8slabels.ControlPlanePartOfLabelValue),
 	})
 
 	if err != nil {
 		return err
 	}
 
-	tmpdir, err := os.MkdirTemp("", "radius-debug-logs")
+	if len(pods.Items) == 0 {
+		fmt.Println("Warning: No pods found. Please check that the Radius control plane is running.")
+		fmt.Println()
+		fmt.Println("Run `helm ls -A` to check if Radius is installed.")
+		fmt.Println("Run `kubectl get pods -A` to check if Radius is running.")
+		fmt.Println()
+		return nil
+	}
 
+	tmpdir, err := os.MkdirTemp("", "radius-debug-logs")
 	if err != nil {
 		return err
 	}
+
+	defer os.RemoveAll(tmpdir)
 
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
@@ -100,8 +110,6 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 			captureIndividualLogs(cmd.Context(), request, cmd, filename)
 		}
 	}
-
-	defer os.RemoveAll(tmpdir)
 
 	file, err := os.Create(debugLogsFile)
 	if err != nil {
