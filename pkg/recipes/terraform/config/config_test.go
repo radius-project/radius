@@ -163,18 +163,34 @@ func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
 }
 
 func TestGenerateModuleData(t *testing.T) {
-	expectedModuleData := map[string]any{
-		moduleSourceKey:       testTemplatePath,
-		moduleVersionKey:      testTemplateVersion,
-		"resource_group_name": envParams["resource_group_name"],
-		"redis_cache_name":    resourceParams["redis_cache_name"],
-		"sku":                 resourceParams["sku"],
-	}
+	t.Run("With templateVersion", func(t *testing.T) {
+		expectedModuleData := map[string]any{
+			moduleSourceKey:       testTemplatePath,
+			moduleVersionKey:      testTemplateVersion,
+			"resource_group_name": envParams["resource_group_name"],
+			"redis_cache_name":    resourceParams["redis_cache_name"],
+			"sku":                 resourceParams["sku"],
+		}
 
-	moduleData := generateModuleData(testcontext.New(t), testTemplatePath, testTemplateVersion, envParams, resourceParams)
+		moduleData := generateModuleData(testcontext.New(t), testTemplatePath, testTemplateVersion, envParams, resourceParams)
 
-	// Assert that the module data contains the expected data.
-	require.Equal(t, expectedModuleData, moduleData)
+		// Assert that the module data contains the expected data.
+		require.Equal(t, expectedModuleData, moduleData)
+	})
+	t.Run("Without templateVersion", func(t *testing.T) {
+		expectedModuleData := map[string]any{
+			moduleSourceKey:       testTemplatePath,
+			"resource_group_name": envParams["resource_group_name"],
+			"redis_cache_name":    resourceParams["redis_cache_name"],
+			"sku":                 resourceParams["sku"],
+		}
+
+		moduleData := generateModuleData(testcontext.New(t), testTemplatePath, "", envParams, resourceParams)
+
+		// Assert that the module data contains the expected data.
+		require.Equal(t, expectedModuleData, moduleData)
+	})
+
 }
 
 func TestAddProviders_Success(t *testing.T) {

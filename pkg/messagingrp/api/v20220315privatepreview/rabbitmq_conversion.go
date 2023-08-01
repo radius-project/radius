@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned RabbitMQQueue resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a versioned RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
+// and returns it or an error if the inputs are invalid.
 func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQQueue{
 		BaseResource: v1.BaseResource{
@@ -71,7 +74,10 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQQueue resource.
+// # Function Explanation
+//
+// ConvertFrom converts a version-agnostic DataModelInterface to a versioned RabbitMQQueueResource,
+// returning an error if the conversion fails.
 func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	rabbitmq, ok := src.(*datamodel.RabbitMQQueue)
 	if !ok {
@@ -100,7 +106,10 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance.
+// # Function Explanation
+//
+// ConvertFrom converts a version-agnostic datamodel.RabbitMQSecrets to a versioned RabbitMQSecrets,
+// returning an error if the conversion fails.
 func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	rabbitMQSecrets, ok := src.(*datamodel.RabbitMQSecrets)
 	if !ok {
@@ -111,7 +120,9 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// ConvertTo converts from the versioned RabbitMQSecrets instance to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts a versioned RabbitMQSecrets object to a version-agnostic datamodel.RabbitMQSecrets object.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
 		ConnectionString: to.String(src.ConnectionString),

@@ -18,6 +18,7 @@ package v20220315privatepreview
 
 import (
 	"fmt"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -29,6 +30,7 @@ import (
 
 const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
+	invalidLocalModulePathFmt        = "local module paths are not supported with Terraform Recipes. The 'templatePath' '%s' was detected as a local module path because it begins with '/' or './' or '../'."
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
@@ -72,15 +74,23 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 					// This check shouldn't be needed once we define an enum for templateKind in the schema.
 					// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7940
 					if recipeDetails.TemplateKind == nil || !isValidTemplateKind(*recipeDetails.TemplateKind) {
-						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("invalid template kind. Allowed formats: \"bicep\"")
+						formats := []string{}
+						for _, format := range types.SupportedTemplateKind {
+							formats = append(formats, fmt.Sprintf("%q", format))
+						}
+						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid template kind. Allowed formats: %s", strings.Join(formats, ", ")))
 					}
 					if *recipeDetails.TemplateKind == types.TemplateKindBicep && recipeDetails.TemplateVersion != nil && *recipeDetails.TemplateVersion != "" {
 						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath.")
 					}
 
-					if *recipeDetails.TemplateKind == types.TemplateKindTerraform && (recipeDetails.TemplateVersion == nil || *recipeDetails.TemplateVersion == "") {
-						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion is a required property for templateKind: 'terraform'")
+					if *recipeDetails.TemplateKind == types.TemplateKindTerraform && recipeDetails.TemplatePath != nil {
+						// Check for local paths
+						if strings.HasPrefix(to.String(recipeDetails.TemplatePath), "/") || strings.HasPrefix(to.String(recipeDetails.TemplatePath), "./") || strings.HasPrefix(to.String(recipeDetails.TemplatePath), "../") {
+							return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(recipeDetails.TemplatePath)))
+						}
 					}
+
 					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
 						TemplateKind:    *recipeDetails.TemplateKind,
 						TemplatePath:    to.String(recipeDetails.TemplatePath),
