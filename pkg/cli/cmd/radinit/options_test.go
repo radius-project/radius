@@ -140,7 +140,7 @@ workspaces:
       environment: /a/b/c/providers/Applications.Core/environments/ice-cold
 `
 		v, err := makeConfig(yaml)
-		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, ConfigHolder: &framework.ConfigHolder{Config: v}}
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true, ConfigHolder: &framework.ConfigHolder{Config: v}}
 
 		require.NoError(t, err)
 		initGetKubeContextSuccess(k8s)
