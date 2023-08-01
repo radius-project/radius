@@ -17,9 +17,9 @@ limitations under the License.
 package providers
 
 import (
-	"context"
 	"testing"
 
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -30,7 +30,7 @@ func TestKubernetesProvider_BuildConfig(t *testing.T) {
 	}
 
 	p := &kubernetesProvider{}
-	config, err := p.BuildConfig(context.Background(), nil)
+	config, err := p.BuildConfig(testcontext.New(t), nil)
 	require.NoError(t, err)
 	require.Equal(t, expectedConfig, config)
 }
@@ -40,7 +40,7 @@ func TestKubernetesProvider_BuildConfig_Error(t *testing.T) {
 	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
 
 	p := &kubernetesProvider{}
-	config, err := p.BuildConfig(context.Background(), nil)
+	config, err := p.BuildConfig(testcontext.New(t), nil)
 	require.Error(t, err)
 	require.Nil(t, config)
 }

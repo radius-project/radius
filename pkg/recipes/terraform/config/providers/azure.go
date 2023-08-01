@@ -18,6 +18,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -35,12 +36,13 @@ import (
 // Provider's config parameters need to match the values expected by Terraform
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
 const (
-	AzureProviderName      = "azurerm"
-	AzureFeaturesParam     = "features"
-	AzureSubIDParam        = "subscription_id"
-	AzureClientIDParam     = "client_id"
-	AzureClientSecretParam = "client_secret"
-	AzureTenantIDParam     = "tenant_id"
+	AzureProviderName = "azurerm"
+
+	azureFeaturesParam     = "features"
+	azureSubIDParam        = "subscription_id"
+	azureClientIDParam     = "client_id"
+	azureClientSecretParam = "client_secret"
+	azureTenantIDParam     = "tenant_id"
 )
 
 type azureProvider struct {
@@ -59,7 +61,7 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 	// features block is required for Azure provider even if it is empty
 	// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
 	config := map[string]any{
-		AzureFeaturesParam: map[string]any{},
+		azureFeaturesParam: map[string]any{},
 	}
 
 	subscriptionID, err := p.parseScope(ctx, envConfig)
@@ -103,22 +105,16 @@ func (p *azureProvider) parseScope(ctx context.Context, envConfig *recipes.Confi
 }
 
 func (p *azureProvider) getCredentialsProvider() (*credentials.AzureCredentialProvider, error) {
-	azureCredentialProvider, err := credentials.NewAzureCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
-	if err != nil {
-		return nil, err
-	}
-
-	return azureCredentialProvider, nil
+	return credentials.NewAzureCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
 }
 
-// fetchAzureCredentials Fetches Azure credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.
+// fetchAzureCredentials fetches Azure credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.
 func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credentials.CredentialProvider[credentials.AzureCredential]) (*credentials.AzureCredential, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	credentials, err := azureCredentialsProvider.Fetch(context.Background(), credentials.AzureCloud, "default")
+	credentials, err := azureCredentialsProvider.Fetch(ctx, credentials.AzureCloud, "default")
 	if err != nil {
-		notFound := &secret.ErrNotFound{}
-		if notFound.Is(err) {
-			logger.Info("Azure credentials are not registered to the Environment, skipping credentials configuration.")
+		if errors.Is(err, &secret.ErrNotFound{}) {
+			logger.Info("AWS credentials are not registered, skipping credentials configuration.")
 			return nil, nil
 		}
 
@@ -126,7 +122,7 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 	}
 
 	if credentials == nil || credentials.ClientID == "" || credentials.TenantID == "" || credentials.ClientSecret == "" {
-		logger.Info("Azure credentials are not registered to the Environment, skipping credentials configuration.")
+		logger.Info("Azure credentials are not registered, skipping credentials configuration.")
 		return nil, nil
 	}
 
@@ -135,13 +131,13 @@ func fetchAzureCredentials(ctx context.Context, azureCredentialsProvider credent
 
 func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, credentials *credentials.AzureCredential, subscriptionID string) map[string]any {
 	if subscriptionID != "" {
-		configMap[AzureSubIDParam] = subscriptionID
+		configMap[azureSubIDParam] = subscriptionID
 	}
 
 	if credentials != nil && credentials.ClientID != "" && credentials.TenantID != "" && credentials.ClientSecret != "" {
-		configMap[AzureClientIDParam] = credentials.ClientID
-		configMap[AzureClientSecretParam] = credentials.ClientSecret
-		configMap[AzureTenantIDParam] = credentials.TenantID
+		configMap[azureClientIDParam] = credentials.ClientID
+		configMap[azureClientSecretParam] = credentials.ClientSecret
+		configMap[azureTenantIDParam] = credentials.TenantID
 	}
 
 	return configMap

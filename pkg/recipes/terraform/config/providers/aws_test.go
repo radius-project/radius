@@ -170,7 +170,7 @@ func TestAwsProvider_getCredentialsProvider(t *testing.T) {
 		Provider: ucp_provider.TypeKubernetesSecret,
 	}
 
-	endpoint := "http://test.endpoint.com"
+	endpoint := "http://example.com"
 	connection, err := sdk.NewDirectConnection(endpoint)
 	require.NoError(t, err)
 
@@ -178,8 +178,9 @@ func TestAwsProvider_getCredentialsProvider(t *testing.T) {
 		secretProviderOptions: secretProviderOptions,
 		ucpConn:               connection,
 	}
-	awsCredentialProvider, _ := provider.getCredentialsProvider()
+	awsCredentialProvider, err := provider.getCredentialsProvider()
 	require.NotNil(t, awsCredentialProvider)
+	require.NoError(t, err)
 }
 
 func TestFetchAWSCredentials_Success(t *testing.T) {
@@ -226,24 +227,24 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 			region:      testRegion,
 			credentials: testAWSCredentials,
 			expectedConfig: map[string]any{
-				AWSRegionParam:    testRegion,
-				AWSAccessKeyParam: testAWSCredentials.AccessKeyID,
-				AWSSecretKeyParam: testAWSCredentials.SecretAccessKey,
+				awsRegionParam:    testRegion,
+				awsAccessKeyParam: testAWSCredentials.AccessKeyID,
+				awsSecretKeyParam: testAWSCredentials.SecretAccessKey,
 			},
 		},
 		{
 			desc:        "missing region",
 			credentials: testAWSCredentials,
 			expectedConfig: map[string]any{
-				AWSAccessKeyParam: testAWSCredentials.AccessKeyID,
-				AWSSecretKeyParam: testAWSCredentials.SecretAccessKey,
+				awsAccessKeyParam: testAWSCredentials.AccessKeyID,
+				awsSecretKeyParam: testAWSCredentials.SecretAccessKey,
 			},
 		},
 		{
 			desc:   "missing credentials",
 			region: testRegion,
 			expectedConfig: map[string]any{
-				AWSRegionParam: testRegion,
+				awsRegionParam: testRegion,
 			},
 		},
 		{
@@ -261,9 +262,9 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 			p := &awsProvider{}
 			config := p.generateProviderConfigMap(&tt.credentials, tt.region)
 			require.Equal(t, len(tt.expectedConfig), len(config))
-			require.Equal(t, tt.expectedConfig[AWSRegionParam], config[AWSRegionParam])
-			require.Equal(t, tt.expectedConfig[AWSAccessKeyParam], config[AWSAccessKeyParam])
-			require.Equal(t, tt.expectedConfig[AWSSecretKeyParam], config[AWSSecretKeyParam])
+			require.Equal(t, tt.expectedConfig[awsRegionParam], config[awsRegionParam])
+			require.Equal(t, tt.expectedConfig[awsAccessKeyParam], config[awsAccessKeyParam])
+			require.Equal(t, tt.expectedConfig[awsSecretKeyParam], config[awsSecretKeyParam])
 		})
 	}
 }

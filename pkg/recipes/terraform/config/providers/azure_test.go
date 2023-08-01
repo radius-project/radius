@@ -172,7 +172,7 @@ func TestAzureProvider_getCredentialsProvider(t *testing.T) {
 		Provider: ucp_provider.TypeKubernetesSecret,
 	}
 
-	endpoint := "http://test.endpoint.com"
+	endpoint := "http://example.com"
 	connection, err := sdk.NewDirectConnection(endpoint)
 	require.NoError(t, err)
 
@@ -180,8 +180,9 @@ func TestAzureProvider_getCredentialsProvider(t *testing.T) {
 		secretProviderOptions: secretProviderOptions,
 		ucpConn:               connection,
 	}
-	azureCredentialProvider, _ := provider.getCredentialsProvider()
+	azureCredentialProvider, err := provider.getCredentialsProvider()
 	require.NotNil(t, azureCredentialProvider)
+	require.NoError(t, err)
 }
 
 func TestFetchAzureCredentials_Success(t *testing.T) {
@@ -229,29 +230,29 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 			subscription: testSubscription,
 			credentials:  testAzureCredentials,
 			expectedConfig: map[string]any{
-				AzureFeaturesParam:     map[string]any{},
-				AzureSubIDParam:        testSubscription,
-				AzureTenantIDParam:     testAzureCredentials.TenantID,
-				AzureClientIDParam:     testAzureCredentials.ClientID,
-				AzureClientSecretParam: testAzureCredentials.ClientSecret,
+				azureFeaturesParam:     map[string]any{},
+				azureSubIDParam:        testSubscription,
+				azureTenantIDParam:     testAzureCredentials.TenantID,
+				azureClientIDParam:     testAzureCredentials.ClientID,
+				azureClientSecretParam: testAzureCredentials.ClientSecret,
 			},
 		},
 		{
 			desc:        "missing subscription",
 			credentials: testAzureCredentials,
 			expectedConfig: map[string]any{
-				AzureFeaturesParam:     map[string]any{},
-				AzureTenantIDParam:     testAzureCredentials.TenantID,
-				AzureClientIDParam:     testAzureCredentials.ClientID,
-				AzureClientSecretParam: testAzureCredentials.ClientSecret,
+				azureFeaturesParam:     map[string]any{},
+				azureTenantIDParam:     testAzureCredentials.TenantID,
+				azureClientIDParam:     testAzureCredentials.ClientID,
+				azureClientSecretParam: testAzureCredentials.ClientSecret,
 			},
 		},
 		{
 			desc:         "missing credentials",
 			subscription: testSubscription,
 			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
-				AzureSubIDParam:    testSubscription,
+				azureFeaturesParam: map[string]any{},
+				azureSubIDParam:    testSubscription,
 			},
 		},
 		{
@@ -262,7 +263,7 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 				ClientSecret: testAzureCredentials.ClientSecret,
 			},
 			expectedConfig: map[string]any{
-				AzureFeaturesParam: map[string]any{},
+				azureFeaturesParam: map[string]any{},
 			},
 		},
 	}
@@ -271,15 +272,15 @@ func TestAzureProvider_generateProviderConfigMap(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &azureProvider{}
 			azConfig := map[string]any{
-				AzureFeaturesParam: map[string]any{},
+				azureFeaturesParam: map[string]any{},
 			}
 			config := p.generateProviderConfigMap(azConfig, &tt.credentials, tt.subscription)
 			require.Equal(t, len(tt.expectedConfig), len(config))
-			require.Equal(t, tt.expectedConfig[AzureFeaturesParam], config[AzureFeaturesParam])
-			require.Equal(t, tt.expectedConfig[AzureSubIDParam], config[AzureSubIDParam])
-			require.Equal(t, tt.expectedConfig[AzureClientIDParam], config[AzureClientIDParam])
-			require.Equal(t, tt.expectedConfig[AzureClientSecretParam], config[AzureClientSecretParam])
-			require.Equal(t, tt.expectedConfig[AzureTenantIDParam], config[AzureTenantIDParam])
+			require.Equal(t, tt.expectedConfig[azureFeaturesParam], config[azureFeaturesParam])
+			require.Equal(t, tt.expectedConfig[azureSubIDParam], config[azureSubIDParam])
+			require.Equal(t, tt.expectedConfig[azureClientIDParam], config[azureClientIDParam])
+			require.Equal(t, tt.expectedConfig[azureClientSecretParam], config[azureClientSecretParam])
+			require.Equal(t, tt.expectedConfig[azureTenantIDParam], config[azureTenantIDParam])
 		})
 	}
 }

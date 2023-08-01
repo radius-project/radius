@@ -18,6 +18,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -35,10 +36,11 @@ import (
 // Provider's config parameters need to match the values expected by Terraform
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 const (
-	AWSProviderName   = "aws"
-	AWSRegionParam    = "region"
-	AWSAccessKeyParam = "access_key"
-	AWSSecretKeyParam = "secret_key"
+	AWSProviderName = "aws"
+
+	awsRegionParam    = "region"
+	awsAccessKeyParam = "access_key"
+	awsSecretKeyParam = "secret_key"
 )
 
 type awsProvider struct {
@@ -63,6 +65,7 @@ func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Config
 	if err != nil {
 		return nil, err
 	}
+
 	credentials, err := fetchAWSCredentials(ctx, credentialsProvider)
 	if err != nil {
 		return nil, err
@@ -95,22 +98,16 @@ func (p *awsProvider) parseScope(ctx context.Context, envConfig *recipes.Configu
 }
 
 func (p *awsProvider) getCredentialsProvider() (*credentials.AWSCredentialProvider, error) {
-	awsCredentialProvider, err := credentials.NewAWSCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
-	if err != nil {
-		return nil, err
-	}
-
-	return awsCredentialProvider, nil
+	return credentials.NewAWSCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
 }
 
-// fetchAWSCredentials Fetches AWS credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.
+// fetchAWSCredentials fetches AWS credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.
 func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials.CredentialProvider[credentials.AWSCredential]) (*credentials.AWSCredential, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	credentials, err := awsCredentialsProvider.Fetch(context.Background(), credentials.AWSPublic, "default")
+	credentials, err := awsCredentialsProvider.Fetch(ctx, credentials.AWSPublic, "default")
 	if err != nil {
-		notFound := &secret.ErrNotFound{}
-		if notFound.Is(err) {
-			logger.Info("AWS credentials are not registered to the Environment, skipping credentials configuration.")
+		if errors.Is(err, &secret.ErrNotFound{}) {
+			logger.Info("AWS credentials are not registered, skipping credentials configuration.")
 			return nil, nil
 		}
 
@@ -118,7 +115,7 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 	}
 
 	if credentials == nil || credentials.AccessKeyID == "" || credentials.SecretAccessKey == "" {
-		logger.Info("AWS credentials are not registered to the Environment, skipping credentials configuration.")
+		logger.Info("AWS credentials are not registered, skipping credentials configuration.")
 		return nil, nil
 	}
 
@@ -128,12 +125,12 @@ func fetchAWSCredentials(ctx context.Context, awsCredentialsProvider credentials
 func (p *awsProvider) generateProviderConfigMap(credentials *credentials.AWSCredential, region string) map[string]any {
 	config := make(map[string]any)
 	if region != "" {
-		config[AWSRegionParam] = region
+		config[awsRegionParam] = region
 	}
 
 	if credentials != nil && credentials.AccessKeyID != "" && credentials.SecretAccessKey != "" {
-		config[AWSAccessKeyParam] = credentials.AccessKeyID
-		config[AWSSecretKeyParam] = credentials.SecretAccessKey
+		config[awsAccessKeyParam] = credentials.AccessKeyID
+		config[awsSecretKeyParam] = credentials.SecretAccessKey
 	}
 
 	return config
