@@ -19,10 +19,12 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -54,9 +56,21 @@ func getRequiredProviders(workingDir, localModuleName string) ([]string, error) 
 // It uses Terraform's Get command to download the module using the Terraform executable available at execPath.
 // An error is returned if the module could not be downloaded.
 func downloadModule(ctx context.Context, workingDir, execPath string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
 		return err
+	}
+
+	// Set log level for Terraform
+	err = tf.SetLog("TRACE")
+	if err != nil {
+		logger.Error(err, "Failed to set log level for Terraform")
+	} else {
+		// Set stdout and stderr for Terraform
+		tf.SetStdout(os.Stdout)
+		tf.SetStderr(os.Stderr)
 	}
 
 	if err = tf.Get(ctx); err != nil {

@@ -32,6 +32,7 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/util"
@@ -74,17 +75,28 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
 
 	recipeData := make(map[string]any)
+	downloadStartTime := time.Now()
 	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
 	if err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownload(ctx,
+			metrics.GenerateTemplatePathAttribute(definition.TemplatePath), metrics.GenerateRecipeDownloadResultAttribute("ERROR"))
+
 		return nil, err
 	}
-	// create the context object to be passed to the recipe deployment
+
+	// Metrics for successful recipe download
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownload(ctx,
+		metrics.GenerateTemplatePathAttribute(definition.TemplatePath), metrics.GenerateRecipeDownloadResultAttribute("SUCCESS"))
+
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime, metrics.GenerateTemplatePathAttribute(definition.TemplatePath))
+
+	// Create the context object to be passed to the recipe deployment
 	recipeContext, err := createRecipeContextParameter(recipe.ResourceID, recipe.EnvironmentID, configuration.Runtime.Kubernetes.EnvironmentNamespace, recipe.ApplicationID, configuration.Runtime.Kubernetes.Namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	// get the parameters after resolving the conflict between developer and operator parameters
+	// Get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	_, isContextParameterDefined := recipeData[recipeParameters].(map[string]any)[datamodel.RecipeContextParameter]
 	parameters := createRecipeParameters(recipe.Parameters, definition.Parameters, isContextParameterDefined, recipeContext)

@@ -19,6 +19,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -60,6 +61,11 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 
 	// Install Terraform
 	i := install.NewInstaller()
+
+	// Set logger for installer
+	// This is required to get the logs from the installer
+	i.SetLogger(log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile))
+
 	execPath, err := Install(ctx, i, options.RootDir)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
@@ -125,6 +131,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
+
 	requiredProviders, err := getRequiredProviders(workingDir, localModuleName)
 	if err != nil {
 		return err
@@ -146,6 +153,16 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
 		return err
+	}
+
+	// Set log level for Terraform
+	err = tf.SetLog("TRACE")
+	if err != nil {
+		logger.Error(err, "Failed to set log level for Terraform")
+	} else {
+		// Set stdout and stderr for Terraform
+		tf.SetStdout(os.Stdout)
+		tf.SetStderr(os.Stderr)
 	}
 
 	// Initialize Terraform

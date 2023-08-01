@@ -19,7 +19,9 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
@@ -51,40 +53,89 @@ type engine struct {
 // configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
 // an error if one occurs.
 func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
+	executionStart := time.Now()
+
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
+		recordRecipeExecutionMetrics(ctx, definition.Driver, executionStart, "LOAD_RECIPE_ERROR")
 		return nil, err
 	}
 
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
+		recordRecipeExecutionMetrics(ctx, definition.Driver, executionStart, "DRIVER_NOT_FOUND")
 		return nil, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
+		recordRecipeExecutionMetrics(ctx, definition.Driver, executionStart, "LOAD_CONFIGURATION_ERROR")
 		return nil, err
 	}
 
-	return driver.Execute(ctx, *configuration, recipe, *definition)
+	res, err := driver.Execute(ctx, *configuration, recipe, *definition)
+	if err != nil {
+		recordRecipeExecutionMetrics(ctx, definition.Driver, executionStart, "EXECUTE_ERROR")
+		return nil, err
+	}
+
+	recordRecipeExecutionMetrics(ctx, definition.Driver, executionStart, "SUCCESS")
+
+	return res, nil
 }
 
 // # Function Explanation
 //
 // Delete calls the Delete method of the driver specified in the recipe definition to delete the output resources.
 func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error {
+	deletionStart := time.Now()
+
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
+		recordRecipeDeletionMetrics(ctx, definition.Driver, deletionStart, "LOAD_RECIPE_ERROR")
 		return err
 	}
 
 	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
+		recordRecipeDeletionMetrics(ctx, definition.Driver, deletionStart, "DRIVER_NOT_FOUND")
 		return fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	return driver.Delete(ctx, outputResources)
+	err = driver.Delete(ctx, outputResources)
+	if err != nil {
+		recordRecipeDeletionMetrics(ctx, definition.Driver, deletionStart, "DELETE_ERROR")
+		return err
+	}
+
+	recordRecipeDeletionMetrics(ctx, definition.Driver, deletionStart, "SUCCESS")
+
+	return nil
+}
+
+func recordRecipeExecutionMetrics(ctx context.Context, driver string, executionStart time.Time, result string) {
+	// Record the execution duration.
+	metrics.DefaultRecipeEngineMetrics.
+		RecordRecipeExecutionDuration(ctx, executionStart, metrics.GenerateDriverAttribute(driver),
+			metrics.GenerateRecipeExecutionResultAttribute(result))
+
+	// Record the execution count.
+	metrics.DefaultRecipeEngineMetrics.
+		RecordRecipeExecution(ctx, metrics.GenerateDriverAttribute(driver),
+			metrics.GenerateRecipeExecutionResultAttribute(result))
+}
+
+func recordRecipeDeletionMetrics(ctx context.Context, driver string, deletionStart time.Time, result string) {
+	// Record the execution duration.
+	metrics.DefaultRecipeEngineMetrics.
+		RecordRecipeDeletionDuration(ctx, deletionStart, metrics.GenerateDriverAttribute(driver),
+			metrics.GenerateRecipeExecutionResultAttribute(result))
+
+	// Record the execution count.
+	metrics.DefaultRecipeEngineMetrics.
+		RecordRecipeDeletion(ctx, metrics.GenerateDriverAttribute(driver),
+			metrics.GenerateRecipeExecutionResultAttribute(result))
 }

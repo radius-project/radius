@@ -44,17 +44,6 @@ const (
 	AsnycOperationDuration = "asyncoperation.duration"
 )
 
-const (
-	// ResourceTypeAttrKey is the attribute name for resource type.
-	ResourceTypeAttrKey = "resource_type"
-
-	// OperationTypeAttrKey is the attribute name for operation type.
-	OperationTypeAttrKey = "operation_type"
-
-	// OperationStateAttrKey is the attribute name for operation state.
-	OperationStateAttrKey = "operation_state"
-)
-
 type asyncOperationMetrics struct {
 	counters       map[string]metric.Int64Counter
 	valueRecorders map[string]metric.Float64Histogram
