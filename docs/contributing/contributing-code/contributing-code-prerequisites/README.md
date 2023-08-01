@@ -6,6 +6,10 @@ This page lists the prerequisites for working with the repository. Most contribu
 
 We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).
 
+## Asking for help
+
+If you get stuck installing any of our dependencies, please ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
+
 ## Basic Prerequisites
 
 <!--
@@ -21,8 +25,7 @@ This is the list of core dependencies to install for the most common tasks. In g
 - [Node.js](https://nodejs.org/en/)
 - [Python](https://www.python.org/downloads/)
 - [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
-- [jq](https://jqlang.github.io/jq/download/)
-  
+- [jq](https://jqlang.github.io/jq/download/)  
 - Make  
   
   **Linux**: Install the `build-essential` package:
@@ -108,6 +111,7 @@ If you were trying to run `make generate` and ran into an error, then one of the
 Enter the following commands to install all of the required tools.
 
 ```sh
+cd cadl && npm ci
 npm install -g autorest
 npm install -g oav
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1

@@ -24,7 +24,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,25 +43,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		return nil, nil, err
 	}
 
-	extension, err := r.findExtension(dm)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if extension == nil {
-		return radiusDependencyIDs, azureDependencyIDs, nil
-	}
-
-	if extension.Provides == "" {
-		return radiusDependencyIDs, azureDependencyIDs, nil
-	}
-
-	parsed, err := resources.ParseResource(extension.Provides)
-	if err != nil {
-		return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
-	}
-
-	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
+	return radiusDependencyIDs, azureDependencyIDs, nil
 }
 
 // Render augments the container's kubernetes output resource with value for dapr sidecar extension.
@@ -71,7 +52,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
-	dependencies := options.Dependencies
+
 	output, err := r.Inner.Render(ctx, resource, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -88,16 +69,6 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 
 	// If we get here then we found a Dapr Sidecar extension. We need to update the Kubernetes deployment with
 	// the desired annotations.
-
-	// Resolve the AppID:
-	// 1. If there's a DaprHttpRoute then it *must* specify an app id.
-	// 2. The extension specifies an app id (must not conflict with 1)
-	// 3. (none)
-
-	appID, err := r.resolveAppId(extension, dependencies)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
 
 	for i := range output.Resources {
 		if output.Resources[i].ResourceType.Provider != resourcemodel.ProviderKubernetes {
@@ -117,8 +88,8 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 
 		annotations["dapr.io/enabled"] = "true"
 
-		if appID != "" {
-			annotations["dapr.io/app-id"] = appID
+		if extension.AppID != "" {
+			annotations["dapr.io/app-id"] = extension.AppID
 		}
 		if appPort := extension.AppPort; appPort != 0 {
 			annotations["dapr.io/app-port"] = fmt.Sprintf("%d", appPort)
@@ -149,34 +120,6 @@ func (r *Renderer) findExtension(dm v1.DataModelInterface) (*datamodel.DaprSidec
 		}
 	}
 	return nil, nil
-}
-
-func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, dependencies map[string]renderers.RendererDependency) (string, error) {
-	// We're being extra pedantic here about reporting error cases. None of these
-	// cases should be possible to trigger with user input, they would result from internal bugs.
-	routeAppID := ""
-	if extension.Provides != "" {
-		routeDependency, ok := dependencies[extension.Provides]
-		if !ok {
-			return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to find dependency with id %q", extension.Provides))
-		}
-		route, ok := routeDependency.Resource.(*link.DaprInvokeHttpRoute)
-		if !ok {
-			return "", errors.New("failed to get Applications.Link/DaprInvokeHTTPRoutes resource")
-		}
-		routeAppID = route.Properties.AppId
-	}
-
-	appID := extension.AppID
-	if appID != "" && routeAppID != "" && appID != routeAppID {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: %q, Extension: %q", routeAppID, appID))
-	}
-
-	if routeAppID != "" {
-		return routeAppID, nil
-	}
-
-	return appID, nil
 }
 
 func (r *Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {

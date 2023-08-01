@@ -33,8 +33,6 @@ import (
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 
-const defaultRecipeName = "default"
-
 func NewEnvironmentLoader(armOptions *arm.ClientOptions) ConfigurationLoader {
 	return &environmentLoader{ArmClientOptions: armOptions}
 }
@@ -46,7 +44,7 @@ type environmentLoader struct {
 }
 
 // LoadConfiguration fetches environment/application information and return runtime and provider configuration.
-func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.Metadata) (*recipes.Configuration, error) {
+func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.Configuration, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
@@ -98,7 +96,7 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 }
 
 // LoadRecipe fetches the recipe information from the environment.
-func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Metadata) (*recipes.Definition, error) {
+func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
 	if err != nil {
 		return nil, err
@@ -106,7 +104,7 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Meta
 	return getRecipeDefinition(environment, recipe)
 }
 
-func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.Metadata) (*recipes.Definition, error) {
+func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	if environment.Properties.Recipes == nil {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
@@ -115,22 +113,22 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 	}
-
-	// TODO Remove this logic to populate recipe name, after https://github.com/project-radius/radius/issues/5649 is implemented
 	recipeName := recipe.Name
-	if recipeName == "" {
-		recipeName = defaultRecipeName
-	}
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}
 
-	return &recipes.Definition{
+	definition := &recipes.EnvironmentDefinition{
 		Name:         recipeName,
 		Driver:       *found.TemplateKind,
 		ResourceType: resource.Type(),
 		Parameters:   found.Parameters,
 		TemplatePath: *found.TemplatePath,
-	}, nil
+	}
+	if *found.TemplateKind == recipes.TemplateKindTerraform {
+		definition.TemplateVersion = *found.TemplateVersion
+	}
+
+	return definition, nil
 }

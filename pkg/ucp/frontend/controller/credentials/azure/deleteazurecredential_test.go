@@ -25,11 +25,10 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,12 +38,9 @@ func Test_Credential_Delete(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewDeleteAzureCredential(ctrl.Options{
-		Options: armrpc_controller.Options{
-			StorageClient: mockStorageClient,
-		},
-		SecretClient: mockSecretClient,
-	})
+	credentialCtrl, err := NewDeleteAzureCredential(armrpc_controller.Options{
+		StorageClient: mockStorageClient,
+	}, mockSecretClient)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -116,10 +112,10 @@ func Test_Credential_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
-			request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, tt.headerfile, nil)
+			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, tt.headerfile, nil)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(request)
+			ctx := rpctest.NewARMRequestContext(request)
 
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {

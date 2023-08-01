@@ -22,15 +22,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"helm.sh/helm/v3/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/version"
 )
 
 const (
@@ -39,15 +37,28 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
+// RadiusOptions describes the options for the Radius helm chart.
 type RadiusOptions struct {
-	Reinstall    bool
-	ChartPath    string
+	// Reinstall specifies whether to reinstall the chart (helm upgrade).
+	Reinstall bool
+
+	// ChartPath specifies an override for the chart location.
+	ChartPath string
+
+	// ChartVersion specifies the chart version.
 	ChartVersion string
-	ImageVersion string
-	Values       string
+
+	// SetArgs specifies as set of additional "values" to pass to helm. These are specified using the command-line syntax accepted
+	// by helm, in the order they appear on the command line (last one wins).
+	SetArgs []string
 }
 
 // Apply the radius helm chart.
+//
+// # Function Explanation
+//
+// ApplyRadiusHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the
+// "Reinstall" option is set. It returns a boolean indicating if the chart was already installed and an error if one occurred.
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
 	// For capturing output from helm.
 	var helmOutput strings.Builder
@@ -87,52 +98,44 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
-	version := version.Version()
 
 	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing Radius version %s control plane to namespace: %s", version, RadiusSystemNamespace)
-
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm install, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
-		output.LogInfo("Reinstalling Radius version %s control plane to namespace: %s", version, RadiusSystemNamespace)
-
 		err = runRadiusHelmUpgrade(helmConf, radiusReleaseName, helmChart)
 		if err != nil {
 			return false, fmt.Errorf("failed to run Radius Helm upgrade, err: \n%w\nHelm output:\n%s", err, helmOutput.String())
 		}
 	} else if err == nil {
 		alreadyInstalled = true
-		output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 	}
 	return alreadyInstalled, err
 }
 
 // AddRadiusValues adds values to the helm chart. It overrides the default values in following order:
 // 1. lowest priority: Values from the helm chart default values.yaml
-// 2. next priority: set correct image tag, potentially overwriting "latest" tag from step 1
-// 3. highest priority: Values by the --set flag potentially overwriting values from step 1 and 2
+// 2. highest priority: Values by the --set flag potentially overwriting values from step 1 and 2
+//
+// # Function Explanation
+//
+// AddRadiusValues parses the --set arguments in order and adds them to the helm chart values, returning an error if any of
+// the arguments are invalid.
 func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	values := helmChart.Values
 
-	services := []string{"rp", "ucp", "de"}
-	for _, service := range services {
-		if _, ok := values[service]; !ok {
-			values[service] = map[string]any{}
+	// Parse --set arguments in order so that the last one wins.
+	for _, arg := range options.SetArgs {
+		err := strvals.ParseInto(arg, values)
+		if err != nil {
+			return err
 		}
-		o := values[service].(map[string]any)
-		o["tag"] = options.ImageVersion
-	}
-
-	err := strvals.ParseInto(options.Values, values)
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -157,6 +160,10 @@ func runRadiusHelmUpgrade(helmConf *helm.Configuration, releaseName string, helm
 	return runUpgrade(installClient, releaseName, helmChart)
 }
 
+// # Function Explanation
+//
+// RunRadiusHelmUninstall attempts to uninstall Radius from the Radius system namespace
+// using a helm configuration, and returns an error if the uninstall fails.
 func RunRadiusHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Radius from namespace: %s", RadiusSystemNamespace)
 	uninstallClient := helm.NewUninstall(helmConf)

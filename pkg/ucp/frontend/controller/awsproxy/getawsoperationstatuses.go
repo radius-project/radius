@@ -27,9 +27,9 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
@@ -37,30 +37,33 @@ var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
 // GetAWSOperationStatuses is the controller implementation to get AWS resource operation status.
 type GetAWSOperationStatuses struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
-	awsOptions ctrl.AWSOptions
-	basePath   string
+	awsClients ucp_aws.Clients
 }
 
-// NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
-func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// # Function Explanation
+//
+// NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.
+func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
-		Operation: armrpc_controller.NewOperation(opts.Options,
-			armrpc_controller.ResourceOptions[datamodel.AWSResource]{},
-		),
-		awsOptions: opts.AWSOptions,
-		basePath:   opts.BasePath,
+		Operation:  armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
+		awsClients: awsClients,
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() reads the region from the request, uses the region to get the resource request status
+// from AWS CloudControl, and returns the async operation status. If the resource is not found, it returns a
+// NotFoundResponse, and if there is an error, it returns an error response.
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
-	region, errResponse := readRegionFromRequest(req.URL.Path, p.basePath)
+	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
 	if errResponse != nil {
 		return errResponse, nil
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	response, err := p.awsOptions.AWSCloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	response, err := p.awsClients.CloudControl.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
 	if awsclient.IsAWSResourceNotFoundError(err) {

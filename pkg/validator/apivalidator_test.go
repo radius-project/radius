@@ -22,42 +22,50 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/swagger"
 	"github.com/project-radius/radius/test/testutil"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	envRoute           = "/providers/applications.core/environments/{environmentName}"
-	armIDUrl           = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	ucpIDUrl           = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	longarmIDUrl       = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
-	longucpIDUrl       = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
-	underscorearmIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
-	underscoreucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
-	digitarmIDUrl      = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
-	digitucpIDUrl      = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+	resourceGroupResource             = "/resourceGroups/{resourceGroupName}"
+	environmentCollectionRoute        = "/providers/applications.core/environments"
+	environmentResourceRoute          = "/providers/applications.core/environments/{environmentName}"
+	armResourceGroupScopedResourceURL = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpResourceGroupScopedResourceURL = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	longARMResourceURL                = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	longUCPResourceURL                = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	underscoreARMResourceURL          = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
+	underscoreUCPResourceURL          = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
+	digitARMResourceURL               = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+	digitUCPResourceURL               = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+
+	armResourceGroupScopedCollectionURL = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments"
+	armSubscriptionScopedCollectionURL  = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments"
+	ucpResourceGroupScopeCollectionURL  = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments"
+	ucpPlaneScopedCollectionURL         = "http://localhost:8080/planes/radius/local/providers/applications.core/environments"
 
 	operationGetRoute    = "/providers/applications.core/operations"
 	subscriptionPUTRoute = "/subscriptions/{subscriptions}/resourceGroups/{resourceGroup}"
 )
 
-func TestAPIValidator_ARMID(t *testing.T) {
-	runTest(t, armIDUrl)
+func Test_APIValidator_ARMID(t *testing.T) {
+	runTest(t, armResourceGroupScopedResourceURL, "/subscriptions/", "/subscriptions/{subscriptionID}", []string{"/subscriptions/{subscriptionID}/resourceGroups/{resourceGroupName}", "/subscriptions/{subscriptionID}"})
 }
 
-func TestAPIValidator_UCPID(t *testing.T) {
-	runTest(t, ucpIDUrl)
+func Test_APIValidator_UCPID(t *testing.T) {
+	runTest(t, ucpResourceGroupScopedResourceURL, "/planes/", "/planes/{planeType}/{planeName}", []string{"/planes/{planeType}/{planeName}/resourceGroups/{resourceGroupName}", "/planes/{planeType}/{planeName}"})
 }
 
-func runTest(t *testing.T, resourceIDUrl string) {
+func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, prefixes []string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}", "rootScope")
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, prefixes, "rootScope")
 
 	require.NoError(t, err)
 
@@ -114,21 +122,10 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: nil,
 		},
 		{
-			desc:            "skip validation of /subscriptions/{subscriptionID}",
-			method:          http.MethodPut,
-			rootScope:       "",
-			route:           subscriptionPUTRoute,
-			apiVersion:      "2022-03-15-privatepreview",
-			contentFilePath: "put-environments-valid.json",
-			url:             "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000",
-			responseCode:    http.StatusAccepted,
-			validationErr:   nil,
-		},
-		{
 			desc:            "valid environment resource",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
 			url:             resourceIDUrl,
@@ -138,8 +135,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "valid environment resource for selfhost",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid-selfhost.json",
 			url:             resourceIDUrl,
@@ -147,20 +144,60 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr:   nil,
 		},
 		{
-			desc:          "valid get-environment with azure resource id",
+			desc:          "valid get-environment",
 			method:        http.MethodGet,
-			rootScope:     "/{rootScope:.*}",
-			route:         envRoute,
+			rootScope:     planeRootScope + resourceGroupResource,
+			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
 			responseCode:  http.StatusAccepted,
 			validationErr: nil,
 		},
 		{
+			desc:          "valid list-environment with azure resource group",
+			method:        http.MethodGet,
+			rootScope:     planeRootScope + resourceGroupResource,
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           armResourceGroupScopedCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with azure subscription",
+			method:        http.MethodGet,
+			rootScope:     planeRootScope,
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           armSubscriptionScopedCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with UCP resource group",
+			method:        http.MethodGet,
+			rootScope:     planeRootScope + resourceGroupResource,
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           ucpResourceGroupScopeCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
+			desc:          "valid list-environment with UCP plane",
+			method:        http.MethodGet,
+			rootScope:     planeRootScope,
+			route:         environmentCollectionRoute,
+			apiVersion:    "2022-03-15-privatepreview",
+			url:           ucpPlaneScopedCollectionURL,
+			responseCode:  http.StatusAccepted,
+			validationErr: nil,
+		},
+		{
 			desc:          "valid delete-environment with azure resource id",
 			method:        http.MethodDelete,
-			rootScope:     "/{rootScope:.*}",
-			route:         envRoute,
+			rootScope:     planeRootScope + resourceGroupResource,
+			route:         environmentResourceRoute,
 			apiVersion:    "2022-03-15-privatepreview",
 			url:           resourceIDUrl,
 			responseCode:  http.StatusAccepted,
@@ -169,8 +206,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid api-version",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-06-20-privatepreview", // unsupported api version
 			contentFilePath: "put-environments-valid.json",
 			url:             resourceIDUrl,
@@ -185,8 +222,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with missing location property bag",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-location.json",
 			url:             resourceIDUrl,
@@ -194,7 +231,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -208,8 +245,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with missing kind property",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-kind.json",
 			url:             resourceIDUrl,
@@ -217,7 +254,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -231,8 +268,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with multiple errors",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
 			url:             resourceIDUrl,
@@ -240,7 +277,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -258,8 +295,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "invalid put-environment with invalid json doc",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-invalid-json.json",
 			url:             resourceIDUrl,
@@ -267,7 +304,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -281,16 +318,16 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "env name too long",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             longarmIDUrl,
+			url:             longARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -304,16 +341,16 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "env name too long",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             longucpIDUrl,
+			url:             longUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -327,16 +364,16 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             underscorearmIDUrl,
+			url:             underscoreARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env_name0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -350,16 +387,16 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "underscore not allowed in name",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             underscoreucpIDUrl,
+			url:             underscoreUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/env_name0",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -373,16 +410,16 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             digitarmIDUrl,
+			url:             digitARMResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/0env",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -396,16 +433,16 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		{
 			desc:            "name cannot start with digit",
 			method:          http.MethodPut,
-			rootScope:       "/{rootScope:.*}",
-			route:           envRoute,
+			rootScope:       planeRootScope + resourceGroupResource,
+			route:           environmentResourceRoute,
 			apiVersion:      "2022-03-15-privatepreview",
 			contentFilePath: "put-environments-valid.json",
-			url:             digitucpIDUrl,
+			url:             digitUCPResourceURL,
 			responseCode:    400,
 			validationErr: &v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
-					Target:  "applications.core/environments/0env",
+					Target:  "applications.core/environments",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 					Details: []v1.ErrorDetails{
 						{
@@ -421,28 +458,42 @@ func runTest(t *testing.T, resourceIDUrl string) {
 	for _, tc := range validatorTests {
 		t.Run(tc.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			r := mux.NewRouter()
+			r := chi.NewRouter()
 
-			r.NotFoundHandler = APINotFoundHandler()
-			r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()
+			r.NotFound(APINotFoundHandler())
+			r.MethodNotAllowed(APIMethodNotAllowedHandler())
 
 			// APIs undocumented in OpenAPI spec.
-			r.Path(operationGetRoute).Methods(http.MethodGet).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			r.MethodFunc(http.MethodGet, operationGetRoute, func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusAccepted)
 			})
-			r.Path("/subscriptions/{subscriptions}").Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.MethodFunc(http.MethodPut, "/subscriptions/{subscriptions}", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusAccepted)
 			})
 
 			if tc.rootScope != "" {
-				// Add API validator middleware
-				validator := APIValidator(l)
-				router := r.PathPrefix(tc.rootScope).Subrouter()
-				// Register validator at {rootScope} level
-				router.Use(validator)
+				if !strings.Contains(tc.url, targetScope) {
+					return
+				}
 
-				router.Path(tc.route).Methods(tc.method).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusAccepted)
+				// Add API validator middleware
+				validator := APIValidator(Options{
+					SpecLoader:         l,
+					ResourceTypeGetter: RadiusResourceTypeGetter,
+				})
+
+				subRouter := chi.NewRouter()
+				// chi.Mount will create catch-all route (/*) for subRouter.
+				r.Mount(tc.rootScope, subRouter)
+				// Add API validator middleware to subRouter to validate IsCatchAll.
+				subRouter.Use(validator)
+
+				subRouter.Route(tc.route, func(r chi.Router) {
+					r.Use(validator)
+					r.MethodFunc(tc.method, "/", func(w http.ResponseWriter, r *http.Request) {
+						w.WriteHeader(http.StatusAccepted)
+					})
 				})
 			}
 
@@ -456,7 +507,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 				tc.url += "?api-version=" + tc.apiVersion
 			}
 
-			req, _ := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
+			req, err := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
+			require.NoError(t, err)
 			r.ServeHTTP(w, req)
 
 			require.Equal(t, tc.responseCode, w.Result().StatusCode, "%s", w.Body.String())

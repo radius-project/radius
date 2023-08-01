@@ -50,7 +50,9 @@ type ValidationError struct {
 	Message string
 }
 
-// Error gets the string representation of the error.
+// # Function Explanation
+//
+// Error returns a string containing the error message for ValidationError.
 func (e *ValidationError) Error() string {
 	return e.Message
 }
@@ -71,12 +73,16 @@ type ResourceError struct {
 	Inner error
 }
 
-// Error formats the error as a string.
+// # Function Explanation
+//
+// Error returns a string describing the error that occurred when attempting to delete a resource.
 func (e *ResourceError) Error() string {
 	return fmt.Sprintf("failed to delete resource %q: %v", e.ID, e.Inner)
 }
 
-// Unwrap gets the wrapper error of this ResourceDeletionErr.
+// # Function Explanation
+//
+// Unwrap returns the underlying error of ResourceError.
 func (e *ResourceError) Unwrap() error {
 	return e.Inner
 }

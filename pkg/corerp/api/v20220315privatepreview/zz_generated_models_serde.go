@@ -530,8 +530,10 @@ func (c *ContainerKubernetesMetadataExtension) UnmarshalJSON(data []byte) error 
 func (c ContainerPort) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "containerPort", c.ContainerPort)
+	populate(objectMap, "port", c.Port)
 	populate(objectMap, "protocol", c.Protocol)
 	populate(objectMap, "provides", c.Provides)
+	populate(objectMap, "scheme", c.Scheme)
 	return json.Marshal(objectMap)
 }
 
@@ -547,11 +549,17 @@ func (c *ContainerPort) UnmarshalJSON(data []byte) error {
 		case "containerPort":
 				err = unpopulate(val, "ContainerPort", &c.ContainerPort)
 				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, "Port", &c.Port)
+				delete(rawMsg, key)
 		case "protocol":
 				err = unpopulate(val, "Protocol", &c.Protocol)
 				delete(rawMsg, key)
 		case "provides":
 				err = unpopulate(val, "Provides", &c.Provides)
+				delete(rawMsg, key)
+		case "scheme":
+				err = unpopulate(val, "Scheme", &c.Scheme)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -706,7 +714,6 @@ func (d DaprSidecarExtension) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "config", d.Config)
 	objectMap["kind"] = "daprSidecar"
 	populate(objectMap, "protocol", d.Protocol)
-	populate(objectMap, "provides", d.Provides)
 	return json.Marshal(objectMap)
 }
 
@@ -733,9 +740,6 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "protocol":
 				err = unpopulate(val, "Protocol", &d.Protocol)
-				delete(rawMsg, key)
-		case "provides":
-				err = unpopulate(val, "Provides", &d.Provides)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -891,6 +895,7 @@ func (e EnvironmentRecipeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "parameters", e.Parameters)
 	populate(objectMap, "templateKind", e.TemplateKind)
 	populate(objectMap, "templatePath", e.TemplatePath)
+	populate(objectMap, "templateVersion", e.TemplateVersion)
 	return json.Marshal(objectMap)
 }
 
@@ -911,6 +916,9 @@ func (e *EnvironmentRecipeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "templatePath":
 				err = unpopulate(val, "TemplatePath", &e.TemplatePath)
+				delete(rawMsg, key)
+		case "templateVersion":
+				err = unpopulate(val, "TemplateVersion", &e.TemplateVersion)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1547,7 +1555,6 @@ func (g *GatewayPropertiesHostname) UnmarshalJSON(data []byte) error {
 func (g GatewayPropertiesTLS) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "certificateFrom", g.CertificateFrom)
-	populate(objectMap, "hostname", g.Hostname)
 	populate(objectMap, "minimumProtocolVersion", g.MinimumProtocolVersion)
 	populate(objectMap, "sslPassthrough", g.SSLPassthrough)
 	return json.Marshal(objectMap)
@@ -1564,9 +1571,6 @@ func (g *GatewayPropertiesTLS) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "certificateFrom":
 				err = unpopulate(val, "CertificateFrom", &g.CertificateFrom)
-				delete(rawMsg, key)
-		case "hostname":
-				err = unpopulate(val, "Hostname", &g.Hostname)
 				delete(rawMsg, key)
 		case "minimumProtocolVersion":
 				err = unpopulate(val, "MinimumProtocolVersion", &g.MinimumProtocolVersion)

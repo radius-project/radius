@@ -21,6 +21,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const ExtenderResourceType = "Applications.Core/extenders"
+
 // Extender represents Extender link resource.
 type Extender struct {
 	v1.BaseResource
@@ -49,7 +51,7 @@ func (r *Extender) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 func (extender *Extender) ResourceTypeName() string {
-	return "Applications.Core/extenders"
+	return ExtenderResourceType
 }
 
 // ExtenderProperties represents the properties of Extender resource.

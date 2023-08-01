@@ -18,12 +18,16 @@ package v20220315privatepreview
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel and returns it,
+// returning an error if any of the inputs are invalid.
 func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
@@ -65,7 +69,9 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
-	converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+	}
 
 	if err = converted.VerifyInputs(); err != nil {
 		return nil, err
@@ -73,7 +79,10 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabase resource.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabase resource. It returns an error if the
+// DataModelInterface is not a MongoDatabase.
 func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	mongo, ok := src.(*datamodel.MongoDatabase)
 	if !ok {
@@ -106,7 +115,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabaseSecrets instance.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabaseSecrets instance and returns an error if
+// the conversion fails.
 func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	mongoSecrets, ok := src.(*datamodel.MongoDatabaseSecrets)
 	if !ok {
@@ -119,6 +131,8 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
+// # Function Explanation
+//
 // ConvertTo converts from the versioned MongoDatabaseSecrets instance to version-agnostic datamodel.
 func (src *MongoDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabaseSecrets{

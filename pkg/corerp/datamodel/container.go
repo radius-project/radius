@@ -97,6 +97,8 @@ type Container struct {
 // ContainerPort - Specifies a listening port for the container
 type ContainerPort struct {
 	ContainerPort int32    `json:"containerPort,omitempty"`
+	Port 		  int32    `json:"port,omitempty"`
+	Scheme		  string   `json:"scheme,omitempty"`
 	Protocol      Protocol `json:"protocol,omitempty"`
 	Provides      string   `json:"provides,omitempty"`
 }
@@ -219,7 +221,6 @@ type DaprSidecarExtension struct {
 	AppPort  int32    `json:"appPort,omitempty"`
 	Config   string   `json:"config,omitempty"`
 	Protocol Protocol `json:"protocol,omitempty"`
-	Provides string   `json:"provides,omitempty"`
 }
 
 // IAMProperties represents the properties of IAM provider.
@@ -249,7 +250,6 @@ const (
 	KindAzure                   IAMKind = "azure"
 	KindAzureComKeyVault        IAMKind = "azure.com/KeyVault"
 	KindAzureComServiceBusQueue IAMKind = "azure.com/ServiceBusQueue"
-	KindDaprIoInvokeHTTP        IAMKind = "dapr.io/InvokeHttp"
 	KindDaprIoPubSubTopic       IAMKind = "dapr.io/PubSubTopic"
 	KindDaprIoSecretStore       IAMKind = "dapr.io/SecretStore"
 	KindDaprIoStateStore        IAMKind = "dapr.io/StateStore"
@@ -266,7 +266,6 @@ func Kinds() []IAMKind {
 		KindAzure,
 		KindAzureComKeyVault,
 		KindAzureComServiceBusQueue,
-		KindDaprIoInvokeHTTP,
 		KindDaprIoPubSubTopic,
 		KindDaprIoSecretStore,
 		KindDaprIoStateStore,

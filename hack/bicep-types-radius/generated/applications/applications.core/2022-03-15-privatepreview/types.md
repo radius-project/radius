@@ -259,8 +259,10 @@
 ## ContainerPort
 ### Properties
 * **containerPort**: int (Required): The listening port number
+* **port**: int: Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
 * **provides**: string: Specifies a route provided by this port
+* **scheme**: string: Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value.
 
 ## ContainerVolumes
 ### Properties
@@ -295,7 +297,6 @@
 * **config**: string: Specifies the Dapr configuration to use for the resource.
 * **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
-* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
 
 ### ContainerKubernetesMetadataExtension
 #### Properties
@@ -379,8 +380,9 @@
 ## EnvironmentRecipeProperties
 ### Properties
 * **parameters**: any: Any object
-* **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep
+* **templateKind**: string (Required): Format of the template provided by the recipe. Allowed values: bicep, terraform.
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+* **templateVersion**: string: Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.
 
 ## TrackedResourceTags
 ### Properties
@@ -433,7 +435,6 @@
 ## GatewayPropertiesTls
 ### Properties
 * **certificateFrom**: string: Declares which Kubernetes TLS secret will be used.
-* **hostname**: string: Hostname
 * **minimumProtocolVersion**: '1.2' | '1.3': TLS minimum protocol version (defaults to 1.2).
 * **sslPassthrough**: bool: If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 

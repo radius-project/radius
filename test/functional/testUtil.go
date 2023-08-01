@@ -51,6 +51,15 @@ func GetMagpieTag() string {
 	return magpietag
 }
 
+// GetOIDCIssuer gets OIDC Issuer URI from FUNCTEST_OIDC_ISSUER environment variable.
+func GetOIDCIssuer() string {
+	oidcIssuer := os.Getenv("FUNCTEST_OIDC_ISSUER")
+	if oidcIssuer == "" {
+		return "oidcIssuer=https://radiusoidc.blob.core.windows.net/kubeoidc/"
+	}
+	return "oidcIssuer=" + oidcIssuer
+}
+
 func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
@@ -69,20 +78,48 @@ type ProxyMetadata struct {
 	Status   string
 }
 
-func GetRecipeRegistry() string {
-	defaultRecipeRegistry := os.Getenv("RECIPE_REGISTRY")
+func GetBicepRecipeRegistry() string {
+	defaultRecipeRegistry := os.Getenv("BICEP_RECIPE_REGISTRY")
 	if defaultRecipeRegistry == "" {
 		defaultRecipeRegistry = "radiusdev.azurecr.io"
 	}
 	return "registry=" + defaultRecipeRegistry
 }
 
-func GetRecipeVersion() string {
-	defaultVersion := os.Getenv("RECIPE_TAG_VERSION")
+func GetBicepRecipeVersion() string {
+	defaultVersion := os.Getenv("BICEP_RECIPE_TAG_VERSION")
 	if defaultVersion == "" {
 		defaultVersion = "latest"
 	}
 	return "version=" + defaultVersion
+}
+
+// GetTerraformRecipeModuleServerURL gets the terraform module server to use in tests from the environment variable
+// TF_RECIPE_MODULE_SERVER_URL. If the environment variable is not set, it uses the default value
+// for local testing (http://localhost:8999).
+//
+// The data is returned in bicep parameter format using the parameter name 'moduleServer'. The return value of this
+// function can be used as a parameter to 'rad deploy'.
+//
+// Example:
+//
+//	moduleServer=http://localhost:8999.
+func GetTerraformRecipeModuleServerURL() string {
+	u := os.Getenv("TF_RECIPE_MODULE_SERVER_URL")
+	if u == "" {
+		return "moduleServer=http://localhost:8999"
+	}
+	return "moduleServer=" + u
+}
+
+func GetAWSAccountId() string {
+	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
+	return "awsAccountId=" + awsAccountId
+}
+
+func GetAWSRegion() string {
+	awsRegion := os.Getenv("AWS_REGION")
+	return "awsRegion=" + awsRegion
 }
 
 // GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status (e.g. "Valid", "Invalid")

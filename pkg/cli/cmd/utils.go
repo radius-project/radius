@@ -20,22 +20,28 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 )
 
 // CreateEnvProviders forms the provider scope from the given
+//
+// # Function Explanation
+// 
+// CreateEnvProviders iterates through a list of providers and creates a corerp.Providers object with the appropriate 
+// scopes for each provider type (Azure or AWS). If more than one provider of the same type is found, an error is returned.
+//  If an invalid type is found, an error is returned.
 func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 	var res corerp.Providers
 	for _, provider := range providersList {
 		switch p := provider.(type) {
 		case *azure.Provider:
 			if res.Azure != nil {
-				return res, &cli.FriendlyError{Message: "Only one azure provider can be configured to a scope"}
+				return corerp.Providers{}, clierrors.Message("Only one azure provider can be configured to a scope.")
 			}
 			if p == nil {
 				break
@@ -45,7 +51,7 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 			}
 		case *aws.Provider:
 			if res.Aws != nil {
-				return res, &cli.FriendlyError{Message: "Only one aws provider can be configured to a scope"}
+				return corerp.Providers{}, clierrors.Message("Only one aws provider can be configured to a scope.")
 			}
 			if p == nil {
 				break
@@ -56,12 +62,16 @@ func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 		case nil:
 			// skip nil provider
 		default:
-			return res, &cli.FriendlyError{Message: fmt.Sprintf("Internal error: cannot create environment with invalid type '%T'", provider)}
+			return corerp.Providers{}, fmt.Errorf("internal error: cannot create environment with invalid type '%T'", provider)
 		}
 	}
 	return res, nil
 }
 
+// # Function Explanation
+// 
+// GetNamespace takes in an EnvironmentResource object and returns a string representing the namespace associated with the 
+// KubernetesCompute object, or an empty string if the Compute property is not a KubernetesCompute object.
 func GetNamespace(envResource corerp.EnvironmentResource) string {
 	switch v := envResource.Properties.Compute.(type) {
 	case *corerp.KubernetesCompute:
@@ -70,6 +80,10 @@ func GetNamespace(envResource corerp.EnvironmentResource) string {
 	return ""
 }
 
+// # Function Explanation
+// 
+// CheckIfRecipeExists checks if a given recipe exists in a given environment and returns the environment resource, recipe 
+// properties and an error if the recipe does not exist.
 func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string, resourceType string) (corerp.EnvironmentResource, map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
 	envResource, err := client.GetEnvDetails(ctx, environmentName)
 	if err != nil {
@@ -79,7 +93,7 @@ func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagem
 	recipeProperties := envResource.Properties.Recipes
 
 	if recipeProperties[resourceType] == nil || recipeProperties[resourceType][recipeName] == nil {
-		return corerp.EnvironmentResource{}, nil, &cli.FriendlyError{Message: fmt.Sprintf("resource type %q or recipe %q is not part of the environment %q ", resourceType, recipeName, environmentName)}
+		return corerp.EnvironmentResource{}, nil, clierrors.Message("The resource type %q or recipe %q is not part of the environment %q.", resourceType, recipeName, environmentName)
 	}
 
 	return envResource, recipeProperties, nil

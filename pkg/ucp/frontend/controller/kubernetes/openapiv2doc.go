@@ -23,7 +23,6 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
 var _ armrpc_controller.Controller = (*OpenAPIv2Doc)(nil)
@@ -33,11 +32,18 @@ type OpenAPIv2Doc struct {
 	armrpc_controller.BaseController
 }
 
-// NewOpenAPIv2Doc creates a new OpenAPIv2Doc.
-func NewOpenAPIv2Doc(opts ctrl.Options) (armrpc_controller.Controller, error) {
-	return &OpenAPIv2Doc{armrpc_controller.NewBaseController(opts.Options)}, nil
+// # Function Explanation
+//
+// NewOpenAPIv2Doc creates a new OpenAPIv2Doc controller with the given options and returns it, or returns an error if the
+// controller cannot be created.
+func NewOpenAPIv2Doc(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
+	return &OpenAPIv2Doc{armrpc_controller.NewBaseController(opts)}, nil
 }
 
+// # Function Explanation
+//
+// Run() responds to a request to /apis/api.ucp.dev/v1alpha3/openapi/v2 with a 200 OK response and a swagger
+// (openapi v2) doc, without logging every request.
 func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	// Required for the K8s scenario, we are required to respond to a request
 	// to /apis/api.ucp.dev/v1alpha3/openapi/v2 with a 200 OK response and a swagger (openapi v2)

@@ -24,9 +24,9 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testutil"
@@ -42,12 +42,7 @@ func Test_AWS_Credential(t *testing.T) {
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	mockSecretClient := secret.NewMockClient(mockCtrl)
 
-	credentialCtrl, err := NewCreateOrUpdateAWSCredential(ctrl.Options{
-		Options: armrpc_controller.Options{
-			StorageClient: mockStorageClient,
-		},
-		SecretClient: mockSecretClient,
-	})
+	credentialCtrl, err := NewCreateOrUpdateAWSCredential(armrpc_controller.Options{StorageClient: mockStorageClient}, mockSecretClient)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -133,10 +128,10 @@ func Test_AWS_Credential(t *testing.T) {
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
 
-			request, err := testutil.GetARMTestHTTPRequest(context.Background(), http.MethodPut, tt.headerfile, credentialVersionedInput)
+			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, tt.headerfile, credentialVersionedInput)
 			require.NoError(t, err)
 
-			ctx := testutil.ARMTestContextFromRequest(request)
+			ctx := rpctest.NewARMRequestContext(request)
 
 			response, err := credentialCtrl.Run(ctx, nil, request)
 			if tt.err != nil {
@@ -172,7 +167,7 @@ func getAwsResponse() armrpc_rest.Response {
 
 func setupCredentialSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	})
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
@@ -184,7 +179,7 @@ func setupEmptyMocks(mockStorageClient store.MockStorageClient, mockSecretClient
 func setupCredentialNotFoundMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return nil, &store.ErrNotFound{}
+			return nil, &store.ErrNotFound{ID: id}
 		}).Times(1)
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
@@ -207,7 +202,7 @@ func setupCredentialGetFailMocks(mockStorageClient store.MockStorageClient, mock
 func setupCredentialSecretSaveFailMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).
 		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
-			return nil, &store.ErrNotFound{}
+			return nil, &store.ErrNotFound{ID: id}
 		}).Times(1)
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Secret Save Failure")).Times(1)
 }

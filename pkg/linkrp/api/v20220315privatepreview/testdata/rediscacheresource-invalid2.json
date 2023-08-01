@@ -3,6 +3,9 @@
     "name": "redis0",
     "type": "Applications.Link/redisCaches",
     "properties": {
-        "resourceProvisioning": "manual"
+        "resourceProvisioning": "manual",
+        "secrets": {
+            "password": "password"
+        }
     }
 }

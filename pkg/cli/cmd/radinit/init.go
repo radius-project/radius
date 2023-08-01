@@ -18,8 +18,6 @@ package radinit
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -27,6 +25,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -47,6 +46,11 @@ import (
 // NOTE: this command is very super big so it's broken up amongst a few files.
 
 // NewCommand creates an instance of the command and runner for the `rad init` command.
+//
+// # Function Explanation
+//
+// This function "NewCommand" creates a new Cobra command with flags and a runner, which can be used to initialize the
+// Radius control-plane.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -122,6 +126,11 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad init` runner.
+//
+// # Function Explanation
+//
+// NewRunner creates a new Runner struct with the given factory's ConfigHolder, Output, ConnectionFactory, Prompter,
+// ConfigFileInterface, KubernetesInterface, HelmInterface, DevRecipeClient, AWSClient, and AzureClient.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
@@ -138,12 +147,17 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad init` command.
-//
 // Validates the user prompts, values provided and builds the picture for the backend to execute
+//
+// # Function Explanation
+//
+// Validate gathers input from the user, creates a workspace and options, and confirms the options with the user before
+// returning the options and workspace. If the user does not confirm the options, the function will loop and gather input again.
+// If an error occurs, the function will return an error.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
-		return &cli.FriendlyError{Message: "Output format not specified"}
+		return err
 	}
 	r.Format = format
 
@@ -154,9 +168,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	for {
 		options, workspace, err := r.enterInitOptions(cmd.Context())
-		if errors.Is(err, &prompt.ErrExitConsole{}) {
-			return &cli.FriendlyError{Message: err.Error()}
-		} else if err != nil {
+		if err != nil {
 			return err
 		}
 
@@ -180,8 +192,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad init` command.
-//
 // Creates radius resources, azure resources if required based on the user input, command flags
+//
+// # Function Explanation
+//
+// Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud
+// providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
@@ -203,7 +219,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		// Install radius control plane
 		err := installRadius(ctx, r)
 		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to install radius"}
+			return clierrors.MessageWithCause(err, "Failed to install Radius.")
 		}
 	}
 	progress.InstallComplete = true
@@ -216,20 +232,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		//ignore the id of the resource group created
-		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
-			Location: to.Ptr(v1.LocationGlobal),
-		})
-		if err != nil || !isGroupCreated {
-			return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
-		}
-
-		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
-		// We'll remove this in the future.
-		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
+		err = client.CreateUCPGroup(ctx, "radius", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
 			Location: to.Ptr(v1.LocationGlobal),
 		})
 		if err != nil {
-			return err
+			return clierrors.MessageWithCause(err, "Failed to create Azure resource group.")
 		}
 
 		providerList := []any{}
@@ -261,11 +268,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			Recipes:   recipes,
 		}
 
-		isEnvCreated, err := client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
+		err = client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
 		if err != nil {
-			return &cli.FriendlyError{Message: fmt.Sprintf("Failed to create radius environment with error %s", err)}
-		} else if !isEnvCreated {
-			return &cli.FriendlyError{Message: "Failed to create radius environment"}
+			return clierrors.MessageWithCause(err, "Failed to create environment.")
 		}
 
 		credentialClient, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
@@ -276,14 +281,14 @@ func (r *Runner) Run(ctx context.Context) error {
 			credential := r.getAzureCredential()
 			err := credentialClient.PutAzure(ctx, credential)
 			if err != nil {
-				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure azure credential with error %s", err)}
+				return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
 			}
 		}
 		if r.Options.CloudProviders.AWS != nil {
 			credential := r.getAWSCredential()
 			err := credentialClient.PutAWS(ctx, credential)
 			if err != nil {
-				return &cli.FriendlyError{Message: fmt.Sprintf("Failed to configure aws credential with error %s", err)}
+				return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")
 			}
 		}
 	}

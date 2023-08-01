@@ -18,10 +18,10 @@ package show
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -33,6 +33,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad credential show` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command that can be used to show details of a configured cloud provider credential, with
+// optional flags for output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -77,6 +82,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad credential show` command.
+//
+// # Function Explanation
+//
+// Validate checks the workspace, output format, and cloud provider name from the command line arguments and returns
+// an error if any of them are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -100,6 +110,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad credential show` command.
+//
+// # Function Explanation
+//
+// Run attempts to retrieve the credentials for a given cloud provider and prints them in a formatted table. It
+// returns an error if the cloud provider cannot be found or if there is an issue with writing the formatted table.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Showing credential for cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
@@ -109,7 +124,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	providers, err := client.Get(ctx, r.Kind)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider %q could not be found.", r.Kind)}
+		return clierrors.Message("The cloud provider %q could not be found.", r.Kind)
 	} else if err != nil {
 		return err
 	}

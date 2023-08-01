@@ -18,7 +18,6 @@ package delete
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -32,6 +31,12 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad group delete` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for deleting a resource group, which takes in a workspace and resource group
+//
+//	name as arguments, and a confirmation flag, and returns a cobra command and a runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -75,6 +80,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad group delete` command.
+//
+// # Function Explanation
+//
+// Validate checks if the required workspace, resource group and confirmation flag are present and sets them in
+// the Runner struct if they are. It returns an error if any of these are not present.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -99,6 +109,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad group delete` command.
+//
+// # Function Explanation
+//
+// Run checks if the user has confirmed the deletion of the resource group, and if so, deletes the resource group and
+// returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 
 	// Prompt user to confirm deletion
@@ -108,9 +123,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			prompt.ConfirmNo,
 			r.InputPrompter)
 		if err != nil {
-			if errors.Is(err, &prompt.ErrExitConsole{}) {
-				return &cli.FriendlyError{Message: err.Error()}
-			}
 			return err
 		}
 
@@ -126,12 +138,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.DeleteUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
-	if err != nil {
-		return err
-	}
-
-	deleted, err := client.DeleteUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName)
+	deleted, err := client.DeleteUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
 	if err != nil {
 		return err
 	}

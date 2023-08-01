@@ -19,6 +19,9 @@ output-folder: $(csharp-sdks-folder)/applications/management/src/Generated
 batch:
   - package-core: true
   - package-link: true
+  - package-dapr: true
+  - package-datastores: true
+  - package-messaging: true
 ```
 
 ### Batch settings: multi-api
@@ -33,6 +36,12 @@ batch:
     ApiVersionName: Api2022_03_15_privatepreview
   - link-2022-03-15-privatepreview: true
     ApiVersionName: Api2022_03_15_privatepreview
+  - dapr-2022-03-15-privatepreview: true
+    ApiVersionName: Api2022_03_15_privatepreview
+  - datastores-2022-03-15-privatepreview: true
+    ApiVersionName: Api2022_03_15_privatepreview
+  - messaging-2022-03-15-privatepreview: true
+    ApiVersionName: Api2022_03_15_privatepreview
 ```
 
 ``` yaml $(core-2022-03-15-privatepreview)
@@ -41,6 +50,18 @@ tag: package-core-2022-03-15-privatepreview
 
 ``` yaml $(link-2022-03-15-privatepreview)
 tag: package-link-2022-03-15-privatepreview
+```
+
+``` yaml $(dapr-2022-03-15-privatepreview)
+tag: package-dapr-2022-03-15-privatepreview
+```
+
+``` yaml $(datastores-2022-03-15-privatepreview)
+tag: package-datastores-2022-03-15-privatepreview
+```
+
+``` yaml $(messaging-2022-03-15-privatepreview)
+tag: package-messaging-2022-03-15-privatepreview
 ```
 
 ### Tag: package-core-2022-03-15-privatepreview
@@ -58,4 +79,25 @@ output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatep
 input-file:
 - Applications.Link/preview/2022-03-15-privatepreview/openapi.json
 - Applications.Link/preview/2022-03-15-privatepreview/extenders.json
+```
+
+### Tag: package-dapr-2022-03-15-privatepreview
+``` yaml $(tag) == 'package-dapr-2022-03-15-privatepreview'
+output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/dapr/src/Generated
+input-file:
+- Applications.Dapr/preview/2022-03-15-privatepreview/openapi.json
+```
+
+### Tag: package-datastores-2022-03-15-privatepreview
+``` yaml $(tag) == 'package-datastores-2022-03-15-privatepreview'
+output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/datastores/src/Generated
+input-file:
+- Applications.Datastores/preview/2022-03-15-privatepreview/openapi.json
+```
+
+### Tag: package-messaging-2022-03-15-privatepreview
+``` yaml $(tag) == 'package-messaging-2022-03-15-privatepreview'
+output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/messaging/src/Generated
+input-file:
+- Applications.Messaging/preview/2022-03-15-privatepreview/openapi.json
 ```

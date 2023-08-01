@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	credentials "github.com/oras-project/oras-credentials-go"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -54,6 +54,11 @@ type destination struct {
 }
 
 // NewCommand creates an instance of the command and runner for the `rad bicep publish` command.
+//
+// # Function Explanation
+//
+// "NewCommand" creates a new Cobra command and a Runner object, sets up the command's flags and usage information, and
+// returns the command and the Runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -106,6 +111,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad bicep publish` command.
+//
+// # Function Explanation
+//
+// Runner.Validate parses the command line flags and sets the File and Target fields of the Runner struct, returning an
+// error if the target flag is not in the expected format.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	file, err := cmd.Flags().GetString("file")
 	if err != nil {
@@ -118,20 +128,24 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !strings.HasPrefix(target, "br:") {
-		return &cli.FriendlyError{
-			Message: fmt.Sprintf("Invalid target %q. The target must be in the format 'br:HOST/PATH:TAG'.", target),
-		}
+		return clierrors.Message("Invalid target %q. The target must be in the format 'br:HOST/PATH:TAG'.", target)
 	}
+
 	r.Target = strings.TrimPrefix(target, "br:")
 
 	return nil
 }
 
 // Run runs the `rad bicep publish` command.
+//
+// # Function Explanation
+//
+// The Run function prepares a Bicep template, extracts the destination, publishes the template to the target, and logs
+// a success message if no errors are encountered. An error is returned if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
 	template, err := r.Bicep.PrepareTemplate(r.File)
 	if err != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Failed to prepare Bicep file: %v", err)}
+		return clierrors.MessageWithCause(err, "Failed to prepare Bicep file %q.", r.File)
 	}
 	r.Template = template
 
@@ -149,7 +163,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	err = r.publish(ctx)
 	if err != nil {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Failed to publish Bicep file: %v", err)}
+		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q.", r.File, r.Target)
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)

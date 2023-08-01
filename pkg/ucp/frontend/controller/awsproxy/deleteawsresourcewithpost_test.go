@@ -29,10 +29,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,15 +55,11 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewDeleteAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -77,7 +73,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -110,15 +106,11 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 			Message: aws.String("Resource not found"),
 		})
 
-	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewDeleteAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -132,7 +124,7 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -166,7 +158,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -187,15 +179,11 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewDeleteAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

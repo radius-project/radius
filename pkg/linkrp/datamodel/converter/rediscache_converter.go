@@ -24,7 +24,10 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
-// RedisCacheDataModelFromVersioned converts version agnostic RedisCache datamodel to versioned model.
+// # Function Explanation
+//
+// RedisCacheDataModelToVersioned converts a RedisCache data model to a versioned model interface and returns an error if
+// the conversion fails.
 func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -41,7 +44,10 @@ func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string)
 	}
 }
 
-// RedisCacheDataModelToVersioned converts versioned RedisCache model to datamodel.
+// # Function Explanation
+//
+// RedisCacheDataModelFromVersioned converts a versioned RedisCacheResource to a datamodel.RedisCache and returns an error
+// if the conversion fails.
 func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamodel.RedisCache, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -50,6 +56,9 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 			return nil, err
 		}
 		dm, err := versioned.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.RedisCache), err
 
 	default:
@@ -57,6 +66,10 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 	}
 }
 
+// # Function Explanation
+//
+// RedisCacheSecretsDataModelToVersioned takes in a pointer to a RedisCacheSecrets datamodel and a version string, and
+// returns a VersionedModelInterface and an error if the version is not supported.
 func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:

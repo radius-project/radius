@@ -24,8 +24,8 @@
 
 ## How to Run and Test Core RP
 
-1. Update StorageProvider section of `cmd/appcore-rp/radius-dev.yaml` by adding your Cosmos DB URL and key
-1. With `cmd/appcore-rp/main.go` file open, go to `Run And Debug` view in VS Code and click `Run`
+1. Update StorageProvider section of `cmd/applications-rp/radius-dev.yaml` by adding your Cosmos DB URL and key
+1. With `cmd/applications-rp/main.go` file open, go to `Run And Debug` view in VS Code and click `Run`
 1. You should have the service up and running at `localhost:8080` now
 1. To create or update an environment, here is an example curl command:
 

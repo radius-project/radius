@@ -45,9 +45,10 @@ type CreateOrUpdateResource[P interface {
 	configurationLoader configloader.ConfigurationLoader
 }
 
-// NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
+// # Function Explanation
 //
-// The processor function will be called to process updates to the resource.
+// NewCreateOrUpdateResource creates a new controller for creating or updating a resource with the given processor, engine,
+// client, configurationLoader and options. The processor function will be called to process updates to the resource.
 func NewCreateOrUpdateResource[P interface {
 	*T
 	rpv1.RadiusResourceModel
@@ -55,9 +56,13 @@ func NewCreateOrUpdateResource[P interface {
 	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client, configurationLoader}, nil
 }
 
+// # Function Explanation
+//
+// Run retrieves an existing resource, executes a recipe if needed, loads runtime configuration,
+// processes the resource, cleans up any obsolete output resources, and saves the updated resource.
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
-	if errors.Is(&store.ErrNotFound{}, err) {
+	if errors.Is(&store.ErrNotFound{ID: req.ResourceID}, err) {
 		return ctrl.Result{}, err
 	} else if err != nil {
 		return ctrl.Result{}, err
@@ -127,7 +132,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	if input == nil {
 		return nil, nil
 	}
-	request := recipes.Metadata{
+	request := recipes.ResourceMetadata{
 		Name:          input.Name,
 		Parameters:    input.Parameters,
 		EnvironmentID: data.ResourceMetadata().Environment,
@@ -139,7 +144,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 }
 
 func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
-	metadata := recipes.Metadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
+	metadata := recipes.ResourceMetadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
 	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
 	if err != nil {
 		return nil, err

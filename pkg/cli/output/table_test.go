@@ -110,6 +110,34 @@ medium    false               Some-Value  some-value
 	require.Equal(t, expected, buffer.String())
 }
 
+func Test_Table_Slice_Multiline(t *testing.T) {
+	obj := []interface{}{
+		tableInput{
+			Size:   "mega\nsuper\ncool",
+			IsCool: true,
+		},
+		tableInput{
+			Size:   "medium\nsmoothness",
+			IsCool: false,
+		},
+	}
+
+	formatter := &TableFormatter{}
+
+	buffer := &bytes.Buffer{}
+	err := formatter.Format(obj, buffer, tableInputOptions)
+	require.NoError(t, err)
+
+	expected := `Size        Coolness  Unknown   Static      Lowered
+mega        true                Some-Value  some-value
+super                                       
+cool                                        
+medium      false               Some-Value  some-value
+smoothness                                  
+`
+	require.Equal(t, expected, buffer.String())
+}
+
 func Test_convertToStruct(t *testing.T) {
 	aStruct := tableInput{
 		Size: "medium",

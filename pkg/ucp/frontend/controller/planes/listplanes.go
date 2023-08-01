@@ -25,7 +25,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -37,10 +36,12 @@ type ListPlanes struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewListPlanes creates a new ListPlanes.
-func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// # Function Explanation
+//
+// NewListPlanes creates a new controller for listing for the Plane resource type.
+func NewListPlanes(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.Plane]{
 				RequestConverter:  converter.PlaneDataModelFromVersioned,
 				ResponseConverter: converter.PlaneDataModelToVersioned,
@@ -49,6 +50,10 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() queries the storage client for planes in a given scope, creates a response with the results, and
+// returns an OKResponse with the response. If an error occurs, it is returned.
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)

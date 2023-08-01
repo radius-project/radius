@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	sts "github.com/aws/aws-sdk-go-v2/service/sts"
 	gomock "github.com/golang/mock/gomock"
 )
@@ -48,4 +49,19 @@ func (m *MockClient) GetCallerIdentity(arg0 context.Context, arg1, arg2, arg3 st
 func (mr *MockClientMockRecorder) GetCallerIdentity(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCallerIdentity", reflect.TypeOf((*MockClient)(nil).GetCallerIdentity), arg0, arg1, arg2, arg3)
+}
+
+// ListRegions mocks base method.
+func (m *MockClient) ListRegions(arg0 context.Context, arg1, arg2, arg3 string) (*ec2.DescribeRegionsOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRegions", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*ec2.DescribeRegionsOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRegions indicates an expected call of ListRegions.
+func (mr *MockClientMockRecorder) ListRegions(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRegions", reflect.TypeOf((*MockClient)(nil).ListRegions), arg0, arg1, arg2, arg3)
 }

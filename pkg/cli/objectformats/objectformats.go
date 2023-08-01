@@ -22,6 +22,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
+// # Function Explanation
+//
+// GetApplicationStatusTableFormat() sets up the columns and headings for a table to display application names and resource counts.
 func GetApplicationStatusTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -37,6 +40,10 @@ func GetApplicationStatusTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetApplicationGatewaysTableFormat() returns a FormatterOptions object which contains a list of columns to be used for
+// formatting the output of a list of application gateways.
 func GetApplicationGatewaysTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -52,6 +59,10 @@ func GetApplicationGatewaysTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetResourceTableFormat() returns a FormatterOptions struct containing two columns, one for the resource name and one for
+// the resource type.
 func GetResourceTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -67,6 +78,9 @@ func GetResourceTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetResourceGroupTableFormat() returns a FormatterOptions object containing a list of columns with their headings and JSONPaths.
 func GetResourceGroupTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -82,6 +96,10 @@ func GetResourceGroupTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetGenericEnvironmentTableFormat returns a FormatterOptions struct containing a slice of Columns, each of which
+// contains a Heading and JSONPath.
 func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -93,6 +111,10 @@ func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetGenericEnvErrorTableFormat() returns a FormatterOptions struct containing a single column with the heading "errors:"
+// and a JSONPath to the Errors field.
 func GetGenericEnvErrorTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -104,6 +126,10 @@ func GetGenericEnvErrorTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// "GetWorkspaceTableFormat() returns a FormatterOptions object which contains a list of columns to be used for displaying
+// workspace information such as name, kind, kubecontext and environment."
 func GetWorkspaceTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -127,6 +153,9 @@ func GetWorkspaceTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// CloudProviderTableFormat() configures the output format of a table to display the Name and Status of a cloud provider.
 func CloudProviderTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -142,6 +171,10 @@ func CloudProviderTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetCloudProviderTableFormat function returns a FormatterOptions struct based on the credentialType parameter, which can
+// be either "azure" or "aws".
 func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions {
 	if strings.EqualFold(credentialType, "azure") {
 		return output.FormatterOptions{
@@ -185,6 +218,10 @@ func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions 
 	return output.FormatterOptions{}
 }
 
+// # Function Explanation
+//
+// GetEnvironmentRecipesTableFormat() returns a FormatterOptions struct containing a list of Columns with their respective
+// Headings and JSONPaths to be used for formatting the output of environment recipes.
 func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -199,6 +236,10 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 			{
 				Heading:  "TEMPLATE KIND",
 				JSONPath: "{ .TemplateKind }",
+			},
+			{
+				Heading:  "TEMPLATE VERSION",
+				JSONPath: "{ .TemplateVersion }",
 			},
 			{
 				Heading:  "TEMPLATE",
@@ -216,6 +257,11 @@ type OutputEnvObject struct {
 }
 
 // GetUpdateEnvironmentTableFormat returns the fields to output from env object after upation.
+//
+// # Function Explanation
+//
+// GetUpdateEnvironmentTableFormat() returns a FormatterOptions object containing the column headings and JSONPaths for the
+// environment table.
 func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -239,6 +285,10 @@ func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
 	}
 }
 
+// # Function Explanation
+//
+// GetRecipeParamsTableFormat returns a FormatterOptions struct containing the column headings and JSONPaths for the
+// recipe parameters table.
 func GetRecipeParamsTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{

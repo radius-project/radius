@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -36,6 +37,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad credential create azure` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for registering an Azure cloud provider credential for a Radius installation,
+// which requires a service principal with the Contributor or Owner role assigned to the provided resource group.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -102,6 +108,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad credential register azure` command.
+//
+// # Function Explanation
+//
+// Validate checks for the presence of a workspace, output format, client ID, client secret and tenant ID, and
+// sets them in the Runner struct if they are present. If any of these are not present, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -134,7 +145,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	kubeContext, ok := r.Workspace.KubernetesContext()
 	if !ok {
-		return &cli.FriendlyError{Message: "A Kubernetes connection is required."}
+		return clierrors.Message("A Kubernetes connection is required.")
 	}
 	r.KubeContext = kubeContext
 
@@ -142,11 +153,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad credential register azure` command.
+//
+// # Function Explanation
+//
+// Run registers a credential for the Azure cloud provider in the Radius installation, updates the server-side
+// to add/change credentials. It returns an error if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
-	// There are two steps to perform here:
-	// 1) Update server-side to add/change credentials
-	// 2) Update local config (all matching workspaces) to remove the scope
-
 	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "azure", r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -168,7 +180,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		},
 	}
 
-	// 1) Update server-side to add/change credentials
+	// Update server-side to add/change credentials
 	err = client.PutAzure(ctx, credential)
 	if err != nil {
 		return err

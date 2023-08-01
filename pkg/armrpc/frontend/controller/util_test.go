@@ -29,10 +29,11 @@ import (
 )
 
 func TestReadJSONBody(t *testing.T) {
-	content, _ := json.Marshal(map[string]string{
+	content, err := json.Marshal(map[string]string{
 		"id":   "fakeID",
 		"type": "fakeType",
 	})
+	require.NoError(t, err)
 
 	contentTypeTests := []struct {
 		contentType string
@@ -48,7 +49,8 @@ func TestReadJSONBody(t *testing.T) {
 
 	for _, tc := range contentTypeTests {
 		t.Run(tc.contentType, func(t *testing.T) {
-			req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, "http://github.com", bytes.NewBuffer(tc.body))
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, "http://github.com", bytes.NewBuffer(tc.body))
+			require.NoError(t, err)
 			req.Header.Set("Content-Type", tc.contentType)
 			// act
 			parsed, err := ReadJSONBody(req)

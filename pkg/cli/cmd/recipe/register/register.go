@@ -18,11 +18,11 @@ package register
 
 import (
 	"context"
-	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -33,6 +33,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad recipe register` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner object to register a recipe to an environment, with parameters
+// specified using a JSON file or key-value-pairs.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -65,6 +70,7 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().String("template-kind", "", "specify the kind for the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-kind")
+	cmd.Flags().String("template-version", "", "specify the version for the terraform module.")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
 	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
@@ -82,6 +88,7 @@ type Runner struct {
 	Workspace         *workspaces.Workspace
 	TemplateKind      string
 	TemplatePath      string
+	TemplateVersion   string
 	LinkType          string
 	RecipeName        string
 	Parameters        map[string]map[string]any
@@ -97,6 +104,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad recipe register` command.
+//
+// # Function Explanation
+//
+// Validate validates the command line args, sets the workspace, environment, template kind, template path, link type,
+// recipe name, and parameters, and returns an error if any of these fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -111,12 +123,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environment
 
-	templateKind, templatePath, err := requireRecipeProperties(cmd)
+	templateKind, templatePath, templateVersion, err := requireRecipeProperties(cmd)
 	if err != nil {
 		return err
 	}
 	r.TemplateKind = templateKind
 	r.TemplatePath = templatePath
+	r.TemplateVersion = templateVersion
 
 	linkType, err := cli.RequireLinkType(cmd)
 	if err != nil {
@@ -145,6 +158,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad recipe register` command.
+//
+// # Function Explanation
+//
+// Run function creates an ApplicationsManagementClient, gets the environment details, adds the recipe properties to the
+// environment recipes, and creates the environment with the updated recipes. It returns an error if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -162,9 +180,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	properties := &corerp.EnvironmentRecipeProperties{
-		TemplateKind: &r.TemplateKind,
-		TemplatePath: &r.TemplatePath,
-		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
+		TemplateKind:    &r.TemplateKind,
+		TemplatePath:    &r.TemplatePath,
+		TemplateVersion: &r.TemplateVersion,
+		Parameters:      bicep.ConvertToMapStringInterface(r.Parameters),
 	}
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
@@ -175,25 +194,28 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	envResource.Properties.Recipes = envRecipes
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
-	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
+	err = client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, envResource.Properties)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to register the recipe %q to the environment %q.", r.RecipeName, *envResource.ID)
 	}
 
 	r.Output.LogInfo("Successfully linked recipe %q to environment %q ", r.RecipeName, r.Workspace.Environment)
 	return nil
 }
 
-func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath string, err error) {
+func requireRecipeProperties(cmd *cobra.Command) (templateKind, templatePath, templateVersion string, err error) {
 	templateKind, err = cmd.Flags().GetString("template-kind")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	templatePath, err = cmd.Flags().GetString("template-path")
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-
-	return templateKind, templatePath, nil
+	templateVersion, err = cmd.Flags().GetString("template-version")
+	if err != nil {
+		return "", "", "", err
+	}
+	return templateKind, templatePath, templateVersion, nil
 }

@@ -23,7 +23,10 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned Extender resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo converts from the versioned Extender resource to version-agnostic datamodel and returns it, or an error if the
+// conversion fails.
 func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.Extender{
 		BaseResource: v1.BaseResource{
@@ -46,12 +49,21 @@ func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			AdditionalProperties: src.Properties.AdditionalProperties,
 			Secrets:              src.Properties.Secrets,
+			Recipe:               toRecipeDataModel(src.Properties.Recipe),
 		},
+	}
+
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned Extender resource.
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned Extender resource and returns an error if the conversion fails.
 func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	extender, ok := src.(*datamodel.Extender)
 	if !ok {
@@ -72,7 +84,8 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 		Environment:          to.Ptr(extender.Properties.Environment),
 		Application:          to.Ptr(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,
-
+		Recipe:               fromRecipeDataModel(extender.Properties.Recipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(extender.Properties.ResourceProvisioning),
 		// Secrets are omitted.
 	}
 	return nil

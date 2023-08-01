@@ -37,6 +37,8 @@ generate-openapi-spec:
 	@echo  "Generating openapi specs from cadl models."
 	cd cadl/Applications.Link && npx$(CMD_EXT) cadl compile .
 	cd cadl/UCP && npx$(CMD_EXT) cadl compile . 
+	cd cadl/Applications.Messaging && npx$(CMD_EXT) cadl compile .
+	cd cadl/Applications.Dapr && npx$(CMD_EXT) cadl compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:

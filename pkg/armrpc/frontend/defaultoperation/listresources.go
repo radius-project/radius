@@ -43,7 +43,8 @@ func NewListResources[P interface {
 	return &ListResources[P, T]{ctrl.NewOperation[P](opts, ctrlOpts), ctrlOpts.ListRecursiveQuery}, nil
 }
 
-// Run fetches the list of all resources in resourcegroups.
+// Run queries the resource data store with a given type and scope and returns the paginated resource list. An internal error 
+// is returned if the query fails.
 func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

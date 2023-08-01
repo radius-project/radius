@@ -37,9 +37,9 @@ import (
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,15 +70,11 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -92,7 +88,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
@@ -126,15 +122,11 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 			Message: aws.String("Resource not found"),
 		})
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -148,7 +140,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -169,15 +161,11 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -191,7 +179,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -219,15 +207,11 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		},
 	})
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -241,7 +225,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -270,7 +254,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:get", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -298,15 +282,12 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+
+	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

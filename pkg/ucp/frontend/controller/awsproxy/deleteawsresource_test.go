@@ -26,10 +26,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,21 +43,17 @@ func Test_DeleteAWSResource(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewDeleteAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -90,21 +85,17 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 			Message: aws.String("Resource not found"),
 		})
 
-	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewDeleteAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

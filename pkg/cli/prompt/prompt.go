@@ -22,6 +22,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
 	"github.com/project-radius/radius/pkg/cli/prompt/text"
 )
@@ -36,7 +37,10 @@ const (
 
 //go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
 
-// Interface contains operation to get user inputs for cli
+// Interface contains operation to prompt the user interactively.
+//
+// All functions on Interface returns an *ErrExitConsole if the user cancels. This is a friendly error and does not need
+// special handling by calling code.
 type Interface interface {
 	// GetTextInput prompts user for a text input. Will return ErrExitConsole if the user cancels.
 	GetTextInput(prompt string, options TextInputOptions) (string, error)
@@ -57,6 +61,11 @@ type TextInputOptions = text.TextModelOptions
 type Impl struct{}
 
 // GetTextInput prompts user for a text input
+//
+// # Function Explanation
+//
+// GetTextInput takes a prompt string and a set of options, and returns a string or an error if the user exits the
+// console or an unsupported model is encountered.
 func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, error) {
 	tm := text.NewTextModel(prompt, options)
 
@@ -79,6 +88,11 @@ func (i *Impl) GetTextInput(prompt string, options TextInputOptions) (string, er
 }
 
 // GetListInput prompts user to select from a list
+//
+// # Function Explanation
+//
+// GetListInput displays a list of strings to the user and returns the user's selection as a string, or an error if the
+// user exits the console or an unsupported model is encountered.
 func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	lm := cli_list.NewListModel(items, promptMsg)
 
@@ -107,10 +121,15 @@ func (i *Impl) RunProgram(program *tea.Program) (tea.Model, error) {
 	return program.Run()
 }
 
-var _ error = (*ErrExitConsole)(nil)
+var _ clierrors.FriendlyError = (*ErrExitConsole)(nil)
 
 // ErrExitConsole represents interrupt commands being entered.
 type ErrExitConsole struct {
+}
+
+// IsFriendlyError returns true. Cancelling a command prompt should always be handled gracefully by the CLI.
+func (*ErrExitConsole) IsFriendlyError() bool {
+	return true
 }
 
 // Error returns the error message.
@@ -126,6 +145,16 @@ func (e *ErrExitConsole) Is(target error) bool {
 
 // YesOrNoPrompt Creates a Yes or No prompt where user has to select either a Yes or No as input
 // defaultString decides the first(default) value on the list.
+//
+// Returns an *ErrExitConsole if the user cancels. This is a friendly error and does not need
+// special handling by calling code.
+//
+// # Function Explanation
+//
+// YesOrNoPrompt takes in a prompt message, a default string and a prompter interface, and returns a boolean value and an
+// error if one occurs. It checks if the default string is equal to "yes", and if so, sets the value list to ["yes", "no"],
+// otherwise it sets the value list to ["no", "yes"]. It then gets a list input from the prompter interface, and returns
+// true if the input is equal to "yes", and false otherwise.
 func YesOrNoPrompt(promptMsg string, defaultString string, prompter Interface) (bool, error) {
 	var valueList []string
 	if strings.EqualFold(ConfirmYes, defaultString) {

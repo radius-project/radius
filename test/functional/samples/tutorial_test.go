@@ -31,7 +31,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/corerp"
+	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 
@@ -58,17 +58,19 @@ func Test_FirstApplicationSample(t *testing.T) {
 		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
 	}
 
-	cwd, _ := os.Getwd()
-	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	relPathSamplesRepo, err := filepath.Rel(cwd, samplesRepoAbsPath)
+	require.NoError(t, err)
 	template := filepath.Join(relPathSamplesRepo, "demo/app.bicep")
 	appName := "demo"
 	appNamespace := "default-demo"
 
-	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
+	test := shared.NewRPTest(t, appName, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template).WithApplication(appName),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
 					{
 						Name: appName,
 						Type: validation.ApplicationsResource,
@@ -83,7 +85,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
 				// Set up pod port-forwarding for the pod
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
@@ -114,7 +116,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 	test.Test(t)
 }
 
-func testWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, namespace string, container string, remotePort int) error {
+func testWithPortForward(t *testing.T, ctx context.Context, at shared.RPTest, namespace string, container string, remotePort int) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 

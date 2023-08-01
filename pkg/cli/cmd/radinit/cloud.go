@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -45,19 +44,15 @@ func (r *Runner) enterCloudProviderOptions(ctx context.Context, options *initOpt
 	}
 
 	addingCloudProvider, err := prompt.YesOrNoPrompt(confirmCloudProviderPrompt, prompt.ConfirmNo, r.Prompter)
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
-		return &cli.FriendlyError{Message: "Error reading cloud provider"}
+	if err != nil {
+		return err
 	}
 
 	for addingCloudProvider {
 		choices := []string{azure.ProviderDisplayName, aws.ProviderDisplayName, confirmCloudProviderBackNavigationSentinel}
 		cloudProvider, err := r.Prompter.GetListInput(choices, selectCloudProviderPrompt)
-		if errors.Is(err, &prompt.ErrExitConsole{}) {
-			return &cli.FriendlyError{Message: err.Error()}
-		} else if err != nil {
-			return &cli.FriendlyError{Message: "Error reading cloud provider"}
+		if err != nil {
+			return err
 		}
 
 		switch cloudProvider {
@@ -78,15 +73,12 @@ func (r *Runner) enterCloudProviderOptions(ctx context.Context, options *initOpt
 		case confirmCloudProviderBackNavigationSentinel:
 			return nil
 		default:
-			return &cli.FriendlyError{Message: "Unsupported Cloud Provider"}
+			return errors.New("unsupported Cloud Provider")
 		}
 
 		addingCloudProvider, err = prompt.YesOrNoPrompt(confirmCloudProviderAdditionalPrompt, prompt.ConfirmNo, r.Prompter)
 		if err != nil {
-			if errors.Is(err, &prompt.ErrExitConsole{}) {
-				return &cli.FriendlyError{Message: err.Error()}
-			}
-			return &cli.FriendlyError{Message: "Error reading cloud provider"}
+			return err
 		}
 	}
 

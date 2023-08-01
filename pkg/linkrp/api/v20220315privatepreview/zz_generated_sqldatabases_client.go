@@ -270,3 +270,52 @@ func (client *SQLDatabasesClient) listByRootScopeHandleResponse(resp *http.Respo
 	return result, nil
 }
 
+// ListSecrets - Lists secrets values for the specified SqlDatabase resource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// sqlDatabaseName - The name of the SqlDatabase link resource
+// options - SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets
+// method.
+func (client *SQLDatabasesClient) ListSecrets(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientListSecretsOptions) (SQLDatabasesClientListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, sqlDatabaseName, options)
+	if err != nil {
+		return SQLDatabasesClientListSecretsResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return SQLDatabasesClientListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return SQLDatabasesClientListSecretsResponse{}, runtime.NewResponseError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *SQLDatabasesClient) listSecretsCreateRequest(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if sqlDatabaseName == "" {
+		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *SQLDatabasesClient) listSecretsHandleResponse(resp *http.Response) (SQLDatabasesClientListSecretsResponse, error) {
+	result := SQLDatabasesClientListSecretsResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseListSecretsResult); err != nil {
+		return SQLDatabasesClientListSecretsResponse{}, err
+	}
+	return result, nil
+}
+

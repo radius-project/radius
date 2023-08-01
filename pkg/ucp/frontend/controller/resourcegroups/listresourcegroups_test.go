@@ -26,12 +26,11 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 )
 
 func Test_ListResourceGroups(t *testing.T) {
@@ -39,11 +38,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	rgCtrl, err := NewListResourceGroups(ctrl.Options{
-		Options: armrpc_controller.Options{
-			StorageClient: mockStorageClient,
-		},
-	})
+	rgCtrl, err := NewListResourceGroups(armrpc_controller.Options{StorageClient: mockStorageClient})
 	require.NoError(t, err)
 
 	url := "/planes/radius/local/resourceGroups?api-version=2022-09-01-privatepreview"
@@ -80,7 +75,7 @@ func Test_ListResourceGroups(t *testing.T) {
 	})
 	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 

@@ -19,33 +19,16 @@ package aws
 // Tests that test with Mock RP functionality and UCP Server
 
 import (
-	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/gorilla/mux"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/stretchr/testify/require"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws_frontend "github.com/project-radius/radius/pkg/ucp/frontend/aws"
+	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
+	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
-
-type Client struct {
-	httpClient *http.Client
-	baseURL    string
-}
-
-func NewClient(httpClient *http.Client, baseURL string) Client {
-	return Client{
-		httpClient: httpClient,
-		baseURL:    baseURL,
-	}
-}
 
 const (
 	testProxyRequestAWSPath           = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1"
@@ -53,37 +36,19 @@ const (
 	testAWSResourceName               = "stream-1"
 	testProxyRequestAWSAsyncPath      = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global"
 	testAWSRequestToken               = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
-	basePath                          = "/apis/api.ucp.dev/v1alpha3"
 )
 
-func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudControlClient, *aws.MockAWSCloudFormationClient) {
+func initializeAWSTest(t *testing.T) (*testserver.TestServer, *store.MockStorageClient, *secret.MockClient, *ucp_aws.MockAWSCloudControlClient, *ucp_aws.MockAWSCloudFormationClient) {
 	ctrl := gomock.NewController(t)
-	cloudControlClient := aws.NewMockAWSCloudControlClient(ctrl)
-	cloudFormationClient := aws.NewMockAWSCloudFormationClient(ctrl)
+	cloudControlClient := ucp_aws.NewMockAWSCloudControlClient(ctrl)
+	cloudFormationClient := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
 
-	provider := dataprovider.NewMockDataStorageProvider(ctrl)
-	provider.EXPECT().
-		GetStorageClient(gomock.Any(), gomock.Any()).
-		Return(nil, nil).
-		AnyTimes()
-
-	router := mux.NewRouter()
-	router.Use(servicecontext.ARMRequestCtx(basePath, "global"))
-	ucp := httptest.NewServer(router)
-	ctx := context.Background()
-	err := api.Register(ctx, router, controller.Options{
-		BasePath: basePath,
-		AWSOptions: controller.AWSOptions{
-			AWSCloudControlClient:   cloudControlClient,
-			AWSCloudFormationClient: cloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			DataProvider: provider,
-		},
+	ucp, storeClient, secretClient := testserver.StartWithMocks(t, func(options modules.Options) []modules.Initializer {
+		module := ucp_aws_frontend.NewModule(options)
+		module.AWSClients.CloudControl = cloudControlClient
+		module.AWSClients.CloudFormation = cloudFormationClient
+		return []modules.Initializer{module}
 	})
-	require.NoError(t, err)
 
-	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
-
-	return ucp, ucpClient, cloudControlClient, cloudFormationClient
+	return ucp, storeClient, secretClient, cloudControlClient, cloudFormationClient
 }

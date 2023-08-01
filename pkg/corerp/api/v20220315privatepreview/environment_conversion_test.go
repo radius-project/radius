@@ -18,6 +18,7 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -125,8 +126,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								},
 							},
 							"terraform-recipe": datamodel.EnvironmentRecipeProperties{
+								TemplateKind:    recipes.TemplateKindTerraform,
+								TemplatePath:    "Azure/cosmosdb/azurerm",
+								TemplateVersion: "1.1.0",
+							},
+							"terraform-without-version": datamodel.EnvironmentRecipeProperties{
 								TemplateKind: recipes.TemplateKindTerraform,
-								TemplatePath: "Azure/cosmosdb/azurerm",
+								TemplatePath: "http://example.com/myrecipe.zip",
 							},
 						},
 						linkrp.RedisCachesResourceType: {
@@ -137,8 +143,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						},
 						linkrp.DaprStateStoresResourceType: {
 							"statestore-recipe": datamodel.EnvironmentRecipeProperties{
-								TemplateKind: recipes.TemplateKindTerraform,
-								TemplatePath: "Azure/storage/azurerm",
+								TemplateKind:    recipes.TemplateKindTerraform,
+								TemplatePath:    "Azure/storage/azurerm",
+								TemplateVersion: "1.1.0",
 							},
 						},
 					},
@@ -245,11 +252,19 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
 		},
 		{
 			filename: "environmentresource-missing-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
+		},
+		{
+			filename: "environmentresource-invalid-property-templateversion.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath."},
+		},
+		{
+			filename: "environmentresource-terraformrecipe-localpath.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
 		},
 	}
 
@@ -322,6 +337,14 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, 1, len(versioned.Properties.Extensions))
+				if tt.filename == "environmentresourcedatamodel.json" {
+					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplatePath))
+					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateKind))
+					require.Equal(t, "1.1.0", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateVersion))
+				}
+				if tt.filename == "environmentresourcedatamodelemptyext.json" {
+					require.Nil(t, versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateVersion)
+				}
 			}
 		})
 	}

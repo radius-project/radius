@@ -153,9 +153,6 @@ model DaprSidecarExtension extends Extension {
 
   @doc("Specifies the Dapr app-protocol to use for the resource.")
   protocol?: DaprProtocol;
-
-  @doc("Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.")
-  provides: string;
 }
 
 @doc("Iam properties")

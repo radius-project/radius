@@ -18,10 +18,10 @@ package status
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -83,6 +83,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad app status` command.
+//
+// # Function Explanation
+//
+// Runner.Validate checks the workspace, scope, application name and output format from the command line arguments and
+// request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -113,6 +118,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad app status` command.
+//
+// # Function Explanation
+//
+// Run() retrieves the application status and its associated gateways from the given workspace and returns it in the specified format.
+// It returns an error if the application is not found or if there is an error while retrieving the application status.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -121,7 +131,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	application, err := client.ShowApplication(ctx, r.ApplicationName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("The application %q was not found or has been deleted.", r.ApplicationName)}
+		return clierrors.Message("The application %q was not found or has been deleted.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}

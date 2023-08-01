@@ -26,7 +26,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -41,19 +40,26 @@ type DeleteAzureCredential struct {
 	secretClient secret.Client
 }
 
-// NewDeleteAzureCredential creates a new DeleteAzureCredential.
-func NewDeleteAzureCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// # Function Explanation
+//
+// NewDeleteAzureCredential creates a new DeleteAzureCredential controller which is used to delete Azure credentials from
+// the secret store. It returns an error if the controller cannot be created.
+func NewDeleteAzureCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
 	return &DeleteAzureCredential{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.AzureCredential]{
 				RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
 				ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 			},
 		),
-		secretClient: opts.SecretClient,
+		secretClient: secretClient,
 	}, nil
 }
 
+// # Function Explanation
+//
+// "Run" retrieves the existing credential, deletes the associated secret, and then deletes the
+// credential from storage, returning an OK response if successful or an error if not.
 func (c *DeleteAzureCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
@@ -82,7 +88,7 @@ func (c *DeleteAzureCredential) Run(ctx context.Context, w http.ResponseWriter, 
 	}
 
 	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return armrpc_rest.NewNoContentResponse(), nil
 		}
 		return nil, err

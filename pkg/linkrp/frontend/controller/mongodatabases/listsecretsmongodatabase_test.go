@@ -25,12 +25,10 @@ import (
 	"testing"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -41,28 +39,25 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	ctx := context.Background()
 
 	_, mongoDataModel, _ := getTestModels20220315privatepreview()
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.NewARMRequestContext(req)
 
 		mStorageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
+				return nil, &store.ErrNotFound{ID: id}
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)
@@ -77,12 +72,13 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			renderers.UsernameStringValue:   "testUser",
 			renderers.PasswordStringHolder:  "testPassword",
-			renderers.ConnectionStringValue: "testConnectionString",
+			renderers.ConnectionStringValue: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
 		}
 
 		mStorageClient.
@@ -94,13 +90,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     mongoDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)
@@ -121,11 +113,12 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 
 	t.Run("listSecrets existing resource partial secrets", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
 			renderers.UsernameStringValue:   "testUser",
-			renderers.ConnectionStringValue: "testConnectionString",
+			renderers.ConnectionStringValue: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
 		}
 
 		mStorageClient.
@@ -137,13 +130,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 					Data:     mongoDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)
@@ -162,8 +151,9 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {
-		req, _ := testutil.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
-		ctx := testutil.ARMTestContextFromRequest(req)
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.NewARMRequestContext(req)
 		w := httptest.NewRecorder()
 
 		mStorageClient.
@@ -173,11 +163,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		opts := frontend_ctrl.Options{
-			Options: ctrl.Options{
-				StorageClient: mStorageClient,
-			},
-			DeployProcessor: mDeploymentProcessor,
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
 		}
 
 		ctl, err := NewListSecretsMongoDatabase(opts)

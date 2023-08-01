@@ -18,8 +18,10 @@ limitations under the License.
 
 package to
 
-// String returns a string value for the passed string pointer. It returns the empty string if the
-// pointer is nil.
+//
+// # Function Explanation
+//
+// String returns the string pointed to by s if s is not nil, otherwise it returns an empty string.
 func String(s *string) string {
 	if s != nil {
 		return *s
@@ -27,6 +29,8 @@ func String(s *string) string {
 	return ""
 }
 
+// # Function Explanation
+//
 // StringSlice returns a string slice value for the passed string slice pointer. It returns a nil
 // slice if the pointer is nil.
 func StringSlice(s *[]string) []string {
@@ -36,8 +40,10 @@ func StringSlice(s *[]string) []string {
 	return nil
 }
 
-// StringMap returns a map of strings built from the map of string pointers. The empty string is
-// used for nil pointers.
+// # Function Explanation
+//
+// StringMap takes in a map of strings and pointers to strings and returns a map of strings with empty strings in place of
+// nil pointers.
 func StringMap(msp map[string]*string) map[string]string {
 	ms := make(map[string]string, len(msp))
 	for k, sp := range msp {
@@ -50,7 +56,9 @@ func StringMap(msp map[string]*string) map[string]string {
 	return ms
 }
 
-// Bool returns a bool value for the passed bool pointer. It returns false if the pointer is nil.
+// # Function Explanation
+//
+// Bool returns the boolean value of the pointer passed in, or false if the pointer is nil.
 func Bool(b *bool) bool {
 	if b != nil {
 		return *b
@@ -58,7 +66,9 @@ func Bool(b *bool) bool {
 	return false
 }
 
-// Int returns an int value for the passed int pointer. It returns 0 if the pointer is nil.
+// # Function Explanation
+//
+// Int returns the value of the pointer if it is not nil, otherwise it returns 0.
 func Int(i *int) int {
 	if i != nil {
 		return *i
@@ -66,7 +76,9 @@ func Int(i *int) int {
 	return 0
 }
 
-// Int32 returns an int value for the passed int pointer. It returns 0 if the pointer is nil.
+// # Function Explanation
+//
+// Int32 checks if the pointer to an int32 is nil and returns the int32 value if it is not nil, otherwise it returns 0.
 func Int32(i *int32) int32 {
 	if i != nil {
 		return *i
@@ -74,7 +86,9 @@ func Int32(i *int32) int32 {
 	return 0
 }
 
-// Int64 returns an int value for the passed int pointer. It returns 0 if the pointer is nil.
+// # Function Explanation
+//
+// Int64 returns the int64 value of the pointer passed in, or 0 if the pointer is nil.
 func Int64(i *int64) int64 {
 	if i != nil {
 		return *i
@@ -82,7 +96,9 @@ func Int64(i *int64) int64 {
 	return 0
 }
 
-// Float32 returns an int value for the passed int pointer. It returns 0.0 if the pointer is nil.
+// # Function Explanation
+//
+// Float32 returns the value of the float32 pointer if it is not nil, otherwise it returns 0.0.
 func Float32(i *float32) float32 {
 	if i != nil {
 		return *i
@@ -90,7 +106,9 @@ func Float32(i *float32) float32 {
 	return 0.0
 }
 
-// Float64 returns an int value for the passed int pointer. It returns 0.0 if the pointer is nil.
+// # Function Explanation
+//
+// Float64 returns the value of the float64 pointer if it is not nil, otherwise it returns 0.0.
 func Float64(i *float64) float64 {
 	if i != nil {
 		return *i

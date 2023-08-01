@@ -32,8 +32,8 @@ import (
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,21 +71,17 @@ func Test_ListAWSResources(t *testing.T) {
 			},
 		}, nil)
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewListAWSResources(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, firstTestResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -121,21 +117,17 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewListAWSResources(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -152,21 +144,17 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewListAWSResources(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.Error(t, err)
 
@@ -187,21 +175,17 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 		},
 	})
 
-	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewListAWSResources(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

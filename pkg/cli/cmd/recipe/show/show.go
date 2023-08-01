@@ -34,6 +34,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad recipe show` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command that can be used to show recipe details, such as the name, resource type,
+// parameters, parameter details and template path, with the option to customize the output format.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -91,6 +96,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad recipe show` command.
+//
+// # Function Explanation
+//
+// Validate takes in a command and a slice of strings and validates the command line arguments, setting the workspace, environment,
+// recipe name, link type and output format in the Runner struct. It returns an error if any of the arguments are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -134,6 +144,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad recipe show` command.
+//
+// # Function Explanation
+//
+// Run retrieves the recipe details and parameters from the Applications Management service and prints them in the
+// specified format. It returns an error if one occurs.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -149,12 +164,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		Name:         r.RecipeName,
 		LinkType:     r.LinkType,
 		TemplatePath: *recipeDetails.TemplatePath,
+		TemplateKind: *recipeDetails.TemplateKind,
 	}
-	// Check to ensure backwards compatibility with existing environments.
-	// Remove this in next release once users have migrated their existing environments.
-	// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
-	if recipeDetails.TemplateKind != nil {
-		recipe.TemplateKind = *recipeDetails.TemplateKind
+	if recipeDetails.TemplateVersion != nil {
+		recipe.TemplateVersion = *recipeDetails.TemplateVersion
 	}
 
 	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetEnvironmentRecipesTableFormat())

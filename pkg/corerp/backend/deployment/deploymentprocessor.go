@@ -26,7 +26,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	sv "github.com/project-radius/radius/pkg/rp/secretvalue"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
@@ -35,8 +34,11 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 
+	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
+	datastores_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
 	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -56,16 +58,15 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient sv.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, sp: sp, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 
 type deploymentProcessor struct {
-	appmodel     model.ApplicationModel
-	sp           dataprovider.DataStorageProvider
-	secretClient sv.SecretValueClient
+	appmodel model.ApplicationModel
+	sp       dataprovider.DataStorageProvider
 	// k8sClient is the Kubernetes controller runtime client.
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
@@ -333,54 +334,10 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]any, error) {
 	secretValues := map[string]any{}
 	for k, secretReference := range dependency.SecretValues {
-		secret, err := dp.fetchSecret(ctx, dependency, secretReference)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch secret %q of dependency resource %q: %w", k, dependency.ID.String(), err)
-		}
-
-		if (secretReference.Transformer != resourcemodel.ResourceType{}) {
-			outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(secretReference.Transformer)
-			if err != nil {
-				return nil, err
-			} else if outputResourceModel.SecretValueTransformer == nil {
-				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
-			}
-
-			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, dependency.ComputedValues, secret)
-			if err != nil {
-				return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, dependency.ID.String(), err)
-			}
-		}
-
-		secretValues[k] = secret
+		secretValues[k] = secretReference.Value
 	}
 
 	return secretValues, nil
-}
-
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference rpv1.SecretValueReference) (any, error) {
-	if reference.Value != "" {
-		// The secret reference contains the value itself
-		return reference.Value, nil
-	}
-
-	var match *rpv1.OutputResource
-	for _, outputResource := range dependency.OutputResources {
-		if outputResource.LocalID == reference.LocalID {
-			copy := outputResource
-			match = &copy
-			break
-		}
-	}
-
-	if match == nil {
-		return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
-	}
-
-	if dp.secretClient == nil {
-		return nil, errors.New("no Azure credentials provided to fetch secret")
-	}
-	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
 // TODO: Revisit to remove the corerp_dm.Environment dependency.
@@ -488,7 +445,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 
 	resource, err := sc.Get(ctx, resourceID.String())
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: resourceID.String()}, err) {
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource %q does not exist", resourceID.String()))
 		}
 		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
@@ -574,8 +531,50 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprInvokeHttpRoutesResourceType):
-		obj := &link_dm.DaprInvokeHttpRoute{}
+	case strings.ToLower(linkrp.N_MongoDatabasesResourceType):
+		obj := &datastores_dm.MongoDatabase{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+	case strings.ToLower(linkrp.N_SqlDatabasesResourceType):
+		obj := &datastores_dm.SqlDatabase{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+	case strings.ToLower(linkrp.N_RedisCachesResourceType):
+		obj := &datastores_dm.RedisCache{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+	case strings.ToLower(linkrp.N_RabbitMQQueuesResourceType):
+		obj := &msg_dm.RabbitMQQueue{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+	case strings.ToLower(corerp_dm.ExtenderResourceType):
+		obj := &corerp_dm.Extender{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
+	case strings.ToLower(linkrp.N_DaprStateStoresResourceType):
+		obj := &dapr_dm.DaprStateStore{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+	case strings.ToLower(linkrp.N_DaprSecretStoresResourceType):
+		obj := &dapr_dm.DaprSecretStore{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+	case strings.ToLower(linkrp.N_DaprPubSubBrokersResourceType):
+		obj := &dapr_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}

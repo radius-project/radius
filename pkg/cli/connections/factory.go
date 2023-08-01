@@ -23,13 +23,12 @@ import (
 	"strings"
 
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/sdk"
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
@@ -53,6 +52,10 @@ var _ Factory = (*impl)(nil)
 type impl struct {
 }
 
+// # Function Explanation
+//
+// CreateDeploymentClient connects to a workspace, tests the connection, creates a deployment client and an operations
+// client, and returns them along with the resource group name. It returns an error if any of the steps fail.
 func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -61,7 +64,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}
@@ -98,6 +101,10 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	}, nil
 }
 
+// # Function Explanation
+//
+// CreateDiagnosticsClient creates a DiagnosticsClient by connecting to a workspace, testing the connection, and creating
+// clients for applications, containers, environments, and gateways. If an error occurs, it is returned.
 func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -106,7 +113,7 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}
@@ -162,6 +169,10 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 	}
 }
 
+// # Function Explanation
+//
+// CreateApplicationsManagementClient connects to the workspace, tests the connection, and returns a
+// UCPApplicationsManagementClient if successful, or an error if unsuccessful.
 func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -170,12 +181,12 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}
 
-	return &ucp.ARMApplicationsManagementClient{
+	return &clients.UCPApplicationsManagementClient{
 		// The client expects root scope without a leading /
 		RootScope:     strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
 		ClientOptions: sdk.NewClientOptions(connection),
@@ -183,6 +194,11 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 }
 
 // Creates Credential management client to interact with server side credentials.
+//
+// # Function Explanation
+//
+// CreateCredentialManagementClient establishes a connection to a workspace, tests the connection, creates Azure and AWS
+// credential clients, and returns a UCPCredentialManagementClient. An error is returned if any of the steps fail.
 func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
 	connection, err := workspace.Connect()
 	if err != nil {
@@ -191,7 +207,7 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 
 	err = sdk.TestConnection(ctx, connection)
 	if errors.Is(err, &sdk.ErrRadiusNotInstalled{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
+		return nil, clierrors.MessageWithCause(err, "Could not connect to Radius.")
 	} else if err != nil {
 		return nil, err
 	}

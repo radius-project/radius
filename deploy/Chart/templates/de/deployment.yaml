@@ -19,12 +19,12 @@ spec:
         control-plane: bicep-de
         app.kubernetes.io/name: bicep-de
         app.kubernetes.io/part-of: radius
-      {{ if eq .Values.global.prometheus.enabled true }}
+      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "6443"
         prometheus.io/scrape: "true"
-      {{ end }}
+      {{- end }}
     spec:
       serviceAccountName: bicep-de
       volumes:

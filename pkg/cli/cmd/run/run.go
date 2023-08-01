@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
-	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	deploycmd "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -36,6 +36,13 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command that can be used to run an application specified by a Bicep or ARM template,
+// port-forward container ports and stream container logs to a user's terminal, and accepts the same parameters as the 'rad
+//
+//	deploy' command. It returns an error if the command is not run with exactly one argument.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -91,6 +98,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad run` command.
+//
+// # Function Explanation
+//
+// The Validate function performs additional validations on the deployment and requires an application name, returning an
+// error if one is not specified.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	err := r.Runner.Validate(cmd, args)
 	if err != nil {
@@ -99,13 +111,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// In addition to the deployment validations, this command requires an application name
 	if r.ApplicationName == "" {
-		return &cli.FriendlyError{Message: "No application was specified. Use --application to specify the application name."}
+		return clierrors.Message("No application was specified. Use --application to specify the application name.")
 	}
 
 	return nil
 }
 
 // Run runs the `rad run` command.
+//
+// # Function Explanation
+//
+// Run starts port-forwarding and log streaming for a given application in a given Kubernetes context, and
+// returns an error if any of the operations fail.
 func (r *Runner) Run(ctx context.Context) error {
 	// Call into base first to deploy, and then set up port-forwards and logs.
 	err := r.Runner.Run(ctx)
@@ -142,7 +159,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if namespace == "" {
-		return &cli.FriendlyError{Message: "Only kubernetes runtimes are supported."}
+		return clierrors.Message("Only kubernetes runtimes are supported.")
 	}
 
 	// We start three background jobs and wait for them to complete.
@@ -162,6 +179,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			Namespace:       namespace,
 			KubeContext:     kubeContext,
 			StatusChan:      status,
+			Out:             os.Stdout,
 		})
 	})
 

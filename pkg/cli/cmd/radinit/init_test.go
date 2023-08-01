@@ -24,6 +24,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/golang/mock/gomock"
@@ -34,7 +36,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -44,6 +45,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 
@@ -297,7 +299,7 @@ func Test_Validate(t *testing.T) {
 				initEnvNamePrompt(mocks.Prompter, "default")
 				initNamespacePrompt(mocks.Prompter, "default")
 
-				// Add azure provider
+				// Add aws provider
 				initAddCloudProviderPromptYes(mocks.Prompter)
 				initSelectCloudProvider(mocks.Prompter, aws.ProviderDisplayName)
 				setAWSCloudProvider(mocks.Prompter, mocks.AWSClient, awsProvider)
@@ -592,7 +594,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{
 				"Applications.Link/redisCaches": {
 					"default": {
-						TemplateKind: to.Ptr(types.TemplateKindBicep),
+						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
 					},
 				},
@@ -678,11 +680,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-				Return(true, nil).
-				Times(1)
-			appManagementClient.EXPECT().
-				CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-				Return(true, nil).
+				Return(nil).
 				Times(1)
 
 			devRecipeClient := NewMockDevRecipeClient(ctrl)
@@ -702,7 +700,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "default", v1.LocationGlobal, testEnvProperties).
-				Return(true, nil).
+				Return(nil).
 				Times(1)
 
 			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
@@ -954,10 +952,11 @@ func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName st
 		Return(applicationName, nil).Times(1)
 }
 
-func setAWSRegionPrompt(prompter *prompt.MockInterface, region string) {
+func setAWSRegionPrompt(prompter *prompt.MockInterface, regions []string, region string) {
 	prompter.EXPECT().
-		GetTextInput(enterAWSRegionPrompt, gomock.Any()).
-		Return(region, nil).Times(1)
+		GetListInput(regions, selectAWSRegionPrompt).
+		Return(region, nil).
+		Times(1)
 }
 
 func setAWSAccessKeyIDPrompt(prompter *prompt.MockInterface, accessKeyID string) {
@@ -972,19 +971,27 @@ func setAWSSecretAccessKeyPrompt(prompter *prompt.MockInterface, secretAccessKey
 		Return(secretAccessKey, nil).Times(1)
 }
 
-func setAWSCallerIdentity(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, result *sts.GetCallerIdentityOutput) {
+func setAWSCallerIdentity(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, callerIdentityOutput *sts.GetCallerIdentityOutput) {
 	client.EXPECT().
 		GetCallerIdentity(gomock.Any(), region, accessKeyID, secretAccessKey).
-		Return(result, nil).
+		Return(callerIdentityOutput, nil).
+		Times(1)
+}
+
+func setAWSListRegions(client *aws.MockClient, region string, accessKeyID string, secretAccessKey string, ec2DescribeRegionsOutput *ec2.DescribeRegionsOutput) {
+	client.EXPECT().
+		ListRegions(gomock.Any(), region, accessKeyID, secretAccessKey).
+		Return(ec2DescribeRegionsOutput, nil).
 		Times(1)
 }
 
 // setAWSCloudProvider sets up mocks that will configure an AWS cloud provider.
 func setAWSCloudProvider(prompter *prompt.MockInterface, client *aws.MockClient, provider aws.Provider) {
-	setAWSRegionPrompt(prompter, provider.Region)
 	setAWSAccessKeyIDPrompt(prompter, provider.AccessKeyID)
 	setAWSSecretAccessKeyPrompt(prompter, provider.SecretAccessKey)
-	setAWSCallerIdentity(client, provider.Region, provider.AccessKeyID, provider.SecretAccessKey, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSCallerIdentity(client, QueryRegion, provider.AccessKeyID, provider.SecretAccessKey, &sts.GetCallerIdentityOutput{Account: &provider.AccountID})
+	setAWSListRegions(client, QueryRegion, provider.AccessKeyID, provider.SecretAccessKey, &ec2.DescribeRegionsOutput{Regions: getMockAWSRegions()})
+	setAWSRegionPrompt(prompter, getMockAWSRegionsString(), provider.Region)
 }
 
 func setAzureSubscriptions(client *azure.MockClient, result *azure.SubscriptionResult) {
@@ -1120,4 +1127,15 @@ func setProgressHandler(prompter *prompt.MockInterface) {
 			return &progressModel{}, nil
 		}).
 		Times(1)
+}
+
+func getMockAWSRegions() []ec2_types.Region {
+	return []ec2_types.Region{
+		{RegionName: to.Ptr("test-region")},
+		{RegionName: to.Ptr("test-region-2")},
+	}
+}
+
+func getMockAWSRegionsString() []string {
+	return []string{"test-region", "test-region-2"}
 }

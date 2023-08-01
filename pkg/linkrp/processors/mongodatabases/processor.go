@@ -29,7 +29,10 @@ import (
 type Processor struct {
 }
 
-// Process implements the processors.Processor interface for MongoDB resources.
+// # Function Explanation
+//
+// Process implements the processors.Processor interface for MongoDB resources. It  validates MongoDatabase properties
+// and applies the values from the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDatabase, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
 

@@ -18,7 +18,6 @@ package create
 
 import (
 	"context"
-	"fmt"
 
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
@@ -27,6 +26,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -38,6 +38,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env create` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner object to handle the command's logic, and adds flags to the command
+// for environment name, workspace, resource group, and namespace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -66,7 +71,7 @@ type Runner struct {
 	Output              output.Interface
 	Workspace           *workspaces.Workspace
 	EnvironmentName     string
-	UCPResourceGroup    string
+	ResourceGroupName   string
 	Namespace           string
 	ConnectionFactory   connections.Factory
 	ConfigFileInterface framework.ConfigFileInterface
@@ -87,6 +92,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad env create` command.
+//
+// # Function Explanation
+//
+// Validate checks if the workspace, environment name, scope, namespace, resource group name, and namespace
+// interface are valid and returns an error if any of them are not.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -99,6 +109,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
 	r.Namespace, err = cmd.Flags().GetString("namespace")
 	if err != nil {
 		return err
@@ -106,37 +121,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Namespace = r.EnvironmentName
 	}
 
-	r.UCPResourceGroup, err = cmd.Flags().GetString("group")
-	if err != nil {
-		return err
-	}
-
-	if r.UCPResourceGroup == "" {
-		// If no resource group specified and no default resource group
-		if r.Workspace.Scope == "" {
-			return &cli.FriendlyError{Message: "no resource group specified or set as default. Specify a resource group with '--group' and try again."}
-		}
-		// Use the default scope if no resource group provided
-		scopeId, err := resources.Parse(r.Workspace.Scope)
-		if err != nil {
-			return err
-		}
-		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
-	}
-
-	// If resource group specified but no scope set up in config.yaml
-	if r.Workspace.Scope == "" {
-		r.Workspace.Scope = "/planes/radius/local/resourcegroups/" + r.UCPResourceGroup
-	}
-
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
+	// Parse the resource group name so we can use it later. DO NOT use the
+	// --group argument, because we want to find the right group when the user
+	// didn't pass it.
+	scopeId, err := resources.Parse(r.Workspace.Scope)
+	if err != nil {
+		return err
+	}
+	r.ResourceGroupName = scopeId.FindScope(resources.ResourceGroupsSegment)
+
+	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.ResourceGroupName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
+		return clierrors.Message("Resource group %q could not be found.", r.ResourceGroupName)
 	} else if err != nil {
 		return err
 	}
@@ -150,6 +151,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad env create` command.
+//
+// # Function Explanation
+//
+// Run creates an environment in the specified resource group using the provided environment name and namespace, and
+// returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
 
@@ -164,11 +170,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		},
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, envProperties)
-	if err != nil || !isEnvCreated {
+	err = client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, envProperties)
+	if err != nil {
 		return err
 	}
-	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.UCPResourceGroup)
+	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.ResourceGroupName)
 
 	return nil
 }

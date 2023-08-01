@@ -18,10 +18,10 @@ package aws
 
 import (
 	"context"
-	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -35,6 +35,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad credential register aws` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for registering AWS cloud provider credentials with IAM authentication, and
+// returns a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -91,6 +96,10 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad credential register aws` command.
+//
+// # Function Explanation
+//
+// Validate() checks if the required workspace, output format, access key ID and secret access key are present, and if not, returns an error.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -116,21 +125,25 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.SecretAccessKey = secretAccessKey
 
 	if r.AccessKeyID == "" {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Access Key id %q cannot be empty", r.AccessKeyID)}
+		return clierrors.Message("Access Key id %q cannot be empty.", r.AccessKeyID)
 	}
 	if r.SecretAccessKey == "" {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Secret Access Key %q cannot be empty", r.SecretAccessKey)}
+		return clierrors.Message("Secret Access Key %q cannot be empty.", r.SecretAccessKey)
 	}
 
 	kubeContext, ok := r.Workspace.KubernetesContext()
 	if !ok {
-		return &cli.FriendlyError{Message: "A Kubernetes connection is required."}
+		return clierrors.Message("A Kubernetes connection is required.")
 	}
 	r.KubeContext = kubeContext
 	return nil
 }
 
 // Run runs the `rad credential register aws` command.
+//
+// # Function Explanation
+//
+// Run() registers an AWS credential with the given context and workspace, and returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Registering credential for %q cloud provider in Radius installation %q...", "aws", r.Workspace.FmtConnection())

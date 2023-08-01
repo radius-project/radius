@@ -27,13 +27,13 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
 )
@@ -47,7 +47,16 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Register Command with parameters",
-			Input:         []string{"test_recipe", "--template-kind", types.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "a=b"},
+			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "a=b"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Valid Register Command for terraform recipe",
+			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindTerraform, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--template-version", "1.1.0"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -56,7 +65,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid Register Command with parameters passed as file",
-			Input:         []string{"test_recipe", "--template-kind", types.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
+			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -65,7 +74,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command with fallback workspace",
-			Input:         []string{"-e", "myenvironment", "test_recipe", "--template-kind", types.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
+			Input:         []string{"-e", "myenvironment", "test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -74,7 +83,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without name",
-			Input:         []string{"--template-kind", types.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
+			Input:         []string{"--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -92,7 +101,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without template path",
-			Input:         []string{"test_recipe", "--template-kind", types.TemplateKindBicep, "--link-type", linkrp.MongoDatabasesResourceType},
+			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--link-type", linkrp.MongoDatabasesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -101,7 +110,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Register Command without link-type",
-			Input:         []string{"test_recipe", "--template-kind", types.TemplateKindBicep, "--template-path", "test_template"},
+			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -128,7 +137,7 @@ func Test_Run(t *testing.T) {
 		testRecipes := map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 			linkrp.MongoDatabasesResourceType: {
 				"cosmosDB": {
-					TemplateKind: to.Ptr(types.TemplateKindBicep),
+					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				},
 			},
@@ -155,7 +164,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).Times(1)
+			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
 
@@ -163,8 +172,9 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplateKind:      types.TemplateKindBicep,
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplateKind:      recipes.TemplateKindTerraform,
+			TemplatePath:      "Azure/cosmosdb/azurerm",
+			TemplateVersion:   "1.1.0",
 			LinkType:          linkrp.MongoDatabasesResourceType,
 			RecipeName:        "cosmosDB_new",
 		}
@@ -211,8 +221,11 @@ func Test_Run(t *testing.T) {
 		}
 
 		expectedError := errors.New("failed to register recipe to the environment")
-		expectedErrorMessage := fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", "cosmosDB_new",
-			"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind", expectedError.Error())
+		expectedErrorMessage := fmt.Sprintf(
+			"Failed to register the recipe %q to the environment %q. Cause: %s.",
+			"cosmosDB_new",
+			"/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind",
+			expectedError.Error())
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
@@ -221,7 +234,7 @@ func Test_Run(t *testing.T) {
 			Times(1)
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-			Return(false, expectedError).
+			Return(expectedError).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -274,7 +287,7 @@ func Test_Run(t *testing.T) {
 			Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 				linkrp.MongoDatabasesResourceType: {
 					"cosmosDB": {
-						TemplateKind: to.Ptr(types.TemplateKindBicep),
+						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						Parameters:   map[string]any{"throughput": 400},
 					},
@@ -301,7 +314,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).Times(1)
+			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
 
@@ -309,7 +322,7 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplateKind:      types.TemplateKindBicep,
+			TemplateKind:      recipes.TemplateKindBicep,
 			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
 			LinkType:          linkrp.RedisCachesResourceType,
 			RecipeName:        "redis",
@@ -337,7 +350,7 @@ func Test_Run(t *testing.T) {
 			Recipes: map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 				linkrp.MongoDatabasesResourceType: {
 					"cosmosDB": {
-						TemplateKind: to.Ptr(types.TemplateKindBicep),
+						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 					},
 				},
@@ -357,7 +370,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).Times(1)
+			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
 
@@ -365,7 +378,7 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplateKind:      types.TemplateKindBicep,
+			TemplateKind:      recipes.TemplateKindBicep,
 			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			LinkType:          linkrp.MongoDatabasesResourceType,
 			RecipeName:        "cosmosDB_no_namespace",
@@ -409,7 +422,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "kind-kind", v1.LocationGlobal, testEnvProperties).
-			Return(true, nil).Times(1)
+			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
 
@@ -417,7 +430,7 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplateKind:      types.TemplateKindBicep,
+			TemplateKind:      recipes.TemplateKindBicep,
 			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
 			LinkType:          linkrp.RedisCachesResourceType,
 			RecipeName:        "redis",

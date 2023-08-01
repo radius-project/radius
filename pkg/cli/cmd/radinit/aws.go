@@ -18,60 +18,92 @@ package radinit
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
 const (
-	enterAWSRegionPrompt                  = "Enter the region you would like to use to deploy AWS resources:"
-	enterAWSRegionPlaceholder             = "Enter a region..."
+	// QueryRegion is the region used for querying AWS before the user selects a region.
+	QueryRegion = "us-east-1"
+
+	selectAWSRegionPrompt                 = "Select the region you would like to deploy AWS resources to:"
 	enterAWSIAMAcessKeyIDPrompt           = "Enter the IAM access key id:"
 	enterAWSIAMAcessKeyIDPlaceholder      = "Enter IAM access key id..."
-	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Keys:"
-	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM access key..."
+	enterAWSIAMSecretAccessKeyPrompt      = "Enter your IAM Secret Access Key:"
+	enterAWSIAMSecretAccessKeyPlaceholder = "Enter IAM secret access key..."
 	errNotEmptyTemplate                   = "%s cannot be empty"
 
 	awsAccessKeysCreateInstructionFmt = "\nAWS IAM Access keys (Access key ID and Secret access key) are required to access and create AWS resources.\n\nFor example, you can create one using the following command:\n\033[36maws iam create-access-key\033[0m\n\nFor more information refer to https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html.\n\n"
 )
 
 func (r *Runner) enterAWSCloudProvider(ctx context.Context, options *initOptions) (*aws.Provider, error) {
-	region, err := r.Prompter.GetTextInput(enterAWSRegionPrompt, prompt.TextInputOptions{Placeholder: enterAWSRegionPlaceholder})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
-		return nil, err
-	}
-
 	r.Output.LogInfo(awsAccessKeysCreateInstructionFmt)
 
 	accessKeyID, err := r.Prompter.GetTextInput(enterAWSIAMAcessKeyIDPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMAcessKeyIDPlaceholder})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
 	secretAccessKey, err := r.Prompter.GetTextInput(enterAWSIAMSecretAccessKeyPrompt, prompt.TextInputOptions{Placeholder: enterAWSIAMSecretAccessKeyPlaceholder, EchoMode: textinput.EchoPassword})
-	if errors.Is(err, &prompt.ErrExitConsole{}) {
-		return nil, &cli.FriendlyError{Message: err.Error()}
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 
-	result, err := r.awsClient.GetCallerIdentity(ctx, region, accessKeyID, secretAccessKey)
+	accountId, err := r.getAccountId(ctx, QueryRegion, accessKeyID, secretAccessKey)
 	if err != nil {
-		return nil, &cli.FriendlyError{Message: fmt.Sprintf("AWS credential verification failed: %s", err.Error())}
+		return nil, err
+	}
+
+	region, err := r.selectAWSRegion(ctx, QueryRegion, accessKeyID, secretAccessKey)
+	if err != nil {
+		return nil, err
 	}
 
 	return &aws.Provider{
 		AccessKeyID:     accessKeyID,
 		SecretAccessKey: secretAccessKey,
+		AccountID:       accountId,
 		Region:          region,
-		AccountID:       *result.Account,
 	}, nil
+}
+
+func (r *Runner) getAccountId(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
+	callerIdentityOutput, err := r.awsClient.GetCallerIdentity(ctx, QueryRegion, accessKeyID, secretAccessKey)
+	if err != nil {
+		return "", clierrors.MessageWithCause(err, "AWS credential verification failed.")
+	}
+
+	if callerIdentityOutput.Account == nil {
+		return "", clierrors.MessageWithCause(err, "AWS credential verification failed: Account ID is nil.")
+	}
+
+	return *callerIdentityOutput.Account, nil
+}
+
+func (r *Runner) selectAWSRegion(ctx context.Context, region, accessKeyID, secretAccessKey string) (string, error) {
+	listRegionsOutput, err := r.awsClient.ListRegions(ctx, region, accessKeyID, secretAccessKey)
+	if err != nil {
+		return "", clierrors.MessageWithCause(err, "Listing AWS regions failed.")
+	}
+
+	regions := r.buildAWSRegionsList(listRegionsOutput)
+	selectedRegion, err := r.Prompter.GetListInput(regions, selectAWSRegionPrompt)
+	if err != nil {
+		return "", err
+	}
+
+	return selectedRegion, nil
+}
+
+func (r *Runner) buildAWSRegionsList(listRegionsOutput *ec2.DescribeRegionsOutput) []string {
+	regions := []string{}
+	for _, region := range listRegionsOutput.Regions {
+		regions = append(regions, *region.RegionName)
+	}
+
+	return regions
 }

@@ -18,11 +18,11 @@ package appswitch
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -32,6 +32,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad app switch` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for switching the default Radius application, which takes in a factory and
+// returns a cobra command and a runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
@@ -68,6 +73,12 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad app switch` command.
+//
+// # Function Explanation
+//
+// Validate checks if the workspace is editable, reads the application name from the command line arguments, checks
+// if the application exists. It returns an error if the workspace is not editable, if the application name is not provided,
+// or if the application does not exist.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -99,7 +110,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate that the application exists
 	_, err = client.ShowApplication(cmd.Context(), r.ApplicationName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch applications as the requested application %s does not exist.\n", r.ApplicationName)}
+		return clierrors.Message("Unable to switch applications as the requested application %s does not exist.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}
@@ -114,6 +125,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad app switch` command.
+//
+// # Function Explanation
+//
+// The function Run takes in a context and updates the configuration of the workspace with the given application name,
+// and returns an error if any.
 func (r *Runner) Run(ctx context.Context) error {
 	err := cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		r.Workspace.DefaultApplication = r.ApplicationName

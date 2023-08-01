@@ -53,6 +53,7 @@ const (
 )
 
 type Options struct {
+	Config                  *hostoptions.UCPConfig
 	Port                    string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
 	LoggingOptions          ucplog.LoggingOptions
@@ -62,7 +63,7 @@ type Options struct {
 	ProfilerProviderOptions profilerprovider.ProfilerProviderOptions
 	TracerProviderOptions   trace.Options
 	TLSCertDir              string
-	BasePath                string
+	PathBase                string
 	InitialPlanes           []rest.Plane
 	Identity                hostoptions.Identity
 	UCPConnection           sdk.Connection
@@ -71,6 +72,9 @@ type Options struct {
 
 const UCPProviderName = "ucp"
 
+// # Function Explanation
+//
+// NewServerOptionsFromEnvironment creates a new Options struct from environment variables and returns it along with any errors.
 func NewServerOptionsFromEnvironment() (Options, error) {
 	basePath, ok := os.LookupEnv("BASE_PATH")
 	if ok && len(basePath) > 0 && (!strings.HasPrefix(basePath, "/") || strings.HasSuffix(basePath, "/")) {
@@ -128,9 +132,10 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	}
 
 	return Options{
+		Config:                  opts.Config,
 		Port:                    port,
 		TLSCertDir:              tlsCertDir,
-		BasePath:                basePath,
+		PathBase:                basePath,
 		StorageProviderOptions:  storeOpts,
 		SecretProviderOptions:   secretOpts,
 		QueueProviderOptions:    qproviderOpts,
@@ -145,6 +150,10 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
+// NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
+// enabled) based on the given Options.
 func NewServer(options *Options) (*hosting.Host, error) {
 	var enableAsyncWorker bool
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
@@ -153,15 +162,16 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		api.NewService(api.ServiceOptions{
 			ProviderName:           UCPProviderName,
 			Address:                ":" + options.Port,
+			PathBase:               options.PathBase,
+			Config:                 options.Config,
+			Location:               options.Location,
 			TLSCertDir:             options.TLSCertDir,
-			BasePath:               options.BasePath,
 			StorageProviderOptions: options.StorageProviderOptions,
 			SecretProviderOptions:  options.SecretProviderOptions,
 			QueueProviderOptions:   options.QueueProviderOptions,
 			InitialPlanes:          options.InitialPlanes,
 			Identity:               options.Identity,
 			UCPConnection:          options.UCPConnection,
-			Location:               options.Location,
 		}),
 	}
 

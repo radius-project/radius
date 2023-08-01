@@ -38,82 +38,6 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// DaprInvokeHTTPRouteClientCreateOrUpdateOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.CreateOrUpdate
-// method.
-type DaprInvokeHTTPRouteClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRouteClientDeleteOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.Delete method.
-type DaprInvokeHTTPRouteClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRouteClientGetOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.Get method.
-type DaprInvokeHTTPRouteClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRouteClientListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.ListByRootScope
-// method.
-type DaprInvokeHTTPRouteClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRouteProperties - DaprInvokeHttpRoute link properties
-type DaprInvokeHTTPRouteProperties struct {
-	// REQUIRED; The Dapr appId used for the route
-	AppID *string `json:"appId,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// DaprInvokeHTTPRouteResource - DaprInvokeHttpRoute link
-type DaprInvokeHTTPRouteResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string `json:"location,omitempty"`
-
-	// The resource-specific properties for this resource.
-	Properties *DaprInvokeHTTPRouteProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string `json:"id,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the resource
-	Name *string `json:"name,omitempty" azure:"ro"`
-
-	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// DaprInvokeHTTPRouteResourceListResult - The response of a DaprInvokeHttpRouteResource list operation.
-type DaprInvokeHTTPRouteResourceListResult struct {
-	// REQUIRED; The DaprInvokeHttpRouteResource items on this page
-	Value []*DaprInvokeHTTPRouteResource `json:"value,omitempty"`
-
-	// The link to the next page of items
-	NextLink *string `json:"nextLink,omitempty"`
-}
-
 // DaprPubSubBrokerClientBeginDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginDelete method.
 type DaprPubSubBrokerClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
@@ -429,7 +353,7 @@ type ExtenderList struct {
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of Extender resources
-	Value []*ExtenderResponseResource `json:"value,omitempty"`
+	Value []*ExtenderResource `json:"value,omitempty"`
 }
 
 // ExtenderProperties - Extender link properties
@@ -442,6 +366,12 @@ type ExtenderProperties struct {
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the Extender link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// The secret values for the given Extender resource
 	Secrets map[string]interface{} `json:"secrets,omitempty"`
@@ -460,48 +390,6 @@ type ExtenderResource struct {
 
 	// REQUIRED; Extender link properties
 	Properties *ExtenderProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string `json:"id,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the resource
-	Name *string `json:"name,omitempty" azure:"ro"`
-
-	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// ExtenderResponseProperties - Extender link properties
-type ExtenderResponseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]interface{}
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// ExtenderResponseResource - Extender link
-type ExtenderResponseResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string `json:"location,omitempty"`
-
-	// REQUIRED; Extender link properties
-	Properties *ExtenderResponseProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -832,6 +720,9 @@ type RedisCacheListSecretsResult struct {
 
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
+
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
 // RedisCacheProperties - RedisCache link properties
@@ -859,6 +750,9 @@ type RedisCacheProperties struct {
 
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to enable SSL connections to the Redis cache
+	TLS *bool `json:"tls,omitempty"`
 
 	// The username for Redis cache
 	Username *string `json:"username,omitempty"`
@@ -910,6 +804,9 @@ type RedisCacheSecrets struct {
 
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
+
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
 // RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate method.
@@ -964,6 +861,15 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
+// SQLDatabaseListSecretsResult - The secret values for the given SqlDatabase resource
+type SQLDatabaseListSecretsResult struct {
+	// Connection string used to connect to the target Sql database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Sql database
+	Password *string `json:"password,omitempty"`
+}
+
 // SQLDatabaseProperties - SqlDatabase properties
 type SQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
@@ -975,6 +881,9 @@ type SQLDatabaseProperties struct {
 	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
+	// Port value of the target Sql database
+	Port *int32 `json:"port,omitempty"`
+
 	// The recipe used to automatically deploy underlying infrastructure for the sqldatabases link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
@@ -984,8 +893,14 @@ type SQLDatabaseProperties struct {
 	// List of the resource IDs that support the SqlDatabase resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
+	// Secret values provided for the resource
+	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
+
 	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
+
+	// Username to use when connecting to the target Sql database
+	Username *string `json:"username,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1027,6 +942,15 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// SQLDatabaseSecrets - The secret values for the given SqlDatabase resource
+type SQLDatabaseSecrets struct {
+	// Connection string used to connect to the target Sql database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target Sql database
+	Password *string `json:"password,omitempty"`
+}
+
 // SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
 type SQLDatabasesClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -1044,6 +968,11 @@ type SQLDatabasesClientGetOptions struct {
 
 // SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
 type SQLDatabasesClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets method.
+type SQLDatabasesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 

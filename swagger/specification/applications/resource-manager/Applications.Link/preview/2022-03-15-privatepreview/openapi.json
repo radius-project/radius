@@ -55,9 +55,6 @@
       "name": "RabbitMQMessageQueues"
     },
     {
-      "name": "DaprInvokeHttpRoute"
-    },
-    {
       "name": "DaprSecretStore"
     },
     {
@@ -68,191 +65,6 @@
     }
   ],
   "paths": {
-    "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes": {
-      "get": {
-        "tags": [
-          "DaprInvokeHttpRoute"
-        ],
-        "operationId": "DaprInvokeHttpRoute_ListByRootScope",
-        "description": "Lists information about all DaprInvokeHttpRouteResources in the given root scope",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/DaprInvokeHttpRouteResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}": {
-      "get": {
-        "tags": [
-          "DaprInvokeHttpRoute"
-        ],
-        "operationId": "DaprInvokeHttpRoute_Get",
-        "description": "Retrieves information about a DaprInvokeHttpRouteResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "daprInvokeHttpRouteName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the DaprInvokeHttpRoute link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "DaprInvokeHttpRoute"
-        ],
-        "operationId": "DaprInvokeHttpRoute_CreateOrUpdate",
-        "description": "Creates or updates a DaprInvokeHttpRouteResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "daprInvokeHttpRouteName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the DaprInvokeHttpRoute link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/DaprInvokeHttpRouteResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "DaprInvokeHttpRoute"
-        ],
-        "operationId": "DaprInvokeHttpRoute_Delete",
-        "description": "Deletes an existing DaprInvokeHttpRouteResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "daprInvokeHttpRouteName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the DaprInvokeHttpRoute link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
     "/{rootScope}/providers/Applications.Link/daprPubSubBrokers": {
       "get": {
         "tags": [
@@ -1668,6 +1480,44 @@
         }
       }
     },
+    "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets": {
+      "post": {
+        "operationId": "SqlDatabases_ListSecrets",
+        "description": "Lists secrets values for the specified SqlDatabase resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase link resource",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
@@ -1741,76 +1591,6 @@
       "description": "Basic properties of a Radius resource.",
       "required": [
         "environment"
-      ]
-    },
-    "DaprInvokeHttpRouteProperties": {
-      "type": "object",
-      "properties": {
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the daprInvokeHttpRoute link at the time the operation was called",
-          "readOnly": true
-        },
-        "appId": {
-          "type": "string",
-          "description": "The Dapr appId used for the route"
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link"
-        }
-      },
-      "description": "DaprInvokeHttpRoute link properties",
-      "required": [
-        "appId"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
-      ]
-    },
-    "DaprInvokeHttpRouteResource": {
-      "type": "object",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/DaprInvokeHttpRouteProperties",
-          "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
-        }
-      },
-      "description": "DaprInvokeHttpRoute link",
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
-        }
-      ]
-    },
-    "DaprInvokeHttpRouteResourceListResult": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/DaprInvokeHttpRouteResource"
-          },
-          "x-cadl-name": "DaprInvokeHttpRouteResource[]",
-          "description": "The DaprInvokeHttpRouteResource items on this page"
-        },
-        "nextLink": {
-          "type": "string",
-          "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
-        }
-      },
-      "description": "The response of a DaprInvokeHttpRouteResource list operation.",
-      "required": [
-        "value"
       ]
     },
     "DaprPubSubBrokerProperties": {
@@ -2339,6 +2119,10 @@
         "password": {
           "type": "string",
           "description": "The password for this Redis cache instance"
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL used to connect to the Redis cache"
         }
       },
       "description": "The secret values for the given RedisCache resource"
@@ -2367,6 +2151,10 @@
         "username": {
           "type": "string",
           "description": "The username for Redis cache"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to enable SSL connections to the Redis cache"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -2445,6 +2233,10 @@
         "password": {
           "type": "string",
           "description": "The password for this Redis cache instance"
+        },
+        "url": {
+          "type": "string",
+          "description": "The URL used to connect to the Redis cache"
         }
       },
       "description": "The secret values for the given RedisCache resource"
@@ -2489,6 +2281,20 @@
       },
       "description": "Status of a resource."
     },
+    "SqlDatabaseListSecretsResult": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Sql database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Sql database"
+        }
+      },
+      "description": "The secret values for the given SqlDatabase resource"
+    },
     "SqlDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2505,6 +2311,15 @@
           "type": "string",
           "description": "The fully qualified domain name of the Sql database."
         },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Sql database"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Sql database"
+        },
         "recipe": {
           "$ref": "#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
@@ -2520,6 +2335,10 @@
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "secrets": {
+          "$ref": "#/definitions/SqlDatabaseSecrets",
+          "description": "Secret values provided for the resource"
         }
       },
       "description": "SqlDatabase properties",
@@ -2571,6 +2390,20 @@
       "required": [
         "value"
       ]
+    },
+    "SqlDatabaseSecrets": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string",
+          "description": "Password to use when connecting to the target Sql database"
+        },
+        "connectionString": {
+          "type": "string",
+          "description": "Connection string used to connect to the target Sql database"
+        }
+      },
+      "description": "The secret values for the given SqlDatabase resource"
     },
     "object": {
       "type": "object",

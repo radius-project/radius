@@ -26,8 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -37,22 +35,24 @@ var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)
 // ListSecretsRedisCache is the controller implementation to list secrets for the to access the connected redis cache resource resource id passed in the request body.
 type ListSecretsRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
-	dp deployment.DeploymentProcessor
 }
 
-// NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache.
-func NewListSecretsRedisCache(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+// # Function Explanation
+//
+// NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache and returns it without an  error.
+func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRedisCache{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.RedisCache]{
 				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 				ResponseConverter: converter.RedisCacheDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
-// Run returns secrets values for the specified RedisCache resource
+// # Function Explanation
+//
+// Run retrieves the secrets associated with a RedisCache resource and returns them in the requested API version.
 func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -71,17 +71,12 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWrite
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
-	if err != nil {
-		return nil, err
-	}
-
 	redisSecrets := datamodel.RedisCacheSecrets{}
-	if password, ok := secrets[renderers.PasswordStringHolder].(string); ok {
-		redisSecrets.Password = password
+	if password, ok := resource.SecretValues[renderers.PasswordStringHolder]; ok {
+		redisSecrets.Password = password.Value
 	}
-	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
-		redisSecrets.ConnectionString = connectionString
+	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
+		redisSecrets.ConnectionString = connectionString.Value
 	}
 
 	versioned, _ := converter.RedisCacheSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)

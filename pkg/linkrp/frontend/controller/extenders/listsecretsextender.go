@@ -25,8 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
 var _ ctrl.Controller = (*ListSecretsExtender)(nil)
@@ -34,21 +32,23 @@ var _ ctrl.Controller = (*ListSecretsExtender)(nil)
 // ListSecretsExtender is the controller implementation to list secrets for the to access the connected extender resource resource id passed in the request body.
 type ListSecretsExtender struct {
 	ctrl.Operation[*datamodel.Extender, datamodel.Extender]
-	dp deployment.DeploymentProcessor
 }
 
+// # Function Explanation
+//
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
-func NewListSecretsExtender(opts frontend_ctrl.Options) (ctrl.Controller, error) {
+func NewListSecretsExtender(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsExtender{
-		Operation: ctrl.NewOperation(opts.Options,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Extender]{
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
+// # Function Explanation
+//
 // Run returns secrets values for the specified Extender resource
 func (ctrl *ListSecretsExtender) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
@@ -65,9 +65,9 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, w http.ResponseWriter,
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
-	if err != nil {
-		return nil, err
+	secrets := map[string]string{}
+	for key, secret := range resource.SecretValues {
+		secrets[key] = secret.Value
 	}
 
 	return rest.NewOKResponse(secrets), nil

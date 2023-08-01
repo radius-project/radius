@@ -82,6 +82,9 @@ const (
 	RetryCount = 10
 )
 
+// # Function Explanation
+//
+// NewAPIServerClient creates a new APIServerClient object which is used to interact with the API server.
 func NewAPIServerClient(client runtimeclient.Client, namespace string) *APIServerClient {
 	return &APIServerClient{client: client, namespace: namespace}
 }
@@ -99,6 +102,9 @@ type APIServerClient struct {
 	waitChan <-chan struct{}
 }
 
+// # Function Explanation
+//
+// Query searches for objects in the store that match the given query and returns them.
 func (c *APIServerClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
@@ -154,6 +160,9 @@ func (c *APIServerClient) Query(ctx context.Context, query store.Query, options 
 	return &results, nil
 }
 
+// # Function Explanation
+//
+// Get retrieves an object from the store given its ID, or returns an error if the object does not exist or if an error occurs.
 func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 	if ctx == nil {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
@@ -174,7 +183,7 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	resource := ucpv1alpha1.Resource{}
 	err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
 	if err != nil && apierrors.IsNotFound(err) {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	} else if err != nil {
 		return nil, err
 	}
@@ -183,12 +192,15 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	if err != nil {
 		return nil, err
 	} else if obj == nil {
-		return nil, &store.ErrNotFound{}
+		return nil, &store.ErrNotFound{ID: id}
 	}
 
 	return obj, nil
 }
 
+// # Function Explanation
+//
+// Delete deletes a resource from the store, returning an error if the resource does not exist or if there is a concurrency conflict.
 func (c *APIServerClient) Delete(ctx context.Context, id string, options ...store.DeleteOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
@@ -214,14 +226,14 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
 			return false, &store.ErrConcurrency{}
 		} else if err != nil && apierrors.IsNotFound(err) {
-			return false, &store.ErrNotFound{}
+			return false, &store.ErrNotFound{ID: id}
 		} else if err != nil {
 			return false, err
 		}
 
 		index := findIndex(&resource, parsed)
 		if index == nil {
-			return false, &store.ErrNotFound{}
+			return false, &store.ErrNotFound{ID: id}
 		}
 
 		if config.ETag != "" && config.ETag != resource.Entries[*index].ETag {
@@ -240,7 +252,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 			}
 			err := c.client.Delete(ctx, &resource, &options)
 			if err != nil && apierrors.IsNotFound(err) {
-				return false, &store.ErrNotFound{}
+				return false, &store.ErrNotFound{ID: id}
 			} else if apierrors.IsConflict(err) {
 				return true, err // RETRY this!
 			} else if err != nil {
@@ -254,7 +266,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 
 			err := c.client.Update(ctx, &resource)
 			if err != nil && apierrors.IsNotFound(err) {
-				return false, &store.ErrNotFound{}
+				return false, &store.ErrNotFound{ID: id}
 			} else if apierrors.IsConflict(err) {
 				return true, err // RETRY this!
 			} else if err != nil {
@@ -268,6 +280,9 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 	return err
 }
 
+// # Function Explanation
+//
+// Save saves an object to the store, or updates an existing object if it already exists, and returns an error if the operation fails.
 func (c *APIServerClient) Save(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
 	if ctx == nil {
 		return &store.ErrInvalid{Message: "invalid argument. 'ctx' is required"}

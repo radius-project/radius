@@ -16,6 +16,7 @@
 
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
+IMAGE_SRC?=https://github.com/project-radius/radius
 
 ##@ Docker Images
 
@@ -33,6 +34,8 @@ docker-build-$(1): build-$(1)-linux-amd64
 	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
 		--platform linux/amd64 \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
+		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 else
@@ -40,6 +43,8 @@ docker-build-$(1):
 	@echo "$(ARROW) Building image $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION)"
 	docker build $(2) -f $(3) \
 		-t $(DOCKER_REGISTRY)/$(1)\:$(DOCKER_TAG_VERSION) \
+		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)"
 endif
@@ -58,6 +63,8 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
 		--platform linux/amd64,linux/arm64,linux/arm \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
+		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
 		--push $(2)
@@ -74,7 +81,7 @@ configure-buildx:
 	fi
 
 # defines a target for each image
-DOCKER_IMAGES := ucpd appcore-rp
+DOCKER_IMAGES := ucpd applications-rp
 
 $(foreach IMAGE,$(DOCKER_IMAGES),$(eval $(call generateDockerTargets,$(IMAGE),.,./deploy/images/$(IMAGE)/Dockerfile, go)))
 

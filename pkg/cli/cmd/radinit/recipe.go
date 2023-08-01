@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"strings"
 
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp"
+	recipe_types "github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/version"
 
@@ -42,10 +42,17 @@ type DevRecipeClient interface {
 type devRecipeClient struct {
 }
 
+// # Function Explanation
+//
+// NewDevRecipeClient creates a new DevRecipeClient object and returns it.
 func NewDevRecipeClient() DevRecipeClient {
 	return &devRecipeClient{}
 }
 
+// # Function Explanation
+//
+// GetDevRecipes is a function that queries a registry for recipes with a specific tag and returns a map of recipes.
+// If an error occurs, an error is returned.
 func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]*corerp.EnvironmentRecipeProperties, error) {
 	reg, err := remote.NewRegistry(DevRecipesRegistry)
 	if err != nil {
@@ -61,7 +68,7 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 	recipes := map[string]map[string]*corerp.EnvironmentRecipeProperties{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
-	// Ex: radius.azurecr.io/recipes/dev/rediscaches:0.20
+	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.
 		validRepos := []string{}
@@ -124,7 +131,7 @@ func processRepositories(repos []string, tag string) map[string]map[string]*core
 
 		recipes[linkType] = map[string]*corerp.EnvironmentRecipeProperties{
 			name: {
-				TemplateKind: to.Ptr(types.TemplateKindBicep),
+				TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
 				TemplatePath: to.Ptr(repoPath + ":" + tag),
 			},
 		}
@@ -135,9 +142,9 @@ func processRepositories(repos []string, tag string) map[string]map[string]*core
 
 // getResourceTypeFromPath parses the repository path to extract the resource type.
 //
-// Should be of the form: recipes/dev/<resourceType>
+// Should be of the form: recipes/local-dev/<resourceType>
 func getResourceTypeFromPath(repo string) (resourceType string) {
-	_, after, found := strings.Cut(repo, "recipes/dev/")
+	_, after, found := strings.Cut(repo, "recipes/local-dev/")
 	if !found || after == "" {
 		return ""
 	}
@@ -152,10 +159,22 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 // getLinkType returns the link type for the given resource type.
 func getLinkType(resourceType string) string {
 	switch resourceType {
+	case "daprpubsubbrokers":
+		return linkrp.DaprPubSubBrokersResourceType
+	case "daprsecretstores":
+		return linkrp.DaprSecretStoresResourceType
+	case "daprstatestores":
+		return linkrp.DaprStateStoresResourceType
 	case "mongodatabases":
 		return linkrp.MongoDatabasesResourceType
+	case "rabbitmqmessagequeues":
+		return linkrp.RabbitMQMessageQueuesResourceType
 	case "rediscaches":
 		return linkrp.RedisCachesResourceType
+	case "sqldatabases":
+		return linkrp.SqlDatabasesResourceType
+	case "rabbitmqqueues":
+		return linkrp.N_RabbitMQQueuesResourceType
 	default:
 		return ""
 	}

@@ -37,6 +37,11 @@
           "parameters" : {
             "throughput": 400
           }
+        },
+        "terraform-recipe": {
+          "templateKind": "terraform",
+          "templatePath": "Azure/cosmosdb/azurerm",
+          "templateVersion":"1.1.0"
         }
       }
     },

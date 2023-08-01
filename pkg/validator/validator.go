@@ -25,13 +25,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
 	oai_errors "github.com/go-openapi/errors"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
-	"github.com/gorilla/mux"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -63,27 +64,29 @@ type validator struct {
 	TypeName   string
 	APIVersion string
 
-	rootScopePrefix string
-	rootScopeParam  string
-	specDoc         *loads.Document
-	paramCache      map[string]map[string]spec.Parameter
-	paramCacheMu    *sync.RWMutex
+	rootScopePrefixes []string
+	rootScopeParam    string
+	specDoc           *loads.Document
+	paramCache        map[string]map[string]spec.Parameter
+	paramCacheMu      *sync.RWMutex
 }
 
 // findParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
 // of a [name](#parameterName) and [location](#parameterIn). This spec.Parameter are loaded from swagger
 // file and consumed by middleware.NewUntypedRequestBinder. To fetch spec.Parameter, we need to get
 // the case-sensitive route path which is defined in swagger file. findParam first gets route defined
-// by gorilla mux, replace {rootScope:.*} in gorilla mux route with {rootScope} and iterate the loaded
+// by chi router, replace v.rootScopePrefixes in chi route with {rootScope} and iterate the loaded
 // parameters from swagger file to find the matched route path defined in swagger file. Then it caches
 // spec.Parameter for the next lookup to improve the performance.
 func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, error) {
-	// Fetch gorilla mux route path from the current request.
-	route := mux.CurrentRoute(req)
-	pathTemplate, err := route.GetPathTemplate()
-	if err != nil {
-		return nil, err
+	// Fetch route context from the current request context.
+	rctx := chi.RouteContext(req.Context())
+	if rctx == nil {
+		return nil, errors.New("chi.RouteContext is nil")
 	}
+
+	// Parse matched route path pattern.
+	pathTemplate := rctx.RoutePattern()
 
 	templateKey := req.Method + "-" + pathTemplate
 	v.paramCacheMu.RLock()
@@ -95,32 +98,47 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 
 	v.paramCacheMu.Lock()
 	defer v.paramCacheMu.Unlock()
+
 	// Return immediately if the previous call fills the cache.
 	p, ok = v.paramCache[templateKey]
 	if ok {
 		return p, nil
 	}
 
-	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
+	// The chi mux route path for our RPs should start with v.rootScopePrefixes to handle UCP and Azure root scope.
+	//
+	// The UCP functionality like resource groups does not have a "/{rootScope}/" in the path.
+	// Need to handle this difference in the CoreRP vs UCP schema.
 	var scopePath string
-	// The UCP schema does not have a "/{rootScope}/" in the path. Need to handle this difference in the CoreRP vs UCP schema.
+	replaceToken := "/{" + v.rootScopeParam + "}"
 	if v.rootScopeParam == "" {
-		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, v.rootScopeParam, 1)
-	} else {
-		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+v.rootScopeParam+"}", 1)
+		replaceToken = v.rootScopeParam
 	}
 
+	for _, prefix := range v.rootScopePrefixes {
+		if strings.HasPrefix(pathTemplate, prefix) {
+			scopePath = strings.Replace(pathTemplate, prefix, replaceToken, 1)
+			break
+		}
+	}
+
+	analyzer := v.specDoc.Analyzer
 	// Iterate loaded paths to find the matched route.
-	for k := range v.specDoc.Analyzer.AllPaths() {
+	for k := range analyzer.AllPaths() {
 		if strings.EqualFold(k, scopePath) {
-			v.paramCache[templateKey] = v.specDoc.Analyzer.ParamsFor(req.Method, k)
+			// Ensure that the current API path and method are defined in the spec.
+			if _, ok := analyzer.OperationFor(req.Method, k); !ok {
+				return nil, ErrUndefinedRoute
+			}
+
+			v.paramCache[templateKey] = analyzer.ParamsFor(req.Method, k)
 			return v.paramCache[templateKey], nil
 		}
 	}
 	return nil, ErrUndefinedRoute
 }
 
-// toRouteParams converts gorilla mux params to go-openapi RouteParams to validate parameters.
+// toRouteParams converts chi mux params to go-openapi RouteParams to validate parameters.
 func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	routeParams := middleware.RouteParams{}
 
@@ -130,8 +148,20 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
-	for k, v := range mux.Vars(req) {
-		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: v})
+
+	// Extract chi route context from request context to get the routing paramaters.
+	rctx := chi.RouteContext(req.Context())
+	if rctx == nil {
+		return routeParams
+	}
+
+	for i := 0; i < len(rctx.URLParams.Keys); i++ {
+		// Skip the wildcard route param. When we mount multiple chi routers, the last key name of each router is "*" with the next path pattern value.
+		// So this wildcard route param is not unnecessary for validation.
+		if rctx.URLParams.Keys[i] == "*" {
+			continue
+		}
+		routeParams = append(routeParams, middleware.RouteParam{Name: rctx.URLParams.Keys[i], Value: rctx.URLParams.Values[i]})
 	}
 
 	return routeParams

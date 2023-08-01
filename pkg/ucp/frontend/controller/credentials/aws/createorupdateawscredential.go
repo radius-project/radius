@@ -24,7 +24,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 )
@@ -37,19 +36,26 @@ type CreateOrUpdateAWSCredential struct {
 	secretClient secret.Client
 }
 
-// NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential.
-func NewCreateOrUpdateAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// # Function Explanation
+//
+// NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential controller which is used to create or update
+// AWS credentials in the secret store.
+func NewCreateOrUpdateAWSCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSCredential{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.AWSCredential]{
 				RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
 				ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 			},
 		),
-		secretClient: opts.SecretClient,
+		secretClient: secretClient,
 	}, nil
 }
 
+// # Function Explanation
+//
+// CreateOrUpdateAWSCredential validates the request, saves the AWS credential secret, and saves the resource in the
+// metadata store. If an error occurs, it returns an error response.
 func (c *CreateOrUpdateAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := c.GetResourceFromRequest(ctx, req)

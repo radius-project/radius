@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/deploy"
@@ -36,6 +37,12 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner to deploy a Bicep or ARM template to a specified environment, with
+// optional parameters. It also adds common flags to the command for workspace, resource group, environment name,
+// application name and parameters.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -134,6 +141,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad deploy` command.
+//
+// # Function Explanation
+//
+// Validate validates the workspace, scope, environment name, application name, and parameters from the command
+// line arguments and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -172,7 +184,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	env, err := client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("environment %q does not exist in scope %q. Run `rad env create` try again \n", r.EnvironmentName, r.Workspace.Scope)}
+		return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` try again.", r.EnvironmentName, r.Workspace.Scope)
 	} else if err != nil {
 		return err
 	}
@@ -213,6 +225,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad deploy` command.
+//
+// # Function Explanation
+//
+// Run deploys a Bicep template into an environment from a workspace, optionally creating an application if
+// specified, and displays progress and completion messages. It returns an error if any of the operations fail.
 func (r *Runner) Run(ctx context.Context) error {
 	template, err := r.Bicep.PrepareTemplate(r.FilePath)
 	if err != nil {

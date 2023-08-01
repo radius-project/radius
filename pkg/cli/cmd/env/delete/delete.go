@@ -18,7 +18,6 @@ package delete
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -36,6 +35,11 @@ const (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command that can be used to delete an environment, with options to specify the
+// environment name, resource group, workspace, output format, and confirmation prompt.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -93,6 +97,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad env delete` command.
+//
+// # Function Explanation
+//
+// Validate takes in a command and a slice of strings and sets the workspace, scope, environment name, confirmation and output
+// format of the runner based on the command and the strings. It returns an error if any of these values cannot be set.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -127,15 +136,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad env run` command.
+// Run runs the `rad env delete` command.
+//
+// # Function Explanation
+//
+// Run prompts the user to confirm the deletion of an environment, creates an applications management client, and
+// deletes the environment if confirmed. It returns an error if the prompt or client creation fails.
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.EnvironmentName), prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
-			if errors.Is(err, &prompt.ErrExitConsole{}) {
-				return &cli.FriendlyError{Message: err.Error()}
-			}
 			return err
 		}
 		if !confirmed {

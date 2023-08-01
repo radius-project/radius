@@ -68,11 +68,21 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 
 	ports := make(map[string]datamodel.ContainerPort)
 	for key, val := range src.Properties.Container.Ports {
-		ports[key] = datamodel.ContainerPort{
+		port := datamodel.ContainerPort{
 			ContainerPort: to.Int32(val.ContainerPort),
 			Protocol:      toProtocolDataModel(val.Protocol),
 			Provides:      to.String(val.Provides),
 		}
+	
+		if val.Port != nil {
+			port.Port = to.Int32(val.Port)
+		}
+	
+		if val.Scheme != nil {
+			port.Scheme = to.String(val.Scheme)
+		}
+	
+		ports[key] = port
 	}
 
 	var volumes map[string]datamodel.VolumeProperties
@@ -184,6 +194,14 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 			ContainerPort: to.Ptr(val.ContainerPort),
 			Protocol:      fromProtocolDataModel(val.Protocol),
 			Provides:      to.Ptr(val.Provides),
+		}
+
+		if val.Port != 0 {
+			ports[key].Port = to.Ptr(val.Port)
+		}
+
+		if val.Scheme != "" {
+			ports[key].Scheme = to.Ptr(val.Scheme)
 		}
 	}
 
@@ -312,7 +330,6 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 }
 
 func toKindDataModel(kind *Kind) datamodel.IAMKind {
-	// TODO: This always returns datamodel.KindAzure. Why?
 	switch *kind {
 	case KindAzure:
 		return datamodel.KindAzure
@@ -481,7 +498,6 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 				AppPort:  to.Int32(c.AppPort),
 				Config:   to.String(c.Config),
 				Protocol: toProtocolDataModel(c.Protocol),
-				Provides: to.String(c.Provides),
 			},
 		}
 	case *ContainerKubernetesMetadataExtension:
@@ -512,7 +528,6 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 			AppPort:  to.Ptr(e.DaprSidecar.AppPort),
 			Config:   to.Ptr(e.DaprSidecar.Config),
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
-			Provides: to.Ptr(e.DaprSidecar.Provides),
 		}
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)

@@ -16,13 +16,10 @@ limitations under the License.
 
 package recipe
 
-const (
-	TemplateKindBicep = "bicep"
-)
-
 type EnvironmentRecipe struct {
-	Name         string `json:"name"`
-	LinkType     string `json:"linkType"`
-	TemplateKind string `json:"templateKind"`
-	TemplatePath string `json:"templatePath"`
+	Name            string `json:"name"`
+	LinkType        string `json:"linkType"`
+	TemplateKind    string `json:"templateKind"`
+	TemplatePath    string `json:"templatePath"`
+	TemplateVersion string `json:"templateVersion"`
 }

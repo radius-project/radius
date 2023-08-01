@@ -112,29 +112,6 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 	}
 }
 
-func Test_NewNoResourceMatchResponse(t *testing.T) {
-	response := NewNoResourceMatchResponse("/some/url")
-	payload := map[string]any{
-		"error": map[string]any{
-			"code":    v1.CodeNotFound,
-			"message": "the specified path \"/some/url\" did not match any resource",
-			"target":  "/some/url",
-		},
-	}
-	expected, err := json.MarshalIndent(payload, "", "  ")
-	require.NoError(t, err)
-
-	req := httptest.NewRequest("GET", "http://example.com", nil)
-	w := httptest.NewRecorder()
-
-	err = response.Apply(context.TODO(), w, req)
-	require.NoError(t, err)
-
-	require.Equal(t, http.StatusNotFound, w.Code)
-	require.Equal(t, []string{"application/json"}, w.Header()["Content-Type"])
-	require.Equal(t, string(expected), w.Body.String())
-}
-
 func Test_OKResponse_Empty(t *testing.T) {
 	response := NewOKResponse(nil)
 

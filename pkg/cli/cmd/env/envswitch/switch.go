@@ -18,13 +18,13 @@ package envswitch
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -34,6 +34,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env switch` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for switching the current environment, which takes in a factory and returns a
+// cobra command and a runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -74,6 +79,12 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad env switch` command.
+//
+// # Function Explanation
+//
+// Validate checks if the requested environment exists and if it is an editable workspace, then sets the environment
+// name, scope, and environment ID for the Runner struct. If the requested environment is already set as the default
+// environment, it logs a message. If an error occurs, it is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -91,7 +102,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: for right now we assume the environment is in the default resource group.
 	r.Scope, err = resources.ParseScope(r.Workspace.Scope)
 	if err != nil {
 		return err
@@ -113,7 +123,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate that the environment exists
 	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch environments as requested environment %s does not exist.\n", r.EnvironmentName)}
+		return clierrors.Message("Unable to switch environments as requested environment %s does not exist.", r.EnvironmentName)
 	} else if err != nil {
 		return err
 	}
@@ -134,6 +144,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad env switch` command.
+//
+// # Function Explanation
+//
+// Run updates the workspace section of the configuration with the workspace name and environment ID provided. It
+// returns an error if the update fails.
 func (r *Runner) Run(ctx context.Context) error {
 	err := cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		r.Workspace.Environment = r.EnvironmentId.String()

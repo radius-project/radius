@@ -19,7 +19,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -29,7 +28,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	app_switch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	app_connections "github.com/project-radius/radius/pkg/cli/cmd/app/connections"
 	app_delete "github.com/project-radius/radius/pkg/cli/cmd/app/delete"
 	app_list "github.com/project-radius/radius/pkg/cli/cmd/app/list"
 	app_show "github.com/project-radius/radius/pkg/cli/cmd/app/show"
@@ -45,6 +46,8 @@ import (
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	env_update "github.com/project-radius/radius/pkg/cli/cmd/env/update"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
+	"github.com/project-radius/radius/pkg/cli/cmd/install"
+	install_kubernetes "github.com/project-radius/radius/pkg/cli/cmd/install/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/cmd/radinit"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
@@ -54,6 +57,8 @@ import (
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
 	"github.com/project-radius/radius/pkg/cli/cmd/run"
+	"github.com/project-radius/radius/pkg/cli/cmd/uninstall"
+	uninstall_kubernetes "github.com/project-radius/radius/pkg/cli/cmd/uninstall/kubernetes"
 	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	workspace_delete "github.com/project-radius/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/project-radius/radius/pkg/cli/cmd/workspace/list"
@@ -74,6 +79,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -143,13 +150,14 @@ func Execute() error {
 	ctx, span := tr.Start(ctx, spanName)
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
-	if errors.Is(&cli.FriendlyError{}, err) {
+	if clierrors.IsFriendlyError(err) {
 		fmt.Println(err.Error())
-		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
+		fmt.Println("") // Output an extra blank line for readability
 		return err
 	} else if err != nil {
 		fmt.Println("Error:", prettyPrintRPError(err))
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
+		fmt.Println("") // Output an extra blank line for readability
 		return err
 	}
 
@@ -158,6 +166,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Must set the default logger to use controller-runtime.
+	runtimelog.SetLogger(zap.New())
 
 	RootCmd.PersistentFlags().StringVar(&ConfigHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
@@ -267,11 +278,26 @@ func initSubCommands() {
 	appSwitchCmd, _ := app_switch.NewCommand(framework)
 	applicationCmd.AddCommand(appSwitchCmd)
 
+	appConnectionsCmd, _ := app_connections.NewCommand(framework)
+	applicationCmd.AddCommand(appConnectionsCmd)
+
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
 	envCmd.AddCommand(envSwitchCmd)
 
 	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
 	bicepCmd.AddCommand(bicepPublishCmd)
+
+	installCmd := install.NewCommand()
+	RootCmd.AddCommand(installCmd)
+
+	installKubernetesCmd, _ := install_kubernetes.NewCommand(framework)
+	installCmd.AddCommand(installKubernetesCmd)
+
+	uninstallCmd := uninstall.NewCommand()
+	RootCmd.AddCommand(uninstallCmd)
+
+	uninstallKubernetesCmd, _ := uninstall_kubernetes.NewCommand(framework)
+	uninstallCmd.AddCommand(uninstallKubernetesCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

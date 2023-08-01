@@ -32,7 +32,10 @@ type directConnection struct {
 	endpoint string
 }
 
-// NewDirectConnection creates a connection from the given endpoint URL.
+// # Function Explanation
+//
+// NewDirectConnection parses the given endpoint string and returns a direct connection if the endpoint uses the http or
+// https scheme, otherwise it returns an error.
 func NewDirectConnection(endpoint string) (Connection, error) {
 	parsed, err := url.Parse(endpoint)
 	if err != nil {
@@ -48,6 +51,8 @@ func NewDirectConnection(endpoint string) (Connection, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
 // Client returns an http.Client for communicating with Radius. This satisfies both the
 // autorest.Sender interface (autorest Track1 Go SDK) and policy.Transporter interface
 // (autorest Track2 Go SDK).
@@ -55,6 +60,8 @@ func (c *directConnection) Client() *http.Client {
 	return &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 }
 
+// # Function Explanation
+//
 // Endpoint returns the endpoint (aka. base URL) of the Radius API. This definitely includes
 // the URL scheme and authority, and may include path segments.
 func (c *directConnection) Endpoint() string {

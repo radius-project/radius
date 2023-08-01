@@ -17,13 +17,25 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 )
+
+type fakeResource struct{}
+
+// # Function Explanation
+//
+// Always returns "FakeResource" as the name.
+func (f *fakeResource) ResourceTypeName() string {
+	return "FakeResource"
+}
 
 func TestToProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
@@ -108,7 +120,8 @@ func TestFromSystemDataModel(t *testing.T) {
 		versioned := fromSystemDataModel(tt)
 		require.Equal(t, tt.CreatedBy, string(*versioned.CreatedBy))
 		require.Equal(t, tt.CreatedByType, string(*versioned.CreatedByType))
-		c, _ := versioned.CreatedAt.MarshalText()
+		c, err := versioned.CreatedAt.MarshalText()
+		require.NoError(t, err)
 		if tt.CreatedAt == "" {
 			tt.CreatedAt = "0001-01-01T00:00:00Z"
 		}
@@ -116,10 +129,153 @@ func TestFromSystemDataModel(t *testing.T) {
 
 		require.Equal(t, tt.LastModifiedBy, string(*versioned.LastModifiedBy))
 		require.Equal(t, tt.LastModifiedByType, string(*versioned.LastModifiedByType))
-		c, _ = versioned.LastModifiedAt.MarshalText()
+		c, err = versioned.LastModifiedAt.MarshalText()
+		require.NoError(t, err)
 		if tt.LastModifiedAt == "" {
 			tt.LastModifiedAt = "0001-01-01T00:00:00Z"
 		}
 		require.Equal(t, tt.LastModifiedAt, string(c))
+	}
+}
+
+func TestToResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		dm := toResourcesDataModel(tt.VersionedResources)
+		require.Equal(t, tt.DMResources, dm)
+
+	}
+}
+
+func TestFromResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		versioned := fromResourcesDataModel(tt.DMResources)
+		require.Equal(t, tt.VersionedResources, versioned)
+
+	}
+}
+
+func TestToResourceProvisiongDataModel(t *testing.T) {
+	testset := []struct {
+		versioned ResourceProvisioning
+		datamodel linkrp.ResourceProvisioning
+		err       error
+	}{
+		{
+			ResourceProvisioningManual,
+			linkrp.ResourceProvisioningManual,
+			nil,
+		},
+		{
+			ResourceProvisioningRecipe,
+			linkrp.ResourceProvisioningRecipe,
+			nil,
+		},
+		{
+			"",
+			"",
+			&v1.ErrModelConversion{
+				PropertyName: "$.properties.resourceProvisioning",
+				ValidValue:   fmt.Sprintf("one of %s", PossibleResourceProvisioningValues()),
+			},
+		},
+	}
+	for _, tt := range testset {
+		sc, err := toResourceProvisiongDataModel(&tt.versioned)
+
+		if tt.err != nil {
+			require.EqualError(t, err, tt.err.Error())
+			continue
+		}
+
+		require.NoError(t, err)
+		require.Equal(t, tt.datamodel, sc)
+	}
+}
+
+func TestFromResourceProvisiongDataModel(t *testing.T) {
+	testCases := []struct {
+		datamodel linkrp.ResourceProvisioning
+		versioned ResourceProvisioning
+	}{
+		{linkrp.ResourceProvisioningManual, ResourceProvisioningManual},
+		{linkrp.ResourceProvisioningRecipe, ResourceProvisioningRecipe},
+		{"", ResourceProvisioningRecipe},
+	}
+
+	for _, testCase := range testCases {
+		sc := fromResourceProvisioningDataModel(testCase.datamodel)
+		require.Equal(t, testCase.versioned, *sc)
+	}
+}
+func TestToRecipeDataModel(t *testing.T) {
+	testset := []struct {
+		versioned *Recipe
+		datamodel linkrp.LinkRecipe
+	}{
+		{
+			nil,
+			linkrp.LinkRecipe{
+				Name: defaultRecipeName,
+			},
+		},
+		{
+			&Recipe{
+				Name: to.Ptr("test"),
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			linkrp.LinkRecipe{
+				Name: "test",
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+		},
+		{
+			&Recipe{
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			linkrp.LinkRecipe{
+				Name: defaultRecipeName,
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	for _, testCase := range testset {
+		sc := toRecipeDataModel(testCase.versioned)
+		require.Equal(t, testCase.datamodel, sc)
 	}
 }

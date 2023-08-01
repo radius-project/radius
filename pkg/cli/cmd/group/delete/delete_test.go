@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -77,7 +76,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(true, nil).Times(2)
+			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), "radius", "local", "testrg").Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -109,7 +108,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(false, nil).Times(2)
+			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), "radius", "local", "testrg").Return(false, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -190,7 +189,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		err := runner.Run(context.Background())
-		require.Equal(t, err, &cli.FriendlyError{Message: prompt.ErrExitConsoleMessage})
+		require.Equal(t, err, &prompt.ErrExitConsole{})
 		require.Empty(t, outputSink.Writes)
 
 	})

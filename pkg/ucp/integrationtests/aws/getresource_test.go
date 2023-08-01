@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
@@ -35,7 +35,7 @@ import (
 )
 
 func Test_GetAWSResource(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
+	ucp, _, _, cloudcontrolClient, _ := initializeAWSTest(t)
 
 	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
@@ -54,13 +54,13 @@ func Test_GetAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	getRequest, err := testutil.GetARMTestHTTPRequestFromURL(context.Background(), http.MethodGet, ucp.URL+basePath+testProxyRequestAWSPath, nil)
+	getRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL+testProxyRequestAWSPath, nil)
 	require.NoError(t, err, "creating request failed")
 
-	ctx := testutil.ARMTestContextFromRequest(getRequest)
+	ctx := rpctest.NewARMRequestContext(getRequest)
 	getRequest = getRequest.WithContext(ctx)
 
-	getResponse, err := ucpClient.httpClient.Do(getRequest)
+	getResponse, err := ucp.Client().Do(getRequest)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, getResponse.StatusCode)

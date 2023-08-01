@@ -22,15 +22,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/go-logr/zapr"
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
 )
 
 func Test_Host_RequiresServices(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	host := &Host{
 		Services: []Service{},
@@ -41,8 +39,8 @@ func Test_Host_RequiresServices(t *testing.T) {
 }
 
 func Test_Host_DetectsDuplicates(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	host := &Host{
 		Services: []Service{
@@ -56,8 +54,8 @@ func Test_Host_DetectsDuplicates(t *testing.T) {
 }
 
 func Test_Host_RunMultipleServices_HandlesExit(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	started := make(chan struct{})
 
@@ -138,8 +136,8 @@ func Test_Host_RunMultipleServices_HandlesExit(t *testing.T) {
 }
 
 func Test_Host_RunMultipleServices_ShutdownTimeout(t *testing.T) {
-	ctx, cancel := context.WithDeadline(createContext(t), time.Now().Add(time.Second*5))
-	defer cancel()
+	ctx, cancel := testcontext.NewWithDeadline(t, time.Second*5)
+	t.Cleanup(cancel)
 
 	started := make(chan struct{})
 
@@ -188,6 +186,9 @@ func Test_Host_RunMultipleServices_ShutdownTimeout(t *testing.T) {
 	require.Equal(t, "shutdown timeout reached while the following services are still running: A, B", err.Error())
 }
 
+// # Function Explanation
+//
+// NewFuncService creates a new Service with the given name and run function, which takes a context and returns an error if one occurs.
 func NewFuncService(name string, run func(context.Context) error) Service {
 	return &FuncService{name: name, run: run}
 }
@@ -197,10 +198,17 @@ type FuncService struct {
 	run  func(ctx context.Context) error
 }
 
+// # Function Explanation
+//
+// Name returns the name of the FuncService instance, or an error if the name is not set.
 func (s *FuncService) Name() string {
 	return s.name
 }
 
+// # Function Explanation
+//
+// Run takes in a context and calls the run function if it is not nil, otherwise it waits for the context to
+// be done and returns nil.
 func (s *FuncService) Run(ctx context.Context) error {
 	if s.run == nil {
 		<-ctx.Done()
@@ -208,8 +216,4 @@ func (s *FuncService) Run(ctx context.Context) error {
 	}
 
 	return s.run(ctx)
-}
-
-func createContext(t *testing.T) context.Context {
-	return logr.NewContext(context.Background(), zapr.NewLogger(zaptest.NewLogger(t)))
 }

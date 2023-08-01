@@ -25,7 +25,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -38,10 +37,12 @@ type ListResourceGroups struct {
 	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
 }
 
-// NewListResourceGroups creates a new ListResourceGroups.
-func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// # Function Explanation
+//
+// NewListResourceGroups creates a new controller for listing resource groups.
+func NewListResourceGroups(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.ResourceGroup]{
 				RequestConverter:  converter.ResourceGroupDataModelFromVersioned,
 				ResponseConverter: converter.ResourceGroupDataModelToVersioned,
@@ -50,6 +51,10 @@ func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, err
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() function extracts the plane type and name from the request URL, queries the storage client for resource groups in the
+// scope of the plane, creates a response with the list of resource groups and returns an OK response with the list of resource groups.
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

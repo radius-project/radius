@@ -326,11 +326,18 @@ type ContainerPort struct {
 	// REQUIRED; The listening port number
 	ContainerPort *int32 `json:"containerPort,omitempty"`
 
+	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.
+	Port *int32 `json:"port,omitempty"`
+
 	// Protocol in use by the port
 	Protocol *Protocol `json:"protocol,omitempty"`
 
 	// Specifies a route provided by this port
 	Provides *string `json:"provides,omitempty"`
+
+	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
+// to 'http' or 'https' depending on the port value.
+	Scheme *string `json:"scheme,omitempty"`
 }
 
 // ContainerProperties - Container properties
@@ -434,9 +441,6 @@ type DaprSidecarExtension struct {
 
 	// Specifies the Dapr app-protocol to use for the resource.
 	Protocol *Protocol `json:"protocol,omitempty"`
-
-	// Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
-	Provides *string `json:"provides,omitempty"`
 }
 
 // GetContainerExtension implements the ContainerExtensionClassification interface for type DaprSidecarExtension.
@@ -549,7 +553,7 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep
+	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
 	TemplateKind *string `json:"templateKind,omitempty"`
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
@@ -557,6 +561,11 @@ type EnvironmentRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources. For Bicep this is not applicable, as the Bicep version
+// is part of the templatePath.
+	TemplateVersion *string `json:"templateVersion,omitempty"`
 }
 
 // EnvironmentResource - Application environment.
@@ -892,9 +901,6 @@ type GatewayPropertiesHostname struct {
 type GatewayPropertiesTLS struct {
 	// Declares which Kubernetes TLS secret will be used.
 	CertificateFrom *string `json:"certificateFrom,omitempty"`
-
-	// Hostname
-	Hostname *string `json:"hostname,omitempty"`
 
 	// TLS minimum protocol version (defaults to 1.2).
 	MinimumProtocolVersion *TLSMinVersion `json:"minimumProtocolVersion,omitempty"`

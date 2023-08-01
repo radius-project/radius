@@ -29,12 +29,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/to"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/test/testutil"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_CreateAWSResource(t *testing.T) {
@@ -63,15 +62,11 @@ func Test_CreateAWSResource(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -81,7 +76,7 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -132,15 +127,11 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -150,7 +141,7 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -227,21 +218,17 @@ func Test_UpdateAWSResource(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
@@ -313,21 +300,17 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSOptions: ctrl.AWSOptions{
-			AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
-			AWSCloudControlClient:   testOptions.AWSCloudControlClient,
-		},
-		Options: armrpc_controller.Options{
-			StorageClient: testOptions.StorageClient,
-		},
-	})
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
-	ctx := testutil.ARMTestContextFromRequest(request)
+	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 

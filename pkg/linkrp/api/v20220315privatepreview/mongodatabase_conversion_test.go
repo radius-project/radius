@@ -30,6 +30,9 @@ import (
 
 type fakeResource struct{}
 
+// # Function Explanation
+//
+// Always returns "FakeResource" as the name.
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
 }
@@ -128,7 +131,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
 					Host:                 "mynewhost.com",
 					Port:                 10256,
-					Recipe:               linkrp.LinkRecipe{Name: "", Parameters: nil},
+					Recipe:               linkrp.LinkRecipe{Name: defaultRecipeName, Parameters: nil},
 				},
 			},
 		},

@@ -124,7 +124,6 @@ func stringSlice(s []*string) []string {
 
 func isValidLinkType(link string) bool {
 	linkTypes := []string{
-		linkrp.DaprInvokeHttpRoutesResourceType,
 		linkrp.DaprPubSubBrokersResourceType,
 		linkrp.DaprSecretStoresResourceType,
 		linkrp.DaprStateStoresResourceType,
@@ -133,6 +132,8 @@ func isValidLinkType(link string) bool {
 		linkrp.RabbitMQMessageQueuesResourceType,
 		linkrp.RedisCachesResourceType,
 		linkrp.SqlDatabasesResourceType,
+		// Resources After Split of LinkRP Namespace
+		linkrp.N_RabbitMQQueuesResourceType,
 	}
 	return slices.Contains(linkTypes, link)
 }

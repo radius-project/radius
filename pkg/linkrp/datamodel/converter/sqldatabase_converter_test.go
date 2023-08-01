@@ -77,9 +77,19 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 			nil,
 		},
 		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		{
 			"../../api/v20220315privatepreview/testdata/sqldatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
 			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.database of type string"),
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_invalid_properties_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "multiple errors were found:\n\tserver must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual"},
 		},
 		{
 			"",
@@ -97,6 +107,49 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)
+			}
+		})
+	}
+}
+
+func TestSqlDatabaseSecretsDataModelToVersioned(t *testing.T) {
+	testset := []struct {
+		dataModelFile string
+		apiVersion    string
+		apiModelType  any
+		err           error
+	}{
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_secrets_datamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.SQLDatabaseSecrets{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resourcedatamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.SQLDatabaseSecrets{},
+			nil,
+		},
+		{
+			"",
+			"unsupported",
+			nil,
+			v1.ErrUnsupportedAPIVersion,
+		},
+	}
+
+	for _, tc := range testset {
+		t.Run(tc.apiVersion, func(t *testing.T) {
+			c := loadTestData(tc.dataModelFile)
+			dm := &datamodel.SqlDatabaseSecrets{}
+			_ = json.Unmarshal(c, dm)
+			am, err := SqlDatabaseSecretsDataModelToVersioned(dm, tc.apiVersion)
+			if tc.err != nil {
+				require.ErrorAs(t, tc.err, &err)
+			} else {
+				require.NoError(t, err)
+				require.IsType(t, tc.apiModelType, am)
 			}
 		})
 	}

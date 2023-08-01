@@ -23,6 +23,11 @@ import (
 )
 
 // ValidateArgs returns an error if the args .
+//
+// # Function Explanation
+//
+// ValidateArgs checks if the number of arguments passed to the command is between 1 and 2, and if the first argument is
+// "kubernetes", and returns an error if either of these conditions are not met.
 func ValidateArgs() cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 || len(args) > 2 {

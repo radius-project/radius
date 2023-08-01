@@ -22,24 +22,26 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/swagger"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-openapi/runtime/middleware"
 	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/swagger"
 )
 
-func TestFindParam(t *testing.T) {
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}", "rootScope")
+func Test_FindParam(t *testing.T) {
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/subscriptions/{subscriptionID}/resourceGroups/{rgName}"}, "rootScope")
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
 	require.True(t, ok)
 	validator := v.(*validator)
 
 	w := httptest.NewRecorder()
-	r := mux.NewRouter()
-	req, _ := http.NewRequest(http.MethodPut, armIDUrl, nil)
+	r := chi.NewRouter()
+	req, err := http.NewRequest(http.MethodPut, armResourceGroupScopedResourceURL, nil)
+	require.NoError(t, err)
 
-	router := r.PathPrefix("/{rootScope:.*}").Subrouter()
-	router.Path(envRoute).Methods(http.MethodPut).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	r.MethodFunc(http.MethodPut, "/subscriptions/{subscriptionID}/resourceGroups/{rgName}"+environmentResourceRoute, func(w http.ResponseWriter, r *http.Request) {
 		param, err := validator.findParam(r)
 		require.NoError(t, err)
 		require.NotNil(t, param)
@@ -52,19 +54,87 @@ func TestFindParam(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, w.Result().StatusCode)
 }
 
-func TestToRouteParams(t *testing.T) {
+func Test_ToRouteParams(t *testing.T) {
 	v := validator{
 		rootScopeParam: "rootScope",
 	}
-	req, _ := http.NewRequest("", "http://radius/test", nil)
-	ps := v.toRouteParams(req)
-	require.Equal(t, 0, len(ps))
 
-	req, _ = http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
-	ps = v.toRouteParams(req)
-	require.Equal(t, 2, len(ps))
-	require.Equal(t, "rootScope", ps[0].Name)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg", ps[0].Value)
-	require.Equal(t, "api-version", ps[1].Name)
-	require.Equal(t, "2022-03-15-privatepreview", ps[1].Value)
+	t.Run("non-match", func(t *testing.T) {
+		req, err := http.NewRequest("", "http://radius/test", nil)
+		require.NoError(t, err)
+		ps := v.toRouteParams(req)
+		require.Empty(t, ps)
+	})
+
+	t.Run("azure subscription path", func(t *testing.T) {
+		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("subscriptionID", "00000000-0000-0000-0000-000000000000")
+		rctx.URLParams.Add("*", "/providers/applications.core/environments")
+		ps := v.toRouteParams(req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx)))
+
+		expected := middleware.RouteParams{
+			{Name: "rootScope", Value: "/subscriptions/00000000-0000-0000-0000-000000000000"},
+			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "subscriptionID", Value: "00000000-0000-0000-0000-000000000000"},
+		}
+		require.Equal(t, expected, ps)
+	})
+
+	t.Run("azure resource-group path", func(t *testing.T) {
+		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("subscriptionID", "00000000-0000-0000-0000-000000000000")
+		rctx.URLParams.Add("*", "/providers/applications.core/environments/env0")
+		rctx.URLParams.Add("environmentName", "env0")
+		ps := v.toRouteParams(req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx)))
+
+		expected := middleware.RouteParams{
+			{Name: "rootScope", Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"},
+			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "subscriptionID", Value: "00000000-0000-0000-0000-000000000000"},
+			{Name: "environmentName", Value: "env0"},
+		}
+		require.Equal(t, expected, ps)
+	})
+
+	t.Run("ucp plane path", func(t *testing.T) {
+		req, err := http.NewRequest("", "http://radius/planes/radius/local/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("planeType", "radius")
+		rctx.URLParams.Add("planeName", "local")
+		rctx.URLParams.Add("*", "/providers/applications.core/environments")
+		ps := v.toRouteParams(req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx)))
+
+		expected := middleware.RouteParams{
+			{Name: "rootScope", Value: "/planes/radius/local"},
+			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "planeType", Value: "radius"},
+			{Name: "planeName", Value: "local"},
+		}
+		require.Equal(t, expected, ps)
+	})
+
+	t.Run("ucp resource-group path", func(t *testing.T) {
+		req, err := http.NewRequest("", "http://radius/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		require.NoError(t, err)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("planeType", "radius")
+		rctx.URLParams.Add("planeName", "local")
+		rctx.URLParams.Add("*", "/providers/applications.core/environments")
+		rctx.URLParams.Add("environmentName", "env0")
+		ps := v.toRouteParams(req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx)))
+
+		expected := middleware.RouteParams{
+			{Name: "rootScope", Value: "/planes/radius/local/resourceGroups/radius-test-rg"},
+			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "planeType", Value: "radius"},
+			{Name: "planeName", Value: "local"},
+			{Name: "environmentName", Value: "env0"},
+		}
+		require.Equal(t, expected, ps)
+	})
 }

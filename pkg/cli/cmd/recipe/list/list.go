@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -31,6 +32,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad recipe list` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner object, configures the command with flags and arguments, and
+// returns the command and the runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -70,6 +76,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad recipe list` command.
+//
+// # Function Explanation
+//
+// Validate checks the command line arguments for a workspace, environment name, and output format, and sets the corresponding
+// fields in the Runner struct if they are valid. If any of the arguments are invalid, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -94,6 +105,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad recipe list` command.
+//
+// # Function Explanation
+//
+// Run retrieves environment recipes from the given workspace and writes them to the output in the specified format.
+// It returns an error if the connection to the workspace fails or if there is an error writing to the output.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -110,17 +126,18 @@ func (r *Runner) Run(ctx context.Context) error {
 				Name:         recipeName,
 				LinkType:     link,
 				TemplatePath: *recipeDetails.TemplatePath,
+				TemplateKind: *recipeDetails.TemplateKind,
 			}
-			// Check to ensure backwards compatibility with existing environments.
-			// Remove this in next release once users have migrated their existing environments.
-			// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7939
-			if recipeDetails.TemplateKind != nil {
-				recipe.TemplateKind = *recipeDetails.TemplateKind
+			if recipeDetails.TemplateVersion != nil {
+				recipe.TemplateVersion = *recipeDetails.TemplateVersion
 			}
 
 			envRecipes = append(envRecipes, recipe)
 		}
 	}
+	sort.Slice(envRecipes, func(i, j int) bool {
+		return envRecipes[i].Name < envRecipes[j].Name
+	})
 	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err

@@ -42,6 +42,21 @@
     },
     "database": "db"
   },
+  "computedValues": {
+    "host": "testAccount1.mongo.cosmos.azure.com",
+    "port": 10255
+  },
+  "secretValues": {
+    "username": {
+      "value": "testUser"
+    },
+    "password": {
+      "value": "testPassword"
+    },
+    "connectionString": {
+      "value": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
+    }
+  },
   "tenantId": "00000000-0000-0000-0000-000000000000",
   "subscriptionId": "00000000-0000-0000-0000-000000000000",
   "resourceGroup": "radius-test-rg",

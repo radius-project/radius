@@ -27,7 +27,6 @@ import (
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -42,19 +41,25 @@ type DeleteAWSCredential struct {
 	secretClient secret.Client
 }
 
-// NewDeleteAWSCredential creates a new DeleteCredential.
-func NewDeleteAWSCredential(opts ctrl.Options) (armrpc_controller.Controller, error) {
+// # Function Explanation
+//
+// NewDeleteAWSCredential creates a new DeleteAWSCredential controller which is used to delete AWS credentials from the
+// secret store, and returns it along with any errors that may have occurred.
+func NewDeleteAWSCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
 	return &DeleteAWSCredential{
-		Operation: armrpc_controller.NewOperation(opts.Options,
+		Operation: armrpc_controller.NewOperation(opts,
 			armrpc_controller.ResourceOptions[datamodel.AWSCredential]{
 				RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
 				ResponseConverter: converter.AWSCredentialDataModelToVersioned,
-			},
-		),
-		secretClient: opts.SecretClient,
+			}),
+		secretClient: secretClient,
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run() checks if the AWS Credential exists, deletes the associated secret, and then deletes the AWS Credential from storage.
+// If the AWS Credential does not exist, it returns a No Content response. If an error occurs, it returns an error.
 func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
@@ -83,7 +88,7 @@ func (c *DeleteAWSCredential) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	if err := c.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
+		if errors.Is(&store.ErrNotFound{ID: serviceCtx.ResourceID.String()}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
 		return nil, err

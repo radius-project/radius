@@ -18,7 +18,6 @@ package delete
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -35,6 +34,11 @@ const (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad workspace delete` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new cobra command for deleting a workspace, with flags for workspace name and confirmation, and
+// returns it along with a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -78,6 +82,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad workspace delete` command.
+//
+// # Function Explanation
+//
+// Validate checks if the workspace is valid and sets the workspace and confirmation flags accordingly, returning
+// an error if the workspace is not stored in configuration.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspaceArgs(cmd, r.ConfigHolder.Config, args)
 	if err != nil {
@@ -101,15 +110,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad workspace delete` command.
+//
+// # Function Explanation
+//
+// Run prompts the user to confirm the deletion of a workspace, and if confirmed, deletes the workspace from the
+// config file, returning an error if one occurs.
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		message := fmt.Sprintf(deleteConfirmationFmt, r.Workspace.Name)
 		confirmed, err := prompt.YesOrNoPrompt(message, prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
-			if errors.Is(err, &prompt.ErrExitConsole{}) {
-				return &cli.FriendlyError{Message: err.Error()}
-			}
 			return err
 		}
 

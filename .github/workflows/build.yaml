@@ -30,7 +30,7 @@ on:
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
-  group: build-${{ github.event.pull_request.number || github.sha }}
+  group: build-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
@@ -42,7 +42,14 @@ env:
   GOTESTSUMVERSION: 1.10.0
 
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
-  DOCKER_REGISTRY: ${{ github.event.pull_request.number && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
+  # TODO_LAUNCH: Remove this variable when we opensource the repo - https://github.com/project-radius/radius/issues/5892
+  DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
+
+  # GitHub Actor for pushing images to GHCR
+  GHCR_ACTOR: rad-ci-bot
+
+  # Container registry url for GitHub container registry.
+  CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/project-radius/dev' || 'ghcr.io/project-radius/radius' }}
 
 jobs:
   build:
@@ -124,7 +131,7 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         run: |
           # Remove mock, generated files, and datamodels from original coverage output.
-          cat ./dist/ut_coverage_orig.out | grep -v  "mock" | grep -v  "zz_" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
+          cat ./dist/ut_coverage_orig.out | grep -v  "mock" | grep -v  "zz_" | grep -v "armrpc/rpctest" | grep -v '/datamodel/[A-za-z0-9_]*.go'  > $COVERAGE_FILE
           # Generate reports.
           $GO_TOOL_COVER -func=$COVERAGE_FILE -o ./dist/ut_coverage.txt
           $GO_TOOL_COVER -html=$COVERAGE_FILE -o ./dist/ut_coverage.html
@@ -196,6 +203,8 @@ jobs:
   # - tag the image as latest and with a version if the trigger was a tag
   # - tag the image with the PR version if the trigger was a PR
   # - push the image for pushes to master, or to a tag
+
+  # TODO_LAUNCH: Remove 'image' job when we opensource the repo - https://github.com/project-radius/radius/issues/5892
   images:
     name: Container image build
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
@@ -244,7 +253,7 @@ jobs:
         run: |
           make docker-test-image-build && make docker-test-image-push
           make docker-multi-arch-push
-        if: startsWith(github.ref, 'refs/pull/') # push image on pr
+        if: github.event_name == 'pull_request'
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
@@ -256,13 +265,77 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+
+  # publish_image is building and publishing images to GHCR.
+  publish_images:
+    name: Build and publish container images
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ env.GOVER }}
+      - name: Get Go Cache path
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_ACTOR }}
+          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+      - name: Push container images (latest)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
+        if: (github.ref == 'refs/heads/main') # push image to latest on merge to main
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: latest
+      - name: Push container images (PR)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
+        if: github.event_name == 'pull_request'
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }} # includes PR number
+      - name: Push container images (release)
+        run: |
+          make docker-test-image-build && make docker-test-image-push
+          make docker-multi-arch-push
+        if: startsWith(github.ref, 'refs/tags/v') # push image on tag
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
   helm:
     name: Helm chart build
-    needs: ['images']
+    needs: ['images', 'publish_images']
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
+      HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -274,9 +347,10 @@ jobs:
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
+      - name: Run Helm linter
+        run: |
+          helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Package Helm chart
-        env:
-          HELM_CHARTS_DIR: deploy/Chart
         run: |
           mkdir -p ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}
           helm package ${{ env.HELM_CHARTS_DIR }} --version ${{ env.CHART_VERSION }} --app-version ${{ env.REL_VERSION }} --destination ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}

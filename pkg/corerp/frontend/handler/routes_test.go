@@ -21,157 +21,213 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
-	"github.com/gorilla/mux"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/stretchr/testify/require"
+
+	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
+	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
+	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateways"
+	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
+	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
+	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"
 )
 
-var handlerTests = []struct {
-	url        string
-	method     string
-	isAzureAPI bool
-}{
+var handlerTests = []rpctest.HandlerTestSpec{
 	{
-		url:        "/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/applications",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/providers/applications.core/httproutes?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: ctr_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/containers",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: ctr_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/containers",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: ctr_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/containers/ctr0",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: ctr_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/containers/ctr0",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/providers/applications.core/applications?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: ctr_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/containers/ctr0",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: ctr_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/containers/ctr0",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/environments",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/environments",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/applications/app0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/environments/env0",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/environments/env0",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/gateways?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/environments/env0",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/providers/applications.core/operations?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: true,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/environments/env0",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/subscriptions/00000000-0000-0000-0000-000000000000?api-version=2.0",
-		method:     http.MethodPut,
-		isAzureAPI: true,
+		OperationType: v1.OperationType{Type: env_ctrl.ResourceTypeName, Method: env_ctrl.OperationGetRecipeMetadata},
+		Path:          "/resourcegroups/testrg/providers/applications.core/environments/env0/getmetadata",
+		Method:        http.MethodPost,
 	}, {
-		url:        "/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/gateways",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/gateways",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/gateways/gateway0",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/gateways/gateway0",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/gateways/gateway0",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/containers/ctr0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: gtwy_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/gateways/gateway0",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/providers/applications.core/secretstores?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/httproutes",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/secretstores?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/secretstores/secret0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodGet,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/secretstores/secret0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPut,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
+		Method:        http.MethodPut,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/secretstores/secret0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPatch,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
+		Method:        http.MethodPatch,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/secretstores/secret0?api-version=2022-03-15-privatepreview",
-		method:     http.MethodDelete,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: hrt_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/httproutes/hrt0",
+		Method:        http.MethodDelete,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/secretstores/secret0/listsecrets?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/secretstores",
+		Method:        http.MethodGet,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.core/environments/env0/getmetadata?api-version=2022-03-15-privatepreview",
-		method:     http.MethodPost,
-		isAzureAPI: false,
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/secretstores",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/secretstores/secret0",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/secretstores/secret0",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/secretstores/secret0",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/secretstores/secret0",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: secret_ctrl.ResourceTypeName, Method: secret_ctrl.OperationListSecrets},
+		Path:          "/resourcegroups/testrg/providers/applications.core/secretstores/secret0/listsecrets",
+		Method:        http.MethodPost,
+	}, {
+		OperationType: v1.OperationType{Type: vol_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/providers/applications.core/volumes",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: vol_ctrl.ResourceTypeName, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.core/volumes",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: vol_ctrl.ResourceTypeName, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.core/volumes/volume0",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: vol_ctrl.ResourceTypeName, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.core/volumes/volume0",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: vol_ctrl.ResourceTypeName, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.core/volumes/volume0",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: vol_ctrl.ResourceTypeName, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.core/volumes/volume0",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		Path:          "/providers/applications.core/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGetOperationResult},
+		Path:          "/providers/applications.core/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
 	},
 }
 
 func TestHandlers(t *testing.T) {
 	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
 
 	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 	mockSC := store.NewMockStorageClient(mctrl)
@@ -180,33 +236,28 @@ func TestHandlers(t *testing.T) {
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
 
-	assertRouters(t, "", true, mockSP)
-	assertRouters(t, "/api.ucp.dev", false, mockSP)
-}
-
-func assertRouters(t *testing.T, pathBase string, isARM bool, mockSP *dataprovider.MockDataStorageProvider) {
-	r := mux.NewRouter()
-	err := AddRoutes(context.Background(), r, pathBase, isARM, ctrl.Options{DataProvider: mockSP})
-	require.NoError(t, err)
-
-	for _, tt := range handlerTests {
-		if !isARM && tt.isAzureAPI {
-			continue
-		}
-
-		uri := "http://localhost" + pathBase + "/planes/radius/{planeName}" + tt.url
-		if isARM {
-			if tt.isAzureAPI {
-				uri = "http://localhost" + pathBase + tt.url
-			} else {
-				uri = "http://localhost" + pathBase + "/subscriptions/00000000-0000-0000-0000-000000000000" + tt.url
-			}
-		}
-
-		t.Run(uri, func(t *testing.T) {
-			req, _ := http.NewRequestWithContext(context.Background(), tt.method, uri, nil)
-			var match mux.RouteMatch
-			require.True(t, r.Match(req, &match), "no route found for %s", uri)
+	t.Run("UCP", func(t *testing.T) {
+		// Test handlers for UCP resources.
+		rpctest.AssertRouters(t, handlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
+			r := chi.NewRouter()
+			return r, AddRoutes(ctx, r, false, ctrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP})
 		})
-	}
+	})
+
+	t.Run("Azure", func(t *testing.T) {
+		// Add azure specific handlers.
+		azureHandlerTests := append(handlerTests,
+			rpctest.HandlerTestSpec{
+				OperationType:               v1.OperationType{Type: "Applications.Core/providers", Method: v1.OperationGet},
+				Path:                        "/providers/applications.core/operations",
+				Method:                      http.MethodGet,
+				WithoutRootScope:            true,
+				SkipOperationTypeValidation: true,
+			})
+		// Test handlers for Azure resources
+		rpctest.AssertRouters(t, azureHandlerTests, "", "/subscriptions/00000000-0000-0000-0000-000000000000", func(ctx context.Context) (chi.Router, error) {
+			r := chi.NewRouter()
+			return r, AddRoutes(ctx, r, true, ctrl.Options{PathBase: "", DataProvider: mockSP})
+		})
+	})
 }

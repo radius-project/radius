@@ -18,10 +18,10 @@ package show
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -32,6 +32,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env show` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner object to show environment details, with flags for workspace,
+// resource group, environment name and output.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -82,6 +87,11 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad env show` command.
+//
+// # Function Explanation
+//
+// Validate checks the request object for a workspace, scope, environment name, and output format, and sets the
+// corresponding fields in the Runner struct if they are found. If any of these fields are not found, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
@@ -112,6 +122,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad env run` command.
+//
+// # Function Explanation
+//
+// Run attempts to retrieve environment details from an ApplicationsManagementClient and write the details to an
+// output in a specified format, returning an error if any of these operations fail.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -120,7 +135,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	environment, err := client.GetEnvDetails(ctx, r.EnvironmentName)
 	if clients.Is404Error(err) {
-		return &cli.FriendlyError{Message: fmt.Sprintf("The environment %q was not found or has been deleted.", r.EnvironmentName)}
+		return clierrors.Message("The environment %q was not found or has been deleted.", r.EnvironmentName)
 	} else if err != nil {
 		return err
 	}

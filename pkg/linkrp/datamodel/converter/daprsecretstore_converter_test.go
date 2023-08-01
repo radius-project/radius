@@ -82,6 +82,11 @@ func TestDaprSecretStoreDataModelFromVersioned(t *testing.T) {
 			errors.New("json: cannot unmarshal number into Go struct field DaprSecretStoreProperties.properties.version of type string"),
 		},
 		{
+			"../../api/v20220315privatepreview/testdata/daprsecretstore_invalidvalues_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
+		},
+		{
 			"",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,

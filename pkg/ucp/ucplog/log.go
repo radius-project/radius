@@ -129,7 +129,8 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	return logger, nil
 }
 
-// NewLogger creates a new logr.Logger with zap logger implementation
+// NewLogger creates a new logger with zap logger implementation, with the given name and logging options,
+// and returns a function to flush the logs before the server exits.
 func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error) {
 	if name == "" {
 		name = DefaultLoggerName
@@ -154,20 +155,20 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 	return logger, flushLogs, nil
 }
 
-// NewTestLogger creates a new logr.Logger with zaptest logger implementation
+// NewTestLogger creates a new logger zaptest logger implementation.
 func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
-	log := zapr.NewLogger(zapLogger)
-	return log, nil
+	logger := zapr.NewLogger(zapLogger)
+	return logger, nil
 }
 
-// WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
+// WrapLogContext adds key-value pairs to the context's logger for logging purposes.
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
 	return logr.NewContext(ctx, logger.WithValues(keyValues...))
 }
 
-// Unwrap returns the underlying zap logger of logr.Logger
+// Unwrap attempts to extract the underlying zap.Logger from a logr.Logger, returning nil if it fails.
 func Unwrap(logger logr.Logger) *zap.Logger {
 	underlier, ok := logger.GetSink().(zapr.Underlier)
 	if ok {
@@ -177,7 +178,9 @@ func Unwrap(logger logr.Logger) *zap.Logger {
 	return nil
 }
 
-// FromContextOrDiscard returns logger from context with trace id and span id values.
+// # Function Explanation
+//
+// FromContextOrDiscard returns a logger with trace and span IDs populated from the context if they exist.
 // In order to get logger without span, use logr.FromContextOrDiscard(ctx context.Context).
 func FromContextOrDiscard(ctx context.Context) logr.Logger {
 	logger := logr.FromContextOrDiscard(ctx)
@@ -194,7 +197,9 @@ func FromContextOrDiscard(ctx context.Context) logr.Logger {
 	return logger
 }
 
-// NewResourceObject returns the resource object which includes the system info.
+// # Function Explanation
+//
+// This function creates a new resource object with the given service name, hostname and version.
 func NewResourceObject(serviceName string) []any {
 	host, _ := os.Hostname()
 	return []any{

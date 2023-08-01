@@ -78,6 +78,10 @@ func getArmConfig(cfg *ProviderConfig, ucpconn sdk.Connection) (*armauth.ArmConf
 	return arm, nil
 }
 
+// # Function Explanation
+//
+// NewHostOptionsFromEnvironment loads configuration from a given path, retrieves Kubernetes and ARM configurations, and
+// returns a HostOptions object containing the configurations, or an error if any of the operations fail.
 func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 	conf, err := loadConfig(configPath)
 	if err != nil {
@@ -122,7 +126,6 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 		return nil, fmt.Errorf("failed to load yaml: %w", err)
 	}
 
-	// TODO: improve the way to override the configration via env var.
 	cosmosdbUrl := os.Getenv("RADIUS_STORAGEPROVIDER_COSMOSDB_URL")
 	if cosmosdbUrl != "" {
 		conf.StorageProvider.CosmosDB.Url = cosmosdbUrl

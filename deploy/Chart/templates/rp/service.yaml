@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: appcore-rp
+  name: applications-rp
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: appcore-rp
+    app.kubernetes.io/name: applications-rp
     app.kubernetes.io/part-of: radius
 spec:
   ports:
@@ -16,11 +16,5 @@ spec:
       name: link-http
       protocol: TCP
       targetPort: 5444
-    {{ if eq .Values.global.prometheus.enabled true }}
-    - port: {{ .Values.global.prometheus.port }}
-      name: metrics-http
-      protocol: TCP
-      targetPort: {{ .Values.global.prometheus.port }}
-    {{ end }}
   selector:
-    app.kubernetes.io/name: appcore-rp
+    app.kubernetes.io/name: applications-rp

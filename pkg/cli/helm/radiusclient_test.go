@@ -28,21 +28,13 @@ func Test_AddRadiusValues(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
-		ImageVersion: "imageversion",
-		Values:       "global.zipkin.url=url,global.prometheus.path=path",
+		SetArgs: []string{"global.zipkin.url=url,global.prometheus.path=path"},
 	}
 
 	err := AddRadiusValues(&helmChart, options)
 	require.Equal(t, err, nil)
 
 	values := helmChart.Values
-	// validate tags for ucp, de, and rp
-	for _, k := range []string{"ucp", "de", "rp"} {
-		o := values[k].(map[string]any)
-		_, ok := o["tag"]
-		assert.True(t, ok)
-		assert.Equal(t, o["tag"], "imageversion")
-	}
 
 	_, ok := values["global"]
 	assert.True(t, ok)
@@ -66,21 +58,13 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
-		ImageVersion: "imageversion",
-		Values:       "rp.image=radius.azurecr.io/appcore-rp,rp.tag=latest,global.zipkin.url=url,global.prometheus.path=path",
+		SetArgs: []string{"rp.image=radius.azurecr.io/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
 	}
 
 	err := AddRadiusValues(&helmChart, options)
 	require.Equal(t, err, nil)
 
 	values := helmChart.Values
-	// validate tags for ucp, de
-	for _, k := range []string{"ucp", "de"} {
-		o := values[k].(map[string]any)
-		_, ok := o["tag"]
-		assert.True(t, ok)
-		assert.Equal(t, o["tag"], "imageversion")
-	}
 
 	// validate image, tag for rp should have been overridden with latest
 	o := values["rp"].(map[string]any)
@@ -89,7 +73,7 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	assert.Equal(t, o["tag"], "latest")
 	_, ok = o["image"]
 	assert.True(t, ok)
-	assert.Equal(t, o["image"], "radius.azurecr.io/appcore-rp")
+	assert.Equal(t, o["image"], "radius.azurecr.io/applications-rp")
 
 	_, ok = values["global"]
 	assert.True(t, ok)

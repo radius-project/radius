@@ -57,3 +57,9 @@ pkg/handlers/gomock_*
 
 # node modules
 cadl/node_modules
+
+# terraform state
+.terraform/
+
+# temporary test files starting with tmp-
+tmp-*

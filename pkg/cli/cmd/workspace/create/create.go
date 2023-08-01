@@ -23,6 +23,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -34,6 +35,11 @@ import (
 )
 
 // NewCommand creates an instance of the command and runner for the `rad workspace create` command.
+//
+// # Function Explanation
+//
+// NewCommand creates a new Cobra command and a Runner to handle the command's logic, and adds flags to the command for
+// workspace, resource group, environment name, force and context.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -90,6 +96,12 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 // Validate runs validation for the `rad workspace create` command.
+//
+// # Function Explanation
+//
+// Validate checks if the given workspace name is valid, if the given Kubernetes context is valid, if the Radius
+// control plane is installed on the target platform, if the workspace already exists, if the user has specified the
+// --force flag, if the given resource group and environment exist, and returns an error if any of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
 
@@ -100,7 +112,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
-		return &cli.FriendlyError{Message: "Failed to read kube config"}
+		return clierrors.Message("Failed to read Kubernetes configuration. Ensure you have a valid Kubeconfig file and try again.")
 	}
 	context, err := cli.RequireKubeContext(cmd, kubeContextList.CurrentContext)
 	if err != nil {
@@ -169,23 +181,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 		_, err := client.ShowUCPGroup(cmd.Context(), "radius", "local", group)
 		if err != nil {
-			return &cli.FriendlyError{Message: fmt.Sprintf("group %q does not exist. Run `rad env create` try again \n", r.Workspace.Scope)}
+			return clierrors.Message("The resource group %q does not exist. Run `rad env create` try again.", r.Workspace.Scope)
 		}
 
 		//we want to make sure we dont have a workspace which has environment in a different scope from workspace's scope
 		if r.Workspace.Environment != "" && !strings.HasPrefix(r.Workspace.Environment, r.Workspace.Scope) && env == "" {
-			return fmt.Errorf("workspace is currently using an environment which is in different scope. use -e to specify an environment which is in the scope of this workspace")
+			return clierrors.Message("The workspace is currently using an environment which is in different scope. Use -e to specify an environment which is in the scope of this workspace.")
 		}
 	}
 	if env != "" {
 		if r.Workspace.Scope == "" {
-			return fmt.Errorf("cannot set environment for workspace with empty scope. use -g to set a scope")
+			return clierrors.Message("Cannot set environment for workspace with empty scope. Use --group to set a scope.")
 		}
 		r.Workspace.Environment = r.Workspace.Scope + "/providers/applications.core/environments/" + env
 
 		_, err = client.GetEnvDetails(cmd.Context(), env)
 		if err != nil {
-			return &cli.FriendlyError{Message: fmt.Sprintf("environment %q does not exist. Run `rad env create` try again \n", r.Workspace.Environment)}
+			return clierrors.Message("The environment %q does not exist. Run `rad env create` try again.", r.Workspace.Environment)
 		}
 	}
 
@@ -193,9 +205,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad workspace create` command.
+//
+// # Function Explanation
+//
+// Run creates a workspace and sets it as the current workspace, returning an error if any occurs during the process."
 func (r *Runner) Run(ctx context.Context) error {
 
-	r.Output.LogInfo("creating workspace...")
+	r.Output.LogInfo("Creating workspace...")
 	err := r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.Config, r.Workspace)
 	if err != nil {
 		return err

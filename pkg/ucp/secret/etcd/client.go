@@ -35,7 +35,9 @@ type Client struct {
 	ETCDClient *etcdclient.Client
 }
 
-// Save saves the secret in the data store.
+// # Function Explanation
+//
+// Save checks if the name and value of the secret are valid and saves the value in etcd, returning an error if unsuccessful.
 func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	if name == "" {
 		return &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
@@ -54,7 +56,9 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	return nil
 }
 
-// Delete deletes the secrets corresponding to the name in etcd.
+// # Function Explanation
+//
+// Delete deletes a secret from the etcd store and returns an error if the secret is not found.
 func (c *Client) Delete(ctx context.Context, name string) error {
 	secretName := generateSecretResourceName(name)
 	resp, err := c.ETCDClient.Delete(ctx, secretName)
@@ -67,7 +71,10 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	return nil
 }
 
-// Get returns the secret object if it exists or returns an error.
+// # Function Explanation
+//
+// Get retrieves a secret from etcd given a name and returns it as a byte slice, or returns an error if the secret is
+// not found or an invalid argument is provided.
 func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {
 	if name == "" {
 		return nil, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}

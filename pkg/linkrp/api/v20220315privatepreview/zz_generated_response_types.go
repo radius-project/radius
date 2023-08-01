@@ -8,29 +8,6 @@
 
 package v20220315privatepreview
 
-// DaprInvokeHTTPRouteClientCreateOrUpdateResponse contains the response from method DaprInvokeHTTPRouteClient.CreateOrUpdate.
-type DaprInvokeHTTPRouteClientCreateOrUpdateResponse struct {
-	DaprInvokeHTTPRouteResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprInvokeHTTPRouteClientDeleteResponse contains the response from method DaprInvokeHTTPRouteClient.Delete.
-type DaprInvokeHTTPRouteClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprInvokeHTTPRouteClientGetResponse contains the response from method DaprInvokeHTTPRouteClient.Get.
-type DaprInvokeHTTPRouteClientGetResponse struct {
-	DaprInvokeHTTPRouteResource
-}
-
-// DaprInvokeHTTPRouteClientListByRootScopeResponse contains the response from method DaprInvokeHTTPRouteClient.ListByRootScope.
-type DaprInvokeHTTPRouteClientListByRootScopeResponse struct {
-	DaprInvokeHTTPRouteResourceListResult
-}
-
 // DaprPubSubBrokerClientCreateOrUpdateResponse contains the response from method DaprPubSubBrokerClient.CreateOrUpdate.
 type DaprPubSubBrokerClientCreateOrUpdateResponse struct {
 	DaprPubSubBrokerResource
@@ -100,7 +77,7 @@ type DaprStateStoreClientListByRootScopeResponse struct {
 
 // ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
 type ExtendersClientCreateOrUpdateResponse struct {
-	ExtenderResponseResource
+	ExtenderResource
 }
 
 // ExtendersClientDeleteResponse contains the response from method ExtendersClient.Delete.
@@ -110,7 +87,7 @@ type ExtendersClientDeleteResponse struct {
 
 // ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
 type ExtendersClientGetResponse struct {
-	ExtenderResponseResource
+	ExtenderResource
 }
 
 // ExtendersClientListByRootScopeResponse contains the response from method ExtendersClient.ListByRootScope.
@@ -233,5 +210,10 @@ type SQLDatabasesClientGetResponse struct {
 // SQLDatabasesClientListByRootScopeResponse contains the response from method SQLDatabasesClient.ListByRootScope.
 type SQLDatabasesClientListByRootScopeResponse struct {
 	SQLDatabaseResourceListResult
+}
+
+// SQLDatabasesClientListSecretsResponse contains the response from method SQLDatabasesClient.ListSecrets.
+type SQLDatabasesClientListSecretsResponse struct {
+	SQLDatabaseListSecretsResult
 }
 

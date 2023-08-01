@@ -43,7 +43,10 @@ type CustomActionClient struct {
 	baseURI  string
 }
 
-// InvokeCustomAction invokes a custom action on the given resource.
+// # Function Explanation
+//
+// InvokeCustomAction sends a request to the server to invoke a custom action on the given resource
+// and returns the response body and an error if one occurs.
 func (client *CustomActionClient) InvokeCustomAction(ctx context.Context, resourceID, apiVersion, action string) (*ClientCustomActionResponse, error) {
 	req, err := client.customActionCreateRequest(ctx, resourceID, apiVersion, action)
 	if err != nil {

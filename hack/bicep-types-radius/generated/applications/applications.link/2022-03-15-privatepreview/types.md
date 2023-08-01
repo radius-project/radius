@@ -1,17 +1,5 @@
 # Applications.Link @ 2022-03-15-privatepreview
 
-## Resource Applications.Link/daprInvokeHttpRoutes@2022-03-15-privatepreview
-* **Valid Scope(s)**: Unknown
-### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprInvokeHttpRouteProperties](#daprinvokehttprouteproperties): DaprInvokeHttpRoute link properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
-* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Link/daprInvokeHttpRoutes' (ReadOnly, DeployTimeConstant): The resource type
-
 ## Resource Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
@@ -123,42 +111,15 @@
 * **ApiVersion**: 2022-03-15-privatepreview
 * **Output**: [RedisCacheListSecretsResult](#rediscachelistsecretsresult)
 
+## Function listSecrets (Applications.Link/sqlDatabases@2022-03-15-privatepreview)
+* **Resource**: Applications.Link/sqlDatabases
+* **ApiVersion**: 2022-03-15-privatepreview
+* **Output**: [SqlDatabaseListSecretsResult](#sqldatabaselistsecretsresult)
+
 ## Function listSecrets (Applications.Link/extenders@2022-03-15-privatepreview)
 * **Resource**: Applications.Link/extenders
 * **ApiVersion**: 2022-03-15-privatepreview
 * **Output**: [ExtenderSecrets](#extendersecrets)
-
-## DaprInvokeHttpRouteProperties
-### Properties
-* **appId**: string (Required): The Dapr appId used for the route
-* **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-
-## Recipe
-### Properties
-* **name**: string (Required): The name of the recipe within the environment to use
-* **parameters**: any: Any object
-
-## ResourceStatus
-### Properties
-* **outputResources**: any[]: Properties of an output resource
-
-## SystemData
-### Properties
-* **createdAt**: string: The timestamp of resource creation (UTC).
-* **createdBy**: string: The identity that created the resource.
-* **createdByType**: 'Application' | 'Key' | 'ManagedIdentity' | 'User': The type of identity that created the resource.
-* **lastModifiedAt**: string: The timestamp of resource last modification (UTC)
-* **lastModifiedBy**: string: The identity that last modified the resource.
-* **lastModifiedByType**: 'Application' | 'Key' | 'ManagedIdentity' | 'User': The type of identity that created the resource.
-
-## TrackedResourceTags
-### Properties
-### Additional Properties
-* **Additional Properties Type**: string
 
 ## DaprPubSubBrokerProperties
 ### Properties
@@ -174,9 +135,27 @@
 * **type**: string: DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
+## Recipe
+### Properties
+* **name**: string (Required): The name of the recipe within the environment to use
+* **parameters**: any: Any object
+
 ## ResourceReference
 ### Properties
 * **id**: string (Required): Resource id of an existing resource
+
+## ResourceStatus
+### Properties
+* **outputResources**: any[]: Properties of an output resource
+
+## SystemData
+### Properties
+* **createdAt**: string: The timestamp of resource creation (UTC).
+* **createdBy**: string: The identity that created the resource.
+* **createdByType**: 'Application' | 'Key' | 'ManagedIdentity' | 'User': The type of identity that created the resource.
+* **lastModifiedAt**: string: The timestamp of resource last modification (UTC)
+* **lastModifiedBy**: string: The identity that last modified the resource.
+* **lastModifiedByType**: 'Application' | 'Key' | 'ManagedIdentity' | 'User': The type of identity that created the resource.
 
 ## TrackedResourceTags
 ### Properties
@@ -225,7 +204,9 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **secrets**: [ExtenderSecrets](#extendersecrets): The secret values for the given Extender resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
@@ -297,12 +278,14 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the Redis resource
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **tls**: bool: Specifies whether to enable SSL connections to the Redis cache
 * **username**: string: The username for Redis cache
 
 ## RedisCacheSecrets
 ### Properties
 * **connectionString**: string: The connection string used to connect to the Redis cache
 * **password**: string: The password for this Redis cache instance
+* **url**: string: The URL used to connect to the Redis cache
 
 ## TrackedResourceTags
 ### Properties
@@ -314,12 +297,20 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **database**: string: The name of the Sql database.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **port**: int: Port value of the target Sql database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the SqlDatabase resource
+* **secrets**: [SqlDatabaseSecrets](#sqldatabasesecrets): The secret values for the given SqlDatabase resource
 * **server**: string: The fully qualified domain name of the Sql database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **username**: string: Username to use when connecting to the target Sql database
+
+## SqlDatabaseSecrets
+### Properties
+* **connectionString**: string: Connection string used to connect to the target Sql database
+* **password**: string: Password to use when connecting to the target Sql database
 
 ## TrackedResourceTags
 ### Properties
@@ -339,6 +330,12 @@
 ### Properties
 * **connectionString**: string (ReadOnly): The connection string used to connect to the Redis cache
 * **password**: string (ReadOnly): The password for this Redis cache instance
+* **url**: string (ReadOnly): The URL used to connect to the Redis cache
+
+## SqlDatabaseListSecretsResult
+### Properties
+* **connectionString**: string (ReadOnly): Connection string used to connect to the target Sql database
+* **password**: string (ReadOnly): Password to use when connecting to the target Sql database
 
 ## ExtenderSecrets
 ### Properties

@@ -16,10 +16,12 @@ limitations under the License.
 package portforward
 
 import (
+	"bytes"
 	"context"
 	"testing"
 	"time"
 
+	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,12 +36,21 @@ import (
 // to keep the main event loop simple.
 
 func Test_DeploymentWatcher_Run_CanShutDown(t *testing.T) {
+	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
-	dw := NewDeploymentWatcher(Options{Client: client}, map[string]string{}, map[string]bool{}, cancel)
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 
 	go func() { _ = dw.Run(ctx) }()
 	cancel()
@@ -47,96 +58,202 @@ func Test_DeploymentWatcher_Run_CanShutDown(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Updated_HandleNewDeployment(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
-	dw.updated(ctx, createPod("p1", "rs1"))
+	dw.updated(ctx, createPod("p1", "rs1"), map[string]bool{})
 	require.Equal(t, "p1", dw.podWatcher.Pod.Name)
 	cancel()
 }
 
 func Test_DeploymentWatcher_Updated_HandleMultipleReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(ctx, createPod("p1", "rs1"))
+	dw.updated(ctx, createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 	existing := dw.podWatcher
 
 	// Step 2: Add another pod - this won't start a new watcher
-	dw.updated(ctx, createPod("p2", "rs1"))
+	dw.updated(ctx, createPod("p2", "rs1"), map[string]bool{})
 
 	// Should be the same instance
 	require.Same(t, existing, dw.podWatcher)
 }
 
 func Test_DeploymentWatcher_Updated_HandleStalePod(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
+
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
 
 	stale := map[string]bool{
 		"rs0": true,
 	}
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, stale, cancel)
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
-	// Step 1: Add a pod (stale)
-	dw.updated(ctx, createPod("p1", "rs0"))
-	require.Nil(t, dw.podWatcher)
+	// Output should be empty
+	require.Equal(t, out.String(), "")
 
-	// Step 2: Add another pod - this will start a watcher
-	dw.updated(ctx, createPod("p2", "rs1"))
+	// Step 1: Add a pod (stale)
+	dw.updated(ctx, createPod("p1", "rs0"), stale)
+
+	// Output should mention that there are no pods available
+	require.Equal(t, out.String(), "No active pods available for port-forwarding.\n")
+
+	// Step 2: Add another pod
+	dw.updated(ctx, createPod("p2", "rs1"), stale)
 
 	// Should be the same instance
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, "p2", dw.podWatcher.Pod.Name)
 }
 
-func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_NoOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func Test_DeploymentWatcher_Updated_HandleMultipleStalePod(t *testing.T) {
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	stale := map[string]bool{
+		"rs0": true,
+		"rs1": true,
+	}
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
+	defer stopPodWatchers(dw)
+
+	// Output should be empty
+	require.Equal(t, out.String(), "")
+
+	// Step 1: Add a pod (stale)
+	dw.updated(ctx, createPod("p1", "rs0"), stale)
+
+	// Output should mention that there are no pods available
+	require.Equal(t, out.String(), "No active pods available for port-forwarding.\n")
+
+	// Step 2: Add another pod (stale)
+	dw.updated(ctx, createPod("p2", "rs1"), stale)
+
+	// Output should mention that there are no pods available again
+	require.Equal(t, out.String(), "No active pods available for port-forwarding.\nNo active pods available for port-forwarding.\n")
+
+	// Step 2: Add another pod
+	dw.updated(ctx, createPod("p3", "rs2"), stale)
+
+	// Should be the same instance
+	require.NotNil(t, dw.podWatcher)
+	require.Equal(t, "p3", dw.podWatcher.Pod.Name)
+}
+
+func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_NoOtherReplicas(t *testing.T) {
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
+
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(ctx, createPod("p1", "rs1"))
+	dw.updated(ctx, createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 
 	// Step 2: Update the pod to set it as deleting
 	p1 := createPod("p1", "rs1")
 	p1.DeletionTimestamp = &v1.Time{Time: time.Now()}
-	dw.updated(ctx, p1)
+	dw.updated(ctx, p1, map[string]bool{})
 
 	// Should be shutdown
 	require.Nil(t, dw.podWatcher)
 }
 
 func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(ctx, createPod("p1", "rs1"))
+	dw.updated(ctx, createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 	existing := dw.podWatcher
 
 	// Step 2: Add another pod - this won't start a new watcher
-	dw.updated(ctx, createPod("p2", "rs1"))
+	dw.updated(ctx, createPod("p2", "rs1"), map[string]bool{})
 
 	// Should be the same instance
 	require.Same(t, existing, dw.podWatcher)
@@ -144,7 +261,7 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherRepl
 	// Step 3: Update p1 to set it as deleting
 	p1 := createPod("p1", "rs1")
 	p1.DeletionTimestamp = &v1.Time{Time: time.Now()}
-	dw.updated(ctx, p1)
+	dw.updated(ctx, p1, map[string]bool{})
 
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p2")
@@ -154,14 +271,25 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherRepl
 }
 
 func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(context.Background(), createPod("p1", "rs1"))
+	dw.updated(context.Background(), createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 	existing := dw.podWatcher
@@ -176,20 +304,31 @@ func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_Deleted_HasOtherReplicas(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	out := &bytes.Buffer{}
+	client, _ := createPodWatchFakes()
 
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, cancel)
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Client: client,
+			Out:    out,
+		},
+		map[string]string{},
+		"1",
+		cancel,
+	)
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(ctx, createPod("p1", "rs1"))
+	dw.updated(ctx, createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 	existing := dw.podWatcher
 
 	// Step 2: Add another pod - this won't start a new watcher
-	dw.updated(ctx, createPod("p2", "rs1"))
+	dw.updated(ctx, createPod("p2", "rs1"), map[string]bool{})
 
 	// Should be the same instance
 	require.Same(t, existing, dw.podWatcher)
@@ -205,23 +344,32 @@ func Test_DeploymentWatcher_Deleted_HasOtherReplicas(t *testing.T) {
 }
 
 func Test_DeploymentWatcher_SelectBestPod(t *testing.T) {
-	dw := NewDeploymentWatcher(Options{}, map[string]string{}, map[string]bool{}, func() {})
+	out := &bytes.Buffer{}
+
+	dw := NewDeploymentWatcher(
+		Options{
+			Out: out,
+		},
+		map[string]string{},
+		"1",
+		func() {},
+	)
 
 	// The best pod is chosen based on the newest creation date, with name as a tiebreaker
 	dw.pods = map[string]*corev1.Pod{
-		"a": &corev1.Pod{ // Oldest
+		"a": { // Oldest
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "a",
 				CreationTimestamp: v1.NewTime(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)),
 			},
 		},
-		"b": &corev1.Pod{ // Newest - chosen based on name
+		"b": { // Newest - chosen based on name
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "b",
 				CreationTimestamp: v1.NewTime(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)),
 			},
 		},
-		"c": &corev1.Pod{ // Newest - not chosen based on name
+		"c": { // Newest - not chosen based on name
 			ObjectMeta: v1.ObjectMeta{
 				Name:              "c",
 				CreationTimestamp: v1.NewTime(time.Date(2022, 2, 1, 0, 0, 0, 0, time.UTC)),

@@ -385,6 +385,14 @@
         "provides": {
           "description": "Specifies a route provided by this port",
           "type": "string"
+        },
+        "scheme": {
+          "description": "Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.",
+          "type": "integer"
         }
       }
     },
@@ -689,10 +697,6 @@
             "name": "Protocol",
             "modelAsString": true
           }
-        },
-        "provides": {
-          "description": "Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.",
-          "type": "string"
         }
       },
       "additionalProperties": false,

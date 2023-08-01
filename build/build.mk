@@ -98,7 +98,7 @@ endef
 # defines a target for each binary
 GOOSES := darwin linux windows
 GOARCHES := amd64 arm arm64
-BINARIES := docgen rad appcore-rp applink-rp ucp ucpd
+BINARIES := docgen rad applications-rp ucpd
 $(foreach ITEM,$(BINARIES),$(eval $(call generateBuildTarget,$(ITEM),./cmd/$(ITEM))))
 $(foreach ARCH,$(GOARCHES),$(foreach OS,$(GOOSES),$(foreach ITEM,$(BINARIES),$(eval $(call generatePlatformBuildTarget,$(OS),$(ARCH),$(ITEM),./cmd/$(ITEM))))))
 
