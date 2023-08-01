@@ -37,10 +37,10 @@ type Provider interface {
 // GetSupportedTerraformProviders returns a map of Terraform provider names to provider config builder.
 // Providers represent Terraform providers for which Radius generates custom provider configurations.
 // For example, the Azure subscription id is added to Azure provider config using Radius Environment's Azure provider scope.
-func GetSupportedTerraformProviders(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) map[string]Provider {
+func GetSupportedTerraformProviders(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) map[string]Provider {
 	return map[string]Provider{
-		AWSProviderName:        NewAWSProvider(*ucpConn, secretProviderOptions),
-		AzureProviderName:      NewAzureProvider(*ucpConn, secretProviderOptions),
-		KubernetesProviderName: NewKubernetesProvider(),
+		AWSProviderName:        NewAWSProvider(ucpConn, secretProviderOptions),
+		AzureProviderName:      NewAzureProvider(ucpConn, secretProviderOptions),
+		KubernetesProviderName: &kubernetesProvider{},
 	}
 }

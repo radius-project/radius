@@ -38,7 +38,7 @@ var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
 func NewTerraformDriver(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions, options TerraformOptions) Driver {
-	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn, secretProviderOptions), options: options}
+	return &terraformDriver{terraformExecutor: terraform.NewExecutor(ucpConn, secretProviderOptions), options: options}
 }
 
 // Options represents the options required for execution of Terraform driver.

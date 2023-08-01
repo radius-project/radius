@@ -33,7 +33,7 @@ import (
 )
 
 // NewExecutor creates a new Executor to execute a Terraform recipe.
-func NewExecutor(ucpConn *sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) *executor {
+func NewExecutor(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) *executor {
 	return &executor{ucpConn: ucpConn, secretProviderOptions: secretProviderOptions}
 }
 
@@ -45,7 +45,7 @@ var _ TerraformExecutor = (*executor)(nil)
 
 type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
-	ucpConn *sdk.Connection
+	ucpConn sdk.Connection
 
 	// secretProviderOptions contains provider information of the secret to managed credentials tracked by UCP.
 	secretProviderOptions ucp_provider.SecretProviderOptions

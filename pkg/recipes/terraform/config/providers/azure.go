@@ -45,6 +45,8 @@ const (
 	azureTenantIDParam     = "tenant_id"
 )
 
+var _ Provider = (*azureProvider)(nil)
+
 type azureProvider struct {
 	ucpConn               sdk.Connection
 	secretProviderOptions ucp_provider.SecretProviderOptions

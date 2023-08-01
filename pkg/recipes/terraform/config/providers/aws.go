@@ -43,6 +43,8 @@ const (
 	awsSecretKeyParam = "secret_key"
 )
 
+var _ Provider = (*awsProvider)(nil)
+
 type awsProvider struct {
 	ucpConn               sdk.Connection
 	secretProviderOptions ucp_provider.SecretProviderOptions

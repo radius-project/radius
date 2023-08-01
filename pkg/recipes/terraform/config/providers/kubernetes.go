@@ -29,12 +29,9 @@ const (
 	KubernetesProviderName = "kubernetes"
 )
 
-type kubernetesProvider struct{}
+var _ Provider = (*kubernetesProvider)(nil)
 
-// NewKubernetesProvider creates a new KubernetesProvider instance.
-func NewKubernetesProvider() Provider {
-	return &kubernetesProvider{}
-}
+type kubernetesProvider struct{}
 
 // BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
