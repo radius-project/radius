@@ -67,10 +67,6 @@ env:
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-  # The Deployment Engine image
-  DE_IMAGE: 'radius.azurecr.io/deployment-engine'
-  # The Deployment Engine tag
-  DE_TAG: 'latest'
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
 
@@ -81,6 +77,9 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    env:
+      DE_IMAGE: 'radius.azurecr.io/deployment-engine'
+      DE_TAG: 'latest'
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -88,6 +87,8 @@ jobs:
       CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+      DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
+      DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -100,7 +101,7 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-      - name: Set up checkout target (repository_dispatch)
+      - name: Set up checkout target (repository_dispatch from /ok-to-test)
         if: github.event_name == 'repository_dispatch'
         uses: actions/github-script@v6
         with:
@@ -116,7 +117,7 @@ jobs:
                 `PR_NUMBER=${testPayload.issue.number}`
               );
             }
-      - name: Set DE image and tag (repository_dispatch)
+      - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
         uses: actions/github-script@v6
         with:
@@ -170,6 +171,8 @@ jobs:
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
+          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
         continue-on-error: true
@@ -314,6 +317,8 @@ jobs:
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
