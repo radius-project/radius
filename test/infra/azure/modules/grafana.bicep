@@ -88,7 +88,7 @@ resource grafana 'Microsoft.Dashboard/grafana@2022-08-01' = {
 }
 
 // Add user's as Grafana Admin for Grafana
-resource adminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource adminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(adminObjectId)) {
   name: guid(grafana.id, roleDefinitionId.GrafanaAdmin.id)
   scope: grafana
   properties: {
@@ -131,3 +131,5 @@ module enableMonitorAddon './grafana-onboard-metrics.bicep' = {
     grafanaIdenityToAzureMonitor
   ]
 }
+
+output dashboardFQDN string = grafana.properties.endpoint
