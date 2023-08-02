@@ -126,7 +126,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	if providers.Enabled == false {
+	if !providers.Enabled {
 		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
 	}
 	err = r.Output.WriteFormatted(r.Format, providers, objectformats.GetCloudProviderTableFormat(r.Kind))
