@@ -1544,7 +1544,6 @@ func Test_ParseURL(t *testing.T) {
 func Test_DNS_Service_Generation(t *testing.T) {
 	var containerPortNumber int32 = 80
 	t.Run("verify service generation", func(t *testing.T) {
-		// testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 		properties := datamodel.ContainerProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: applicationResourceID,
