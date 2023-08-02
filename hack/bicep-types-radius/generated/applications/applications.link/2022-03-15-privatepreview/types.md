@@ -259,14 +259,14 @@
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the rabbitMQ resource
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **tls**: bool: Specifies whether to enable SSL connections to the RabbitMQ
-* **username**: string: Username to use when connecting to the target rabbitMQ
-* **vHost**: string: The vHost of the RabbitMQ instance
+* **tls**: bool: Specifies whether to use SSL when connecting to the RabbitMQ instance
+* **username**: string: The username to use when connecting to the RabbitMQ instance
+* **vHost**: string: The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
 
 ## RabbitMQSecrets
 ### Properties
-* **password**: string: The password used to connect to this RabbitMQ instance
-* **uri**: string: The connection URI of the RabbitMQ instance
+* **password**: string: The password used to connect to the RabbitMQ instance
+* **uri**: string: The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value
 
 ## TrackedResourceTags
 ### Properties
@@ -331,8 +331,8 @@
 
 ## RabbitMQListSecretsResult
 ### Properties
-* **password**: string (ReadOnly): The password used to connect to this RabbitMQ instance
-* **uri**: string (ReadOnly): The connection URI of the RabbitMQ instance
+* **password**: string (ReadOnly): The password used to connect to the RabbitMQ instance
+* **uri**: string (ReadOnly): The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value
 
 ## RedisCacheListSecretsResult
 ### Properties

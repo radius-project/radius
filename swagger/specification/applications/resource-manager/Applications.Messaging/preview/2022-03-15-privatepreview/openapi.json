@@ -374,11 +374,11 @@
       "properties": {
         "password": {
           "type": "string",
-          "description": "The password used to connect to this RabbitMQ instance"
+          "description": "The password used to connect to the RabbitMQ instance"
         },
         "uri": {
           "type": "string",
-          "description": "The connection URI of the RabbitMQ instance"
+          "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
       },
       "description": "The secret values for the given RabbitMQQueue resource"
@@ -410,11 +410,11 @@
         },
         "vHost": {
           "type": "string",
-          "description": "The vHost of the RabbitMQ instance"
+          "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
         },
         "username": {
           "type": "string",
-          "description": "Username to use when connecting to the target rabbitMQ"
+          "description": "The username to use when connecting to the RabbitMQ instance"
         },
         "resources": {
           "type": "array",
@@ -434,7 +434,7 @@
         },
         "tls": {
           "type": "boolean",
-          "description": "Specifies whether to enable SSL connections to the RabbitMQ"
+          "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
         }
       },
       "description": "RabbitMQQueue portable resource properties",
@@ -492,11 +492,11 @@
       "properties": {
         "password": {
           "type": "string",
-          "description": "The password used to connect to this RabbitMQ instance"
+          "description": "The password used to connect to the RabbitMQ instance"
         },
         "uri": {
           "type": "string",
-          "description": "The connection URI of the RabbitMQ instance"
+          "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
       },
       "description": "The secret values for the given RabbitMQQueue resource"
