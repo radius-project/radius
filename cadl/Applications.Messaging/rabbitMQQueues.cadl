@@ -54,10 +54,10 @@ model RabbitMQListSecretsResult is RabbitMQSecrets;
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("The secret values for the given RabbitMQQueue resource")
 model RabbitMQSecrets {
-  @doc("The password used to connect to this RabbitMQ instance")
+  @doc("The password used to connect to the RabbitMQ instance")
   password?: string;
 
-  @doc("The connection URI of the RabbitMQ instance")
+  @doc("The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value")
   uri?: string;
 }
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use PascalCase"
@@ -79,10 +79,10 @@ model RabbitMQQueueProperties extends BasicResourceProperties {
   @doc("The port of the RabbitMQ instance. Defaults to 5672")
   port?: int32;
 
-  @doc("The vHost of the RabbitMQ instance")
+  @doc("The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.")
   vHost?: string;
 
-  @doc("Username to use when connecting to the target rabbitMQ")
+  @doc("The username to use when connecting to the RabbitMQ instance")
   username?: string;
 
   @doc("List of the resource IDs that support the rabbitMQ resource")
@@ -94,7 +94,7 @@ model RabbitMQQueueProperties extends BasicResourceProperties {
   @doc("The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource")
   recipe?: Recipe;
 
-  @doc("Specifies whether to enable SSL connections to the RabbitMQ")  
+  @doc("Specifies whether to use SSL when connecting to the RabbitMQ instance")
   tls?: boolean;
 
 }
