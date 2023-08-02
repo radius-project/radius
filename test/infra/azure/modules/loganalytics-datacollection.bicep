@@ -20,7 +20,7 @@ param clusterResourceId string
 @description('Specifies the AKS cluster resource location.')
 param clusterLocation string
 
-@description('Specifies the azure monitor workspace resource id.')
+@description('Specifies the log analytics workspace resource id.')
 param logAnalyticsWorkspaceId string
 
 @description('Specifies the log analytics workspace resource location.')
