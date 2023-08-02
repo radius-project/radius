@@ -245,10 +245,15 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// If the container has an exposed port and uses DNS-SD, generate a service for it.
 	if needsServiceGeneration {
-		// generate computed values for the service.
-		serviceComputedValues, containerPorts, err := r.generateServiceComputedValues(resource)
-		if err != nil {
-			return renderers.RendererOutput{}, err
+		containerPorts := containerPorts{
+			values: []int32{},
+			names: []string{},
+		}
+
+		for portName, port := range resource.Properties.Container.Ports {
+			// store portNames and portValues for use in service generation.
+			containerPorts.names = append(containerPorts.names, portName)
+			containerPorts.values = append(containerPorts.values, port.ContainerPort)
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
@@ -258,12 +263,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		outputResources = append(outputResources, serviceResource)
-
-		// merge serviceComputedValues into the ComputedValues map.
-		for k, v := range serviceComputedValues {
-			computedValues[k] = v
-		}
-
 		needsServiceGeneration = false
 	}
 
@@ -276,55 +275,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 type containerPorts struct {
 	values []int32
 	names []string
-}
-
-func (r Renderer) generateServiceComputedValues(resource *datamodel.ContainerResource) (map[string]rpv1.ComputedValueReference, containerPorts, error) {
-	serviceComputedValues := map[string]rpv1.ComputedValueReference{}
-	containerPorts := containerPorts{
-		values: []int32{},
-		names: []string{},
-	}
-		
-		for portName, port := range resource.Properties.Container.Ports {
-			// store portNames and portValues for use in service generation.
-			containerPorts.names = append(containerPorts.names, portName)
-			containerPorts.values = append(containerPorts.values, port.ContainerPort)
-			
-			// if the optional port value is set, use that instead of the containerPort.
-			portVal := port.ContainerPort
-			if port.Port != 0 {
-				portVal = port.Port
-			}
-
-			schemeVal := httpScheme
-
-			// if the port is 443, use https as the default scheme.
-			if portVal == httpsPort {
-				schemeVal = httpsScheme
-			}
-
-			// if the optional scheme value is set, use that instead of the default scheme.
-			if port.Scheme != "" {
-				schemeVal = port.Scheme
-			}
-
-			serviceComputedValues = map[string]rpv1.ComputedValueReference{
-				"hostname": {
-					Value: kubernetes.NormalizeResourceName(resource.Name),
-				},
-				"port": {
-					Value: portVal,
-				},
-				"url": {
-					Value: fmt.Sprintf("%s://%s:%d", schemeVal, kubernetes.NormalizeResourceName(resource.Name), portVal),
-				},
-				"scheme": {
-					Value: schemeVal,
-				},
-			}
-		}
-
-	return serviceComputedValues, containerPorts, nil
 }
 
 func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
@@ -729,6 +679,27 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 	for name, con := range properties.Connections {
 		properties := dependencies[con.Source]
 		if !con.GetDisableDefaultEnvVars() {
+			source := con.Source
+			if source == "" {
+				continue
+			}
+
+			// handles case where container has source field structured as a URL.
+			if isURL(source) {
+				// parse source into scheme, hostname, and port.
+				scheme, hostname, port, err := parseURL(source)
+				if err != nil {
+					return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
+				}
+
+				env["CONNECTIONS_" + name + "_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
+				env["CONNECTIONS_" + name + "_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
+				env["CONNECTIONS_" + name + "_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
+				
+				continue
+			}
+
+			// handles case where container has source field structured as a resourceID.
 			for key, value := range properties.ComputedValues {
 				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
 
@@ -752,26 +723,6 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 					env[name] = corev1.EnvVar{Name: name, ValueFrom: &source}
 				}
 			}
-		}
-	}
-
-	for connectionName, connection := range properties.Connections {
-		source := connection.Source
-		if source == "" {
-			continue
-		}
-
-		// handles case where container has source field structured as a URL.
-		if isURL(source) {
-			// parse source into scheme, hostname, and port.
-			scheme, hostname, port, err := parseURL(source)
-			if err != nil {
-				return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
-			}
-
-			env["CONNECTIONS_" + connectionName + "_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + connectionName + "_SCHEME", Value: scheme}
-			env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + connectionName + "_HOSTNAME", Value: hostname}
-			env["CONNECTIONS_" + connectionName + "_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + connectionName + "_PORT", Value: port}
 		}
 	}
 

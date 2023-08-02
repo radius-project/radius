@@ -424,7 +424,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
-	require.Len(t, output.ComputedValues, 4)
+	require.Len(t, output.ComputedValues, 0)
 	require.Empty(t, output.SecretValues)
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -1543,7 +1543,6 @@ func Test_ParseURL(t *testing.T) {
 
 func Test_DNS_Service_Generation(t *testing.T) {
 	var containerPortNumber int32 = 80
-	schemeVal := "http" 
 	t.Run("verify service generation", func(t *testing.T) {
 		// testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 		properties := datamodel.ContainerProperties{
@@ -1575,14 +1574,8 @@ func Test_DNS_Service_Generation(t *testing.T) {
 			TargetPort: intstr.FromString("web"),
 			Protocol:   "TCP",
 		}
-		expectedValues := map[string]rpv1.ComputedValueReference{
-			"hostname": {Value: kubernetes.NormalizeResourceName(resourceName)},
-			"port":     {Value: containerPortNumber},
-			"scheme":   {Value: schemeVal},
-			"url":      {Value: fmt.Sprintf("%s://%s:%d", schemeVal, kubernetes.NormalizeResourceName(resource.Name), containerPortNumber)},
-		}
 
-		require.Equal(t, expectedValues, output.ComputedValues)
+		require.Len(t, output.ComputedValues, 0)
 
 		service, outputResource := kubernetes.FindService(output.Resources)
 		expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
