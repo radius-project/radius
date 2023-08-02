@@ -37,7 +37,10 @@ const (
 
 	// TODO: Are we removing this too?
 	FieldManager = "radius-rp"
-	ControlPlane = "radius-control-plane"
+
+	// ControlPlanePartOfLabelValue is the value we use for 'app.kubernetes.io/part-of' in Radius's control-plane components.
+	// This value can be used to query all of the pods that make up the control plane (for example).
+	ControlPlanePartOfLabelValue = "radius"
 
 	AnnotationSecretHash = "radius.dev/secret-hash"
 	RadiusDevPrefix      = "radius.dev/"
