@@ -311,7 +311,7 @@ func Test_InvalidResourceIDs(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid, functional.GetMagpieImage()),
+			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid, nil, functional.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

@@ -620,7 +620,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprSecretStores/read",
+				Name: "Applications.Dapr/secretStores/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprSecretStores",
@@ -630,7 +630,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprSecretStores/write",
+				Name: "Applications.Dapr/secretStores/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprSecretStores",
@@ -640,7 +640,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprSecretStores/delete",
+				Name: "Applications.Dapr/secretStores/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprSecretStores",
@@ -650,7 +650,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprStateStores/read",
+				Name: "Applications.Dapr/stateStores/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprStateStores",
@@ -660,7 +660,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprStateStores/write",
+				Name: "Applications.Dapr/stateStores/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprStateStores",
@@ -670,7 +670,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprStateStores/delete",
+				Name: "Applications.Dapr/stateStores/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprStateStores",
@@ -680,7 +680,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprPubSubBrokers/read",
+				Name: "Applications.Dapr/pubSubBrokers/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprPubSubBrokers",
@@ -690,7 +690,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprPubSubBrokers/write",
+				Name: "Applications.Dapr/pubSubBrokers/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprPubSubBrokers",
@@ -700,7 +700,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Dapr/daprPubSubBrokers/delete",
+				Name: "Applications.Dapr/pubSubBrokers/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,
 					Resource:    "daprPubSubBrokers",

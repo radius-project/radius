@@ -76,8 +76,13 @@ func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDef
 
 func generateModuleData(ctx context.Context, moduleSource string, moduleVersion string, envParams, resourceParams map[string]any) map[string]any {
 	moduleConfig := map[string]any{
-		moduleSourceKey:  moduleSource,
-		moduleVersionKey: moduleVersion,
+		moduleSourceKey: moduleSource,
+	}
+
+	// Not all sources use versions, so only add the version if it's specified.
+	// Registries require versions, but HTTP or filesystem sources do not.
+	if moduleVersion != "" {
+		moduleConfig[moduleVersionKey] = moduleVersion
 	}
 
 	// Populate recipe parameters

@@ -39,6 +39,12 @@ func Test_Routes(t *testing.T) {
 			SkipPathBase:  true,
 		},
 		{
+			OperationType: v1.OperationType{Type: OperationTypeKubernetesOpenAPIV3Doc, Method: v1.OperationGet},
+			Method:        http.MethodGet,
+			Path:          "/openapi/v3",
+			SkipPathBase:  true,
+		},
+		{
 			OperationType: v1.OperationType{Type: OperationTypeKubernetesDiscoveryDoc, Method: v1.OperationGet},
 			Method:        http.MethodGet,
 			Path:          "",

@@ -28,7 +28,7 @@ on:
       - release/*
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests]
+    types: [functional-tests, de-functional-test]
 
 env:
   # Go version
@@ -41,7 +41,7 @@ env:
   # Helm version
   HELM_VER: 'v3.11.3'
   # KinD cluster version
-  KIND_VER: 'v0.18.0'
+  KIND_VER: 'v0.20.0'
   # Dapr version
   DAPR_VER: '1.10.0'
   # Azure Keyvault CSI driver chart version
@@ -77,6 +77,9 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    env:
+      DE_IMAGE: 'radius.azurecr.io/deployment-engine'
+      DE_TAG: 'latest'
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -84,6 +87,8 @@ jobs:
       CHECKOUT_REPO: ${{ steps.gen-id.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ steps.gen-id.outputs.CHECKOUT_REF }}
       RAD_CLI_ARTIFACT_NAME: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+      DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
+      DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
@@ -96,7 +101,7 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-      - name: Set up checkout target (repository_dispatch)
+      - name: Set up checkout target (repository_dispatch from /ok-to-test)
         if: github.event_name == 'repository_dispatch'
         uses: actions/github-script@v6
         with:
@@ -110,6 +115,23 @@ jobs:
                 `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
                 `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
                 `PR_NUMBER=${testPayload.issue.number}`
+              );
+            }
+      - name: Set DE image and tag (repository_dispatch from de-functional-test)
+        if: github.event_name == 'repository_dispatch'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            const clientPayload = context.payload.client_payload;
+            if (clientPayload && clientPayload.event_type === `de-functional-test`) {
+              var fs = require('fs');
+              // Set environment variables
+              fs.appendFileSync(process.env.GITHUB_ENV,
+                `DE_IMAGE=${clientPayload.de_image}\n`+
+                `DE_TAG=${clientPayload.de_tag}\n`+
+                `CHECKOUT_REPO=${{ github.repository }}\n`+
+                `CHECKOUT_REF=refs/heads/main`
               );
             }
       - name: Check out code
@@ -149,6 +171,8 @@ jobs:
           echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
+          echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
+          echo "DE_TAG=${{ env.DE_TAG }}" >> $GITHUB_OUTPUT
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
         continue-on-error: true
@@ -181,6 +205,7 @@ jobs:
             * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
+            * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
 
             </details>
             
@@ -292,6 +317,8 @@ jobs:
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
+      DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -434,7 +461,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes

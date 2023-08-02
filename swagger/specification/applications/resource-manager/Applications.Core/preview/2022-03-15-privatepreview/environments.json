@@ -477,7 +477,7 @@
       "description": "Properties of a Recipe linked to an Environment.",
       "properties": {
         "templateKind": {
-          "description": "Format of the template provided by the recipe. Allowed values: bicep",
+          "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform.",
           "type": "string"
         },
         "templatePath": {
@@ -485,7 +485,7 @@
           "type": "string"
         },
         "templateVersion": {
-          "description": "Version of the template to deploy. For Terraform recipes this is the module version in the module registry. For Bicep this is not applicable, as the Bicep version is part of the templatePath.",
+          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.",
           "type": "string"
         },
         "parameters": {

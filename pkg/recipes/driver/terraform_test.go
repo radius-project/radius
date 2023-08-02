@@ -97,8 +97,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, options, nil, nil).Times(1).Return(expectedOutput, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
-	require.Error(t, err)
-	require.Equal(t, "terraform support is not implemented yet", err.Error())
+	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
@@ -158,8 +157,7 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any(), nil, nil).Times(1).Return(expectedOutput, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
-	require.Error(t, err)
-	require.Equal(t, "terraform support is not implemented yet", err.Error())
+	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
