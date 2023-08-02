@@ -46,13 +46,13 @@ const (
 var _ Provider = (*awsProvider)(nil)
 
 type awsProvider struct {
-	ucpConn               sdk.Connection
-	secretProviderOptions ucp_provider.SecretProviderOptions
+	ucpConn        sdk.Connection
+	secretProvider *ucp_provider.SecretProvider
 }
 
 // NewAWSProvider creates a new AWSProvider instance.
-func NewAWSProvider(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) Provider {
-	return &awsProvider{ucpConn: ucpConn, secretProviderOptions: secretProviderOptions}
+func NewAWSProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
+	return &awsProvider{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
 // BuildConfig generates the Terraform provider configuration for AWS provider.
@@ -100,7 +100,7 @@ func (p *awsProvider) parseScope(ctx context.Context, envConfig *recipes.Configu
 }
 
 func (p *awsProvider) getCredentialsProvider() (*credentials.AWSCredentialProvider, error) {
-	return credentials.NewAWSCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
+	return credentials.NewAWSCredentialProvider(p.secretProvider, p.ucpConn, &tokencredentials.AnonymousCredential{})
 }
 
 // fetchAWSCredentials fetches AWS credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.

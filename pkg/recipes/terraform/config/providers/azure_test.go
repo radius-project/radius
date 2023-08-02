@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_credentials "github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/secret"
-	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -168,17 +167,12 @@ func TestAzureProvider_ParseScope(t *testing.T) {
 }
 
 func TestAzureProvider_getCredentialsProvider(t *testing.T) {
-	secretProviderOptions := ucp_provider.SecretProviderOptions{
-		Provider: ucp_provider.TypeKubernetesSecret,
-	}
-
 	endpoint := "http://example.com"
 	connection, err := sdk.NewDirectConnection(endpoint)
 	require.NoError(t, err)
 
 	provider := &azureProvider{
-		secretProviderOptions: secretProviderOptions,
-		ucpConn:               connection,
+		ucpConn: connection,
 	}
 	azureCredentialProvider, err := provider.getCredentialsProvider()
 	require.NotNil(t, azureCredentialProvider)

@@ -33,8 +33,8 @@ import (
 )
 
 // NewExecutor creates a new Executor to execute a Terraform recipe.
-func NewExecutor(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) *executor {
-	return &executor{ucpConn: ucpConn, secretProviderOptions: secretProviderOptions}
+func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
 const (
@@ -47,8 +47,8 @@ type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
 	ucpConn sdk.Connection
 
-	// secretProviderOptions contains provider information of the secret to managed credentials tracked by UCP.
-	secretProviderOptions ucp_provider.SecretProviderOptions
+	// secretProvider is the secret store provider used for managing credentials in UCP.
+	secretProvider *ucp_provider.SecretProvider
 }
 
 func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
@@ -127,7 +127,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	}
 
 	// Add the required providers to the terraform configuration
-	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProviderOptions),
+	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {
 		return err
 	}

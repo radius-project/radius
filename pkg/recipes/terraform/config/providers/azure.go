@@ -48,13 +48,13 @@ const (
 var _ Provider = (*azureProvider)(nil)
 
 type azureProvider struct {
-	ucpConn               sdk.Connection
-	secretProviderOptions ucp_provider.SecretProviderOptions
+	ucpConn        sdk.Connection
+	secretProvider *ucp_provider.SecretProvider
 }
 
 // NewAzureProvider creates a new AzureProvider instance.
-func NewAzureProvider(ucpConn sdk.Connection, secretProviderOptions ucp_provider.SecretProviderOptions) Provider {
-	return &azureProvider{ucpConn: ucpConn, secretProviderOptions: secretProviderOptions}
+func NewAzureProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
+	return &azureProvider{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
 // BuildConfig generates the Terraform provider configuration for Azure provider.
@@ -75,6 +75,7 @@ func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Conf
 	if err != nil {
 		return nil, err
 	}
+
 	credentials, err := fetchAzureCredentials(ctx, credentialsProvider)
 	if err != nil {
 		return nil, err
@@ -107,7 +108,7 @@ func (p *azureProvider) parseScope(ctx context.Context, envConfig *recipes.Confi
 }
 
 func (p *azureProvider) getCredentialsProvider() (*credentials.AzureCredentialProvider, error) {
-	return credentials.NewAzureCredentialProvider(ucp_provider.NewSecretProvider(p.secretProviderOptions), p.ucpConn, &tokencredentials.AnonymousCredential{})
+	return credentials.NewAzureCredentialProvider(p.secretProvider, p.ucpConn, &tokencredentials.AnonymousCredential{})
 }
 
 // fetchAzureCredentials fetches Azure credentials from UCP. Returns nil if credentials not found error is received or the credentials are empty.
