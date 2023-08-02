@@ -372,9 +372,13 @@
     "RabbitMQListSecretsResult": {
       "type": "object",
       "properties": {
-        "connectionString": {
+        "password": {
           "type": "string",
-          "description": "The connection string used to connect to this RabbitMQ instance"
+          "description": "The password used to connect to this RabbitMQ instance"
+        },
+        "uri": {
+          "type": "string",
+          "description": "The connection URI of the RabbitMQ instance"
         }
       },
       "description": "The secret values for the given RabbitMQQueue resource"
@@ -395,6 +399,31 @@
           "type": "string",
           "description": "The name of the queue"
         },
+        "host": {
+          "type": "string",
+          "description": "The hostname of the RabbitMQ instance"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port of the RabbitMQ instance. Defaults to 5672"
+        },
+        "vHost": {
+          "type": "string",
+          "description": "The vHost of the RabbitMQ instance"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target rabbitMQ"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "List of the resource IDs that support the rabbitMQ resource"
+        },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -402,6 +431,10 @@
         "recipe": {
           "$ref": "#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to enable SSL connections to the RabbitMQ"
         }
       },
       "description": "RabbitMQQueue portable resource properties",
@@ -457,9 +490,13 @@
     "RabbitMQSecrets": {
       "type": "object",
       "properties": {
-        "connectionString": {
+        "password": {
           "type": "string",
-          "description": "The connection string used to connect to this RabbitMQ instance"
+          "description": "The password used to connect to this RabbitMQ instance"
+        },
+        "uri": {
+          "type": "string",
+          "description": "The connection URI of the RabbitMQ instance"
         }
       },
       "description": "The secret values for the given RabbitMQQueue resource"
@@ -492,6 +529,19 @@
         "name": "ResourceProvisioning",
         "modelAsString": true
       }
+    },
+    "ResourceReference": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource id of an existing resource"
+        }
+      },
+      "description": "Describes a reference to an existing resource",
+      "required": [
+        "id"
+      ]
     },
     "ResourceStatus": {
       "type": "object",
