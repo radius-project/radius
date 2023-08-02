@@ -49,11 +49,11 @@ param azureMonitorWorkspaceLocation string = 'westus2'
 @description('Specifies the name of aks cluster. Default is {prefix}-aks.')
 param aksClusterName string = '${prefix}-aks'
 
-@description('Enables Azure Monitor Workspace and Grafana dashboard. Default is true.')
-param grafanaEnabled bool = true
+@description('Enables Azure Monitoring and Grafana Dashboard. Default is false.')
+param grafanaEnabled bool = false
 
 @description('Specifies the object id to assign Grafana administrator role. Can be the object id of AzureAD user or group.')
-param grafanaAdminObjectId string
+param grafanaAdminObjectId string = ''
 
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
 param grafanaDashboardName string = '${prefix}-dashboard'
@@ -78,7 +78,7 @@ module logAnalyticsWorkspace './modules/loganalytics-workspace.bicep' = {
 }
 
 // Deploy Azure Monitor Workspace for metrics.
-resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = if (grafanaEnabled) {
+resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = {
   name: azureMonitorWorkspaceName
   location: azureMonitorWorkspaceLocation
   properties: {}
@@ -93,18 +93,31 @@ module aksCluster './modules/akscluster.bicep' = {
     kubernetesVersion: '1.26.3'
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
     systemAgentPoolName: 'agentpool'
-    systemAgentPoolVmSize: 'Standard_D4as_v5'
+    systemAgentPoolVmSize: 'Standard_DS2_v2'
     systemAgentPoolAvailabilityZones: []
     systemAgentPoolOsDiskType: 'Managed'
     userAgentPoolName: 'userpool'
-    userAgentPoolVmSize: 'Standard_D4as_v5'
+    userAgentPoolVmSize: 'Standard_DS2_v2'
     userAgentPoolAvailabilityZones: []
     userAgentPoolOsDiskType: 'Managed'
     daprEnabled: true
     daprHaEnabled: false
     oidcIssuerProfileEnabled: true
+    workloadIdentityEnabled: true
     imageCleanerEnabled: true
     imageCleanerIntervalHours: 24
+    tags: defaultTags
+  }
+}
+
+// Deploy data collection for log analytics.
+module logAnalyticsDataCollection './modules/loganalytics-datacollection.bicep' = if (grafanaEnabled) {
+  name: 'loganalytics-datacollection'
+  params:{
+    logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
+    logAnalyticsWorkspaceLocation: logAnalyticsWorkspace.outputs.location
+    clusterResourceId: aksCluster.outputs.id
+    clusterLocation: aksCluster.outputs.location
     tags: defaultTags
   }
 }
@@ -184,3 +197,6 @@ module deploymentScript './modules/deployment-script.bicep' = if (installKuberne
     aksCluster
   ]
 }
+
+output aksControlPlaneFQDN string = aksCluster.outputs.controlPlaneFQDN
+output grafanaDashboardFQDN string = grafanaEnabled ? grafanaDashboard.outputs.dashboardFQDN : ''

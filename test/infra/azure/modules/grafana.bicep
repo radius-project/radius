@@ -131,3 +131,5 @@ module enableMonitorAddon './grafana-onboard-metrics.bicep' = {
     grafanaIdenityToAzureMonitor
   ]
 }
+
+output dashboardFQDN string = grafana.properties.endpoint

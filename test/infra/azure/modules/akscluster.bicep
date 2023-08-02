@@ -106,8 +106,8 @@ param systemAgentPoolOsDiskSizeGB int = 0
 ])
 param systemAgentPoolOsDiskType string = 'Managed'
 
-@description('Specifies the number of agents (VMs) to host docker containers in the system node pool. Allowed values must be in the range of 1 to 100 (inclusive). The default value is 1.')
-param systemAgentPoolAgentCount int = 3
+@description('Specifies the number of agents (VMs) to host docker containers in the system node pool. Allowed values must be in the range of 1 to 100 (inclusive). The default value is 2.')
+param systemAgentPoolAgentCount int = 2
 
 @description('Specifies the OS type for the vms in the system node pool. Choose from Linux and Windows. Default to Linux.')
 @allowed([
@@ -186,7 +186,7 @@ param userAgentPoolOsDiskSizeGB int = 0
 param userAgentPoolOsDiskType string = 'Managed'
 
 @description('Specifies the number of agents (VMs) to host docker containers in the user node pool. Allowed values must be in the range of 1 to 100 (inclusive). The default value is 1.')
-param userAgentPoolAgentCount int = 3
+param userAgentPoolAgentCount int = 2
 
 @description('Specifies the OS type for the vms in the user node pool. Choose from Linux and Windows. Default to Linux.')
 @allowed([
@@ -422,6 +422,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
         enabled: true
         config: {
           logAnalyticsWorkspaceResourceID: logAnalyticsWorkspaceId
+          useAADAuth: 'true'
         }
       }
       azurepolicy: {
