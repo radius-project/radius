@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -151,7 +152,7 @@ func Test_Run(t *testing.T) {
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Get(gomock.Any(), "azure").
-				Return(cli_credential.ProviderCredentialConfiguration{}, radcli.Create404Error()).
+				Return(cli_credential.ProviderCredentialConfiguration{}, nil).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -165,8 +166,8 @@ func Test_Run(t *testing.T) {
 			}
 
 			err := runner.Run(context.Background())
-			require.Error(t, err)
-			require.Equal(t, "The credentials for cloud provider \"azure\" could not be found.", err.Error())
+			expected := clierrors.Message("The credentials for cloud provider %q could not be found.", runner.Kind)
+			require.Equal(t, expected, err)
 		})
 	})
 	t.Run("Show aws provider", func(t *testing.T) {
@@ -214,11 +215,16 @@ func Test_Run(t *testing.T) {
 		})
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-
+			provider := cli_credential.ProviderCredentialConfiguration{
+				CloudProviderStatus: cli_credential.CloudProviderStatus{
+					Name:    "aws",
+					Enabled: false,
+				},
+			}
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
 				Get(gomock.Any(), "aws").
-				Return(cli_credential.ProviderCredentialConfiguration{}, radcli.Create404Error()).
+				Return(provider, nil).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -232,8 +238,8 @@ func Test_Run(t *testing.T) {
 			}
 
 			err := runner.Run(context.Background())
-			require.Error(t, err)
-			require.Equal(t, "The credentials for cloud provider \"aws\" could not be found.", err.Error())
+			expected := clierrors.Message("The credentials for cloud provider %q could not be found.", runner.Kind)
+			require.Equal(t, expected, err)
 		})
 	})
 
