@@ -10,8 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	recipes "github.com/project-radius/radius/pkg/recipes"
-	kubernetes "k8s.io/client-go/kubernetes"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MockTerraformExecutor is a mock of TerraformExecutor interface.
@@ -38,16 +36,16 @@ func (m *MockTerraformExecutor) EXPECT() *MockTerraformExecutorMockRecorder {
 }
 
 // Deploy mocks base method.
-func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options, arg2 client.Client, arg3 kubernetes.Interface) (*recipes.RecipeOutput, error) {
+func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "Deploy", arg0, arg1)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Deploy indicates an expected call of Deploy.
-func (mr *MockTerraformExecutorMockRecorder) Deploy(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockTerraformExecutorMockRecorder) Deploy(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockTerraformExecutor)(nil).Deploy), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockTerraformExecutor)(nil).Deploy), arg0, arg1)
 }

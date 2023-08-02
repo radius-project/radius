@@ -36,12 +36,14 @@ import (
 )
 
 // NewExecutor creates a new Executor to execute a Terraform recipe.
-func NewExecutor(ucpConn *sdk.Connection) *executor {
+func NewExecutor(ucpConn *sdk.Connection, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) *executor {
 	return &executor{ucpConn: ucpConn}
 }
 
 const (
 	executionSubDir = "deploy"
+	// Default prefix string added to secret suffix by terraform while creating kubernetes secret.
+	terraformSecretPrefix = "tfstate-default-"
 )
 
 var _ TerraformExecutor = (*executor)(nil)
@@ -49,9 +51,13 @@ var _ TerraformExecutor = (*executor)(nil)
 type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
 	ucpConn *sdk.Connection
+	// k8sClient is the Kubernetes controller runtime client.
+	k8sClient controller_runtime.Client
+	// k8sClientSet is the Kubernetes client.
+	k8sClientSet kubernetes.Interface
 }
 
-func (e *executor) Deploy(ctx context.Context, options Options, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) (*recipes.RecipeOutput, error) {
+func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Install Terraform
@@ -84,13 +90,12 @@ func (e *executor) Deploy(ctx context.Context, options Options, k8sClient contro
 	if err != nil {
 		return nil, err
 	}
-	err = verifyKubernetesSecret(ctx, options, k8sClientSet)
+	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 	return nil, nil
 }
@@ -99,7 +104,7 @@ func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes
 	if err != nil {
 		return err
 	}
-	_, err = k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, "tfstate-default-"+secretSuffix, metav1.GetOptions{})
+	_, err = k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
