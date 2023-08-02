@@ -81,7 +81,7 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		Out:        options.Out,
 		ErrOut:     options.Out,
 
-		// Limit the concurrent log request to 10.
+		// Limit the number of concurrent log fetch function unlike Kubernetes client rate limitter.
 		MaxLogRequests: 10,
 	}
 
