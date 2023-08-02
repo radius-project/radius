@@ -28,6 +28,11 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
         "resourceProvisioning":"recipe",
         "queue": "testQueue",
+        "host": "test-host",
+        "port": 5672,
+        "vHost": "test-vhost",
+        "username": "test-user",
+        "tls":false,
         "recipe": {
             "name": "rabbitmq",
             "parameters":{
