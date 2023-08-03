@@ -26,6 +26,9 @@ const (
 	// Used for internal/unclassified failures.
 	CodeInternal = "Internal"
 
+	// Used when a dependency to carry out current operation is missing.
+	CodeDependencyMissing = "DependencyMissing"
+
 	// Used for CodeNotFound error.
 	CodeNotFound = "NotFound"
 

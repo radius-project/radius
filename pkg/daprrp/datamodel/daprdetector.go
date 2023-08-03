@@ -21,7 +21,6 @@ import (
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -40,7 +39,7 @@ const (
 func IsDaprInstalled(ctx context.Context, kubeClient client.Client) (bool, error) {
 	crd := &apiextv1.CustomResourceDefinition{}
 	err := kubeClient.Get(ctx, client.ObjectKey{Name: daprComponentCRD}, crd)
-	if apierrors.IsNotFound(err) || runtime.IsNotRegisteredError(err) {
+	if apierrors.IsNotFound(err) {
 		return false, nil
 	} else if err != nil {
 		return false, err
