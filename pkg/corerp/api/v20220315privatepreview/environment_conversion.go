@@ -35,7 +35,7 @@ const (
 
 // # Function Explanation
 //
-//  ConvertTo converts an EnvironmentResource instance to datamodel.Environment.
+// ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
