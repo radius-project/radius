@@ -120,6 +120,21 @@ jobs:
           test_group_name: 'Unit Tests'
           artifact_name: 'unit_test_results'
           result_directory: 'dist/unit_test/'
+      - name: Copy cli binaries to release (unix-like)
+        if: matrix.target_os != 'windows'
+        run: |
+          mkdir ./release
+          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ./release/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}
+      - name: Copy cli binaries to release (windows)
+        if: matrix.target_os == 'windows'
+        run: |
+          mkdir ./release
+          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ./release/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
+      - name: Upload Release binaries 
+        uses: actions/upload-artifact@v3
+        with:
+          name: rad_cli_release
+          path: ./release
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:
@@ -363,7 +378,44 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz --force
-
+  publish_release:
+    name: Publish rad CLI binaries
+    needs: [ 'build' ]
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_release
+          path: release
+      - name: generate checksum files
+        run: cd release && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+      - name: Create GitHub RC Release
+        if: ${{ contains(env.REL_VERSION, 'rc') }}
+        run: |
+          #  gh release create v0.23.0 ./release/* --generate-notes --prerelease --draft --verify-tags --title "Radius Bicep v0.23.0"
+          gh release create ${{ env.REL_VERSION }} \
+            ./release/* \
+            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
+            --verify-tags \
+            --prerelease \
+            --draft
+      - name: Create GitHub Official Release
+        if: ${{ !contains(env.REL_VERSION, 'rc') }}
+        run: |
+          #  gh release create v0.23.0 ./release/* --generate-notes --prerelease --draft --verify-tags --title "Radius Bicep v0.23.0"
+          gh release create ${{ env.REL_VERSION }} \
+            ./release/* \
+            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
+            --verify-tags \
+            --draft
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
