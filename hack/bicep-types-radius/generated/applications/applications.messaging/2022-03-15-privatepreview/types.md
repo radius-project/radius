@@ -21,21 +21,32 @@
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **host**: string: The hostname of the RabbitMQ instance
+* **port**: int: The port of the RabbitMQ instance. Defaults to 5672
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **queue**: string: The name of the queue
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the rabbitMQ resource
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **tls**: bool: Specifies whether to use SSL when connecting to the RabbitMQ instance
+* **username**: string: The username to use when connecting to the RabbitMQ instance
+* **vHost**: string: The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
 
 ## Recipe
 ### Properties
 * **name**: string (Required): The name of the recipe within the environment to use
 * **parameters**: any: Any object
 
+## ResourceReference
+### Properties
+* **id**: string (Required): Resource id of an existing resource
+
 ## RabbitMQSecrets
 ### Properties
-* **connectionString**: string: The connection string used to connect to this RabbitMQ instance
+* **password**: string: The password used to connect to the RabbitMQ instance
+* **uri**: string: The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value
 
 ## ResourceStatus
 ### Properties
@@ -57,5 +68,6 @@
 
 ## RabbitMQListSecretsResult
 ### Properties
-* **connectionString**: string (ReadOnly): The connection string used to connect to this RabbitMQ instance
+* **password**: string (ReadOnly): The password used to connect to the RabbitMQ instance
+* **uri**: string (ReadOnly): The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value
 

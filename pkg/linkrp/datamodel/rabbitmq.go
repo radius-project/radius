@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	"fmt"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -69,14 +70,21 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 type RabbitMQMessageQueueProperties struct {
 	rpv1.BasicResourceProperties
 	Queue                string                      `json:"queue,omitempty"`
+	Host                 string                      `json:"host,omitempty"`
+	Port                 int32                       `json:"port,omitempty"`
+	VHost                string                      `json:"vHost,omitempty"`
+	Username             string                      `json:"username,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
 	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
 	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	TLS                  bool                        `json:"tls,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
 type RabbitMQSecrets struct {
-	ConnectionString string `json:"connectionString"`
+	URI      string `json:"uri,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 // # Function Explanation
@@ -102,9 +110,30 @@ func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 // VerifyInputs checks if the required fields are present in the RabbitMQMessageQueue instance and returns an error if not.
 func (rabbitmq *RabbitMQMessageQueue) VerifyInputs() error {
 	properties := rabbitmq.Properties
+	msgs := []string{}
 	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		if properties.Queue == "" {
 			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+		if properties.Host == "" {
+			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
+		}
+		if properties.Port == 0 {
+			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
+		}
+		if properties.Username == "" && properties.Secrets.Password != "" {
+			msgs = append(msgs, "username must be provided with password")
+		}
+	}
+	if len(msgs) == 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: msgs[0],
+		}
+	} else if len(msgs) > 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
 		}
 	}
 	return nil
