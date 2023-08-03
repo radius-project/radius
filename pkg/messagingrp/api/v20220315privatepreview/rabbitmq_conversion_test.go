@@ -30,6 +30,9 @@ import (
 
 type fakeResource struct{}
 
+// # Function Explanation
+//
+// ResourceTypeName returns type of the resource.
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
 }
@@ -68,8 +71,14 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					ResourceProvisioning: linkrp.ResourceProvisioningManual,
 					Queue:                "testQueue",
+					Host:                 "test-host",
+					VHost:                "test-vhost",
+					Port:                 5672,
+					Username:             "test-user",
+					TLS:                  true,
 					Secrets: datamodel.RabbitMQSecrets{
-						ConnectionString: "connection://string",
+						URI:      "connection://string",
+						Password: "password",
 					},
 				},
 			},
@@ -101,6 +110,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
 					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					TLS:                  false,
 					Recipe: linkrp.LinkRecipe{
 						Name: "rabbitmq",
 						Parameters: map[string]any{
@@ -149,6 +159,11 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Queue:                to.Ptr("testQueue"),
+					Host:                 to.Ptr("test-host"),
+					VHost:                to.Ptr("test-vhost"),
+					Port:                 to.Ptr(int32(5672)),
+					Username:             to.Ptr("test-user"),
+					TLS:                  to.Ptr(true),
 					Status: &ResourceStatus{
 						OutputResources: []map[string]any{
 							{
@@ -178,6 +193,11 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Queue:                to.Ptr("testQueue"),
+					Host:                 to.Ptr("test-host"),
+					VHost:                to.Ptr("test-vhost"),
+					Port:                 to.Ptr(int32(5672)),
+					Username:             to.Ptr("test-user"),
+					TLS:                  to.Ptr(false),
 					Recipe: &Recipe{
 						Name: to.Ptr("rabbitmq"),
 						Parameters: map[string]any{
@@ -288,7 +308,7 @@ func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	converted := dm.(*datamodel.RabbitMQSecrets)
-	require.Equal(t, "test-connection-string", converted.ConnectionString)
+	require.Equal(t, "test-connection-string", converted.URI)
 }
 
 func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
@@ -305,7 +325,7 @@ func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "test-connection-string", secrets.URI)
 }
 
 func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {

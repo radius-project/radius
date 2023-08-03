@@ -35,7 +35,9 @@ type ListSecretsRabbitMQQueue struct {
 	ctrl.Operation[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue]
 }
 
-// NewListSecretsRabbitMQQueue creates a new instance of ListSecretsRabbitMQQueue.
+// # Function Explanation
+//
+// NewListSecretsRabbitMQQueue creates a controller for listing RabbitMQQueue secrets.
 func NewListSecretsRabbitMQQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQQueue{
 		Operation: ctrl.NewOperation(opts,
@@ -46,6 +48,8 @@ func NewListSecretsRabbitMQQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
 // Run returns secrets values for the specified RabbitMQQueue resource
 func (ctrl *ListSecretsRabbitMQQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
@@ -63,8 +67,11 @@ func (ctrl *ListSecretsRabbitMQQueue) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	msgSecrets := msg_dm.RabbitMQSecrets{}
-	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
-		msgSecrets.ConnectionString = connectionString.Value
+	if uri, ok := resource.SecretValues[renderers.URI]; ok {
+		msgSecrets.URI = uri.Value
+	}
+	if password, ok := resource.SecretValues[renderers.PasswordStringHolder]; ok {
+		msgSecrets.Password = password.Value
 	}
 
 	versioned, _ := msg_conv.RabbitMQSecretsDataModelToVersioned(&msgSecrets, sCtx.APIVersion)

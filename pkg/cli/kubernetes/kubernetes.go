@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -52,11 +51,9 @@ func init() {
 	_ = contourv1.AddToScheme(Scheme)
 }
 
-// NewDynamicClient creates a dynamic resource Kubernetes client.
-//
 // # Function Explanation
 //
-// NewDynamicClient creates a new dynamic client using the given context and returns it, or returns an error if one occurs.
+// NewDynamicClient creates a new dynamic client by context name, otherwise returns an error.
 func NewDynamicClient(context string) (dynamic.Interface, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
@@ -71,11 +68,9 @@ func NewDynamicClient(context string) (dynamic.Interface, error) {
 	return client, err
 }
 
-// NewClientset creates the typed Kubernetes client and return rest client config.
-//
 // # Function Explanation
 //
-// NewClientset creates a new Kubernetes client and config based on the given context, and returns them along with any errors encountered.
+// NewClientset creates a new Kubernetes client and rest client config by context name.
 func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
@@ -90,28 +85,16 @@ func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	return client, merged, err
 }
 
-// NewRuntimeClient creates a new runtime client.
-//
-// # Function Explanation
-//
-// NewRuntimeClient attempts to create a kubernetes client using a given context and scheme, retrying up to 3 times if an
-// error occurs. If the client cannot be created after 3 retries, an error is returned.
+// NewRuntimeClient creates a kubernetes client using a given context and scheme.
 func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
 
-	var c client.Client
-	for i := 0; i < 2; i++ {
-		c, err = client.New(merged, client.Options{Scheme: scheme})
-		if err != nil {
-			output.LogInfo(fmt.Errorf("failed to get a kubernetes client: %w", err).Error())
-			time.Sleep(15 * time.Second)
-		}
-	}
+	c, err := client.New(merged, client.Options{Scheme: scheme})
 	if err != nil {
-		output.LogInfo("aborting runtime client creation after 3 retries")
+		output.LogInfo("failed to create runtime client due to error: %v", err)
 		return nil, err
 	}
 

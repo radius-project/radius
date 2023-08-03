@@ -85,8 +85,11 @@ output result object = {
   ]
   values: {
     queue: 'queue'
+    host: '${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'
+    port: 5672
+    username: username
   }
   secrets: {
-    connectionString: 'amqp://${username}:${password}@${'${svc.metadata.name}.${svc.metadata.namespace}.svc.cluster.local'}:5672'
+    password: password
   }
 }

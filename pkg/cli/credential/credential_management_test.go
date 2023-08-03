@@ -35,6 +35,7 @@ const (
 	awsProviderName   = "aws"
 	clientID          = "00000000-0000-0000-0000-000000000000"
 	tenantID          = "00000000-0000-0000-0000-000000000000"
+	credentialName    = "default"
 )
 
 var (
@@ -309,12 +310,63 @@ func Test_Credential_List(t *testing.T) {
 	require.Equal(t, len(resp), 2)
 }
 
+func Test_Credential_Azure_Show(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
+
+	expectedAzProvider := ProviderCredentialConfiguration{
+		CloudProviderStatus: CloudProviderStatus{
+			Name:    azureProviderName,
+			Enabled: true,
+		},
+	}
+
+	azMockCredentialClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(expectedAzProvider, nil).Times(1)
+	cliCredentialClient := UCPCredentialManagementClient{
+		AzClient: azMockCredentialClient,
+	}
+	azProvider, err := cliCredentialClient.Get(ctx, azureProviderName)
+	require.NoError(t, err)
+	require.Equal(t, azProvider, expectedAzProvider)
+}
+
+func Test_Credential_AWS_Show(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	AWSMockCredentialClient := NewMockAWSCredentialManagementClientInterface(mockCtrl)
+
+	expectedAWSProvider := ProviderCredentialConfiguration{
+		CloudProviderStatus: CloudProviderStatus{
+			Name:    awsProviderName,
+			Enabled: true,
+		},
+	}
+
+	AWSMockCredentialClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(expectedAWSProvider, nil).Times(1)
+	cliCredentialClient := UCPCredentialManagementClient{
+		AWSClient: AWSMockCredentialClient,
+	}
+	AWSProvider, err := cliCredentialClient.Get(ctx, awsProviderName)
+	require.NoError(t, err)
+	require.Equal(t, AWSProvider, expectedAWSProvider)
+}
+
 func Test_Credential_Delete(t *testing.T) {
 	tests := []struct {
 		name           string
 		credentialName string
 		planeType      string
 		planeName      string
+		isDeleted      bool
 		err            error
 		setupMocks     func(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string)
 	}{
@@ -324,6 +376,7 @@ func Test_Credential_Delete(t *testing.T) {
 			planeType:      AzurePlaneType,
 			planeName:      AzurePlaneName,
 			err:            nil,
+			isDeleted:      true,
 			setupMocks:     setupSuccessAzureDeleteMocks,
 		},
 		{
@@ -332,6 +385,7 @@ func Test_Credential_Delete(t *testing.T) {
 			planeType:      AWSPlaneType,
 			planeName:      AWSPlaneName,
 			err:            nil,
+			isDeleted:      true,
 			setupMocks:     setupSuccessAWSDeleteMocks,
 		},
 		{
@@ -356,6 +410,7 @@ func Test_Credential_Delete(t *testing.T) {
 			planeType:      AzurePlaneType,
 			planeName:      AzurePlaneName,
 			err:            nil,
+			isDeleted:      false,
 			setupMocks:     setupNotFoundAzureDeleteMocks,
 		},
 		{
@@ -364,6 +419,7 @@ func Test_Credential_Delete(t *testing.T) {
 			planeType:      AWSPlaneType,
 			planeName:      AWSPlaneName,
 			err:            nil,
+			isDeleted:      false,
 			setupMocks:     setupNotFoundAWSDeleteMocks,
 		},
 	}
@@ -386,7 +442,7 @@ func Test_Credential_Delete(t *testing.T) {
 			isDeleted, err := cliCredentialClient.Delete(ctx, tt.credentialName)
 			if tt.err == nil {
 				require.NoError(t, err)
-				require.Equal(t, isDeleted, true)
+				require.Equal(t, isDeleted, tt.isDeleted)
 			} else {
 				require.Equal(t, err, tt.err)
 			}
@@ -472,13 +528,13 @@ func setupSuccessAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInt
 func setupNotFoundAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAzure.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(true, nil).Times(1)
+		Return(false, nil).Times(1)
 }
 
 func setupNotFoundAWSDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	mockAWS.EXPECT().
 		Delete(gomock.Any(), gomock.Any()).
-		Return(true, nil).Times(1)
+		Return(false, nil).Times(1)
 }
 
 func setupErrorAzureDeleteMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {

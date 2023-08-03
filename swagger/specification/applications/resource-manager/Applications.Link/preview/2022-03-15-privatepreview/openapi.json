@@ -2000,9 +2000,13 @@
     "RabbitMQListSecretsResult": {
       "type": "object",
       "properties": {
-        "connectionString": {
+        "password": {
           "type": "string",
-          "description": "The connection string used to connect to this RabbitMQ instance"
+          "description": "The password used to connect to the RabbitMQ instance"
+        },
+        "uri": {
+          "type": "string",
+          "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
       },
       "description": "The secret values for the given RabbitMQMessageQueue resource"
@@ -2023,6 +2027,31 @@
           "type": "string",
           "description": "The name of the queue"
         },
+        "host": {
+          "type": "string",
+          "description": "The hostname of the RabbitMQ instance"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port of the RabbitMQ instance. Defaults to 5672"
+        },
+        "vHost": {
+          "type": "string",
+          "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username to use when connecting to the RabbitMQ instance"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          },
+          "x-cadl-name": "ResourceReference[]",
+          "description": "List of the resource IDs that support the rabbitMQ resource"
+        },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -2030,6 +2059,10 @@
         "recipe": {
           "$ref": "#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
         }
       },
       "description": "RabbitMQMessageQueue link properties",
@@ -2085,9 +2118,13 @@
     "RabbitMQSecrets": {
       "type": "object",
       "properties": {
-        "connectionString": {
+        "password": {
           "type": "string",
-          "description": "The connection string used to connect to this RabbitMQ instance"
+          "description": "The password used to connect to the RabbitMQ instance"
+        },
+        "uri": {
+          "type": "string",
+          "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
       },
       "description": "The secret values for the given RabbitMQMessageQueue resource"

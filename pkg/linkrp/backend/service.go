@@ -97,6 +97,10 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
+	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
+	discoveryClient.UseLegacyDiscovery = true
+
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
 
