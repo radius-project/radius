@@ -1529,16 +1529,21 @@ func Test_ParseURL(t *testing.T) {
 	const valid_url = "http://examplehost:80"
 	const invalid_url = "http://abc:def"
 
-	scheme, hostname, port, err := parseURL(valid_url)
+	t.Run("valid URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(valid_url)
+		require.Equal(t, scheme, "http")
+		require.Equal(t, hostname, "examplehost")
+		require.Equal(t, port, "80")
+		require.Equal(t, err, nil)
+	})
 
-	require.Equal(t, scheme, "http")
-	require.Equal(t, hostname, "examplehost")
-	require.Equal(t, port, "80")
-	require.Equal(t, err, nil)
-
-	_, _, _, err = parseURL(invalid_url)
-
-	require.NotEqual(t, err, nil)
+	t.Run("invalid URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(invalid_url)
+		require.Equal(t, scheme, "")
+		require.Equal(t, hostname, "")
+		require.Equal(t, port, "")
+		require.NotEqual(t, err, nil)
+	})
 }
 
 func Test_DNS_Service_Generation(t *testing.T) {
@@ -1561,7 +1566,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		resource := makeResource(t, properties)
 		ctx := testcontext.New(t)
 		renderer := Renderer{}
-		output, err := renderer.Render(ctx, resource, getRenderOptions(2))
+		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
 
 		require.NoError(t, err)
 		require.Len(t, output.Resources, 4)
@@ -1591,36 +1596,35 @@ func Test_DNS_Service_Generation(t *testing.T) {
 	})
 }
 
-func getRenderOptions(opt int) renderers.RenderOptions {
-	/*
-		opt: 1 - Env KubeMetadata
-		opt: 2 - Env and App KubeMetadata
-	*/
-
+func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
 	dependencies := map[string]renderers.RendererDependency{}
 	option := renderers.RenderOptions{Dependencies: dependencies}
-	if !(opt == 1 || opt == 2) {
-		return option
-	}
 
-	option.Environment = renderers.EnvironmentOptions{
+	option.Application = renderers.ApplicationOptions{
 		KubernetesMetadata: &datamodel.KubeMetadataExtension{
-			Annotations: getSetUpMaps(true).envKubeMetadataExt.Annotations,
-			Labels:      getSetUpMaps(true).envKubeMetadataExt.Labels,
-		}}
-
-	if opt == 2 {
-		option.Application = renderers.ApplicationOptions{
-			KubernetesMetadata: &datamodel.KubeMetadataExtension{
-				Annotations: getSetUpMaps(false).appKubeMetadataExt.Annotations,
-				Labels:      getSetUpMaps(false).appKubeMetadataExt.Labels,
-			}}
+			Annotations: getAppAndEnvSetup().appKubeMetadataExt.Annotations,
+			Labels:      getAppAndEnvSetup().appKubeMetadataExt.Labels,
+		},
 	}
 
 	return option
 }
 
-func getSetUpMaps(envOnly bool) *setupMaps {
+func renderOptionsEnvKubeMetadata() renderers.RenderOptions {
+	dependencies := map[string]renderers.RendererDependency{}
+	option := renderers.RenderOptions{Dependencies: dependencies}
+	
+	option.Environment = renderers.EnvironmentOptions{
+		KubernetesMetadata: &datamodel.KubeMetadataExtension{
+			Annotations: getAppAndEnvSetup().envKubeMetadataExt.Annotations,
+			Labels:      getAppAndEnvSetup().envKubeMetadataExt.Labels,
+		},
+	}
+
+	return option
+}
+
+func getAppAndEnvSetup() *setupMaps {
 	setupMap := setupMaps{}
 
 	envKubeMetadataExt := &datamodel.KubeMetadataExtension{
@@ -1649,10 +1653,7 @@ func getSetUpMaps(envOnly bool) *setupMaps {
 	}
 
 	setupMap.envKubeMetadataExt = envKubeMetadataExt
-
-	if !envOnly {
-		setupMap.appKubeMetadataExt = appKubeMetadataExt
-	}
+	setupMap.appKubeMetadataExt = appKubeMetadataExt
 
 	return &setupMap
 }
