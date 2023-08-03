@@ -139,7 +139,7 @@ func NewKubernetesOutputResource(resourceType string, localID string, obj runtim
 // # Function Explanation
 //
 // GetGCOutputResources [GC stands for Garbage Collection] compares two slices of OutputResource and
-// returns a slice of OutputResource that contains the elements that are in the first slice but not in the second.
+// returns a slice of OutputResource that contains the elements that are in the "before" slice but not in the "after".
 func GetGCOutputResources(after []OutputResource, before []OutputResource) []OutputResource {
 	afterMap := map[string][]OutputResource{}
 

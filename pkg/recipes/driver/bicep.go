@@ -66,8 +66,9 @@ type bicepDriver struct {
 
 // # Function Explanation
 //
-// Execute creates a deployment ID, a recipe context parameter, a recipe parameter, a provider config, and deploys a bicep template
-// for the recipe, then polls until the deployment is done and prepares the recipe response.
+// Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
+// a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
+// is done and prepares the recipe response.
 func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
