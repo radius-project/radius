@@ -18,6 +18,7 @@ package rabbitmqqueues
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -26,19 +27,32 @@ import (
 
 const (
 	Queue = "queue"
+	// RabbitMQSSLPort is the default port for RabbitMQ SSL connections.
+	RabbitMQSSLPort = 5671
 )
 
 // Processor is a processor for RabbitMQQueue resource.
 type Processor struct {
 }
 
-// Process implements the processors.Processor interface for RabbitMQQueue resources.
+// # Function Explanation
+//
+// Process implements the processors.Processor interface for RabbitMQQueue resources. It validates the required fields
+// and computed secret fields of the RabbitMQQueue resource and returns an error if validation fails.
 func (p *Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
+	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
-
-	validator.AddComputedSecretField(renderers.ConnectionStringValue, &resource.Properties.Secrets.ConnectionString, func() (string, *processors.ValidationError) {
-		return p.computeConnectionString(resource), nil
+	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
+	validator.AddOptionalStringField(renderers.VHost, &resource.Properties.VHost)
+	validator.AddRequiredInt32Field(renderers.Port, &resource.Properties.Port)
+	validator.AddOptionalStringField(renderers.UsernameStringValue, &resource.Properties.Username)
+	validator.AddOptionalSecretField(renderers.PasswordStringHolder, &resource.Properties.Secrets.Password)
+	validator.AddComputedBoolField(renderers.TLS, &resource.Properties.TLS, func() (bool, *processors.ValidationError) {
+		return p.computeSSL(resource), nil
+	})
+	validator.AddComputedSecretField(renderers.URI, &resource.Properties.Secrets.URI, func() (string, *processors.ValidationError) {
+		return p.computeURI(resource), nil
 	})
 
 	err := validator.SetAndValidate(options.RecipeOutput)
@@ -49,6 +63,18 @@ func (p *Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue,
 	return nil
 }
 
-func (p Processor) computeConnectionString(resource *msg_dm.RabbitMQQueue) string {
-	return resource.Properties.Secrets.ConnectionString
+func (p *Processor) computeURI(resource *msg_dm.RabbitMQQueue) string {
+	rabbitMQProtocol := "amqp"
+	if resource.Properties.TLS {
+		rabbitMQProtocol = "amqps"
+	}
+	usernamePassword := ""
+	if resource.Properties.Username != "" || resource.Properties.Secrets.Password != "" {
+		usernamePassword = fmt.Sprintf("%s:%s@", resource.Properties.Username, resource.Properties.Secrets.Password)
+	}
+	return fmt.Sprintf("%s://%s%s:%v/%s", rabbitMQProtocol, usernamePassword, resource.Properties.Host, resource.Properties.Port, resource.Properties.VHost)
+}
+
+func (p *Processor) computeSSL(resource *msg_dm.RabbitMQQueue) bool {
+	return resource.Properties.Port == RabbitMQSSLPort
 }

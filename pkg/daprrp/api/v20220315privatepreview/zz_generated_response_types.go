@@ -17,8 +17,7 @@ type DaprPubSubBrokerClientCreateOrUpdateResponse struct {
 
 // DaprPubSubBrokerClientDeleteResponse contains the response from method DaprPubSubBrokerClient.Delete.
 type DaprPubSubBrokerClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // DaprPubSubBrokerClientGetResponse contains the response from method DaprPubSubBrokerClient.Get.

@@ -102,7 +102,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		return nil, err
 	}
 
-	return recipeOutputs, errors.New("terraform support is not implemented yet")
+	return recipeOutputs, nil
 }
 
 // # Function Explanation

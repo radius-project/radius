@@ -47,7 +47,6 @@ func (src *ResourceGroupResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned ResourceGroup resource.
 func (dst *ResourceGroupResource) ConvertFrom(src v1.DataModelInterface) error {
-	// TODO: Improve the validation.
 	rg, ok := src.(*datamodel.ResourceGroup)
 	if !ok {
 		return v1.ErrInvalidModelConversion

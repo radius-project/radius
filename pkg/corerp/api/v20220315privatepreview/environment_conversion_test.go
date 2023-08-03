@@ -18,6 +18,7 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -128,6 +129,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								TemplateKind:    recipes.TemplateKindTerraform,
 								TemplatePath:    "Azure/cosmosdb/azurerm",
 								TemplateVersion: "1.1.0",
+							},
+							"terraform-without-version": datamodel.EnvironmentRecipeProperties{
+								TemplateKind: recipes.TemplateKindTerraform,
+								TemplatePath: "http://example.com/myrecipe.zip",
 							},
 						},
 						linkrp.RedisCachesResourceType: {
@@ -247,19 +252,19 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
 		},
 		{
 			filename: "environmentresource-missing-templatekind.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\""},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
 		},
 		{
 			filename: "environmentresource-invalid-property-templateversion.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath."},
 		},
 		{
-			filename: "environmentresource-missing-templateversion.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is a required property for templateKind: 'terraform'"},
+			filename: "environmentresource-terraformrecipe-localpath.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
 		},
 	}
 

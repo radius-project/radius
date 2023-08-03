@@ -18,7 +18,6 @@ package converter
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -36,25 +35,19 @@ func TestDaprStateStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/statestoresqlserverresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/statestore_recipe_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprStateStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestoreazuretablestorageresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/statestore_values_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.DaprStateStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestogenericreresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprStateStoreResource{},
-			nil,
-		},
-		{
-			"",
+			"../../api/v20220315privatepreview/testdata/statestore_values_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -63,7 +56,8 @@ func TestDaprStateStoreDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
+			require.NoError(t, err)
 			dm := &datamodel.DaprStateStore{}
 			_ = json.Unmarshal(c, dm)
 			am, err := StateStoreDataModelToVersioned(dm, tc.apiVersion)
@@ -84,27 +78,27 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/statestoresqlserverresource.json",
+			"../../api/v20220315privatepreview/testdata/statestore_invalidrecipe_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "error(s) found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/statestore_invalidvalues_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/statestore_recipe_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestoreazuretablestorageresource.json",
+			"../../api/v20220315privatepreview/testdata/statestore_values_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestogenericreresource.json",
-			"2022-03-15-privatepreview",
-			nil,
-		},
-		{
-			"../../api/v20220315privatepreview/testdata/statestoreresource-invalid.json",
-			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field DaprStateStoreProperties.properties.resource of type string"),
-		},
-		{
-			"",
+			"../../api/v20220315privatepreview/testdata/statestore_values_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -112,10 +106,11 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.versionedModelFile)
+			c, err := v20220315privatepreview.LoadTestData(tc.versionedModelFile)
+			require.NoError(t, err)
 			dm, err := StateStoreDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
-				require.ErrorAs(t, tc.err, &err)
+				require.Equal(t, tc.err, err)
 			} else {
 				require.NoError(t, err)
 				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)

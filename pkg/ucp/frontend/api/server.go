@@ -50,7 +50,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -160,7 +159,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
 		"ucp",
-		otelhttp.WithMeterProvider(global.MeterProvider()),
+		otelhttp.WithMeterProvider(otel.GetMeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	// TODO: This is the workaround to fix the high cardinality of otelhttp.
@@ -172,7 +171,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
-		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
+		// TODO: https://github.com/project-radius/radius/issues/5921
 		Handler: app,
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx

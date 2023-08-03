@@ -24,13 +24,15 @@ import (
 	"syscall"
 
 	"github.com/go-logr/logr"
+	"github.com/spf13/cobra"
+	etcdclient "go.etcd.io/etcd/client/v3"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/server"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"github.com/spf13/cobra"
-	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 var rootCmd = &cobra.Command{
@@ -48,6 +50,9 @@ var rootCmd = &cobra.Command{
 			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 		}
 		defer flush()
+
+		// Must set the logger before using controller-runtime.
+		runtimelog.SetLogger(logger)
 
 		if options.StorageProviderOptions.Provider == dataprovider.TypeETCD &&
 			options.StorageProviderOptions.ETCD.InMemory {

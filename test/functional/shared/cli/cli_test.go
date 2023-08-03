@@ -561,26 +561,49 @@ func Test_CLI_Delete(t *testing.T) {
 	})
 }
 
+func createParametersFile(t *testing.T) (string, func()) {
+	paramFile, err := os.CreateTemp("./testdata", "tmp-*-parameters.json")
+	require.NoError(t, err)
+
+	registryVal, _ := functional.SetDefault()
+	paramFileBody := `
+{
+	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"registry": {
+			"value": "%s"
+		}
+	}
+}`
+	paramJSONBody := fmt.Sprintf(paramFileBody, registryVal)
+	t.Log(paramJSONBody)
+
+	err = os.WriteFile(paramFile.Name(), []byte(paramJSONBody), os.FileMode(0755))
+	require.NoError(t, err)
+
+	return paramFile.Name(), func() {
+		os.Remove(paramFile.Name())
+	}
+}
+
 func Test_CLI_DeploymentParameters(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
 	template := "testdata/corerp-kubernetes-cli-parameters.bicep"
-	parameterFile := "testdata/corerp-kubernetes-cli-parameters.parameters.json"
 	name := "kubernetes-cli-params"
-	parameterFilePath := filepath.Join(cwd, parameterFile)
+
+	paramFile, cleanup := createParametersFile(t)
+	defer cleanup()
+	parameterFilePath := filepath.Join(cwd, paramFile)
 
 	// corerp-kubernetes-cli-parameters.parameters.json uses radiusdev.azurecr.io as a registry parameter.
 	// Use the specified tag only if the test uses radiusdev.azurecr.io registry. Otherwise, use latest tag.
-	magpieTag := "magpietag=latest"
-	image := functional.GetMagpieImage()
-	if !strings.HasPrefix(image, "magpieimage=radiusdev.azurecr.io") {
-		magpieTag = functional.GetMagpieTag()
-	}
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, magpieTag),
+			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, functional.GetMagpieTag()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

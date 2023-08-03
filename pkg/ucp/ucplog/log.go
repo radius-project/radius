@@ -129,8 +129,6 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	return logger, nil
 }
 
-// # Function Explanation
-//
 // NewLogger creates a new logger with zap logger implementation, with the given name and logging options,
 // and returns a function to flush the logs before the server exits.
 func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error) {
@@ -157,25 +155,19 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 	return logger, flushLogs, nil
 }
 
-// # Function Explanation
-//
 // NewTestLogger creates a new logger zaptest logger implementation.
 func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
-	log := zapr.NewLogger(zapLogger)
-	return log, nil
+	logger := zapr.NewLogger(zapLogger)
+	return logger, nil
 }
 
-// # Function Explanation
-//
 // WrapLogContext adds key-value pairs to the context's logger for logging purposes.
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
 	return logr.NewContext(ctx, logger.WithValues(keyValues...))
 }
 
-// # Function Explanation
-//
 // Unwrap attempts to extract the underlying zap.Logger from a logr.Logger, returning nil if it fails.
 func Unwrap(logger logr.Logger) *zap.Logger {
 	underlier, ok := logger.GetSink().(zapr.Underlier)

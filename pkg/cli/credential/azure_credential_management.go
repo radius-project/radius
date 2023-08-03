@@ -18,9 +18,10 @@ package credential
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clierrors"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
@@ -52,8 +53,7 @@ const (
 
 // CloudProviderStatus is the representation of a cloud provider configuration.
 type CloudProviderStatus struct {
-
-	// Name is the name/kind of the provider. For right now this only supports Azure.
+	// Name is the name/kind of the provider. For right now this only supports Azure and AWS.
 	Name string
 
 	// Enabled is the enabled/disabled status of the provider.
@@ -64,10 +64,21 @@ type ProviderCredentialConfiguration struct {
 	CloudProviderStatus
 
 	// AzureCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AzureCredentials *ucp.AzureCredentialProperties
+	AzureCredentials *AzureCredentialProperties
 
 	// AWSCredentials is used to set the credentials on Puts. It is NOT returned on Get/List.
-	AWSCredentials *ucp.AWSCredentialProperties
+	AWSCredentials *AWSCredentialProperties
+}
+
+type AzureCredentialProperties struct {
+	// clientId for ServicePrincipal
+	ClientID *string
+
+	// The credential kind
+	Kind *string
+
+	// tenantId for ServicePrincipal
+	TenantID *string
 }
 
 // ErrUnsupportedCloudProvider represents error when the cloud provider is not supported by radius.
@@ -119,9 +130,9 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		return ProviderCredentialConfiguration{}, err
 	}
 
-	azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureCredentialProperties)
+	azureServicePrincipal, ok := resp.AzureCredentialResource.Properties.(*ucp.AzureServicePrincipalProperties)
 	if !ok {
-		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", credentialName)
+		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AzureCredential)
 	}
 
 	providerCredentialConfiguration := ProviderCredentialConfiguration{
@@ -129,7 +140,11 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 			Name:    AzureCredential,
 			Enabled: true,
 		},
-		AzureCredentials: azureServicePrincipal,
+		AzureCredentials: &AzureCredentialProperties{
+			ClientID: azureServicePrincipal.ClientID,
+			Kind:     azureServicePrincipal.Kind,
+			TenantID: azureServicePrincipal.TenantID,
+		},
 	}
 
 	return providerCredentialConfiguration, nil
@@ -156,9 +171,9 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 	}
 
 	res := []CloudProviderStatus{}
-	for _, provider := range providerList {
+	if len(providerList) > 0 {
 		res = append(res, CloudProviderStatus{
-			Name:    *provider.Name,
+			Name:    AzureCredential,
 			Enabled: true,
 		})
 	}
@@ -173,15 +188,11 @@ func (cpm *AzureCredentialManagementClient) List(ctx context.Context) ([]CloudPr
 // "Delete"  checks if the credential for the provider plane is registered and returns true if not found, otherwise
 // returns false and an error if one occurs.
 func (cpm *AzureCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
-	_, err := cpm.AzureCredentialClient.Delete(ctx, AzurePlaneName, name, nil)
-
-	// We get 404 when credential for the provider plane is not registered.
-	if clients.Is404Error(err) {
-		// return true if not found.
-		return true, nil
-	} else if err != nil {
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+	_, err := cpm.AzureCredentialClient.Delete(ctxWithResp, AzurePlaneName, name, nil)
+	if err != nil {
 		return false, err
 	}
-
-	return true, nil
+	return respFromCtx.StatusCode != 204, nil
 }
