@@ -25,7 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts an ApplicationResource instance to DataModelInterface and returns it, without returning an error.
+// ConvertTo converts from the versioned Application resource to version-agnostic datamodel.
 func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.Application{
@@ -66,8 +66,7 @@ func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to an ApplicationResource instance, mapping fields from the
-// DataModelInterface to ApplicationResource and returning an error if the conversion fails.
+// ConvertFrom converts from version-agnostic datamodel to the versioned Application resource.
 func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 	app, ok := src.(*datamodel.Application)
 	if !ok {

@@ -33,8 +33,7 @@ func (src *EnvironmentRecipeProperties) ConvertTo() (v1.DataModelInterface, erro
 
 // # Function Explanation
 //
-// ConvertFrom converts an instance of datamodel.EnvironmentRecipeProperties to an instance of
-// EnvironmentRecipeProperties and returns an error if the conversion fails.
+// ConvertFrom converts from version-agnostic datamodel to the versioned Environment recipe properties resource.
 func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) error {
 	recipe, ok := src.(*datamodel.EnvironmentRecipeProperties)
 	if !ok {
@@ -48,7 +47,7 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 
 // # Function Explanation
 //
-// ConvertTo converts a Recipe struct to a datamodel.Recipe struct and returns it.
+// ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
 func (src *Recipe) ConvertTo() (v1.DataModelInterface, error) {
 	return &datamodel.Recipe{
 		Name:     to.String(src.Name),

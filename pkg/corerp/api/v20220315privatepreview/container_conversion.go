@@ -25,7 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a ContainerResource struct to a DataModelInterface struct, mapping fields from the former to the latter.
+// ConvertTo converts a ContainerResource versioned model to a data model.
 func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
@@ -149,7 +149,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface into a ContainerResource, mapping fields from the source to the destination.
+// ConvertFrom converts a ContainerResource data model into a versioned resource model.
 func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	c, ok := src.(*datamodel.ContainerResource)
 	if !ok {

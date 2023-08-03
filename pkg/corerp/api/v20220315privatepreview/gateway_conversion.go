@@ -25,7 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a GatewayResource object to a DataModelInterface object.
+// ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 	tls := &datamodel.GatewayPropertiesTLS{}
 	if src.Properties.TLS == nil {
@@ -94,7 +94,7 @@ func (src *GatewayResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to a GatewayResource, mapping fields from the source to the destination.
+// ConvertFrom converts from version-agnostic datamodel to the versioned Gateway resource.
 func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	g, ok := src.(*datamodel.Gateway)
 	if !ok {

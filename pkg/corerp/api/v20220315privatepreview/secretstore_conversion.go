@@ -25,7 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a SecretStoreResource to a datamodel.SecretStore and returns it along with an error if any.
+// ConvertTo converts from the versioned SecretStoreResource resource to version-agnostic datamodel.
 func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SecretStore{
 		BaseResource: v1.BaseResource{
@@ -55,7 +55,7 @@ func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a datamodel.SecretStore to a SecretStoreResource, mapping fields from the source to the destination.
+// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoreResource resource.
 func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	ss, ok := src.(*datamodel.SecretStore)
 	if !ok {
@@ -91,8 +91,7 @@ func (src *SecretStoresClientListSecretsResponse) ConvertTo() (v1.DataModelInter
 
 // # Function Explanation
 //
-// ConvertFrom converts a SecretStoreListSecrets data model into a SecretStoresClientListSecretsResponse and returns an
-// error if the conversion fails.
+// ConvertFrom converts from version-agnostic datamodel to the versioned SecretStoresClientListSecretsResponse resource.
 func (dst *SecretStoresClientListSecretsResponse) ConvertFrom(src v1.DataModelInterface) error {
 	ss, ok := src.(*datamodel.SecretStoreListSecrets)
 	if !ok {

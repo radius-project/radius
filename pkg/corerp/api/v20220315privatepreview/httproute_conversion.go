@@ -25,7 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts an HTTPRouteResource object to a datamodel.HTTPRoute object.
+// ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
 func (src *HTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.HTTPRoute{
@@ -57,7 +57,7 @@ func (src *HTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a DataModelInterface to an HTTPRouteResource, returning an error if the conversion fails.
+// ConvertFrom converts from version-agnostic datamodel to the versioned HTTPRoute resource.
 func (dst *HTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 	route, ok := src.(*datamodel.HTTPRoute)
 	if !ok {

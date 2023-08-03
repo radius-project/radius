@@ -25,7 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts a VolumeResource to a DataModelInterface and returns an error if one occurs.
+// ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
 func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.VolumeResource{
 		BaseResource: v1.BaseResource{
@@ -80,8 +80,7 @@ func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts a VolumeResource from a DataModelInterface to a VolumeResource and returns an error if the
-// conversion fails.
+// ConvertFrom converts from version-agnostic datamodel to the versioned VolumeResource resource.
 func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 	resource, ok := src.(*datamodel.VolumeResource)
 	if !ok {
