@@ -25,8 +25,7 @@ import (
 
 // # Function Explanation
 //
-// ExtenderDataModelToVersioned converts a datamodel.Extender to a versioned model interface based on the version string,
-// and returns an error if the conversion fails.
+// ExtenderDataModelToVersioned converts version agnostic Extender datamodel to versioned model.
 func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -45,8 +44,7 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1
 
 // # Function Explanation
 //
-// ExtenderDataModelFromVersioned unmarshals the given content into a version-specific ExtenderResource struct, then
-// converts it to a datamodel.Extender and returns it, or returns an error if the unmarshalling or conversion fails.
+// ExtenderDataModelFromVersioned converts versioned Extender model to datamodel.
 func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.Extender, error) {
 	switch version {
 	case v20220315privatepreview.Version:

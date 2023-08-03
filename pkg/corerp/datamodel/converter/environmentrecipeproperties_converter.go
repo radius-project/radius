@@ -26,8 +26,7 @@ import (
 
 // # Function Explanation
 //
-// EnvironmentRecipePropertiesDataModelToVersioned converts a datamodel.EnvironmentRecipeProperties to a versioned model
-// interface based on the version string, and returns an error if the conversion fails.
+// EnvironmentRecipePropertiesDataModelToVersioned converts version agnostic environment recipe properties datamodel to versioned model.
 func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.EnvironmentRecipeProperties, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -44,8 +43,7 @@ func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.Environmen
 
 // # Function Explanation
 //
-// RecipeDataModelFromVersioned unmarshals a JSON byte slice into a version-specific recipe struct, converts it to a
-// datamodel.Recipe struct and returns it, or returns an error if the version is unsupported or the unmarshalling fails.
+// RecipeDataModelFromVersioned converts versioned recipe model to datamodel.
 func RecipeDataModelFromVersioned(content []byte, version string) (*datamodel.Recipe, error) {
 	switch version {
 	case v20220315privatepreview.Version:

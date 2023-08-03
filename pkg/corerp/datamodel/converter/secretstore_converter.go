@@ -26,8 +26,7 @@ import (
 
 // # Function Explanation
 //
-// SecretStoreModelToVersioned takes a SecretStore datamodel and a version string and returns a
-// VersionedModelInterface or an error if the version is not supported.
+// SecretStoreModelToVersioned converts version agnostic SecretStore datamodel to versioned model.
 func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -42,8 +41,7 @@ func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (
 
 // # Function Explanation
 //
-// ListSecretsToVersioned converts a SecretStoreListSecrets model to a versioned model based on the version parameter,
-// and returns an error if the conversion fails.
+// ListSecretsToVersioned converts version agnostic SecretStoreListSecrets datamodel to versioned model.
 func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -58,8 +56,7 @@ func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version str
 
 // # Function Explanation
 //
-// SecretStoreModelFromVersioned takes in a versioned secret store model and a version string and returns
-// a SecretStore instance and an error if the version is not supported.
+// SecretStoreModelFromVersioned converts versioned SecretStore model to datamodel.
 func SecretStoreModelFromVersioned(content []byte, version string) (*datamodel.SecretStore, error) {
 	switch version {
 	case v20220315privatepreview.Version:

@@ -26,8 +26,7 @@ import (
 
 // # Function Explanation
 //
-// EnvironmentDataModelToVersioned converts a datamodel.Environment to a versioned model interface based on the given
-// version string, returning an error if the conversion fails.
+// EnvironmentDataModelToVersioned converts version agnostic environment datamodel to versioned model.
 func EnvironmentDataModelToVersioned(model *datamodel.Environment, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -44,8 +43,7 @@ func EnvironmentDataModelToVersioned(model *datamodel.Environment, version strin
 
 // # Function Explanation
 //
-// EnvironmentDataModelFromVersioned unmarshals the content into a version-specific environment resource, converts it to a
-// datamodel.Environment and returns it, or returns an error if the version is unsupported or the unmarshalling fails.
+// EnvironmentDataModelFromVersioned converts versioned environment model to datamodel.
 func EnvironmentDataModelFromVersioned(content []byte, version string) (*datamodel.Environment, error) {
 	switch version {
 	case v20220315privatepreview.Version:

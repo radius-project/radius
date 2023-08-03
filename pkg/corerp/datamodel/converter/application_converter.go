@@ -26,8 +26,7 @@ import (
 
 // # Function Explanation
 //
-// ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model
-// and returns an error if one occurs.
+// ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model.
 func ApplicationDataModelToVersioned(model *datamodel.Application, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -42,8 +41,7 @@ func ApplicationDataModelToVersioned(model *datamodel.Application, version strin
 
 // # Function Explanation
 //
-// ApplicationDataModelFromVersioned unmarshals the content into a version-specific application resource and converts it
-// to a datamodel.Application, returning an error if either of these steps fail.
+// ApplicationDataModelFromVersioned converts versioned application model to datamodel.
 func ApplicationDataModelFromVersioned(content []byte, version string) (*datamodel.Application, error) {
 	switch version {
 	case v20220315privatepreview.Version:

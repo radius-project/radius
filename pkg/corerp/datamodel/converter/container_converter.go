@@ -26,8 +26,7 @@ import (
 
 // # Function Explanation
 //
-// ContainerDataModelToVersioned converts a datamodel.ContainerResource to a versioned v1.VersionedModelInterface based on
-// the version string provided, and returns an error if the version is not supported.
+// ContainerDataModelToVersioned converts version agnostic Container datamodel to versioned model.
 func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -42,9 +41,7 @@ func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version s
 
 // # Function Explanation
 //
-// ContainerDataModelFromVersioned unmarshals a JSON byte slice into a version-specific container resource, then converts
-// it to a generic container resource and returns it, or returns an error if the version is unsupported or the
-// unmarshalling fails.
+// ContainerDataModelFromVersioned converts versioned Container model to datamodel.
 func ContainerDataModelFromVersioned(content []byte, version string) (*datamodel.ContainerResource, error) {
 	switch version {
 	case v20220315privatepreview.Version:

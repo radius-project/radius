@@ -26,8 +26,7 @@ import (
 
 // # Function Explanation
 //
-// VolumeResourceModelToVersioned converts a VolumeResource model to a versioned model based on the given version string
-// and returns an error if the conversion fails.
+// VolumeResourceModelToVersioned converts version agnostic Volume datamodel to versioned model.
 func VolumeResourceModelToVersioned(model *datamodel.VolumeResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -42,8 +41,7 @@ func VolumeResourceModelToVersioned(model *datamodel.VolumeResource, version str
 
 // # Function Explanation
 //
-// VolumeResourceModelFromVersioned unmarshals the given content into the appropriate versioned model and then converts
-// it to the datamodel.VolumeResource model, returning an error if either step fails.
+// VolumeResourceModelFromVersioned converts versioned Volume model to datamodel.
 func VolumeResourceModelFromVersioned(content []byte, version string) (*datamodel.VolumeResource, error) {
 	switch version {
 	case v20220315privatepreview.Version:
