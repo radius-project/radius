@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -88,12 +87,12 @@ func (p *awsProvider) parseScope(ctx context.Context, envConfig *recipes.Configu
 	scope := envConfig.Providers.AWS.Scope
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error()))
+		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error())
 	}
 
 	region := parsedScope.FindScope(resources.RegionsSegment)
 	if region == "" {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid AWS provider scope %q is configured on the Environment, region is required in the scope", scope))
+		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, region is required in the scope", scope)
 	}
 
 	return region, nil

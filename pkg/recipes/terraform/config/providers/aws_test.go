@@ -81,7 +81,7 @@ func TestAWSProvider_BuildConfig_InvalidScope_Error(t *testing.T) {
 	config, err := p.BuildConfig(testcontext.New(t), envConfig)
 	require.Nil(t, config)
 	require.Error(t, err)
-	require.ErrorContains(t, err, "code BadRequest: err Invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope")
+	require.ErrorContains(t, err, "invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope")
 }
 
 func TestAWSProvider_ParseScope(t *testing.T) {
@@ -133,7 +133,7 @@ func TestAWSProvider_ParseScope(t *testing.T) {
 				},
 			},
 			expectedRegion: "",
-			expectedErrMsg: "code BadRequest: err Invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope",
+			expectedErrMsg: "invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope",
 		},
 		{
 			desc: "invalid scope - error",
@@ -145,7 +145,7 @@ func TestAWSProvider_ParseScope(t *testing.T) {
 				},
 			},
 			expectedRegion: "",
-			expectedErrMsg: "code BadRequest: err Invalid AWS provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
+			expectedErrMsg: "invalid AWS provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
 		},
 	}
 

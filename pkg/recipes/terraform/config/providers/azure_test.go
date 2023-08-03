@@ -83,7 +83,7 @@ func TestAzureProvider_BuildConfig_InvalidScope_Error(t *testing.T) {
 	config, err := p.BuildConfig(testcontext.New(t), envConfig)
 	require.Nil(t, config)
 	require.Error(t, err)
-	require.ErrorContains(t, err, "code BadRequest: err Invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope")
+	require.ErrorContains(t, err, "invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope")
 }
 
 func TestAzureProvider_ParseScope(t *testing.T) {
@@ -135,7 +135,7 @@ func TestAzureProvider_ParseScope(t *testing.T) {
 				},
 			},
 			expectedSubscription: "",
-			expectedErrMsg:       "code BadRequest: err Invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope",
+			expectedErrMsg:       "invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope",
 		},
 		{
 			desc: "invalid scope - error",
@@ -147,7 +147,7 @@ func TestAzureProvider_ParseScope(t *testing.T) {
 				},
 			},
 			expectedSubscription: "",
-			expectedErrMsg:       "code BadRequest: err Invalid Azure provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
+			expectedErrMsg:       "invalid Azure provider scope \"invalid\" is configured on the Environment, error parsing: 'invalid' is not a valid resource id",
 		},
 	}
 

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -96,12 +95,12 @@ func (p *azureProvider) parseScope(ctx context.Context, envConfig *recipes.Confi
 	scope := envConfig.Providers.Azure.Scope
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid Azure provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error()))
+		return "", fmt.Errorf("invalid Azure provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error())
 	}
 
 	subscription := parsedScope.FindScope(resources.SubscriptionsSegment)
 	if subscription == "" {
-		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("Invalid Azure provider scope %q is configured on the Environment, subscription is required in the scope", scope))
+		return "", fmt.Errorf("invalid Azure provider scope %q is configured on the Environment, subscription is required in the scope", scope)
 	}
 
 	return subscription, nil
