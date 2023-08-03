@@ -179,37 +179,67 @@ func TestAzureProvider_getCredentialsProvider(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestFetchAzureCredentials_Success(t *testing.T) {
-	credentialsProvider := newMockAzureCredentialsProvider()
-	c, _ := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
-	require.NotNil(t, c)
-	require.Equal(t, testAzureCredentials, *c)
-}
+func TestAzureProvider_FetchCredentials(t *testing.T) {
+	tests := []struct {
+		desc                string
+		credentialsProvider *mockAzureCredentialsProvider
+		expectedCreds       *ucp_credentials.AzureCredential
+		expectedErr         bool
+	}{
+		{
+			desc:                "valid credentials",
+			credentialsProvider: newMockAzureCredentialsProvider(),
+			expectedCreds:       &testAzureCredentials,
+			expectedErr:         false,
+		},
+		{
+			desc: "credentials not found - no error",
+			credentialsProvider: &mockAzureCredentialsProvider{
+				testCredential: nil,
+			},
+			expectedCreds: nil,
+			expectedErr:   false,
+		},
+		{
+			desc: "empty values - no error",
+			credentialsProvider: &mockAzureCredentialsProvider{
+				&ucp_credentials.AzureCredential{
+					TenantID:     "",
+					ClientID:     "",
+					ClientSecret: "",
+				},
+			},
+			expectedCreds: nil,
+			expectedErr:   false,
+		},
+		{
+			desc: "fetch credential error",
+			credentialsProvider: &mockAzureCredentialsProvider{
+				&ucp_credentials.AzureCredential{
+					TenantID:     "",
+					ClientID:     testAzureCredentials.ClientID,
+					ClientSecret: testAzureCredentials.ClientSecret,
+				},
+			},
+			expectedCreds: nil,
+			expectedErr:   true,
+		},
+	}
 
-func TestFetchAzureCredentialsNotFound_Success(t *testing.T) {
-	credentialsProvider := newMockAzureCredentialsProvider()
-	credentialsProvider.testCredential = nil
-	c, err := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
-	require.NoError(t, err)
-	require.Nil(t, c)
-}
-
-func TestAzureFetchCredentialsEmptyValues_Success(t *testing.T) {
-	credentialsProvider := newMockAzureCredentialsProvider()
-	credentialsProvider.testCredential.TenantID = ""
-	credentialsProvider.testCredential.ClientID = ""
-	credentialsProvider.testCredential.ClientSecret = ""
-	c, err := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
-	require.NoError(t, err)
-	require.Nil(t, c)
-}
-
-func TestFetchAzureCredentialsError_Failure(t *testing.T) {
-	credentialsProvider := newMockAzureCredentialsProvider()
-	credentialsProvider.testCredential.TenantID = ""
-	c, err := fetchAzureCredentials(testcontext.New(t), credentialsProvider)
-	require.Error(t, err)
-	require.Nil(t, c)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			c, err := fetchAzureCredentials(testcontext.New(t), tt.credentialsProvider)
+			if tt.expectedErr {
+				require.Error(t, err)
+				require.Nil(t, c)
+			} else {
+				require.NoError(t, err)
+				if tt.expectedCreds != nil {
+					require.Equal(t, *tt.expectedCreds, *c)
+				}
+			}
+		})
+	}
 }
 
 func TestAzureProvider_generateProviderConfigMap(t *testing.T) {

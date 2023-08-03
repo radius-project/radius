@@ -177,36 +177,65 @@ func TestAwsProvider_getCredentialsProvider(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestFetchAWSCredentials_Success(t *testing.T) {
-	credentialsProvider := newMockAWSCredentialsProvider()
-	c, _ := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
-	require.NotNil(t, c)
-	require.Equal(t, testAWSCredentials, *c)
-}
+func TestAWSProvider_FetchCredentials(t *testing.T) {
+	tests := []struct {
+		desc                string
+		credentialsProvider *mockAWSCredentialsProvider
+		expectedCreds       *ucp_credentials.AWSCredential
+		expectedErr         bool
+	}{
+		{
+			desc:                "valid credentials",
+			credentialsProvider: newMockAWSCredentialsProvider(),
+			expectedCreds:       &testAWSCredentials,
+			expectedErr:         false,
+		},
+		{
+			desc: "credentials not found - no error",
+			credentialsProvider: &mockAWSCredentialsProvider{
+				testCredential: nil,
+			},
+			expectedCreds: nil,
+			expectedErr:   false,
+		},
+		{
+			desc: "empty values - no error",
+			credentialsProvider: &mockAWSCredentialsProvider{
+				&ucp_credentials.AWSCredential{
+					AccessKeyID:     "",
+					SecretAccessKey: "",
+				},
+			},
+			expectedCreds: nil,
+			expectedErr:   false,
+		},
+		{
+			desc: "fetch credential error",
+			credentialsProvider: &mockAWSCredentialsProvider{
+				&ucp_credentials.AWSCredential{
+					AccessKeyID:     "",
+					SecretAccessKey: testAWSCredentials.SecretAccessKey,
+				},
+			},
+			expectedCreds: nil,
+			expectedErr:   true,
+		},
+	}
 
-func TestFetchAWSCredentialsNotFound_Success(t *testing.T) {
-	credentialsProvider := newMockAWSCredentialsProvider()
-	credentialsProvider.testCredential = nil
-	c, err := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
-	require.NoError(t, err)
-	require.Nil(t, c)
-}
-
-func TestFetchAWSCredentialsEmptyAccessKeys_Success(t *testing.T) {
-	credentialsProvider := newMockAWSCredentialsProvider()
-	credentialsProvider.testCredential.AccessKeyID = ""
-	credentialsProvider.testCredential.SecretAccessKey = ""
-	c, err := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
-	require.NoError(t, err)
-	require.Nil(t, c)
-}
-
-func TestFetchAWSCredentialsError_Failure(t *testing.T) {
-	credentialsProvider := newMockAWSCredentialsProvider()
-	credentialsProvider.testCredential.AccessKeyID = ""
-	c, err := fetchAWSCredentials(testcontext.New(t), credentialsProvider)
-	require.Error(t, err)
-	require.Nil(t, c)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			c, err := fetchAWSCredentials(testcontext.New(t), tt.credentialsProvider)
+			if tt.expectedErr {
+				require.Error(t, err)
+				require.Nil(t, c)
+			} else {
+				require.NoError(t, err)
+				if tt.expectedCreds != nil {
+					require.Equal(t, *tt.expectedCreds, *c)
+				}
+			}
+		})
+	}
 }
 
 func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
