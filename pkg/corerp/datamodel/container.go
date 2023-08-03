@@ -36,7 +36,7 @@ type ContainerResource struct {
 
 // # Function Explanation
 //
-// ResourceTypeName returns the type of the ContainerResource instance.
+// ResourceTypeName returns the qualified name of the resource.
 func (c ContainerResource) ResourceTypeName() string {
 	return ContainerResourceType
 }

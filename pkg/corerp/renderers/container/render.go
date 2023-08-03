@@ -62,7 +62,7 @@ const (
 
 // # Function Explanation
 //
-// GetSupportedKinds returns a slice of supported volume kinds.
+// GetSupportedKinds returns a list of supported volume kinds.
 func GetSupportedKinds() []string {
 	keys := []string{}
 	keys = append(keys, datamodel.AzureKeyVaultVolume)

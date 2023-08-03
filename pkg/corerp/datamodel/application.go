@@ -35,7 +35,7 @@ type Application struct {
 
 // # Function Explanation
 //
-// Method ResourceTypeName returns the resource type name of the Application instance.
+// ResourceTypeName returns the resource type name of the Application instance.
 func (e *Application) ResourceTypeName() string {
 	return ApplicationResourceType
 }

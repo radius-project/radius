@@ -43,7 +43,7 @@ func NewSystemService(options hostoptions.HostOptions) *SystemService {
 
 // # Function Explanation
 //
-// Name returns a string with the name of the system service.
+// Name returns the name of the system service.
 func (s *SystemService) Name() string {
 	return "system service"
 }
