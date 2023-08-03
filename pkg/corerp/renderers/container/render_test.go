@@ -1536,7 +1536,7 @@ func Test_ParseURL(t *testing.T) {
 	require.Equal(t, port, "80")
 	require.Equal(t, err, nil)
 
-	scheme, hostname, port, err = parseURL(invalid_url)
+	_, _, _, err = parseURL(invalid_url)
 
 	require.NotEqual(t, err, nil)
 }

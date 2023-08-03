@@ -263,7 +263,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		outputResources = append(outputResources, serviceResource)
-		needsServiceGeneration = false
 	}
 
 	return renderers.RendererOutput{
