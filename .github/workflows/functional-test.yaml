@@ -45,7 +45,7 @@ env:
   # Dapr version
   DAPR_VER: '1.11.0'
   # Azure Keyvault CSI driver chart version
-  AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.1'
+  AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
   # Container registry for storing test images and recipes
