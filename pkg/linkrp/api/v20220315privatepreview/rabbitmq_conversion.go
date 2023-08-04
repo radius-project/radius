@@ -59,7 +59,13 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	}
+	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
+	converted.Properties.Host = to.String(properties.Host)
+	converted.Properties.Port = to.Int32(properties.Port)
+	converted.Properties.Username = to.String(properties.Username)
 	converted.Properties.Queue = to.String(properties.Queue)
+	converted.Properties.VHost = to.String(properties.VHost)
+	converted.Properties.TLS = to.Bool(properties.TLS)
 	err = converted.VerifyInputs()
 	if err != nil {
 		return nil, err
@@ -67,7 +73,8 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 
 	if src.Properties.Secrets != nil {
 		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			URI:      to.String(src.Properties.Secrets.URI),
+			Password: to.String(properties.Secrets.Password),
 		}
 	}
 	return converted, nil
@@ -98,6 +105,12 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		Application:          to.Ptr(rabbitmq.Properties.Application),
 		ResourceProvisioning: fromResourceProvisioningDataModel(rabbitmq.Properties.ResourceProvisioning),
 		Queue:                to.Ptr(rabbitmq.Properties.Queue),
+		Host:                 to.Ptr(rabbitmq.Properties.Host),
+		Port:                 to.Ptr(rabbitmq.Properties.Port),
+		VHost:                to.Ptr(rabbitmq.Properties.VHost),
+		Username:             to.Ptr(rabbitmq.Properties.Username),
+		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
+		TLS:                  to.Ptr(rabbitmq.Properties.TLS),
 	}
 	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
@@ -115,7 +128,8 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.Ptr(rabbitMQSecrets.ConnectionString)
+	dst.URI = to.Ptr(rabbitMQSecrets.URI)
+	dst.Password = to.Ptr(rabbitMQSecrets.Password)
 	return nil
 }
 
@@ -124,7 +138,8 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 // ConvertTo converts from the versioned RabbitMQSecrets instance to version-agnostic datamodel.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
-		ConnectionString: to.String(src.ConnectionString),
+		URI:      to.String(src.URI),
+		Password: to.String(src.Password),
 	}
 	return converted, nil
 }

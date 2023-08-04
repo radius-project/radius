@@ -49,7 +49,10 @@ type BasicResourceProperties struct {
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
-// EqualLinkedResource returns true if the resource belongs to the same environment and application.
+// # Function Explanation
+//
+// Method EqualLinkedResource compares two BasicResourceProperties objects and returns true if their Application and
+// Environment fields are equal (i.e. resource belongs to the same env and app).
 func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
@@ -63,7 +66,9 @@ type ResourceStatus struct {
 	OutputResources []OutputResource `json:"outputResources,omitempty"`
 }
 
-// DeepCopy copies each value of in ResourceStatus.
+// # Function Explanation
+//
+// DeepCopy copies the contents of the ResourceStatus struct from in to out.
 func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
 	in.Compute = out.Compute
 	in.OutputResources = out.OutputResources
@@ -116,7 +121,10 @@ type DeploymentDataModel interface {
 	OutputResources() []OutputResource
 }
 
-// OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
+// # Function Explanation
+//
+// BuildExternalOutputResources builds a slice of maps containing the LocalID, Provider and Identity of each
+// OutputResource.
 func BuildExternalOutputResources(outputResources []OutputResource) []map[string]any {
 	var externalOutputResources []map[string]any
 	for _, or := range outputResources {

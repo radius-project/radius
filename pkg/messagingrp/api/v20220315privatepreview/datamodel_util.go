@@ -150,3 +150,29 @@ func unmarshalTimeString(ts string) *time.Time {
 	_ = tt.UnmarshalText([]byte(ts))
 	return (*time.Time)(&tt)
 }
+
+func toResourcesDataModel(r []*ResourceReference) []*linkrp.ResourceReference {
+	if r == nil {
+		return nil
+	}
+	resources := make([]*linkrp.ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &linkrp.ResourceReference{
+			ID: to.String(resource.ID),
+		}
+	}
+	return resources
+}
+
+func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference {
+	if r == nil {
+		return nil
+	}
+	resources := make([]*ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &ResourceReference{
+			ID: to.Ptr(resource.ID),
+		}
+	}
+	return resources
+}
