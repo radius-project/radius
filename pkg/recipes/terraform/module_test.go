@@ -17,7 +17,6 @@ limitations under the License.
 package terraform
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -25,47 +24,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetRequiredProviders(t *testing.T) {
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	// Create a test module directory.
-	moduleDir := filepath.Join(testDir, moduleRootDir, "test-module")
-	err := os.MkdirAll(moduleDir, 0755)
-	require.NoError(t, err)
+func TestInspectTFModuleConfig(t *testing.T) {
+	inspectTests := []struct {
+		name       string
+		workingDir string
+		moduleName string
+		result     *ModuleInspectResult
+		err        string
+	}{
+		{
+			name:       "aws provider only",
+			workingDir: "testdata",
+			moduleName: "test-module-provideronly",
+			result: &ModuleInspectResult{
+				ContextExists: false,
+				Providers:     []string{"aws"},
+			},
+		}, {
+			name:       "aws provider with recipecontext",
+			workingDir: "testdata",
+			moduleName: "test-module-recipe-context",
+			result: &ModuleInspectResult{
+				ContextExists: true,
+				Providers:     []string{"aws"},
+			},
+		}, {
+			name:       "invalid module name",
+			workingDir: "testdata",
+			moduleName: "invalid-module",
+			err:        "error loading the module",
+		},
+	}
 
-	// Create a test provider file.
-	providerFile := filepath.Join(moduleDir, "provider.tf")
-	err = os.WriteFile(providerFile, []byte(`
-	    terraform {
-			required_providers {
-				aws = {
-					source = "hashicorp/aws"
-					version = ">=3.0"
-				}
+	for _, tc := range inspectTests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := inspectTFModuleConfig(tc.workingDir, tc.moduleName)
+			if tc.err != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.err)
+				return
 			}
-		}
-    `), 0644)
-	require.NoError(t, err)
-
-	// Load the module to get required providers
-	result, err := inspectTFModuleConfig(testDir, "test-module")
-	require.NoError(t, err)
-
-	// Assert that the loaded providers map contains the expected data.
-	expectedProviders := []string{"aws"}
-	require.Equal(t, expectedProviders, result.Providers)
-}
-
-func TestGetRequiredProviders_Error(t *testing.T) {
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-
-	// Load the module with an invalid module name - non existent module directory
-	_, err := inspectTFModuleConfig(testDir, "invalid-module")
-
-	// Assert that LoadModule returns an error.
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error loading the module")
+			require.NoError(t, err)
+			require.Equal(t, tc.result, result)
+		})
+	}
 }
 
 func TestDownloadModule_EmptyWorkingDirPath_Error(t *testing.T) {

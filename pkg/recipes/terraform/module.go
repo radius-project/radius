@@ -56,7 +56,7 @@ func inspectTFModuleConfig(workingDir, localModuleName string) (*ModuleInspectRe
 	}
 
 	// Ensure that the module has a recipe context.
-	if _, ok := mod.Variables[config.ModuleRecipeContextKey]; !ok {
+	if _, ok := mod.Variables[config.ModuleRecipeContextKey]; ok {
 		result.ContextExists = true
 	}
 
