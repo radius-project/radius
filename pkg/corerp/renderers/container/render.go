@@ -192,7 +192,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		// if the container has an exposed port, note that down.
 		// A single service will be generated for a container with one or more exposed ports.
 		if port.ContainerPort == 0 {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort."))
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort, but ContainerPort was: %d.", port.ContainerPort))
 		}
 
 		// if the container has an exposed port, but no 'provides' field, it requires DNS service generation.

@@ -58,16 +58,6 @@ const (
 	testResourceID   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
 
 	// User Inputs for testing labels and annotations
-	envAnnotationKey1 = "env.ann1"
-	envAnnotationKey2 = "env.ann2"
-	envAnnotationVal1 = "env.annval1"
-	envAnnotationVal2 = "env.annval2"
-
-	envLabelKey1 = "env.lbl1"
-	envLabelKey2 = "env.lbl2"
-	envLabelVal1 = "env.lblval1"
-	envLabelVal2 = "env.lblval2"
-
 	appAnnotationKey1 = "app.ann1"
 	appAnnotationKey2 = "app.ann2"
 	appAnnotationVal1 = "app.annval1"
@@ -1610,20 +1600,6 @@ func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
 	return option
 }
 
-func renderOptionsEnvKubeMetadata() renderers.RenderOptions {
-	dependencies := map[string]renderers.RendererDependency{}
-	option := renderers.RenderOptions{Dependencies: dependencies}
-	
-	option.Environment = renderers.EnvironmentOptions{
-		KubernetesMetadata: &datamodel.KubeMetadataExtension{
-			Annotations: getEnvSetup().envKubeMetadataExt.Annotations,
-			Labels:      getEnvSetup().envKubeMetadataExt.Labels,
-		},
-	}
-
-	return option
-}
-
 func getAppSetup() *setupMaps {
 	setupMap := setupMaps{}
 
@@ -1645,28 +1621,6 @@ func getAppSetup() *setupMaps {
 	return &setupMap
 }
 
-func getEnvSetup() *setupMaps {
-	setupMap := setupMaps{}
-
-	envKubeMetadataExt := &datamodel.KubeMetadataExtension{
-		Annotations: map[string]string{
-			envAnnotationKey1: envAnnotationVal1,
-			envAnnotationKey2: envAnnotationVal2,
-			overrideKey1:      envAnnotationVal1,
-		},
-		Labels: map[string]string{
-			envLabelKey1: envLabelVal1,
-			envLabelKey2: envLabelVal2,
-			overrideKey2: envLabelVal1,
-		},
-	}
-
-	setupMap.envKubeMetadataExt = envKubeMetadataExt
-
-	return &setupMap
-}
-
 type setupMaps struct {
-	envKubeMetadataExt *datamodel.KubeMetadataExtension
 	appKubeMetadataExt *datamodel.KubeMetadataExtension
 }
