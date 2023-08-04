@@ -34,6 +34,7 @@ const (
 type ModuleInspectResult struct {
 	// ContextExists is true if the module contains a recipe context.
 	ContextExists bool
+
 	// Providers is a list of names of required providers for the module.
 	Providers []string
 }
