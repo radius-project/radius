@@ -224,7 +224,7 @@ func Test_createDeploymentID(t *testing.T) {
 
 func Test_createProviderConfig_defaults(t *testing.T) {
 	expected := clients.NewDefaultProviderConfig("test-rg")
-	actual := recipecontext.NewProviderConfig("test-rg", corerp_datamodel.Providers{})
+	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{})
 	require.Equal(t, expected, actual)
 }
 
@@ -245,7 +245,7 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 		Type:  clients.ProviderTypeAWS,
 		Value: clients.Value{Scope: aws},
 	}
-	actual := recipecontext.NewProviderConfig("test-rg", providers)
+	actual := newProviderConfig("test-rg", providers)
 	require.Equal(t, expected, actual)
 }
 func Test_RecipeResponseSuccess(t *testing.T) {

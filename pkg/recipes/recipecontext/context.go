@@ -21,7 +21,6 @@ import (
 
 	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
-	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -101,28 +100,4 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Re
 	}
 
 	return &recipeContext, nil
-}
-
-func NewProviderConfig(resourceGroup string, envProviders coredm.Providers) clients.ProviderConfig {
-	config := clients.NewDefaultProviderConfig(resourceGroup)
-
-	if envProviders.Azure != (coredm.ProvidersAzure{}) {
-		config.Az = &clients.Az{
-			Type: clients.ProviderTypeAzure,
-			Value: clients.Value{
-				Scope: envProviders.Azure.Scope,
-			},
-		}
-	}
-
-	if envProviders.AWS != (coredm.ProvidersAWS{}) {
-		config.AWS = &clients.AWS{
-			Type: clients.ProviderTypeAWS,
-			Value: clients.Value{
-				Scope: envProviders.AWS.Scope,
-			},
-		}
-	}
-
-	return config
 }

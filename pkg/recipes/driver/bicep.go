@@ -39,6 +39,8 @@ import (
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+
+	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
@@ -96,7 +98,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := recipecontext.NewProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), configuration.Providers)
+	providerConfig := newProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), configuration.Providers)
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -191,6 +193,30 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	return parameters
+}
+
+func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clients.ProviderConfig {
+	config := clients.NewDefaultProviderConfig(resourceGroup)
+
+	if envProviders.Azure != (coredm.ProvidersAzure{}) {
+		config.Az = &clients.Az{
+			Type: clients.ProviderTypeAzure,
+			Value: clients.Value{
+				Scope: envProviders.Azure.Scope,
+			},
+		}
+	}
+
+	if envProviders.AWS != (coredm.ProvidersAWS{}) {
+		config.AWS = &clients.AWS{
+			Type: clients.ProviderTypeAWS,
+			Value: clients.Value{
+				Scope: envProviders.AWS.Scope,
+			},
+		}
+	}
+
+	return config
 }
 
 func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {
