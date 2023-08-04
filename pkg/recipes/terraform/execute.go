@@ -122,35 +122,44 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return ErrRecipeNameEmpty
 	}
 
+	tfConfig := config.New(localModuleName, workingDir, options.EnvRecipe, options.ResourceRecipe)
+
+	// Before downloading module, Teraform configuration needs to be saved.
+	if err := tfConfig.Save(ctx); err != nil {
+		return err
+	}
+
 	// Get the required providers from the module
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
 
-	// Get the inspection result for the downloaded module.
+	// Get the inspection result from downloaded module to extract context existency and providers.
 	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
 		return err
 	}
 
-	var recipectx *recipecontext.Context = nil
+	// Add the required providers to the terraform configuration.
+	if err := tfConfig.AddProviders(ctx, result.Providers, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+		options.EnvConfig); err != nil {
+		return err
+	}
+
 	// Populate recipe context into TF config only if the download module has a context variable.
 	if result.ContextExists {
 		// create the context object to be passed to the recipe deployment
-		recipectx, err = recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
 		if err != nil {
+			return err
+		}
+		if err = tfConfig.AddRecipeContext(ctx, recipectx); err != nil {
 			return err
 		}
 	}
 
-	configFilePath, err := config.GenerateTFConfigFile(ctx, workingDir, localModuleName, options.EnvRecipe, options.ResourceRecipe, recipectx)
-	if err != nil {
-		return err
-	}
-
-	// Add the required providers to the terraform configuration
-	if err := config.AddProviders(ctx, configFilePath, result.Providers, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
-		options.EnvConfig); err != nil {
+	// Ensure that we need to save the configuration after adding providers and context.
+	if err := tfConfig.Save(ctx); err != nil {
 		return err
 	}
 

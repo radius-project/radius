@@ -91,7 +91,7 @@ func TestGeneratedConfig(t *testing.T) {
 				},
 				ResourceRecipe: &recipes.ResourceMetadata{},
 			},
-			err: "error initialising Terraform with workdir /invalid-dir: stat /invalid-dir: no such file or directory",
+			err: "error creating file: open /invalid-dir/main.tf.json",
 		}, {
 			name: "invalid exec path",
 			opts: Options{

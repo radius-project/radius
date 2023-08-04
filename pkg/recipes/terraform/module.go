@@ -37,6 +37,8 @@ type ModuleInspectResult struct {
 
 	// Providers is a list of names of required providers for the module.
 	Providers []string
+
+	// We can add more inspection results here in the future.
 }
 
 // inspectTFModuleConfig inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
