@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"strconv"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -318,6 +319,21 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			port = int32(routePort)
 		}
 
+		// if the route destination is a URL, then we need to parse the port from the URL
+		if isURL(route.Destination) {
+			_, _, urlPort, err := parseURL(route.Destination)
+			if err != nil {
+				return []rpv1.OutputResource{}, err
+			}
+
+			intURLport, err := strconv.Atoi(urlPort)
+			if err != nil {
+				return []rpv1.OutputResource{}, err
+			}
+
+			port = int32(intURLport)
+		}
+
 		routeName, err := getRouteName(&route)
 		if err != nil {
 			return []rpv1.OutputResource{}, err
@@ -406,7 +422,7 @@ func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 			return "", v1.NewClientErrInvalidRequest(err.Error())
 		}
 
-		return fmt.Sprintf("%s-%s-%s", u.Scheme, u.Hostname(), u.Port()), nil
+		return fmt.Sprintf("%s", u.Hostname()), nil
 	}
 
 	// if not URL, then name is the resourceID (HTTProute case)
@@ -496,4 +512,21 @@ func isURL(input string) bool {
 		return false
 	}
 	return true
+}
+
+func parseURL(sourceURL string) (scheme, hostname, port string, err error) {
+	u, err := url.Parse(sourceURL)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	scheme = u.Scheme
+	host := u.Host
+
+	hostname, port, err = net.SplitHostPort(host)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	return scheme, hostname, port, nil
 }
