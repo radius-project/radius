@@ -195,6 +195,16 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 	return parameters
 }
 
+func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {
+	parsed, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return resources.ID{}, err
+	}
+
+	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
+	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
+}
+
 func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clients.ProviderConfig {
 	config := clients.NewDefaultProviderConfig(resourceGroup)
 
@@ -217,16 +227,6 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 	}
 
 	return config
-}
-
-func createDeploymentID(resourceID string, deploymentName string) (resources.ID, error) {
-	parsed, err := resources.ParseResource(resourceID)
-	if err != nil {
-		return resources.ID{}, err
-	}
-
-	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
-	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
