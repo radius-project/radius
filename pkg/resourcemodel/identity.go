@@ -51,6 +51,9 @@ type ResourceType struct {
 	Provider string `json:"provider"`
 }
 
+// # Function Explanation
+//
+// String returns a string representation of the ResourceType instance.
 func (r ResourceType) String() string {
 	return fmt.Sprintf("Provider: %s, Type: %s", r.Provider, r.Type)
 }
@@ -102,6 +105,9 @@ type AzureFederatedIdentity struct {
 	Subject string `json:"subject"`
 }
 
+// # Function Explanation
+//
+// NewARMIdentity creates a new ResourceIdentity object from a ResourceType, an ID and an API version.
 func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) ResourceIdentity {
 	return ResourceIdentity{
 		ResourceType: &ResourceType{
@@ -115,6 +121,9 @@ func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) Re
 	}
 }
 
+// # Function Explanation
+//
+// NewUCPIdentity creates a new ResourceIdentity with the given ResourceType and ID.
 func NewUCPIdentity(resourceType *ResourceType, id string) ResourceIdentity {
 	return ResourceIdentity{
 		ResourceType: &ResourceType{
@@ -127,6 +136,9 @@ func NewUCPIdentity(resourceType *ResourceType, id string) ResourceIdentity {
 	}
 }
 
+// # Function Explanation
+//
+// NewKubernetesIdentity creates a ResourceIdentity object from a ResourceType, runtime.Object and metav1.ObjectMeta.
 func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objectMeta metav1.ObjectMeta) ResourceIdentity {
 	return ResourceIdentity{
 		ResourceType: &ResourceType{
@@ -142,6 +154,8 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 	}
 }
 
+// # Function Explanation
+//
 // GetID constructs a UCP resource ID from the ResourceIdentity.
 func (r ResourceIdentity) GetID() string {
 	if r.ResourceType == nil {
@@ -171,6 +185,10 @@ func (r ResourceIdentity) GetID() string {
 	}
 }
 
+// # Function Explanation
+//
+// RequireARM checks if the ResourceType provider is Azure and returns the ID and API version of the ARMIdentity, or an
+// error if the provider is not Azure.
 func (r ResourceIdentity) RequireARM() (string, string, error) {
 	if r.ResourceType.Provider == ProviderAzure {
 		data, ok := r.Data.(ARMIdentity)
@@ -186,6 +204,9 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 	return "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
 }
 
+// # Function Explanation
+//
+//	RequireAWS checks if the ResourceIdentity is an AWS provider and returns the ID or an error if not.
 func (r ResourceIdentity) RequireAWS() (string, error) {
 	if r.ResourceType.Provider == ProviderAWS {
 		data, ok := r.Data.(UCPIdentity)
@@ -201,6 +222,10 @@ func (r ResourceIdentity) RequireAWS() (string, error) {
 	return "", fmt.Errorf("expected an %q provider, was %q", ProviderAWS, r.ResourceType.Provider)
 }
 
+// # Function Explanation
+//
+// RequireKubernetes checks if the ResourceType.Provider is Kubernetes and returns the GroupVersionKind, Namespace, Name
+// and an error if the Provider is not Kubernetes.
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
 	if r.ResourceType.Provider == ProviderKubernetes {
 		data, ok := r.Data.(KubernetesIdentity)
@@ -216,6 +241,9 @@ func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, 
 	return schema.GroupVersionKind{}, "", "", fmt.Errorf("expected an %q provider, was %q", ProviderKubernetes, r.ResourceType.Provider)
 }
 
+// # Function Explanation
+//
+// IsSameResource compares two ResourceIdentity objects and returns a boolean indicating whether they are the same resource or not.
 func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	if r.ResourceType.Provider != other.ResourceType.Provider {
 		return false
@@ -242,7 +270,12 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	return false
 }
 
-// AsLogValues returns log values as key-value pairs from this ResourceIdentifier.
+// # Function Explanation
+//
+// AsLogValues returns a slice of any type based on the provider type of the ResourceIdentity struct. If the provider is
+// Azure, it returns the ResourceID, SubscriptionID, ResourceGroup, ResourceType and ResourceName. If the provider is AWS,
+// it returns the ResourceID, ResourceType and ResourceName. If the provider is Kubernetes, it returns the ResourceName,
+// Namespace, Kind and ResourceKind. If the provider is none of the above, it returns nil.
 func (r ResourceIdentity) AsLogValues() []any {
 	if r.ResourceType == nil {
 		return nil
@@ -292,6 +325,9 @@ func (r ResourceIdentity) AsLogValues() []any {
 	}
 }
 
+// # Function Explanation
+//
+// UnmarshalJSON unmarshals a JSON byte slice into a ResourceIdentity struct based on the provider type.
 func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 	type intermediate struct {
 		ResourceType *ResourceType   `json:"resourceType"`
@@ -348,6 +384,10 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// # Function Explanation
+//
+// UnmarshalBSON unmarshals a BSON byte slice into a ResourceIdentity, depending on the provider type. It returns an error
+// if the provider type is unknown or if the BSON unmarshalling fails.
 func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	type intermediate struct {
 		ResourceType *ResourceType `json:"resourceType"`
@@ -400,6 +440,8 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	}
 }
 
+// # Function Explanation
+//
 // FromUCPID translates a UCP resource ID into a ResourceIdentity.
 //
 // TODO: This is transitional while we're refactoring to get rid of ResourceIdentity. UCP resource IDs are a more
