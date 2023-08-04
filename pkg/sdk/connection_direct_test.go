@@ -25,7 +25,7 @@ import (
 )
 
 func Test_NewDirectConnection_Valid(t *testing.T) {
-	endpoint := "http://some.endpoint.com"
+	endpoint := "http://example.com"
 
 	connection, err := NewDirectConnection(endpoint)
 	require.NoError(t, err)

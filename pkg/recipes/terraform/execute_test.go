@@ -78,7 +78,8 @@ func TestGenerateConfig_EmptyRecipeName(t *testing.T) {
 		},
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
+	e := executor{}
+	err := e.generateConfig(ctx, workingDir, execPath, options)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "recipe name cannot be empty")
 }
@@ -96,7 +97,8 @@ func TestGenerateConfig_MissingWorkingDirectory(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
+	e := executor{}
+	err := e.generateConfig(ctx, workingDir, execPath, options)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "error creating file: open /invalid-dir/main.tf.json: no such file or directory")
 }
@@ -115,7 +117,8 @@ func TestGenerateConfig_InvalidExecPath(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
+	e := executor{}
+	err := e.generateConfig(ctx, workingDir, execPath, options)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "/terraform: no such file or directory")
 }
