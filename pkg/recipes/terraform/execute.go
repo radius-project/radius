@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,6 +41,10 @@ func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProv
 
 const (
 	executionSubDir = "deploy"
+)
+
+var (
+	ErrRecipeNameEmpty = errors.New("recipe name cannot be empty")
 )
 
 var _ TerraformExecutor = (*executor)(nil)
@@ -114,7 +119,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
 	localModuleName := options.EnvRecipe.Name
 	if localModuleName == "" {
-		return fmt.Errorf("recipe name cannot be empty")
+		return ErrRecipeNameEmpty
 	}
 
 	// Get the required providers from the module
