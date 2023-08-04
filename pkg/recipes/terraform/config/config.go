@@ -35,13 +35,16 @@ import (
 // for more information on the JSON syntax for Terraform configuration.
 // Returns path to the generated config file.
 func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, recieptctx *recipecontext.RecipeContext) (string, error) {
-	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
-
-	// Populate recipe context to module data.
-	moduleData[ModuleRecipeContextKey] = recieptctx
+	// if same parameter is defined in both environment and resource recipe metadata.
+	moduleData := newModuleConfig(
+		envRecipe.TemplatePath, envRecipe.TemplateVersion,
+		envRecipe.Parameters,      // Resource parameter gets precedence over environment level parameter,
+		resourceRecipe.Parameters, // if same parameter is defined in both environment and resource recipe metadata.
+		RecipeParams{ModuleRecipeContextKey: recieptctx},
+	)
 
 	tfConfig := TerraformConfig{
-		Module: map[string]any{
+		Module: map[string]TFModuleConfig{
 			localModuleName: moduleData,
 		},
 	}
@@ -70,8 +73,8 @@ func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName strin
 	return configFilePath, nil
 }
 
-func generateModuleData(ctx context.Context, moduleSource string, moduleVersion string, envParams, resourceParams map[string]any) map[string]any {
-	moduleConfig := map[string]any{
+func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
+	moduleConfig := TFModuleConfig{
 		moduleSourceKey: moduleSource,
 	}
 
@@ -82,14 +85,8 @@ func generateModuleData(ctx context.Context, moduleSource string, moduleVersion 
 	}
 
 	// Populate recipe parameters
-	// Resource parameter gets precedence over environment level parameter,
-	// if same parameter is defined in both environment and resource recipe metadata.
-	for key, value := range envParams {
-		moduleConfig[key] = value
-	}
-
-	for key, value := range resourceParams {
-		moduleConfig[key] = value
+	for _, param := range params {
+		moduleConfig.SetParams(param)
 	}
 
 	return moduleConfig

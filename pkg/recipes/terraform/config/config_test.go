@@ -130,8 +130,8 @@ func TestGenerateTFConfigFile(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 
 	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:       testTemplatePath,
 				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
@@ -161,8 +161,8 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 	resourceRecipe.Parameters = nil
 
 	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:  testTemplatePath,
 				moduleVersionKey: testTemplateVersion,
 			},
@@ -192,7 +192,7 @@ func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
 
 func TestGenerateModuleData(t *testing.T) {
 	t.Run("With templateVersion", func(t *testing.T) {
-		expectedModuleData := map[string]any{
+		expectedModuleData := TFModuleConfig{
 			moduleSourceKey:       testTemplatePath,
 			moduleVersionKey:      testTemplateVersion,
 			"resource_group_name": envParams["resource_group_name"],
@@ -200,20 +200,20 @@ func TestGenerateModuleData(t *testing.T) {
 			"sku":                 resourceParams["sku"],
 		}
 
-		moduleData := generateModuleData(testcontext.New(t), testTemplatePath, testTemplateVersion, envParams, resourceParams)
+		moduleData := newModuleConfig(testTemplatePath, testTemplateVersion, envParams, resourceParams)
 
 		// Assert that the module data contains the expected data.
 		require.Equal(t, expectedModuleData, moduleData)
 	})
 	t.Run("Without templateVersion", func(t *testing.T) {
-		expectedModuleData := map[string]any{
+		expectedModuleData := TFModuleConfig{
 			moduleSourceKey:       testTemplatePath,
 			"resource_group_name": envParams["resource_group_name"],
 			"redis_cache_name":    resourceParams["redis_cache_name"],
 			"sku":                 resourceParams["sku"],
 		}
 
-		moduleData := generateModuleData(testcontext.New(t), testTemplatePath, "", envParams, resourceParams)
+		moduleData := newModuleConfig(testTemplatePath, "", envParams, resourceParams)
 
 		// Assert that the module data contains the expected data.
 		require.Equal(t, expectedModuleData, moduleData)
@@ -254,8 +254,8 @@ func TestAddProviders_Success(t *testing.T) {
 			providers.AzureProviderName:      azureProviderConfig,
 			providers.KubernetesProviderName: kubernetesProviderConfig,
 		},
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:       testTemplatePath,
 				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
@@ -297,8 +297,8 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 	}
 
 	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:       testTemplatePath,
 				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
@@ -333,8 +333,8 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 
 	// Expected config shouldn't contain any provider config
 	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:       testTemplatePath,
 				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
@@ -381,8 +381,8 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 
 	// Expected config shouldn't contain any provider config
 	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:       testTemplatePath,
 				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
@@ -424,8 +424,8 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 		Provider: map[string]any{
 			providers.AzureProviderName: azureProviderConfig,
 		},
-		Module: map[string]any{
-			testRecipeName: map[string]any{
+		Module: map[string]TFModuleConfig{
+			testRecipeName: {
 				moduleSourceKey:       testTemplatePath,
 				moduleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],

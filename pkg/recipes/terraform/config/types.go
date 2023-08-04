@@ -26,11 +26,24 @@ const (
 	mainConfigFileName = "main.tf.json"
 )
 
+// TFMoudleConfig is the type of Terraform module configuration.
+type TFModuleConfig map[string]any
+
+// RecipeParams is the type of recipe parameter map.
+type RecipeParams map[string]any
+
+// SetParams sets the recipe parameters in the Terraform module configuration.
+func (tf TFModuleConfig) SetParams(params RecipeParams) {
+	for k, v := range params {
+		tf[k] = v
+	}
+}
+
 // TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
 type TerraformConfig struct {
 	// Provider is the Terraform provider configuration.
 	Provider map[string]any `json:"provider,omitempty"`
 
 	// Module is the Terraform module configuration.
-	Module map[string]any `json:"module"`
+	Module map[string]TFModuleConfig `json:"module"`
 }
