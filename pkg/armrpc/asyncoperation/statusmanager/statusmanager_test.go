@@ -19,7 +19,6 @@ package statusmanager
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -107,7 +106,7 @@ func TestOperationStatusResourceID(t *testing.T) {
 			rid, err := resources.ParseResource(tc.resourceID)
 			require.NoError(t, err)
 			url := sm.operationStatusResourceID(rid, tc.operationID)
-			require.Equal(t, strings.ToLower(tc.operationResourceID), strings.ToLower(url))
+			require.Equal(t, tc.operationResourceID, url)
 		})
 	}
 }

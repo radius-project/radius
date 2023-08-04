@@ -19,28 +19,46 @@ package resource_test
 import (
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprComponentNameConflict(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
-	name := "corerp-resources-dcnc-old"
+func Test_DaprServiceInvocation(t *testing.T) {
+	template := "resources/testdata/daprrp-resources-serviceinvocation.bicep"
+	name := "dapr-serviceinvocation"
+	appNamespace := "default-dapr-serviceinvocation"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-dcnc-old",
+						Name: name,
 						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "dapr-frontend",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "dapr-backend",
+						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},
-			K8sObjects: &validation.K8sObjectSet{},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "dapr-frontend"),
+						validation.NewK8sPodForResource(name, "dapr-backend"),
+					},
+				},
+			},
 		},
 	})
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
