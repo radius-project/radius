@@ -34,7 +34,7 @@ import (
 // module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
 // Returns path to the generated config file.
-func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, recieptctx *recipecontext.RecipeContext) (string, error) {
+func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, recieptctx *recipecontext.Context) (string, error) {
 	// if same parameter is defined in both environment and resource recipe metadata.
 	moduleData := newModuleConfig(
 		envRecipe.TemplatePath, envRecipe.TemplateVersion,

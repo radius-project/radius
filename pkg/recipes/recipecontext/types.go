@@ -20,9 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 )
 
-// RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
-// generate name and properties that are unique for the Link calling the recipe.
-type RecipeContext struct {
+// Context represents the context information which accesses Link properties. Recipe template authors
+// can leverage the RecipeContext parameter to access Link properties to generate name and properties
+// that are unique for the Link calling the recipe.
+type Context struct {
 	// Resource represents the resource information of the deploying recipe resource.
 	Resource Resource `json:"resource,omitempty"`
 	// Application represents environment resource information.

@@ -25,7 +25,7 @@ import (
 
 func Test_ContextParameter(t *testing.T) {
 	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
-	expectedLinkContext := RecipeContext{
+	expectedLinkContext := Context{
 		Resource: Resource{
 			ResourceInfo: ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",

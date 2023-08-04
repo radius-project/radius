@@ -25,7 +25,7 @@ import (
 )
 
 // New creates the context parameter for the recipe with the link, environment and application info
-func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*RecipeContext, error) {
+func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Context, error) {
 	parsedLink, err := resources.ParseResource(metadata.ResourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", metadata.ResourceID, err)
@@ -35,7 +35,7 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Re
 		return nil, fmt.Errorf("failed to parse environmentID: %q while building the recipe context parameter %w", metadata.EnvironmentID, err)
 	}
 
-	recipeContext := RecipeContext{
+	recipeContext := Context{
 		Resource: Resource{
 			ResourceInfo: ResourceInfo{
 				Name: parsedLink.Name(),

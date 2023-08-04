@@ -175,7 +175,7 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 
 // createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer.
 // In case of conflict the developer parameter takes precedence. If recipe has context parameter defined adds the context information to the parameters list
-func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *recipecontext.RecipeContext) map[string]any {
+func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *recipecontext.Context) map[string]any {
 	parameters := map[string]any{}
 	for k, v := range operatorParams {
 		parameters[k] = map[string]any{

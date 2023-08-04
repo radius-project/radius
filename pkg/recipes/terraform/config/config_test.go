@@ -65,8 +65,8 @@ func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider)
 	return *mProvider, providers
 }
 
-func getTestRecipeContext() *recipecontext.RecipeContext {
-	return &recipecontext.RecipeContext{
+func getTestContext() *recipecontext.Context {
+	return &recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
@@ -141,7 +141,7 @@ func TestGenerateTFConfigFile(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	// Assert config file exists and contains data in expected format.
@@ -169,7 +169,7 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	// Assert config file exists and contains data in expected format.
@@ -185,7 +185,7 @@ func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
 
 	// Call GenerateMainConfig with a working directory that doesn't exist.
 	invalidPath := filepath.Join("invalid", uuid.New().String())
-	_, err := GenerateTFConfigFile(testcontext.New(t), invalidPath, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	_, err := GenerateTFConfigFile(testcontext.New(t), invalidPath, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file")
 }
@@ -265,7 +265,7 @@ func TestAddProviders_Success(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig, nil)
@@ -308,7 +308,7 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, errors.New("Invalid AWS provider scope"))
@@ -344,7 +344,7 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
@@ -392,7 +392,7 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, nil)
@@ -435,7 +435,7 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)

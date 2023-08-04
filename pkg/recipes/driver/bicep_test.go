@@ -71,7 +71,7 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := recipecontext.RecipeContext{
+	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
@@ -119,7 +119,7 @@ func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := recipecontext.RecipeContext{
+	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
@@ -171,7 +171,7 @@ func Test_DevParameterWithOperatorParameter(t *testing.T) {
 		"throughput": 800,
 		"port":       2060,
 	}
-	recipeContext := recipecontext.RecipeContext{
+	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
