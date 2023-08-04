@@ -5,18 +5,18 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-env-old'
+  name: 'daprrp-env-recipes-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'dpsb-recipe-env-old'
+      namespace: 'daprrp-env-recipes-env'
     }
     recipes: {
-      'Applications.Link/daprPubSubBrokers': {
+      'Applications.Dapr/stateStores': {
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/dapr-pubsub-broker:${version}'
+          templatePath: '${registry}/test/functional/shared/recipes/dapr-state-store:${version}'
         }
       }
     }
@@ -24,25 +24,25 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-app-old'
+  name: 'daprrp-rs-sts-recipe'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'dpsb-recipe-app-old'
+        namespace: 'daprrp-rs-sts-recipe'
       }
     ]
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-app-ctnr-old'
+resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+  name: 'dapr-sts-recipe-ctnr'
   properties: {
     application: app.id
     connections: {
-      daprpubsub: {
-        source: pubsubBroker.id
+      daprstatestore: {
+        source: statestore.id
       }
     }
     container: {
@@ -56,15 +56,15 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'dpsb-recipe-app-ctnr-old'
+        appId: 'dapr-sts-recipe-ctnr'
         appPort: 3000
       }
     ]
   }
 }
 
-resource pubsubBroker 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-old'
+resource statestore 'Applications.Dapr/stateStores@2022-03-15-privatepreview' = {
+  name: 'dapr-sts-recipe'
   properties: {
     application: app.id
     environment: env.id

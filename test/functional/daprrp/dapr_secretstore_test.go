@@ -17,38 +17,36 @@ limitations under the License.
 package resource_test
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprPubSubBroker_Manual(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-broker-manual.bicep"
-	name := "dpsb-mnl-app-old"
-	appNamespace := "default-dpsb-mnl-app-old"
+func Test_DaprSecretStore_Manual(t *testing.T) {
+	template := "resources/testdata/daprrp-resources-secretstore-manual.bicep"
+	name := "daprrp-rs-secretstore-manual"
+	appNamespace := "default-daprrp-rs-secretstore-manual"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace)),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dpsb-mnl-app-old",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "dpsb-mnl-app-ctnr-old",
+						Name: "gnrc-scs-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-mnl-old",
-						Type: validation.O_DaprPubSubBrokersResource,
+						Name: "gnrc-scs-manual",
+						Type: validation.DaprSecretStoresResource,
 						App:  name,
 					},
 				},
@@ -56,68 +54,53 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-mnl-app-ctnr-old"),
-						validation.NewK8sPodForResource(name, "dpsb-mnl-redis-old").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dpsb-mnl-redis-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
 					},
 				},
 			},
 		},
-	})
+	}, shared.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
 	test.Test(t)
 }
 
-func Test_DaprPubSubBroker_Recipe(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-broker-recipe.bicep"
-	name := "dpsb-recipe-app-old"
-	appNamespace := "dpsb-recipe-env-old"
+func Test_DaprSecretStore_Recipe(t *testing.T) {
+	template := "resources/testdata/daprrp-resources-secretstore-recipe.bicep"
+	name := "daprrp-rs-secretstore-recipe"
+	appNamespace := "daprrp-rs-secretstore-recipe"
 
-	test := shared.NewRPTest(t, name, []shared.TestStep{
+	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dpsb-recipe-env-old",
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: "dpsb-recipe-app-old",
+						Name: name,
 						Type: validation.ApplicationsResource,
-						App:  name,
 					},
 					{
-						Name: "dpsb-recipe-app-ctnr-old",
+						Name: "gnrc-scs-ctnr-recipe",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-recipe-old",
-						Type: validation.O_DaprPubSubBrokersResource,
+						Name: "gnrc-scs-recipe",
+						Type: validation.DaprSecretStoresResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderKubernetes,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderKubernetes,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-recipe-app-ctnr-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").ValidateLabels(false),
 					},
 				},
 			},
 		},
-	})
+	}, shared.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
 	test.Test(t)
 }

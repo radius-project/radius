@@ -26,8 +26,8 @@ import (
 )
 
 func Test_DaprComponentNameConflict(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
-	name := "corerp-resources-dcnc-old"
+	template := "resources/testdata/daprrp-resources-component-name-conflict.bicep"
+	name := "daprrp-rs-component-name-conflict"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -35,7 +35,7 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-dcnc-old",
+						Name: "daprrp-rs-component-name-conflict",
 						Type: validation.ApplicationsResource,
 					},
 				},

@@ -27,10 +27,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_DaprPubSubBroker_Manual(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-broker-manual.bicep"
-	name := "dpsb-mnl-app-old"
-	appNamespace := "default-dpsb-mnl-app-old"
+func Test_DaprStateStore_Manual(t *testing.T) {
+	template := "resources/testdata/daprrp-resources-statestore-manual.bicep"
+	name := "daprrp-rs-statestore-manual"
+	appNamespace := "default-daprrp-rs-statestore-manual"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -38,17 +38,17 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dpsb-mnl-app-old",
+						Name: "daprrp-rs-statestore-manual",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "dpsb-mnl-app-ctnr-old",
+						Name: "dapr-sts-manual-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-mnl-old",
-						Type: validation.O_DaprPubSubBrokersResource,
+						Name: "dapr-sts-manual",
+						Type: validation.DaprStateStoresResource,
 						App:  name,
 					},
 				},
@@ -56,9 +56,11 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-mnl-app-ctnr-old"),
-						validation.NewK8sPodForResource(name, "dpsb-mnl-redis-old").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dpsb-mnl-redis-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-ctnr"),
+
+						// Deployed as supporting resources using Kubernetes Bicep extensibility.
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis").ValidateLabels(false),
 					},
 				},
 			},
@@ -68,10 +70,10 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_DaprPubSubBroker_Recipe(t *testing.T) {
-	template := "testdata/corerp-resources-dapr-pubsub-broker-recipe.bicep"
-	name := "dpsb-recipe-app-old"
-	appNamespace := "dpsb-recipe-env-old"
+func Test_DaprStateStore_Recipe(t *testing.T) {
+	template := "resources/testdata/daprrp-resources-statestore-recipe.bicep"
+	name := "daprrp-rs-sts-recipe"
+	appNamespace := "daprrp-env-recipes-env"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -79,22 +81,22 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "dpsb-recipe-env-old",
+						Name: "daprrp-env-recipes-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "dpsb-recipe-app-old",
+						Name: "daprrp-rs-sts-recipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-recipe-app-ctnr-old",
+						Name: "dapr-sts-recipe-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "dpsb-recipe-old",
-						Type: validation.O_DaprPubSubBrokersResource,
+						Name: "dapr-sts-recipe",
+						Type: validation.DaprStateStoresResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
@@ -112,7 +114,7 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-recipe-app-ctnr-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr").ValidateLabels(false),
 					},
 				},
 			},
