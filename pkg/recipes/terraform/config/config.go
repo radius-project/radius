@@ -36,11 +36,7 @@ func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName strin
 	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	// Populate recipe context to module data.
-	var err error
-	moduleData[ModuleRecipeContextKey], err = recieptctx.ToMap()
-	if err != nil {
-		return "", err
-	}
+	moduleData[ModuleRecipeContextKey] = recieptctx
 
 	tfConfig := TerraformConfig{
 		Module: map[string]any{

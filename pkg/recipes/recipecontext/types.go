@@ -1,14 +1,7 @@
 package recipecontext
 
 import (
-	"encoding/json"
-	"errors"
-
 	"github.com/project-radius/radius/pkg/recipes"
-)
-
-var (
-	ErrRecipeConversion = errors.New("fails to convert recipe context to map structure")
 )
 
 // RecipeContext Recipe template authors can leverage the RecipeContext parameter to access Link properties to
@@ -26,19 +19,6 @@ type RecipeContext struct {
 	Azure *ProviderAzure `json:"azure,omitempty"`
 	// AWS represents AWS provider scope.
 	AWS *ProviderAWS `json:"aws,omitempty"`
-}
-
-func (r *RecipeContext) ToMap() (map[string]any, error) {
-	data, err := json.Marshal(r)
-	if err != nil {
-		return nil, ErrRecipeConversion
-	}
-	m := map[string]any{}
-	err = json.Unmarshal(data, &m)
-	if err != nil {
-		return nil, ErrRecipeConversion
-	}
-	return m, nil
 }
 
 // Resource contains the information needed to deploy a recipe.

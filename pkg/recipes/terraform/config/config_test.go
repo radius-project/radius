@@ -363,6 +363,7 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 // Empty AWS scope should return empty AWS provider config
 func TestAddProviders_EmptyAWSScope(t *testing.T) {
 	ctx := testcontext.New(t)
+
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
