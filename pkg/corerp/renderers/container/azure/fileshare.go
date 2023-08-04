@@ -24,7 +24,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// MakeAzureFileShareVolumeSpec builds volume spec for Azure file share.
+// # Function Explanation
+//
+// MakeAzureFileShareVolumeSpec creates a Volume and VolumeMount spec for an Azure File Share and returns them along with
+// an error if one occurs.
 // TODO: This is unused code now. We will enable file share later.
 func MakeAzureFileShareVolumeSpec(volumeName string, persistentVolume *datamodel.PersistentVolume, applicationName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) { //nolint:all
 	// Make volume spec

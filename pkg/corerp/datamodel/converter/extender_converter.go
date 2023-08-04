@@ -23,7 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// ExtenderDataModelFromVersioned converts version agnostic Extender datamodel to versioned model.
+// # Function Explanation
+//
+// ExtenderDataModelToVersioned converts version agnostic Extender datamodel to versioned model.
 func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -40,7 +42,9 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1
 	}
 }
 
-// ExtenderDataModelToVersioned converts versioned Extender model to datamodel.
+// # Function Explanation
+//
+// ExtenderDataModelFromVersioned converts versioned Extender model to datamodel.
 func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.Extender, error) {
 	switch version {
 	case v20220315privatepreview.Version:

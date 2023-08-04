@@ -45,6 +45,10 @@ const (
 	ProviderNamespaceName = "Applications.Core"
 )
 
+// # Function Explanation
+//
+// AddRoutes registers handlers for Container, Application, Gateway, Volume and Secret Store resources, allowing for
+// operations such as List, Get, Put, Patch and Delete.
 func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	rootScopePath := ctrlOpts.PathBase
 	if isARM {
