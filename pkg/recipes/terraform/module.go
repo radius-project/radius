@@ -18,7 +18,6 @@ package terraform
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -31,15 +30,18 @@ const (
 	moduleRootDir = ".terraform/modules"
 )
 
-var (
-	ErrRecipeContextNotFound = errors.New("recipe context not found in terraform module")
-)
+type TFConfigInspectResult struct {
+	ContextExists bool
+	Providers     []string
+}
 
-// getRequiredProviders returns a list of names of required providers for the module present at workingDir/.terraform/modules/<localModuleName> directory.
+// inspectTFModuleConfig returns a list of names of required providers for the module present at workingDir/.terraform/modules/<localModuleName> directory.
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory.
 // An error is returned if the module could not be loaded.
-func getRequiredProviders(workingDir, localModuleName string) ([]string, error) {
+func inspectTFModuleConfig(workingDir, localModuleName string) (*TFConfigInspectResult, error) {
+	result := &TFConfigInspectResult{ContextExists: false, Providers: []string{}}
+
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
@@ -48,16 +50,17 @@ func getRequiredProviders(workingDir, localModuleName string) ([]string, error) 
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
 
+	// Ensure that the module has a recipe context.
 	if _, ok := mod.Variables[config.ModuleRecipeContextKey]; !ok {
-		return nil, ErrRecipeContextNotFound
+		result.ContextExists = true
 	}
 
-	requiredProviders := []string{}
+	// Extract the list of required providers.
 	for providerName := range mod.RequiredProviders {
-		requiredProviders = append(requiredProviders, providerName)
+		result.Providers = append(result.Providers, providerName)
 	}
 
-	return requiredProviders, nil
+	return result, nil
 }
 
 // downloadModule downloads the module to the workingDir from the module source specified in the Terraform configuration.

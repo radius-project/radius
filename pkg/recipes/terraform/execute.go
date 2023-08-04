@@ -114,10 +114,23 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 		return fmt.Errorf("recipe name cannot be empty")
 	}
 
-	// create the context object to be passed to the recipe deployment
-	recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+	// Get the required providers from the module
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		return err
+	}
+
+	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
 		return err
+	}
+
+	var recipectx *recipecontext.Context = nil
+	if result.ContextExists {
+		// create the context object to be passed to the recipe deployment
+		recipectx, err = recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+		if err != nil {
+			return err
+		}
 	}
 
 	configFilePath, err := config.GenerateTFConfigFile(ctx, workingDir, localModuleName, options.EnvRecipe, options.ResourceRecipe, recipectx)
@@ -125,17 +138,8 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 		return err
 	}
 
-	// Get the required providers from the module
-	if err := downloadModule(ctx, workingDir, execPath); err != nil {
-		return err
-	}
-	requiredProviders, err := getRequiredProviders(workingDir, localModuleName)
-	if err != nil {
-		return err
-	}
-
 	// Add the required providers to the terraform configuration
-	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
+	if err := config.AddProviders(ctx, configFilePath, result.Providers, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
 		return err
 	}
 

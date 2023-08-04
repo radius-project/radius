@@ -48,12 +48,12 @@ func TestGetRequiredProviders(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load the module to get required providers
-	providers, err := getRequiredProviders(testDir, "test-module")
+	result, err := inspectTFModuleConfig(testDir, "test-module")
 	require.NoError(t, err)
 
 	// Assert that the loaded providers map contains the expected data.
 	expectedProviders := []string{"aws"}
-	require.Equal(t, expectedProviders, providers)
+	require.Equal(t, expectedProviders, result.Providers)
 }
 
 func TestGetRequiredProviders_Error(t *testing.T) {
@@ -61,7 +61,7 @@ func TestGetRequiredProviders_Error(t *testing.T) {
 	testDir := t.TempDir()
 
 	// Load the module with an invalid module name - non existent module directory
-	_, err := getRequiredProviders(testDir, "invalid-module")
+	_, err := inspectTFModuleConfig(testDir, "invalid-module")
 
 	// Assert that LoadModule returns an error.
 	require.Error(t, err)
