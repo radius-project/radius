@@ -35,13 +35,20 @@ import (
 // for more information on the JSON syntax for Terraform configuration.
 // Returns path to the generated config file.
 func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, recieptctx *recipecontext.Context) (string, error) {
+	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
-	moduleData := newModuleConfig(
-		envRecipe.TemplatePath, envRecipe.TemplateVersion,
-		envRecipe.Parameters,      // Resource parameter gets precedence over environment level parameter,
-		resourceRecipe.Parameters, // if same parameter is defined in both environment and resource recipe metadata.
-		RecipeParams{ModuleRecipeContextKey: recieptctx},
-	)
+	params := []RecipeParams{
+		envRecipe.Parameters,
+		resourceRecipe.Parameters,
+	}
+
+	// Populate the module recipe context only if it is provided.
+	if recieptctx != nil {
+		params = append(params, RecipeParams{ModuleRecipeContextKey: recieptctx})
+	}
+
+	// if same parameter is defined in both environment and resource recipe metadata.
+	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, params...)
 
 	tfConfig := TerraformConfig{
 		Module: map[string]TFModuleConfig{

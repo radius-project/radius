@@ -125,69 +125,112 @@ func validateConfigIsGenerated(configFilePath string) (TerraformConfig, error) {
 }
 
 func TestGenerateTFConfigFile(t *testing.T) {
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	envRecipe, resourceRecipe := getTestInputs()
-
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]TFModuleConfig{
-			testRecipeName: {
-				ModuleSourceKey:       testTemplatePath,
-				ModuleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
+	configTests := []struct {
+		name               string
+		configPath         string
+		envdef             *recipes.EnvironmentDefinition
+		metadata           *recipes.ResourceMetadata
+		recipeContext      *recipecontext.Context
+		expectedConfigFile string
+		err                string
+	}{
+		{
+			name: "valid config",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
 			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			recipeContext:      getTestContext(),
+			expectedConfigFile: "testdata/main.tf-valid.json",
+		},
+		{
+			name: "without envdef and metadata params",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name: testRecipeName,
+			},
+			recipeContext:      getTestContext(),
+			expectedConfigFile: "testdata/main.tf-noparams.json",
+		},
+		{
+			name: "without metadata params",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name: testRecipeName,
+			},
+			recipeContext:      getTestContext(),
+			expectedConfigFile: "testdata/main.tf-noresourceparam.json",
+		},
+		{
+			name: "without context",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			recipeContext:      nil,
+			expectedConfigFile: "testdata/main.tf-nocontext.json",
+		},
+		{
+			name: "invalid working dir",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			configPath: filepath.Join("invalid", uuid.New().String()),
+			err:        "error creating file: open invalid/",
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
-	require.NoError(t, err)
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			if tc.configPath == "" {
+				tc.configPath = t.TempDir()
+			}
+			configFilePath, err := GenerateTFConfigFile(ctx, tc.configPath, testRecipeName, tc.envdef, tc.metadata, tc.recipeContext)
 
-	// Assert config file exists and contains data in expected format.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
+			if tc.err != "" {
+				require.ErrorContains(t, err, tc.err)
+				return
+			}
 
-	// Assert that generated config contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
+			require.NoError(t, err)
 
-func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-
-	envRecipe, resourceRecipe := getTestInputs()
-	envRecipe.Parameters = nil
-	resourceRecipe.Parameters = nil
-
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]TFModuleConfig{
-			testRecipeName: {
-				ModuleSourceKey:  testTemplatePath,
-				ModuleVersionKey: testTemplateVersion,
-			},
-		},
+			// assert
+			actualConfig, err := os.ReadFile(configFilePath)
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
 	}
-
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
-	require.NoError(t, err)
-
-	// Assert config file exists and contains data in expected format.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-
-	// Assert that generated config contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
-	envRecipe, resourceRecipe := getTestInputs()
-
-	// Call GenerateMainConfig with a working directory that doesn't exist.
-	invalidPath := filepath.Join("invalid", uuid.New().String())
-	_, err := GenerateTFConfigFile(testcontext.New(t), invalidPath, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error creating file")
 }
 
 func TestGenerateModuleData(t *testing.T) {
@@ -265,7 +308,7 @@ func TestAddProviders_Success(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, nil)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig, nil)
@@ -308,7 +351,7 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, nil)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, errors.New("Invalid AWS provider scope"))
@@ -344,7 +387,7 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, nil)
 	require.NoError(t, err)
 
 	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
@@ -392,7 +435,7 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, nil)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, nil)
@@ -435,7 +478,7 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestContext())
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, nil)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)

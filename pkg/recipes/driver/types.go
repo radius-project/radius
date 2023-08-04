@@ -27,6 +27,7 @@ import (
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
 	Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error)
+
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, outputResources []rpv1.OutputResource) error
 }
