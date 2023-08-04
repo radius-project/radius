@@ -24,6 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
+// # Function Explanation
+//
 // VolumeResourceModelToVersioned converts version agnostic Volume datamodel to versioned model.
 func VolumeResourceModelToVersioned(model *datamodel.VolumeResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -37,6 +39,8 @@ func VolumeResourceModelToVersioned(model *datamodel.VolumeResource, version str
 	}
 }
 
+// # Function Explanation
+//
 // VolumeResourceModelFromVersioned converts versioned Volume model to datamodel.
 func VolumeResourceModelFromVersioned(content []byte, version string) (*datamodel.VolumeResource, error) {
 	switch version {

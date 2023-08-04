@@ -39,7 +39,9 @@ type GetRecipeMetadata struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
 
-// NewGetRecipeMetadata creates a new GetRecipeMetadata controller.
+// # Function Explanation
+//
+// NewGetRecipeMetadata creates a new controller for retrieving recipe metadata from an environment.
 func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetRecipeMetadata{
 		ctrl.NewOperation(opts,
@@ -51,6 +53,10 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
+// # Function Explanation
+//
+// Run retrieves the recipe metadata from the registry for a given recipe name and template path, and returns
+// a response containing the recipe parameters.
 func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	resource, _, err := r.GetResource(ctx, serviceCtx.ResourceID)

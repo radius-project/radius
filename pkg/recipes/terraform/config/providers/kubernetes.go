@@ -29,14 +29,9 @@ const (
 	KubernetesProviderName = "kubernetes"
 )
 
-type kubernetesProvider struct{}
+var _ Provider = (*kubernetesProvider)(nil)
 
-// # Function Explanation
-//
-// NewKubernetesProvider creates a new KubernetesProvider instance.
-func NewKubernetesProvider() Provider {
-	return &kubernetesProvider{}
-}
+type kubernetesProvider struct{}
 
 // # Function Explanation
 // BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.

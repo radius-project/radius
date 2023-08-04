@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
+	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
 )
@@ -38,8 +39,8 @@ var _ Driver = (*terraformDriver)(nil)
 // # Function Explanation
 //
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions) Driver {
-	return &terraformDriver{terraformExecutor: terraform.NewExecutor(&ucpConn), options: options}
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions) Driver {
+	return &terraformDriver{terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider), options: options}
 }
 
 // Options represents the options required for execution of Terraform driver.

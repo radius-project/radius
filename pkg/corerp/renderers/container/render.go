@@ -60,7 +60,9 @@ const (
 	defaultServiceAccountName = "default"
 )
 
-// GetSupportedKinds returns a list of supported volume kinds
+// # Function Explanation
+//
+// GetSupportedKinds returns a list of supported volume kinds.
 func GetSupportedKinds() []string {
 	keys := []string{}
 	keys = append(keys, datamodel.AzureKeyVaultVolume)
@@ -74,6 +76,10 @@ type Renderer struct {
 	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
 }
 
+// # Function Explanation
+//
+// GetDependencyIDs parses the connections, ports and volumes of a container resource to return the Radius and Azure
+// resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
@@ -138,7 +144,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-// Render is the WorkloadRenderer implementation for containerized workload.
+// # Function Explanation
+//
+// Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
+// RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
