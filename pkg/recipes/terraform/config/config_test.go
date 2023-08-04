@@ -132,8 +132,8 @@ func TestGenerateTFConfigFile(t *testing.T) {
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
+				ModuleSourceKey:       testTemplatePath,
+				ModuleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
@@ -163,8 +163,8 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:  testTemplatePath,
-				moduleVersionKey: testTemplateVersion,
+				ModuleSourceKey:  testTemplatePath,
+				ModuleVersionKey: testTemplateVersion,
 			},
 		},
 	}
@@ -193,8 +193,8 @@ func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
 func TestGenerateModuleData(t *testing.T) {
 	t.Run("With templateVersion", func(t *testing.T) {
 		expectedModuleData := TFModuleConfig{
-			moduleSourceKey:       testTemplatePath,
-			moduleVersionKey:      testTemplateVersion,
+			ModuleSourceKey:       testTemplatePath,
+			ModuleVersionKey:      testTemplateVersion,
 			"resource_group_name": envParams["resource_group_name"],
 			"redis_cache_name":    resourceParams["redis_cache_name"],
 			"sku":                 resourceParams["sku"],
@@ -207,7 +207,7 @@ func TestGenerateModuleData(t *testing.T) {
 	})
 	t.Run("Without templateVersion", func(t *testing.T) {
 		expectedModuleData := TFModuleConfig{
-			moduleSourceKey:       testTemplatePath,
+			ModuleSourceKey:       testTemplatePath,
 			"resource_group_name": envParams["resource_group_name"],
 			"redis_cache_name":    resourceParams["redis_cache_name"],
 			"sku":                 resourceParams["sku"],
@@ -256,8 +256,8 @@ func TestAddProviders_Success(t *testing.T) {
 		},
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
+				ModuleSourceKey:       testTemplatePath,
+				ModuleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
@@ -299,8 +299,8 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
+				ModuleSourceKey:       testTemplatePath,
+				ModuleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
@@ -335,8 +335,8 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
+				ModuleSourceKey:       testTemplatePath,
+				ModuleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
@@ -383,8 +383,8 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
+				ModuleSourceKey:       testTemplatePath,
+				ModuleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],
@@ -426,8 +426,8 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 		},
 		Module: map[string]TFModuleConfig{
 			testRecipeName: {
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
+				ModuleSourceKey:       testTemplatePath,
+				ModuleVersionKey:      testTemplateVersion,
 				"resource_group_name": envParams["resource_group_name"],
 				"redis_cache_name":    resourceParams["redis_cache_name"],
 				"sku":                 resourceParams["sku"],

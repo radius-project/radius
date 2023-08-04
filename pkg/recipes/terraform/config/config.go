@@ -75,13 +75,13 @@ func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName strin
 
 func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
 	moduleConfig := TFModuleConfig{
-		moduleSourceKey: moduleSource,
+		ModuleSourceKey: moduleSource,
 	}
 
 	// Not all sources use versions, so only add the version if it's specified.
 	// Registries require versions, but HTTP or filesystem sources do not.
 	if moduleVersion != "" {
-		moduleConfig[moduleVersionKey] = moduleVersion
+		moduleConfig[ModuleVersionKey] = moduleVersion
 	}
 
 	// Populate recipe parameters

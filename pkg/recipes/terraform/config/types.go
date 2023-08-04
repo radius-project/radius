@@ -17,10 +17,11 @@ limitations under the License.
 package config
 
 const (
-	moduleSourceKey  = "source"
-	moduleVersionKey = "version"
-
-	// ModuleRecipeContextKey represents the key for the module recipe context object variable.
+	// ModuleSourceKey represents the key for the module source parameter.
+	ModuleSourceKey = "source"
+	// ModuleVersionKey represents the key for the module version parameter.
+	ModuleVersionKey = "version"
+	// ModuleRecipeContextKey represents the key for the module recipe context object parameter.
 	ModuleRecipeContextKey = "context"
 
 	mainConfigFileName = "main.tf.json"
