@@ -51,12 +51,16 @@ type azureProvider struct {
 	secretProvider *ucp_provider.SecretProvider
 }
 
+// # Function Explanation
+//
 // NewAzureProvider creates a new AzureProvider instance.
 func NewAzureProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
 	return &azureProvider{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
-// BuildConfig generates the Terraform provider configuration for Azure provider.
+// BuildConfig generates the Terraform provider configuration for Azure provider. It checks if the environment
+// configuration contains an Azure provider scope and if so, parses the scope to get the subscriptionID and adds
+// it to the config map. If the scope is invalid, an error is returned.
 // https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs
 func (p *azureProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
 	// features block is required for Azure provider even if it is empty

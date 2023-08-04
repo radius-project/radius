@@ -49,12 +49,16 @@ type awsProvider struct {
 	secretProvider *ucp_provider.SecretProvider
 }
 
+// # Function Explanation
+//
 // NewAWSProvider creates a new AWSProvider instance.
 func NewAWSProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
 	return &awsProvider{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
-// BuildConfig generates the Terraform provider configuration for AWS provider.
+// BuildConfig generates the Terraform provider configuration for AWS provider. It checks if the AWS provider/scope
+// is configured on the Environment and if so, parses the scope to get the region and returns a map containing the region.
+// If the scope is invalid, an error is returned.
 // https://registry.terraform.io/providers/hashicorp/aws/latest/docs
 func (p *awsProvider) BuildConfig(ctx context.Context, envConfig *recipes.Configuration) (map[string]any, error) {
 	region, err := p.parseScope(ctx, envConfig)
