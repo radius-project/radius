@@ -1602,8 +1602,8 @@ func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
 
 	option.Application = renderers.ApplicationOptions{
 		KubernetesMetadata: &datamodel.KubeMetadataExtension{
-			Annotations: getAppAndEnvSetup().appKubeMetadataExt.Annotations,
-			Labels:      getAppAndEnvSetup().appKubeMetadataExt.Labels,
+			Annotations: getAppSetup().appKubeMetadataExt.Annotations,
+			Labels:      getAppSetup().appKubeMetadataExt.Labels,
 		},
 	}
 
@@ -1616,15 +1616,36 @@ func renderOptionsEnvKubeMetadata() renderers.RenderOptions {
 	
 	option.Environment = renderers.EnvironmentOptions{
 		KubernetesMetadata: &datamodel.KubeMetadataExtension{
-			Annotations: getAppAndEnvSetup().envKubeMetadataExt.Annotations,
-			Labels:      getAppAndEnvSetup().envKubeMetadataExt.Labels,
+			Annotations: getEnvSetup().envKubeMetadataExt.Annotations,
+			Labels:      getEnvSetup().envKubeMetadataExt.Labels,
 		},
 	}
 
 	return option
 }
 
-func getAppAndEnvSetup() *setupMaps {
+func getAppSetup() *setupMaps {
+	setupMap := setupMaps{}
+
+	appKubeMetadataExt := &datamodel.KubeMetadataExtension{
+		Annotations: map[string]string{
+			appAnnotationKey1: appAnnotationVal1,
+			appAnnotationKey2: appAnnotationVal2,
+			overrideKey1:      overrideVal1,
+		},
+		Labels: map[string]string{
+			appLabelKey1: appLabelVal1,
+			appLabelKey2: appLabelVal2,
+			overrideKey2: overrideVal2,
+		},
+	}
+
+	setupMap.appKubeMetadataExt = appKubeMetadataExt
+
+	return &setupMap
+}
+
+func getEnvSetup() *setupMaps {
 	setupMap := setupMaps{}
 
 	envKubeMetadataExt := &datamodel.KubeMetadataExtension{
@@ -1639,21 +1660,8 @@ func getAppAndEnvSetup() *setupMaps {
 			overrideKey2: envLabelVal1,
 		},
 	}
-	appKubeMetadataExt := &datamodel.KubeMetadataExtension{
-		Annotations: map[string]string{
-			appAnnotationKey1: appAnnotationVal1,
-			appAnnotationKey2: appAnnotationVal2,
-			overrideKey1:      overrideVal1,
-		},
-		Labels: map[string]string{
-			appLabelKey1: appLabelVal1,
-			appLabelKey2: appLabelVal2,
-			overrideKey2: overrideVal2,
-		},
-	}
 
 	setupMap.envKubeMetadataExt = envKubeMetadataExt
-	setupMap.appKubeMetadataExt = appKubeMetadataExt
 
 	return &setupMap
 }
