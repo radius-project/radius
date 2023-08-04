@@ -38,10 +38,11 @@ type ModuleInspectResult struct {
 	Providers []string
 }
 
-// inspectTFModuleConfig returns a list of names of required providers for the module present at workingDir/.terraform/modules/<localModuleName> directory.
+// inspectTFModuleConfig inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
+// and returns the instpection result which includes the list of required providers and recipe context status.
 // localModuleName is the name of the module specified in the configuration used to download the module.
-// It uses terraform-config-inspect to load the module from the directory.
-// An error is returned if the module could not be loaded.
+// It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
+// could not be loaded.
 func inspectTFModuleConfig(workingDir, localModuleName string) (*ModuleInspectResult, error) {
 	result := &ModuleInspectResult{ContextExists: false, Providers: []string{}}
 

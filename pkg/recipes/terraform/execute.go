@@ -119,12 +119,14 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 		return err
 	}
 
+	// Get the inspection result for the downloaded module.
 	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
 		return err
 	}
 
 	var recipectx *recipecontext.Context = nil
+	// Populate recipe context into TF config only if the download module has a context variable.
 	if result.ContextExists {
 		// create the context object to be passed to the recipe deployment
 		recipectx, err = recipecontext.New(options.ResourceRecipe, options.EnvConfig)
