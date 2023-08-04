@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateWorkingDir(t *testing.T) {
+func TestCreateWorkingDir_Created(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
 
