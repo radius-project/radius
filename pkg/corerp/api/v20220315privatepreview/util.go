@@ -134,6 +134,9 @@ func isValidLinkType(link string) bool {
 		linkrp.SqlDatabasesResourceType,
 		// Resources After Split of LinkRP Namespace
 		linkrp.N_RabbitMQQueuesResourceType,
+		linkrp.N_DaprPubSubBrokersResourceType,
+		linkrp.N_DaprSecretStoresResourceType,
+		linkrp.N_DaprStateStoresResourceType,
 	}
 	return slices.Contains(linkTypes, link)
 }

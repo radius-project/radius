@@ -5,7 +5,7 @@ param environment string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dapr-si-old'
+  name: 'dapr-serviceinvocation'
   location: location
   properties: {
     environment: environment
@@ -13,7 +13,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-frontend-old'
+  name: 'dapr-frontend'
   location: location
   properties: {
     application: app.id
@@ -21,7 +21,7 @@ resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
       image: magpieimage
       env: {
         // Used by magpie to communicate with the backend.
-        CONNECTION_DAPRHTTPROUTE_APPID: 'backend-old'
+        CONNECTION_DAPRHTTPROUTE_APPID: 'backend'
       }
       readinessProbe:{
         kind:'httpGet'
@@ -32,14 +32,14 @@ resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'frontend-old'
+        appId: 'frontend'
       }
     ]
   }
 }
 
 resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-backend-old'
+  name: 'dapr-backend'
   location: location
   properties: {
     application: app.id
@@ -59,7 +59,7 @@ resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'backend-old'
+        appId: 'backend'
         appPort: 3000
       }
     ]
