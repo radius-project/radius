@@ -20,6 +20,9 @@ const (
 	moduleSourceKey  = "source"
 	moduleVersionKey = "version"
 
+	// ModuleRecipeContextKey represents the key for the module recipe context object variable.
+	ModuleRecipeContextKey = "context"
+
 	mainConfigFileName = "main.tf.json"
 )
 

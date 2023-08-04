@@ -18,15 +18,21 @@ package terraform
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 )
 
 const (
 	moduleRootDir = ".terraform/modules"
+)
+
+var (
+	ErrRecipeContextNotFound = errors.New("recipe context not found in terraform module")
 )
 
 // getRequiredProviders returns a list of names of required providers for the module present at workingDir/.terraform/modules/<localModuleName> directory.
@@ -40,6 +46,10 @@ func getRequiredProviders(workingDir, localModuleName string) ([]string, error) 
 	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, localModuleName))
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
+	}
+
+	if _, ok := mod.Variables[config.ModuleRecipeContextKey]; !ok {
+		return nil, ErrRecipeContextNotFound
 	}
 
 	requiredProviders := []string{}

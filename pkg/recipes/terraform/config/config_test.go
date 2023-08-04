@@ -25,12 +25,14 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
-	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
+	"github.com/project-radius/radius/test/testcontext"
 )
 
 const (
@@ -61,6 +63,32 @@ func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider)
 	}
 
 	return *mProvider, providers
+}
+
+func getTestRecipeContext() *recipecontext.RecipeContext {
+	return &recipecontext.RecipeContext{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				Name: "mongo0",
+			},
+			Type: "applications.link/mongodatabases",
+		},
+		Application: recipecontext.ResourceInfo{
+			Name: "testApplication",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		},
+		Environment: recipecontext.ResourceInfo{
+			Name: "env0",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "radius-test-app",
+				EnvironmentNamespace: "radius-test-env",
+			},
+		},
+	}
 }
 
 func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
@@ -113,7 +141,7 @@ func TestGenerateTFConfigFile(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	// Assert config file exists and contains data in expected format.
@@ -141,7 +169,7 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	// Assert config file exists and contains data in expected format.
@@ -157,7 +185,7 @@ func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
 
 	// Call GenerateMainConfig with a working directory that doesn't exist.
 	invalidPath := filepath.Join("invalid", uuid.New().String())
-	_, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, invalidPath, testRecipeName)
+	_, err := GenerateTFConfigFile(testcontext.New(t), invalidPath, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file")
 }
@@ -237,7 +265,7 @@ func TestAddProviders_Success(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig, nil)
@@ -280,7 +308,7 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, errors.New("Invalid AWS provider scope"))
@@ -316,7 +344,7 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
@@ -363,7 +391,7 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, nil)
@@ -406,7 +434,7 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	configFilePath, err := GenerateTFConfigFile(ctx, testDir, testRecipeName, &envRecipe, &resourceRecipe, getTestRecipeContext())
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)

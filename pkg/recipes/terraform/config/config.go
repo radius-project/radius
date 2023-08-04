@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 )
 
@@ -31,8 +32,15 @@ import (
 // module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
 // Returns path to the generated config file.
-func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string) (string, error) {
+func GenerateTFConfigFile(ctx context.Context, workingDir, localModuleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, recieptctx *recipecontext.RecipeContext) (string, error) {
 	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+
+	// Populate recipe context to module data.
+	var err error
+	moduleData[ModuleRecipeContextKey], err = recieptctx.ToMap()
+	if err != nil {
+		return "", err
+	}
 
 	tfConfig := TerraformConfig{
 		Module: map[string]any{

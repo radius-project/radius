@@ -29,10 +29,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -73,7 +73,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		return nil, err
 	}
 	// create the context object to be passed to the recipe deployment
-	recipeContext, err := createRecipeContextParameter(recipe.ResourceID, recipe.EnvironmentID, configuration.Runtime.Kubernetes.EnvironmentNamespace, recipe.ApplicationID, configuration.Runtime.Kubernetes.Namespace)
+	recipeContext, err := recipecontext.New(&recipe, &configuration)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := createProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), configuration.Providers)
+	providerConfig := recipecontext.NewProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), configuration.Providers)
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -162,53 +162,9 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 	return nil
 }
 
-// createRecipeContextParameter creates the context parameter for the recipe with the link, environment and application info
-func createRecipeContextParameter(resourceID, environmentID, environmentNamespace, applicationID, applicationNamespace string) (*RecipeContext, error) {
-	parsedLink, err := resources.ParseResource(resourceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", resourceID, err)
-	}
-	parsedEnv, err := resources.ParseResource(environmentID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse environmentID: %q while building the recipe context parameter %w", environmentID, err)
-	}
-
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
-				Name: parsedLink.Name(),
-				ID:   resourceID,
-			},
-			Type: parsedLink.Type(),
-		},
-		Environment: ResourceInfo{
-			Name: parsedEnv.Name(),
-			ID:   environmentID,
-		},
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace:            environmentNamespace,
-				EnvironmentNamespace: environmentNamespace,
-			},
-		},
-	}
-
-	if applicationID != "" {
-		parsedApp, err := resources.ParseResource(applicationID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse applicationID :%q while building the recipe context parameter %w", applicationID, err)
-		}
-		recipeContext.Application.ID = applicationID
-		recipeContext.Application.Name = parsedApp.Name()
-		recipeContext.Runtime.Kubernetes.Namespace = applicationNamespace
-	}
-
-	return &recipeContext, nil
-}
-
 // createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer.
 // In case of conflict the developer parameter takes precedence. If recipe has context parameter defined adds the context information to the parameters list
-func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *RecipeContext) map[string]any {
+func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *recipecontext.RecipeContext) map[string]any {
 	parameters := map[string]any{}
 	for k, v := range operatorParams {
 		parameters[k] = map[string]any{
@@ -236,30 +192,6 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 
 	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
 	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
-}
-
-func createProviderConfig(resourceGroup string, envProviders coreDatamodel.Providers) clients.ProviderConfig {
-	config := clients.NewDefaultProviderConfig(resourceGroup)
-
-	if envProviders.Azure != (coreDatamodel.ProvidersAzure{}) {
-		config.Az = &clients.Az{
-			Type: clients.ProviderTypeAzure,
-			Value: clients.Value{
-				Scope: envProviders.Azure.Scope,
-			},
-		}
-	}
-
-	if envProviders.AWS != (coreDatamodel.ProvidersAWS{}) {
-		config.AWS = &clients.AWS{
-			Type: clients.ProviderTypeAWS,
-			Value: clients.Value{
-				Scope: envProviders.AWS.Scope,
-			},
-		}
-	}
-
-	return config
 }
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the

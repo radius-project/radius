@@ -25,6 +25,7 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -107,7 +108,13 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 		return fmt.Errorf("recipe name cannot be empty")
 	}
 
-	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
+	// create the context object to be passed to the recipe deployment
+	recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+	if err != nil {
+		return err
+	}
+
+	configFilePath, err := config.GenerateTFConfigFile(ctx, workingDir, localModuleName, options.EnvRecipe, options.ResourceRecipe, recipectx)
 	if err != nil {
 		return err
 	}
