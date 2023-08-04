@@ -32,7 +32,9 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// NewExecutor creates a new Executor to execute a Terraform recipe.
+// # Function Explanation
+//
+// NewExecutor creates a new Executor with the given UCP connection, to execute a Terraform recipe.
 func NewExecutor(ucpConn *sdk.Connection) *executor {
 	return &executor{ucpConn: ucpConn}
 }
@@ -48,6 +50,10 @@ type executor struct {
 	ucpConn *sdk.Connection
 }
 
+// # Function Explanation
+//
+// Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
+// apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
