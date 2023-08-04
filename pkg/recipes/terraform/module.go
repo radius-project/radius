@@ -30,17 +30,20 @@ const (
 	moduleRootDir = ".terraform/modules"
 )
 
-type TFConfigInspectResult struct {
+// ModuleInspectResult contains the result of inspecting a Terraform module config.
+type ModuleInspectResult struct {
+	// ContextExists is true if the module contains a recipe context.
 	ContextExists bool
-	Providers     []string
+	// Providers is a list of names of required providers for the module.
+	Providers []string
 }
 
 // inspectTFModuleConfig returns a list of names of required providers for the module present at workingDir/.terraform/modules/<localModuleName> directory.
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory.
 // An error is returned if the module could not be loaded.
-func inspectTFModuleConfig(workingDir, localModuleName string) (*TFConfigInspectResult, error) {
-	result := &TFConfigInspectResult{ContextExists: false, Providers: []string{}}
+func inspectTFModuleConfig(workingDir, localModuleName string) (*ModuleInspectResult, error) {
+	result := &ModuleInspectResult{ContextExists: false, Providers: []string{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
