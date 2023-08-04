@@ -57,12 +57,17 @@ type OutputResourceStatus struct {
 	ProvisioningErrorDetails string `json:"provisioningErrorDetails"`
 }
 
+// # Function Explanation
+//
 // Key localID of the output resource is used as the key in DependencyItem for output resources.
 func (resource OutputResource) Key() string {
 	return resource.LocalID
 }
 
-// GetDependencies returns list of localId of output resources the resource depends on.
+// # Function Explanation
+//
+// GetDependencies returns a slice of strings containing the LocalIDs of the OutputResource's dependencies, or an error if
+// any of the dependencies are missing a LocalID.
 func (resource OutputResource) GetDependencies() ([]string, error) {
 	dependencies := []string{}
 	for _, dependency := range resource.Dependencies {
@@ -74,6 +79,9 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 	return dependencies, nil
 }
 
+// # Function Explanation
+//
+// IsRadiusManaged checks if the RadiusManaged field of the OutputResource struct is set and returns its value.
 func (resource OutputResource) IsRadiusManaged() bool {
 	if resource.RadiusManaged == nil {
 		return false
@@ -82,7 +90,10 @@ func (resource OutputResource) IsRadiusManaged() bool {
 	return *resource.RadiusManaged
 }
 
-// OrderOutputResources returns output resources ordered based on deployment order
+// # Function Explanation
+//
+// OrderOutputResources orders the given OutputResources based on their dependencies (i.e. deployment order)
+// and returns the ordered OutputResources or an error.
 func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, error) {
 	unorderedItems := []graph.DependencyItem{}
 	for _, outputResource := range outputResources {
@@ -107,6 +118,9 @@ func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, e
 	return orderedOutput, nil
 }
 
+// # Function Explanation
+//
+// NewKubernetesOutputResource creates an OutputResource object with the given resourceType, localID, obj and objectMeta.
 func NewKubernetesOutputResource(resourceType string, localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
 	rt := resourcemodel.ResourceType{
 		Type:     resourceType,
@@ -122,8 +136,10 @@ func NewKubernetesOutputResource(resourceType string, localID string, obj runtim
 	}
 }
 
-// GetGCOutputResources [GC stands for Garbage Collection] returns the elements
-// that are in the oldResource but not in the updatedResource
+// # Function Explanation
+//
+// GetGCOutputResources [GC stands for Garbage Collection] compares two slices of OutputResource and
+// returns a slice of OutputResource that contains the elements that are in the "before" slice but not in the "after".
 func GetGCOutputResources(after []OutputResource, before []OutputResource) []OutputResource {
 	afterMap := map[string][]OutputResource{}
 

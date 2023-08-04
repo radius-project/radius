@@ -97,6 +97,9 @@ type ErrRecipeNotFound struct {
 	Environment string
 }
 
+// # Function Explanation
+// 
+// ErrRecipeNotFoundError returns an error message with the recipe name and environment when a recipe is not found.
 func (e *ErrRecipeNotFound) Error() string {
 	return fmt.Sprintf("could not find recipe %q in environment %q", e.Name, e.Environment)
 }

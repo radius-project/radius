@@ -27,7 +27,11 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// ReadFromRegistry reads content from an OCI compliant registry.
+// # Function Explanation
+//
+// ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
+// if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
+// the data fails to be unmarshalled.
 func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
 	registryRepo, tag, err := parsePath(path)
 	if err != nil {
