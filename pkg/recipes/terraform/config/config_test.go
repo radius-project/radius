@@ -215,9 +215,11 @@ func TestAddRecipeContext(t *testing.T) {
 				tc.configPath = t.TempDir()
 			}
 			tfconfig := New(testRecipeName, tc.configPath, tc.envdef, tc.metadata)
-			err := tfconfig.AddRecipeContext(ctx, tc.recipeContext)
-			require.NoError(t, err)
-			err = tfconfig.Save(ctx)
+			if tc.recipeContext != nil {
+				err := tfconfig.AddRecipeContext(ctx, tc.recipeContext)
+				require.NoError(t, err)
+			}
+			err := tfconfig.Save(ctx)
 			if tc.err != "" {
 				require.ErrorContains(t, err, tc.err)
 				return
