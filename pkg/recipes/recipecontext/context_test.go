@@ -19,27 +19,28 @@ package recipecontext
 import (
 	"testing"
 
+	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
+
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ContextParameter(t *testing.T) {
-	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
+func TestNewContext(t *testing.T) {
 	expectedLinkContext := Context{
 		Resource: Resource{
 			ResourceInfo: ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "applications.link/mongodatabases",
 		},
 		Application: ResourceInfo{
 			Name: "testApplication",
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 		},
 		Environment: ResourceInfo{
 			Name: "env0",
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		},
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
@@ -47,16 +48,39 @@ func Test_ContextParameter(t *testing.T) {
 				EnvironmentNamespace: "radius-test-env",
 			},
 		},
+		Azure: &ProviderAzure{
+			ResourceGroup: AzureResourceGroup{
+				Name: "testGroup",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup",
+			},
+			Subscription: AzureSubscription{
+				SubscriptionID: "testSub",
+				ID:             "/subscriptions/testSub",
+			},
+		},
+		AWS: &ProviderAWS{
+			Region:  "us-west-2",
+			Account: "1234567890",
+		},
 	}
+
 	linkContext, err := New(&recipes.ResourceMetadata{
-		ResourceID:    linkID,
-		EnvironmentID: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-		ApplicationID: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		ResourceID:    "/planes/radius/local/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 	}, &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace:            "radius-test-app",
 				EnvironmentNamespace: "radius-test-env",
+			},
+		},
+		Providers: coredm.Providers{
+			Azure: coredm.ProvidersAzure{
+				Scope: "/subscriptions/testSub/resourceGroups/testGroup",
+			},
+			AWS: coredm.ProvidersAWS{
+				Scope: "/planes/aws/aws/accounts/1234567890/regions/us-west-2",
 			},
 		},
 	})
@@ -65,20 +89,107 @@ func Test_ContextParameter(t *testing.T) {
 	require.Equal(t, expectedLinkContext, *linkContext)
 }
 
-func Test_ContextParameterError(t *testing.T) {
-	linkContext, err := New(&recipes.ResourceMetadata{
-		ResourceID:    "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
-		EnvironmentID: "error-env",
-		ApplicationID: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-	}, &recipes.Configuration{
+func TestNewContext_failures(t *testing.T) {
+	testProviders := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
 				Namespace:            "radius-test-app",
 				EnvironmentNamespace: "radius-test-env",
 			},
 		},
-	})
+	}
+	tests := []struct {
+		name      string
+		metadata  *recipes.ResourceMetadata
+		providers *recipes.Configuration
+		err       string
+	}{
+		{
+			name: "invalid resource id",
+			metadata: &recipes.ResourceMetadata{
+				ResourceID:    "invalid-env",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			providers: testProviders,
+			err:       "failed to parse resourceID: \"invalid-env\" while building the recipe context parameter 'invalid-env' is not a valid resource id",
+		},
+		{
+			name: "invalid env id",
+			metadata: &recipes.ResourceMetadata{
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				EnvironmentID: "invalid-env",
+				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			providers: testProviders,
+			err:       "failed to parse environmentID: \"invalid-env\" while building the recipe context parameter 'invalid-env' is not a valid resource id",
+		},
+		{
+			name: "invalid app id",
+			metadata: &recipes.ResourceMetadata{
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				ApplicationID: "invalid-app",
+			},
+			providers: testProviders,
+			err:       "failed to parse applicationID: \"invalid-app\" while building the recipe context parameter 'invalid-app' is not a valid resource id",
+		},
+		{
+			name: "invalid azure scope",
+			metadata: &recipes.ResourceMetadata{
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			providers: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Providers: coredm.Providers{
+					Azure: coredm.ProvidersAzure{
+						Scope: "invalid",
+					},
+					AWS: coredm.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/1234567890/regions/us-west-2",
+					},
+				},
+			},
+			err: "failed to parse Azure scope: \"invalid\" while building the recipe context parameter 'invalid' is not a valid resource id",
+		},
+		{
+			name: "invalid aws scope",
+			metadata: &recipes.ResourceMetadata{
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			providers: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Providers: coredm.Providers{
+					Azure: coredm.ProvidersAzure{
+						Scope: "/planes/radius/local/resourceGroups/test-group",
+					},
+					AWS: coredm.ProvidersAWS{
+						Scope: "invalid-aws",
+					},
+				},
+			},
+			err: "failed to parse AWS scope: \"invalid-aws\" while building the recipe context parameter 'invalid-aws' is not a valid resource id",
+		},
+	}
 
-	require.Error(t, err)
-	require.Nil(t, linkContext)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := New(tc.metadata, tc.providers)
+			require.ErrorContains(t, err, tc.err)
+		})
+	}
 }

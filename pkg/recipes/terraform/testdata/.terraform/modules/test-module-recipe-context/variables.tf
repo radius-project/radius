@@ -6,18 +6,24 @@ variable "context" {
       id = string
       type = string
     })
+
     application = object({
       name = string
       id = string
     })
+
     environment = object({
       name = string
       id = string
     })
+
     runtime = object({
-      name = string
-      id = string
+      kubernetes = object({
+        namespace = string
+        environmentNamespace = string
+      })
     })
+
     azure = object({
       resourceGroup = object({
         name = string
@@ -28,6 +34,7 @@ variable "context" {
         id = string
       })
     })
+    
     aws = object({
       region = string
       account = string

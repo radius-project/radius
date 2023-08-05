@@ -24,15 +24,19 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+var (
+	ErrParseFormat = "failed to parse %s: %q while building the recipe context parameter %w"
+)
+
 // New creates the context parameter for the recipe with the link, environment and application info
 func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Context, error) {
 	parsedLink, err := resources.ParseResource(metadata.ResourceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resourceID: %q while building the recipe context parameter %w", metadata.ResourceID, err)
+		return nil, fmt.Errorf(ErrParseFormat, "resourceID", metadata.ResourceID, err)
 	}
 	parsedEnv, err := resources.ParseResource(metadata.EnvironmentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse environmentID: %q while building the recipe context parameter %w", metadata.EnvironmentID, err)
+		return nil, fmt.Errorf(ErrParseFormat, "environmentID", metadata.EnvironmentID, err)
 	}
 
 	recipeContext := Context{
@@ -58,7 +62,7 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 	if metadata.ApplicationID != "" {
 		parsedApp, err := resources.ParseResource(metadata.ApplicationID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse applicationID :%q while building the recipe context parameter %w", metadata.ApplicationID, err)
+			return nil, fmt.Errorf(ErrParseFormat, "applicationID", metadata.ApplicationID, err)
 		}
 		recipeContext.Application.ID = metadata.ApplicationID
 		recipeContext.Application.Name = parsedApp.Name()
@@ -66,13 +70,11 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 	}
 
 	providers := config.Providers
-
 	if providers.Azure != (coredm.ProvidersAzure{}) {
 		p, err := resources.ParseScope(providers.Azure.Scope)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(ErrParseFormat, "Azure scope", providers.Azure.Scope, err)
 		}
-
 		subID := p.FindScope(resources.SubscriptionsSegment)
 		rgName := p.FindScope(resources.ResourceGroupsSegment)
 		recipeContext.Azure = &ProviderAzure{
@@ -90,9 +92,8 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 	if providers.AWS != (coredm.ProvidersAWS{}) {
 		p, err := resources.ParseScope(providers.AWS.Scope)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(ErrParseFormat, "AWS scope", providers.AWS.Scope, err)
 		}
-
 		recipeContext.AWS = &ProviderAWS{
 			Region:  p.FindScope(resources.RegionsSegment),
 			Account: p.FindScope(resources.AccountsSegment),

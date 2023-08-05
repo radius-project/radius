@@ -135,7 +135,7 @@ func TestAddRecipeContext(t *testing.T) {
 		err                string
 	}{
 		{
-			name: "valid config",
+			name: "context, environment definition, and metadata params",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
 				TemplatePath:    testTemplatePath,
@@ -147,7 +147,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      getTestContext(),
-			expectedConfigFile: "testdata/main.tf-valid.json",
+			expectedConfigFile: "testdata/main.tf-all.json",
 		},
 		{
 			name: "without environment definition and metadata params",
@@ -237,7 +237,7 @@ func TestAddRecipeContext(t *testing.T) {
 	}
 }
 
-func TestGenerateModuleData(t *testing.T) {
+func TestNewModuleConfig(t *testing.T) {
 	t.Run("With templateVersion", func(t *testing.T) {
 		expectedModuleData := TFModuleConfig{
 			ModuleSourceKey:       testTemplatePath,
