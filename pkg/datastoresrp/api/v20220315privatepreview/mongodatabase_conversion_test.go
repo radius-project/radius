@@ -18,128 +18,319 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
-type fakeResource struct{}
-
-// # Function Explanation
-//
-// ResourceTypeName returns the string "FakeResource" as the resource type.
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
-func loadTestData(testfile string) []byte {
-	d, err := os.ReadFile("./testdata/" + testfile)
-	if err != nil {
-		return nil
-	}
-	return d
-}
-
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"mongodatabaseresource2.json", "mongodatabaseresource_recipe.json"}
-	for _, payload := range testset {
+	testset := []struct {
+		file     string
+		desc     string
+		expected *datamodel.MongoDatabase
+	}{
+		{
+			// Opt-out with resources
+			file: "mongodatabaseresource2.json",
+			desc: "mongodb resource provisioning manual (with resources)",
+			expected: &datamodel.MongoDatabase{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+						Name: "mongo0",
+						Type: linkrp.N_MongoDatabasesResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.MongoDatabaseProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					Host:                 "testAccount.mongo.cosmos.azure.com",
+					Port:                 10255,
+					Database:             "test-database",
+					Resources:            []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}},
+				},
+			},
+		},
+		{
+			desc: "mongodb resource named recipe",
+			file: "mongodatabaseresource_recipe.json",
+			expected: &datamodel.MongoDatabase{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+						Name: "mongo0",
+						Type: linkrp.N_MongoDatabasesResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.MongoDatabaseProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					Host:                 "testAccount.mongo.cosmos.azure.com",
+					Port:                 10255,
+					Recipe:               linkrp.LinkRecipe{Name: "cosmosdb", Parameters: map[string]interface{}{"foo": "bar"}},
+				},
+			},
+		},
+
+		{
+			desc: "mongodb resource default recipe with overriden values",
+			file: "mongodatabaseresource_recipe2.json",
+			expected: &datamodel.MongoDatabase{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+						Name: "mongo0",
+						Type: linkrp.N_MongoDatabasesResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.MongoDatabaseProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					Host:                 "mynewhost.com",
+					Port:                 10256,
+					Recipe:               linkrp.LinkRecipe{Name: defaultRecipeName, Parameters: nil},
+				},
+			},
+		},
+		{
+			desc: "mongodb resource provisioning manual (without resources)",
+			file: "mongodatabaseresource.json",
+			expected: &datamodel.MongoDatabase{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+						Name: "mongo0",
+						Type: linkrp.N_MongoDatabasesResourceType,
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.MongoDatabaseProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					Host:                 "testAccount.mongo.cosmos.azure.com",
+					Port:                 10255,
+					Database:             "test-database",
+					Username:             "testUser",
+					Secrets: datamodel.MongoDatabaseSecrets{
+						Password:         "testPassword",
+						ConnectionString: "test-connection-string",
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &MongoDatabaseResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
+			versionedResource := &MongoDatabaseResource{}
+			err = json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
 
-		// act
-		dm, err := versionedResource.ConvertTo()
+			// act
+			dm, err := versionedResource.ConvertTo()
 
-		// assert
-		require.NoError(t, err)
-		convertedResource := dm.(*datamodel.MongoDatabase)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0", convertedResource.ID)
-		require.Equal(t, "mongo0", convertedResource.Name)
-		require.Equal(t, linkrp.N_MongoDatabasesResourceType, convertedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
-		require.Equal(t, int32(10255), convertedResource.Properties.Port)
-		if payload == "mongodatabaseresource_recipe.json" {
-			require.Equal(t, "cosmosdb", convertedResource.Properties.Recipe.Name)
-			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
-		}
+			// assert
+			require.NoError(t, err)
+			convertedResource := dm.(*datamodel.MongoDatabase)
+
+			require.Equal(t, tc.expected, convertedResource)
+		})
 	}
 }
 
 func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	testset := []string{"mongodatabaseresource_invalidmode.json", "mongodatabaseresource_invalidmode2.json", "mongodatabaseresource_invalidmode3.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &MongoDatabaseResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
-		var expectedErr v1.ErrClientRP
-		if payload == "mongodatabaseresource_invalidmode.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "Unsupported mode abc"
-		}
-		if payload == "mongodatabaseresource_invalidmode2.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "resource is a required property for mode \"resource\""
-		}
-		if payload == "mongodatabaseresource_invalidmode3.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "recipe is a required property for mode \"recipe\""
-		}
-		if payload == "mongodatabaseresource_invalidmode4.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "rhost and port are required properties for mode \"values\""
-		}
-		_, err = versionedResource.ConvertTo()
-		require.Equal(t, &expectedErr, err)
+	testset := []struct {
+		payload string
+		errType error
+		message string
+	}{
+		{
+			payload: "mongodatabaseresource-invalidresprovisioning.json",
+			errType: &v1.ErrModelConversion{},
+			message: "$.properties.resourceProvisioning must be one of [manual recipe].",
+		},
+		{
+			payload: "mongodatabaseresource-missinginputs.json",
+			errType: &v1.ErrClientRP{},
+			message: "code BadRequest: err multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual",
+		},
+	}
+	for _, test := range testset {
+		t.Run(test.payload, func(t *testing.T) {
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
+			require.NoError(t, err)
+			versionedResource := &MongoDatabaseResource{}
+			err = json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
+
+			dm, err := versionedResource.ConvertTo()
+			require.Error(t, err)
+			require.Nil(t, dm)
+			require.IsType(t, test.errType, err)
+			require.Equal(t, test.message, err.Error())
+		})
 	}
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"mongodatabaseresourcedatamodel.json", "mongodatabaseresourcedatamodel2.json", "mongodatabaseresourcedatamodel_recipe.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		resource := &datamodel.MongoDatabase{}
-		err := json.Unmarshal(rawPayload, resource)
-		require.NoError(t, err)
+	testset := []struct {
+		file     string
+		desc     string
+		expected *MongoDatabaseResource
+	}{
+		{
+			desc: "mongodb resource provisioning manual datamodel (without resources)",
+			file: "mongodatabaseresourcedatamodel.json",
+			expected: &MongoDatabaseResource{
+				Location: to.Ptr(""),
+				Properties: &MongoDatabaseProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Host:                 to.Ptr("testAccount1.mongo.cosmos.azure.com"),
+					Port:                 to.Ptr(int32(10255)),
+					Database:             to.Ptr("test-database"),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr("testUser"),
+					Status: &ResourceStatus{
+						OutputResources: []map[string]any{
+							{
+								"Identity": nil,
+								"LocalID":  "AzureCosmosAccount",
+								"Provider": "azure",
+							},
+						},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
+				Name: to.Ptr("mongo0"),
+				Type: to.Ptr(linkrp.N_MongoDatabasesResourceType),
+			},
+		},
+		{
+			desc: "mongodb resource provisioning manual datamodel (with resources)",
+			file: "mongodatabaseresourcedatamodel2.json",
+			expected: &MongoDatabaseResource{
+				Location: to.Ptr(""),
+				Properties: &MongoDatabaseProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Host:                 to.Ptr("testAccount1.mongo.cosmos.azure.com"),
+					Port:                 to.Ptr(int32(10255)),
+					Database:             to.Ptr("test-database"),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Resources:            []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db")}},
+					Username:             to.Ptr(""),
+					Status: &ResourceStatus{
+						OutputResources: nil,
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
+				Name: to.Ptr("mongo0"),
+				Type: to.Ptr(linkrp.N_MongoDatabasesResourceType),
+			},
+		},
+		{
+			// Named recipe
+			desc: "mongodb named recipe datamodel",
+			file: "mongodatabaseresourcedatamodel_recipe.json",
+			expected: &MongoDatabaseResource{
+				Location: to.Ptr(""),
+				Properties: &MongoDatabaseProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Host:                 to.Ptr("testAccount1.mongo.cosmos.azure.com"),
+					Port:                 to.Ptr(int32(10255)),
+					Database:             to.Ptr(""),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr("cosmosdb"), Parameters: map[string]interface{}{"foo": "bar"}},
+					Username:             to.Ptr(""),
+					Status: &ResourceStatus{
+						OutputResources: nil,
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
+				Name: to.Ptr("mongo0"),
+				Type: to.Ptr(linkrp.N_MongoDatabasesResourceType),
+			},
+		},
+	}
+	for _, tc := range testset {
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
+			require.NoError(t, err)
+			resource := &datamodel.MongoDatabase{}
+			err = json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
 
-		// act
-		versionedResource := &MongoDatabaseResource{}
-		err = versionedResource.ConvertFrom(resource)
+			versionedResource := &MongoDatabaseResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
 
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0", *versionedResource.ID)
-		require.Equal(t, "mongo0", *versionedResource.Name)
-		require.Equal(t, linkrp.N_MongoDatabasesResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
-		switch v := versionedResource.Properties.(type) {
-		case *ResourceMongoDatabaseProperties:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *v.Resource)
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-		case *RecipeMongoDatabaseProperties:
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "cosmosdb", *v.Recipe.Name)
-			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
-		case *ValuesMongoDatabaseProperties:
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "AzureCosmosAccount", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
-		}
+			// Skip system data comparison
+			versionedResource.SystemData = nil
+
+			require.Equal(t, tc.expected, versionedResource)
+		})
 	}
 }
 
@@ -161,9 +352,10 @@ func TestMongoDatabase_ConvertFromValidation(t *testing.T) {
 
 func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("mongodatabasesecrets.json")
+	rawPayload, err := LoadTestData("./testdata/mongodatabasesecrets.json")
+	require.NoError(t, err)
 	versioned := &MongoDatabaseSecrets{}
-	err := json.Unmarshal(rawPayload, versioned)
+	err = json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
 	// act
@@ -173,15 +365,15 @@ func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	require.NoError(t, err)
 	converted := dm.(*datamodel.MongoDatabaseSecrets)
 	require.Equal(t, "test-connection-string", converted.ConnectionString)
-	require.Equal(t, "testUser", converted.Username)
 	require.Equal(t, "testPassword", converted.Password)
 }
 
 func TestMongoDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("mongodatabasesecretsdatamodel.json")
+	rawPayload, err := LoadTestData("./testdata/mongodatabasesecretsdatamodel.json")
+	require.NoError(t, err)
 	secrets := &datamodel.MongoDatabaseSecrets{}
-	err := json.Unmarshal(rawPayload, secrets)
+	err = json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act
@@ -191,7 +383,6 @@ func TestMongoDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	require.Equal(t, "test-connection-string", secrets.ConnectionString)
-	require.Equal(t, "testUser", secrets.Username)
 	require.Equal(t, "testPassword", secrets.Password)
 }
 

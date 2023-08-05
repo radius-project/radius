@@ -1,5 +1,5 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/mongodatabases/mongo0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.datastores/mongodatabases/mongo0",
     "location": "West US",
     "name": "mongo0",
     "properties": {
@@ -28,5 +28,5 @@
         "lastModifiedByType": "User"
     },
     "tags": {},
-    "type": "applications.link/mongodatabases"
+    "type": "applications.datastores/mongodatabases"
 }

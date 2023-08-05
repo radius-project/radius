@@ -17,19 +17,17 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"fmt"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
 
 // # Function Explanation
 //
-// ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel,
-// returning an error if the mode is unsupported or required properties are missing.
+// ConvertTo converts from the versioned SQL Database resource to version-agnostic datamodel
+// and returns an error if the inputs are invalid.
 func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabase{
 		BaseResource: v1.BaseResource{
@@ -42,50 +40,49 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			InternalMetadata: v1.InternalMetadata{
 				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetSQLDatabaseProperties().ProvisioningState),
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.GetSQLDatabaseProperties().Environment),
-				Application: to.String(src.Properties.GetSQLDatabaseProperties().Application),
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
 			},
 		},
 	}
 
-	switch v := src.Properties.(type) {
-	case *ResourceSQLDatabaseProperties:
-		if v.Resource == nil {
-			return nil, v1.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
-		}
-		converted.Properties.Resource = to.String(v.Resource)
-		converted.Properties.Database = to.String(v.Database)
-		converted.Properties.Server = to.String(v.Server)
-		converted.Properties.Mode = linkrpdm.LinkModeResource
-	case *ValuesSQLDatabaseProperties:
-		if v.Database == nil || v.Server == nil {
-			return nil, v1.NewClientErrInvalidRequest("database/server are required properties for mode 'values'")
-		}
-		converted.Properties.Database = to.String(v.Database)
-		converted.Properties.Server = to.String(v.Server)
-		converted.Properties.Mode = linkrpdm.LinkModeValues
-	case *RecipeSQLDatabaseProperties:
-		if v.Recipe == nil {
-			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
-		}
-		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-		converted.Properties.Database = to.String(v.Database)
-		converted.Properties.Server = to.String(v.Server)
-		converted.Properties.Mode = linkrpdm.LinkModeRecipe
-	default:
-		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetSQLDatabaseProperties().Mode))
+	properties := src.Properties
+
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
+	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
+	}
+	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
+	converted.Properties.Database = to.String(properties.Database)
+	converted.Properties.Server = to.String(properties.Server)
+	converted.Properties.Port = to.Int32(properties.Port)
+	converted.Properties.Username = to.String(properties.Username)
+	if properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.SqlDatabaseSecrets{
+			ConnectionString: to.String(properties.Secrets.ConnectionString),
+			Password:         to.String(properties.Secrets.Password),
+		}
+	}
+	err = converted.VerifyInputs()
+	if err != nil {
+		return nil, err
+	}
+
 	return converted, nil
 }
 
 // # Function Explanation
 //
-// ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabase resource.
+// ConvertFrom converts from version-agnostic datamodel to the versioned SQL Database resource.
 func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	sql, ok := src.(*datamodel.SqlDatabase)
 	if !ok {
@@ -98,51 +95,50 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(sql.SystemData)
 	dst.Location = to.Ptr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
-	switch sql.Properties.Mode {
-	case linkrpdm.LinkModeResource:
-		mode := "resource"
-		dst.Properties = &ResourceSQLDatabaseProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
-			},
-			Mode:              &mode,
-			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(sql.Properties.Environment),
-			Application:       to.Ptr(sql.Properties.Application),
-			Resource:          to.Ptr(sql.Properties.Resource),
-			Database:          to.Ptr(sql.Properties.Database),
-			Server:            to.Ptr(sql.Properties.Server),
-		}
-	case linkrpdm.LinkModeValues:
-		mode := "values"
-		dst.Properties = &ValuesSQLDatabaseProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
-			},
-			Mode:              &mode,
-			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(sql.Properties.Environment),
-			Application:       to.Ptr(sql.Properties.Application),
-			Database:          to.Ptr(sql.Properties.Database),
-			Server:            to.Ptr(sql.Properties.Server),
-		}
-	case linkrpdm.LinkModeRecipe:
-		mode := "recipe"
-		var recipe *Recipe
-		recipe = fromRecipeDataModel(sql.Properties.Recipe)
-		dst.Properties = &RecipeSQLDatabaseProperties{
-			Status: &ResourceStatus{
-				OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
-			},
-			Mode:              &mode,
-			ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
-			Environment:       to.Ptr(sql.Properties.Environment),
-			Application:       to.Ptr(sql.Properties.Application),
-			Recipe:            recipe,
-			Database:          to.Ptr(sql.Properties.Database),
-			Server:            to.Ptr(sql.Properties.Server),
-		}
-
+	dst.Properties = &SQLDatabaseProperties{
+		ResourceProvisioning: fromResourceProvisioningDataModel(sql.Properties.ResourceProvisioning),
+		Resources:            fromResourcesDataModel(sql.Properties.Resources),
+		Database:             to.Ptr(sql.Properties.Database),
+		Server:               to.Ptr(sql.Properties.Server),
+		Port:                 to.Ptr(sql.Properties.Port),
+		Status: &ResourceStatus{
+			OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+		},
+		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
+		Environment:       to.Ptr(sql.Properties.Environment),
+		Application:       to.Ptr(sql.Properties.Application),
+		Username:          to.Ptr(sql.Properties.Username),
+	}
+	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
 	}
 	return nil
+}
+
+// # Function Explanation
+//
+// ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabaseSecrets instance
+// and returns an error if the conversion fails.
+func (dst *SQLDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
+	sqlSecrets, ok := src.(*datamodel.SqlDatabaseSecrets)
+	if !ok {
+		return v1.ErrInvalidModelConversion
+	}
+
+	dst.ConnectionString = to.Ptr(sqlSecrets.ConnectionString)
+	dst.Password = to.Ptr(sqlSecrets.Password)
+
+	return nil
+}
+
+// # Function Explanation
+//
+// ConvertTo converts from the versioned SqlDatabaseSecrets instance to version-agnostic datamodel
+// and returns an error if the conversion fails.
+func (src *SQLDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
+	converted := &datamodel.SqlDatabaseSecrets{
+		ConnectionString: to.String(src.ConnectionString),
+		Password:         to.String(src.Password),
+	}
+	return converted, nil
 }

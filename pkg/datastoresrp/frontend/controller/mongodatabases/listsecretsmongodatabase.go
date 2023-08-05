@@ -37,7 +37,7 @@ type ListSecretsMongoDatabase struct {
 
 // # Function Explanation
 //
-// // NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase.
+// NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase, or an error if the controller could not be created.
 func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsMongoDatabase{
 		Operation: ctrl.NewOperation(opts,
@@ -65,9 +65,6 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	mongoSecrets := datamodel.MongoDatabaseSecrets{}
-	if username, ok := resource.SecretValues[renderers.UsernameStringValue]; ok {
-		mongoSecrets.Username = username.Value
-	}
 	if password, ok := resource.SecretValues[renderers.PasswordStringHolder]; ok {
 		mongoSecrets.Password = password.Value
 	}
@@ -75,6 +72,9 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWr
 		mongoSecrets.ConnectionString = connectionString.Value
 	}
 
-	versioned, _ := converter.MongoDatabaseSecretsDataModelToVersioned(&mongoSecrets, sCtx.APIVersion)
+	versioned, err := converter.MongoDatabaseSecretsDataModelToVersioned(&mongoSecrets, sCtx.APIVersion)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), err
+	}
 	return rest.NewOKResponse(versioned), nil
 }

@@ -1,7 +1,7 @@
 {
-  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/mongodatabases/mongo0",
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.datastores/mongodatabases/mongo0",
   "name": "mongo0",
-  "type": "applications.link/mongodatabases",
+  "type": "applications.datastores/mongodatabases",
   "location": "West US",
   "systemData": {
     "createdAt": "2022-03-22T18:54:52.6857175Z",
