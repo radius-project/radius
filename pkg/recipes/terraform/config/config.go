@@ -21,11 +21,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
+)
+
+const (
+	// modeConfigFile is read/write mode only for the owner of the TF config file.
+	modeConfigFile fs.FileMode = 0600
 )
 
 // New creates TerraformConfig with the given module name, environment recipe and resource recipe metadata.
@@ -63,7 +69,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	if err = os.WriteFile(cfg.ConfigFilePath(), jsonData, 0666); err != nil {
+	if err = os.WriteFile(cfg.ConfigFilePath(), jsonData, modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
 	return nil
