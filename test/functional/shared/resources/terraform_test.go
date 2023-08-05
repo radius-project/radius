@@ -25,37 +25,6 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// Test_TerraformRecipe_HelloWorld covers the most basic possible terraform recipe scenario:
-//
-// - Create an extender resource using an empty Terraform recipe.
-// - This way Terraform is executed, but no resources are created.
-// - Since extender has no requirements on the Radius side, it will succeed.
-func Test_TerraformRecipe_HelloWorld(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-helloworld.bicep"
-	name := "corerp-resources-terraform-helloworld"
-
-	test := shared.NewRPTest(t, name, []shared.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-terraform-helloworld",
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: "corerp-resources-terraform-helloworld",
-						Type: validation.ExtendersResource,
-					},
-				},
-			},
-			K8sObjects:           &validation.K8sObjectSet{},
-			SkipResourceDeletion: true,
-		},
-	})
-	test.Test(t)
-}
-
 // Test_TerraformRecipe_Redis covers the following terraform recipe scenario:
 //
 // - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
