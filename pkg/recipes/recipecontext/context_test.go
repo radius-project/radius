@@ -65,7 +65,7 @@ func TestNewContext(t *testing.T) {
 	}
 
 	linkContext, err := New(&recipes.ResourceMetadata{
-		ResourceID:    "/planes/radius/local/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 	}, &recipes.Configuration{
