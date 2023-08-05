@@ -56,7 +56,7 @@ func Test_TerraformRecipe_Redis(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-resources-terraform-redis-env": {
+					"default": {
 						validation.NewK8sServiceForResource(name, "redis-cache-tf-recipe"),
 					},
 				},

@@ -17,7 +17,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/kubernetes-redis.zip'
           parameters: {
-            namespace: 'corerp-resources-terraform-redis-env'
+            namespace: 'default'
             redis_cache_name: 'redis-cache-tf-recipe'
           }
         }
