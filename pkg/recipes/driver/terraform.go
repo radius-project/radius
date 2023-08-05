@@ -32,15 +32,14 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
 	"k8s.io/client-go/kubernetes"
-	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) Driver {
+func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions, k8sClientSet kubernetes.Interface) Driver {
 	return &terraformDriver{
-		terraformExecutor: terraform.NewExecutor(&ucpConn, k8sClient, k8sClientSet),
+		terraformExecutor: terraform.NewExecutor(&ucpConn, k8sClientSet),
 		options:           options,
 	}
 }

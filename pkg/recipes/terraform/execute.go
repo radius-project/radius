@@ -32,17 +32,17 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // NewExecutor creates a new Executor to execute a Terraform recipe.
-func NewExecutor(ucpConn *sdk.Connection, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) *executor {
-	return &executor{ucpConn: ucpConn}
+func NewExecutor(ucpConn *sdk.Connection, k8sClientSet kubernetes.Interface) *executor {
+	return &executor{ucpConn: ucpConn, k8sClientSet: k8sClientSet}
 }
 
 const (
 	executionSubDir = "deploy"
 	// Default prefix string added to secret suffix by terraform while creating kubernetes secret.
+	// Kubernetes secrets to store terraform state files are named in the format: tfstate-{workspace}-{secret_suffix}. And we always use "default" workspace for terraform operations.
 	terraformSecretPrefix = "tfstate-default-"
 )
 
@@ -51,8 +51,6 @@ var _ TerraformExecutor = (*executor)(nil)
 type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
 	ucpConn *sdk.Connection
-	// k8sClient is the Kubernetes controller runtime client.
-	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
 }
@@ -80,7 +78,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	err = generateConfig(ctx, workingDir, execPath, options)
+	secretSuffix, err := generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +88,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	if err != nil {
 		return nil, err
 	}
-	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet)
+	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet, secretSuffix)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
@@ -99,17 +97,15 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	}
 	return nil, nil
 }
-func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface) error {
-	secretSuffix, err := config.GenerateSecretSuffix(options.ResourceRecipe.ResourceID)
-	if err != nil {
-		return err
-	}
-	_, err = k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
+
+func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface, secretSuffix string) error {
+	_, err := k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	return nil
 }
+
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -123,36 +119,36 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
-func generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+func generateConfig(ctx context.Context, workingDir, execPath string, options Options) (string, error) {
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
 	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
 	localModuleName := options.EnvRecipe.Name
 	if localModuleName == "" {
-		return fmt.Errorf("recipe name cannot be empty")
+		return "", fmt.Errorf("recipe name cannot be empty")
 	}
 
-	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName, options.EnvConfig)
+	configFilePath, secretSuffix, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Get the required providers from the module
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
-		return err
+		return "", err
 	}
 	requiredProviders, err := getRequiredProviders(workingDir, localModuleName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Add the required providers to the terraform configuration
 	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return secretSuffix, nil
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.

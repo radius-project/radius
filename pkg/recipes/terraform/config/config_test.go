@@ -66,7 +66,7 @@ func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider)
 	return *mProvider, providers
 }
 
-func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata, recipes.Configuration) {
+func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	envRecipe := recipes.EnvironmentDefinition{
 		Name:            testRecipeName,
 		TemplatePath:    testTemplatePath,
@@ -75,27 +75,13 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata, r
 	}
 
 	resourceRecipe := recipes.ResourceMetadata{
-		Name:       testRecipeName,
-		Parameters: resourceParams,
-		ResourceID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+		Name:          testRecipeName,
+		Parameters:    resourceParams,
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
+		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
 	}
-	envConfig := recipes.Configuration{
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace: "app-namespace",
-			},
-		},
-		Providers: datamodel.Providers{
-			AWS: datamodel.ProvidersAWS{
-				Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
-			},
-			Azure: datamodel.ProvidersAzure{
-				Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
-			},
-		},
-	}
-
-	return envRecipe, resourceRecipe, envConfig
+	return envRecipe, resourceRecipe
 }
 
 func validateConfigIsGenerated(configFilePath string) (TerraformConfig, error) {
@@ -118,8 +104,8 @@ func validateConfigIsGenerated(configFilePath string) (TerraformConfig, error) {
 func TestGenerateTFConfigFile(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	envRecipe, resourceRecipe := getTestInputs()
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]any{
@@ -136,12 +122,12 @@ func TestGenerateTFConfigFile(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	// Assert config file exists and contains data in expected format.
@@ -156,10 +142,10 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
+	envRecipe, resourceRecipe := getTestInputs()
 	envRecipe.Parameters = nil
 	resourceRecipe.Parameters = nil
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	expectedTFConfig := TerraformConfig{
 		Module: map[string]any{
@@ -173,13 +159,13 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	// Assert config file exists and contains data in expected format.
@@ -191,11 +177,11 @@ func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
 }
 
 func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
+	envRecipe, resourceRecipe := getTestInputs()
 
 	// Call GenerateMainConfig with a working directory that doesn't exist.
 	invalidPath := filepath.Join("invalid", uuid.New().String())
-	_, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, invalidPath, testRecipeName, &envConfig)
+	_, _, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, invalidPath, testRecipeName)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file")
 }
@@ -236,8 +222,15 @@ func TestAddProviders_Success(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	envRecipe, resourceRecipe := getTestInputs()
+	envConfig := recipes.Configuration{
+		Providers: datamodel.Providers{
+			AWS: datamodel.ProvidersAWS{
+				Scope: "invalid",
+			},
+		},
+	}
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	awsProviderConfig := map[string]any{
 		"region": "test-region",
@@ -269,13 +262,13 @@ func TestAddProviders_Success(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig, nil)
@@ -297,12 +290,14 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	envRecipe, resourceRecipe := getTestInputs()
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
-	envConfig.Providers = datamodel.Providers{
-		AWS: datamodel.ProvidersAWS{
-			Scope: "invalid",
+	envConfig := recipes.Configuration{
+		Providers: datamodel.Providers{
+			AWS: datamodel.ProvidersAWS{
+				Scope: "invalid",
+			},
 		},
 	}
 	expectedTFConfig := TerraformConfig{
@@ -320,13 +315,13 @@ func TestAddProviders_InvalidScope_Error(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, errors.New("Invalid AWS provider scope"))
@@ -346,9 +341,9 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 	testDir := t.TempDir()
 
 	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	envConfig.Providers = datamodel.Providers{}
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	envRecipe, resourceRecipe := getTestInputs()
+	envConfig := recipes.Configuration{}
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	// Expected config shouldn't contain any provider config
 	expectedTFConfig := TerraformConfig{
@@ -366,13 +361,13 @@ func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
@@ -394,15 +389,17 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	envRecipe, resourceRecipe := getTestInputs()
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
-	envConfig.Providers = datamodel.Providers{
-		AWS: datamodel.ProvidersAWS{
-			Scope: "",
-		},
-		Azure: datamodel.ProvidersAzure{
-			Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+	envConfig := recipes.Configuration{
+		Providers: datamodel.Providers{
+			AWS: datamodel.ProvidersAWS{
+				Scope: "",
+			},
+			Azure: datamodel.ProvidersAzure{
+				Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+			},
 		},
 	}
 
@@ -422,13 +419,13 @@ func TestAddProviders_EmptyAWSScope(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, nil)
@@ -449,9 +446,9 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe, envConfig := getTestInputs()
-	envConfig.Providers = datamodel.Providers{}
-	secretSuffix, err := GenerateSecretSuffix(resourceRecipe.ResourceID)
+	envRecipe, resourceRecipe := getTestInputs()
+	envConfig := recipes.Configuration{}
+	secretSuffix, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	azureProviderConfig := map[string]any{
 		"features": map[string]any{},
@@ -475,13 +472,13 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 				"kubernetes": map[string]interface{}{
 					"config_path":   clientcmd.RecommendedHomeFile,
 					"secret_suffix": secretSuffix,
-					"namespace":     envConfig.Runtime.Kubernetes.Namespace,
+					"namespace":     namespace,
 				},
 			},
 		},
 	}
 
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName, &envConfig)
+	configFilePath, _, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
 	require.NoError(t, err)
 
 	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)
@@ -565,16 +562,18 @@ func TestAddProviders_WriteConfigFileError(t *testing.T) {
 }
 
 func TestGenerateSecretSuffix_invalid_resourceid(t *testing.T) {
-	_, err := GenerateSecretSuffix("invalid")
+	_, resourceRecipe := getTestInputs()
+	resourceRecipe.ResourceID = "invalid"
+	_, err := generateSecretSuffix(&resourceRecipe)
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
 
 func TestGenerateSecretSuffix_with_lengthy_resource_name(t *testing.T) {
-	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/invalid-redis-cache-name"
-	act, err := GenerateSecretSuffix(resourceID)
+	_, resourceRecipe := getTestInputs()
+	act, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(strings.ToLower(resourceID)))
+	_, _ = hasher.Write([]byte(strings.ToLower("env-app-" + resourceRecipe.ResourceID)))
 	hash := hasher.Sum(nil)
-	require.Equal(t, act, "invalid-redis-cache-na."+fmt.Sprintf("%x", hash))
+	require.Equal(t, act, "env-app-redis."+fmt.Sprintf("%x", hash))
 }

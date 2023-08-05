@@ -27,7 +27,12 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	namespace = "radius-system"
 )
 
 // GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
@@ -35,11 +40,15 @@ import (
 // module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
 // for more information on the JSON syntax for Terraform configuration.
 // Returns path to the generated config file.
-func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string, configuration *recipes.Configuration) (string, error) {
+func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string) (string, string, error) {
 	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
-	backend, err := generateKubernetesBackendConfig(resourceRecipe.ResourceID, configuration.Runtime.Kubernetes.Namespace)
+	secretSuffix, err := generateSecretSuffix(resourceRecipe)
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+	backend, err := generateKubernetesBackendConfig(resourceRecipe, secretSuffix)
+	if err != nil {
+		return "", "", err
 	}
 	tfConfig := TerraformConfig{
 		Terraform: TerraformDefinition{
@@ -53,7 +62,7 @@ func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDef
 	// Convert the Terraform config to JSON
 	jsonData, err := json.MarshalIndent(tfConfig, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("error marshalling JSON: %w", err)
+		return "", "", fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
 	// Write the JSON data to a file in the working directory.
@@ -62,16 +71,16 @@ func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDef
 	configFilePath := fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 	file, err := os.Create(configFilePath)
 	if err != nil {
-		return "", fmt.Errorf("error creating file: %w", err)
+		return "", "", fmt.Errorf("error creating file: %w", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(jsonData)
 	if err != nil {
-		return "", fmt.Errorf("error writing to file: %w", err)
+		return "", "", fmt.Errorf("error writing to file: %w", err)
 	}
 
-	return configFilePath, nil
+	return configFilePath, secretSuffix, nil
 }
 
 func generateModuleData(ctx context.Context, moduleSource string, moduleVersion string, envParams, resourceParams map[string]any) map[string]any {
@@ -160,34 +169,53 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 	return providerConfigs, nil
 }
 
-// GenerateSecretSuffix returns a unique string from the resourceID which is used as key for kubernetes secret in defining terraform backend.
-func GenerateSecretSuffix(resourceID string) (string, error) {
-	parsedID, err := resources.Parse(resourceID)
+// generateSecretSuffix returns a unique string from the resourceID which is used as key for kubernetes secret in defining terraform backend.
+func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
+	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
 	if err != nil {
 		return "", err
 	}
-	name := parsedID.Name()
-	// Terraform enforces a character limit of 63 characters on the suffix for state file stored in kubernetes secret.
-	// First 22 characters of the resource name is used as part of suffix as hash generated from resource id is 40 characters long and its concatenated with the resource name.
+	parsedEnvID, err := resources.Parse(resourceRecipe.EnvironmentID)
+	if err != nil {
+		return "", err
+	}
+	parsedAppID, err := resources.Parse(resourceRecipe.ApplicationID)
+	if err != nil {
+		return "", err
+	}
+	prefix := fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.Name())
+	// Kubernetes enforces a character limit of 63 characters on the suffix for state file stored in kubernetes secret.
+	// 22 = 63 (max length of Kubernetes secret suffix) - 40 (hex hash length) - 1 (dot separator)
 	maxResourceNameLen := 22
-	if len(name) >= maxResourceNameLen {
-		name = name[:maxResourceNameLen]
+	if len(prefix) >= maxResourceNameLen {
+		prefix = prefix[:maxResourceNameLen]
 	}
 
 	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(strings.ToLower(parsedID.String())))
+	_, _ = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
 	hash := hasher.Sum(nil)
 
-	suffix := fmt.Sprintf("%s.%x", name, hash)
+	suffix := fmt.Sprintf("%s.%x", prefix, hash)
 
 	return suffix, nil
 }
 
-// generateKubernetesBackendConfig returns terraform backend configuration to be added into the terraform config file.
-func generateKubernetesBackendConfig(resourceID, namespace string) (map[string]interface{}, error) {
-	secretSuffix, err := GenerateSecretSuffix(resourceID)
-	if err != nil {
-		return nil, err
+// generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.
+// Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
+func generateKubernetesBackendConfig(resourceRecipe *recipes.ResourceMetadata, secretSuffix string) (map[string]interface{}, error) {
+	backend := map[string]interface{}{
+		"kubernetes": map[string]interface{}{
+			"config_path":   clientcmd.RecommendedHomeFile,
+			"secret_suffix": secretSuffix,
+			"namespace":     namespace,
+		},
+	}
+	_, err := rest.InClusterConfig()
+	if err == nil {
+		if value, found := backend["kubernetes"]; found {
+			backendValue := value.(map[string]interface{})
+			backendValue["in_cluster_config"] = true
+		}
 	}
 	return map[string]interface{}{
 		"kubernetes": map[string]interface{}{

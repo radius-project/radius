@@ -78,7 +78,7 @@ func TestGenerateConfig_EmptyRecipeName(t *testing.T) {
 		},
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
+	_, err := generateConfig(ctx, workingDir, execPath, options)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "recipe name cannot be empty")
 }
@@ -101,11 +101,13 @@ func TestGenerateConfig_MissingWorkingDirectory(t *testing.T) {
 		},
 		EnvConfig: &envConfig,
 		ResourceRecipe: &recipes.ResourceMetadata{
-			ResourceID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
+			ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
 		},
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
+	_, err := generateConfig(ctx, workingDir, execPath, options)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "error creating file: open /invalid-dir/main.tf.json: no such file or directory")
 }
@@ -128,12 +130,14 @@ func TestGenerateConfig_InvalidExecPath(t *testing.T) {
 			TemplatePath: "test/module/source",
 		},
 		ResourceRecipe: &recipes.ResourceMetadata{
-			ResourceID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
+			ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
 		},
 		EnvConfig: &envConfig,
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
+	_, err := generateConfig(ctx, workingDir, execPath, options)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "/terraform: no such file or directory")
 }
