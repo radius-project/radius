@@ -27,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -59,6 +60,8 @@ func (cfg *TerraformConfig) ConfigFilePath() string {
 
 // Save writes the Terraform config to the main config file present at ConfigFilePath().
 func (cfg *TerraformConfig) Save(ctx context.Context) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	// Write the JSON data to a file in the working directory.
 	// JSON configuration syntax for Terraform requires the file to be named with .tf.json suffix.
 	// https://developer.hashicorp.com/terraform/language/syntax/json
@@ -69,6 +72,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
+	logger.Info(fmt.Sprintf("Writing Terraform json config to file: %s", cfg.ConfigFilePath()))
 	if err = os.WriteFile(cfg.ConfigFilePath(), jsonData, modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}

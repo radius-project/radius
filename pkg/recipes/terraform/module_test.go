@@ -24,6 +24,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestStringifyModuleInspectResult(t *testing.T) {
+	tests := []struct {
+		name string
+		r    *ModuleInspectResult
+		out  string
+	}{
+		{
+			name: "no context",
+			r: &ModuleInspectResult{
+				ContextExists: false,
+				Providers:     []string{"aws"},
+			},
+			out: "RecipeContextExists: false, Providers: [aws]",
+		}, {
+			name: "with empty providers",
+			r: &ModuleInspectResult{
+				ContextExists: true,
+				Providers:     []string{},
+			},
+			out: "RecipeContextExists: true, Providers: []",
+		}, {
+			name: "with context and providers",
+			r: &ModuleInspectResult{
+				ContextExists: true,
+				Providers:     []string{"aws"},
+			},
+			out: "RecipeContextExists: true, Providers: [aws]",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.out, tc.r.String())
+		})
+	}
+}
+
 func TestInspectTFModuleConfig(t *testing.T) {
 	inspectTests := []struct {
 		name       string

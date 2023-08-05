@@ -44,6 +44,7 @@ const (
 )
 
 var (
+	// ErrRecipeNameEmpty is the error when the recipe name is empty.
 	ErrRecipeNameEmpty = errors.New("recipe name cannot be empty")
 )
 
@@ -84,6 +85,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
+	// Create Terraform config in the working directory
 	err = e.generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
@@ -112,6 +114,8 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 
 // generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
 func (e *executor) generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
 	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
@@ -129,17 +133,21 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return err
 	}
 
+	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
 	// Get the required providers from the module
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
 
+	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
 	// Get the inspection result from downloaded module to extract context existency and providers.
 	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
+		logger.Error(err, "Failed to inspect module")
 		return err
 	}
 
+	logger.Info(fmt.Sprintf("Inspected module result: %s", result))
 	// Add the required providers to the terraform configuration.
 	if err := tfConfig.AddProviders(ctx, result.Providers, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {

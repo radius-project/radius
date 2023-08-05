@@ -192,6 +192,20 @@ func TestAddRecipeContext(t *testing.T) {
 			expectedConfigFile: "testdata/main.tf-nocontext.json",
 		},
 		{
+			name: "without template version",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:         testRecipeName,
+				TemplatePath: testTemplatePath,
+				Parameters:   envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			recipeContext:      nil,
+			expectedConfigFile: "testdata/main.tf-notplver.json",
+		},
+		{
 			name: "invalid working dir",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
@@ -235,37 +249,6 @@ func TestAddRecipeContext(t *testing.T) {
 			require.Equal(t, string(expectedConfig), string(actualConfig))
 		})
 	}
-}
-
-func TestNewModuleConfig(t *testing.T) {
-	t.Run("With templateVersion", func(t *testing.T) {
-		expectedModuleData := TFModuleConfig{
-			ModuleSourceKey:       testTemplatePath,
-			ModuleVersionKey:      testTemplateVersion,
-			"resource_group_name": envParams["resource_group_name"],
-			"redis_cache_name":    resourceParams["redis_cache_name"],
-			"sku":                 resourceParams["sku"],
-		}
-
-		moduleData := newModuleConfig(testTemplatePath, testTemplateVersion, envParams, resourceParams)
-
-		// Assert that the module data contains the expected data.
-		require.Equal(t, expectedModuleData, moduleData)
-	})
-	t.Run("Without templateVersion", func(t *testing.T) {
-		expectedModuleData := TFModuleConfig{
-			ModuleSourceKey:       testTemplatePath,
-			"resource_group_name": envParams["resource_group_name"],
-			"redis_cache_name":    resourceParams["redis_cache_name"],
-			"sku":                 resourceParams["sku"],
-		}
-
-		moduleData := newModuleConfig(testTemplatePath, "", envParams, resourceParams)
-
-		// Assert that the module data contains the expected data.
-		require.Equal(t, expectedModuleData, moduleData)
-	})
-
 }
 
 func TestAddProviders_Success(t *testing.T) {
@@ -513,9 +496,8 @@ func TestAddProviders_MissingAzureProvider(t *testing.T) {
 	require.Equal(t, expectedTFConfig, tfConfig)
 }
 
-func TestAddProviders_WriteConfigFileError(t *testing.T) {
+func TestSave_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
-	mProvider, supportedProviders := setup(t)
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 
@@ -524,15 +506,6 @@ func TestAddProviders_WriteConfigFileError(t *testing.T) {
 
 	// Create a test configuration file.
 	err := os.WriteFile(tfconfig.ConfigFilePath(), []byte(`{"module":{}}`), 0400)
-	require.NoError(t, err)
-
-	kubernetesProviderConfig := map[string]any{
-		"config_path": clientcmd.RecommendedHomeFile,
-	}
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
-
-	// Call AddProviders with the test configuration file and required providers.
-	err = tfconfig.AddProviders(ctx, []string{providers.KubernetesProviderName}, supportedProviders, nil)
 	require.NoError(t, err)
 
 	// Assert that AddProviders returns an error.

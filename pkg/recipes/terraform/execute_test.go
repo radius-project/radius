@@ -80,7 +80,7 @@ func TestGeneratedConfig(t *testing.T) {
 					TemplatePath: "test/module/source",
 				},
 			},
-			err: "recipe name cannot be empty",
+			err: ErrRecipeNameEmpty.Error(),
 		}, {
 			name:       "invalid working dir",
 			workingDir: "/invalid-dir",
