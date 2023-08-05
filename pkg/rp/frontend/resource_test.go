@@ -35,22 +35,30 @@ type TestResourceDataModel struct {
 	Properties *TestResourceDataModelProperties `json:"properties"`
 }
 
+// # Function Explanation
+//
 // ResourceTypeName returns the qualified name of the resource
 func (r *TestResourceDataModel) ResourceTypeName() string {
 	return "Applications.Core/resources"
 }
 
+// # Function Explanation
+//
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (c *TestResourceDataModel) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
+// # Function Explanation
+//
 // OutputResources returns the output resources array.
 func (c *TestResourceDataModel) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
+// # Function Explanation
+//
 // ResourceMetadata returns the application resource metadata.
 func (h *TestResourceDataModel) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
@@ -89,6 +97,9 @@ type ResourceStatus struct {
 	OutputResources []map[string]any `json:"outputResources,omitempty"`
 }
 
+// # Function Explanation
+//
+// ConvertTo converts a TestResource object to a TestResourceDataModel object and returns it.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
@@ -116,6 +127,11 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
+// # Function Explanation
+//
+// ConvertFrom converts a TestResourceDataModel into a TestResource, mapping fields from the DataModelInterface to the
+// TestResource struct and converting the ProvisioningState from a DataModel to an internal type.
+// It returns an error if the DataModelInterface is not a TestResourceDataModel.
 func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {

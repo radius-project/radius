@@ -88,11 +88,16 @@ const (
 	LocalIDKeyVaultSecret               = "KeyVaultSecret"
 )
 
-// Most LocalIDs are a 1:1 mapping with Radius resource.
+// # Function Explanation
 //
-// This is a little tricky for role assignments because we need to key them on the resource ID
-// of the target resource X the role being assigned. For example if the user switches their keyvault 'a'
-// for a different instance 'b' we want to delete the original role assignments and create new ones.
+// GenerateLocalIDForRoleAssignment generates a unique string based on the input parameters id and roleName
+//
+//	using a stable hashing algorithm.
+//
+// Most LocalIDs are a 1:1 mapping with Radius resource.  This is a little tricky for role assignments
+// because we need to key them on the resource ID of the target resource X the role being assigned.
+// For example if the user switches their keyvault 'a' for a different instance 'b' we want to delete
+// the original role assignments and create new ones.
 func GenerateLocalIDForRoleAssignment(id string, roleName string) string {
 	base := "RoleAssignment-"
 

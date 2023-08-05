@@ -28,12 +28,13 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
+	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// NewExecutor creates a new Executor to execute a Terraform recipe.
-func NewExecutor(ucpConn *sdk.Connection) *executor {
-	return &executor{ucpConn: ucpConn}
+// NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
+func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
 const (
@@ -44,9 +45,16 @@ var _ TerraformExecutor = (*executor)(nil)
 
 type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
-	ucpConn *sdk.Connection
+	ucpConn sdk.Connection
+
+	// secretProvider is the secret store provider used for managing credentials in UCP.
+	secretProvider *ucp_provider.SecretProvider
 }
 
+// # Function Explanation
+//
+// Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
+// apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -70,7 +78,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	err = generateConfig(ctx, workingDir, execPath, options)
+	err = e.generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -97,10 +105,11 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
-func generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+func (e *executor) generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
-	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
+	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
+	// configuration is used as subdirectory name under .terraform/modules directory.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
 	localModuleName := options.EnvRecipe.Name
 	if localModuleName == "" {
@@ -122,7 +131,8 @@ func generateConfig(ctx context.Context, workingDir, execPath string, options Op
 	}
 
 	// Add the required providers to the terraform configuration
-	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
+	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+		options.EnvConfig); err != nil {
 		return err
 	}
 

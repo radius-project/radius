@@ -26,6 +26,8 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+// # Function Explanation
+//
 // NewEngine creates a new Engine to deploy recipe.
 func NewEngine(options Options) *engine {
 	return &engine{options: options}
@@ -43,7 +45,11 @@ type engine struct {
 	options Options
 }
 
-// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
+// # Function Explanation
+//
+// Execute loads the recipe definition from the environment, finds the driver associated with the recipe, loads the
+// configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
+// an error if one occurs.
 func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
@@ -64,7 +70,9 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (
 	return driver.Execute(ctx, *configuration, recipe, *definition)
 }
 
-// Delete handles deletion of output resources for the recipe deployment.
+// # Function Explanation
+//
+// Delete calls the Delete method of the driver specified in the recipe definition to delete the output resources.
 func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error {
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)

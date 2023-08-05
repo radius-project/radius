@@ -12,10 +12,10 @@ import (
 // a queue, publishes a message and returns a BindingStatus indicating success or failure.
 func RabbitMQBinding(envParams map[string]string) BindingStatus {
 	// From https://github.com/rabbitmq/rabbitmq-tutorials/blob/master/go/send.go
-	connectionString := envParams["CONNECTIONSTRING"]
+	connectionString := envParams["URI"]
 	if connectionString == "" {
-		log.Println("CONNECTIONSTRING is required")
-		return BindingStatus{false, "CONNECTIONSTRING is required"}
+		log.Println("URI is required")
+		return BindingStatus{false, "URI is required"}
 	}
 
 	queue := envParams["QUEUE"]

@@ -38,7 +38,9 @@ const (
 	RoleAssignmentScope = "roleassignmentscope"
 )
 
-// NewAzureRoleAssignmentHandler initializes a new handler for resources of kind RoleAssignment
+// # Function Explanation
+//
+// NewAzureRoleAssignmentHandler creates a new instance of azureRoleAssignmentHandler which is used to handle Azure role assignments.
 func NewAzureRoleAssignmentHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureRoleAssignmentHandler{arm: arm}
 }
@@ -47,7 +49,10 @@ type azureRoleAssignmentHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// Put assigns the selected roles to the identity.
+// # Function Explanation
+//
+// Put assigns a role to a user assigned managed identity in order to grant it access to a
+// resource, and returns an error if the assignment fails.
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -90,7 +95,10 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	return properties, nil
 }
 
-// Delete deletes the role from the resource.
+// # Function Explanation
+//
+// Delete deletes an Azure role assignment using the provided DeleteOptions. It returns an error if the role assignment
+// cannot be deleted.
 func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	roleID, _, err := options.Resource.Identity.RequireARM()
 	if err != nil {

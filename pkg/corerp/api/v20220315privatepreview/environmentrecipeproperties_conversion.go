@@ -24,11 +24,15 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
+// # Function Explanation
+//
+// ConvertTo returns an error as it does not support converting Environment Recipe Properties to a version-agnostic object.
 func (src *EnvironmentRecipeProperties) ConvertTo() (v1.DataModelInterface, error) {
 	return nil, fmt.Errorf("converting Environment Recipe Properties to a version-agnostic object is not supported")
 }
 
+// # Function Explanation
+//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment recipe properties resource.
 func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) error {
 	recipe, ok := src.(*datamodel.EnvironmentRecipeProperties)
@@ -41,6 +45,8 @@ func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) e
 	return nil
 }
 
+// # Function Explanation
+//
 // ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
 func (src *Recipe) ConvertTo() (v1.DataModelInterface, error) {
 	return &datamodel.Recipe{

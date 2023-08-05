@@ -54,6 +54,8 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
+
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
 type Service struct {
@@ -97,7 +99,8 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3)".
+	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
+	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
 	discoveryClient.UseLegacyDiscovery = true
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
@@ -117,9 +120,10 @@ func (s *Service) Run(ctx context.Context) error {
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
-				Path: s.Options.Config.Terraform.Path,
-			}),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: s.Options.Config.Terraform.Path,
+				}),
 		},
 	})
 
