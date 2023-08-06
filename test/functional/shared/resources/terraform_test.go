@@ -55,3 +55,35 @@ func Test_TerraformRecipe_HelloWorld(t *testing.T) {
 	})
 	test.Test(t)
 }
+
+func Test_TerraformRecipe_Context(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-context.bicep"
+	name := "corerp-resources-terraform-context"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ExtendersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"corerp-resources-terraform-context-app": {
+						validation.NewK8sSecretForResource(name, name),
+					},
+				},
+			},
+			SkipResourceDeletion: true,
+		},
+	})
+	test.Test(t)
+}
