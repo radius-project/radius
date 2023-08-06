@@ -33,9 +33,9 @@ type Context struct {
 	// Runtime represents Kubernetes Runtime configuration.
 	Runtime recipes.RuntimeConfiguration `json:"runtime,omitempty"`
 	// Azure represents Azure provider scope.
-	Azure *ProviderAzure `json:"azure,omitempty"`
+	Azure ProviderAzure `json:"azure,omitempty"`
 	// AWS represents AWS provider scope.
-	AWS *ProviderAWS `json:"aws,omitempty"`
+	AWS ProviderAWS `json:"aws,omitempty"`
 }
 
 // Resource contains the information needed to deploy a recipe.

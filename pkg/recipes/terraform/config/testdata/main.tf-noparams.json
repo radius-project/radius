@@ -20,6 +20,20 @@
             "namespace": "radius-test-app",
             "environmentNamespace": "radius-test-env"
           }
+        },
+        "azure": {
+          "resourceGroup": {
+            "name": "",
+            "id": ""
+          },
+          "subscription": {
+            "subscriptionId": "",
+            "id": ""
+          }
+        },
+        "aws": {
+          "region": "",
+          "account": ""
         }
       },
       "source": "Azure/redis/azurerm",

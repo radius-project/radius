@@ -26,7 +26,7 @@ import (
 )
 
 func TestNewContext(t *testing.T) {
-	expectedLinkContext := Context{
+	expectedLinkContext := &Context{
 		Resource: Resource{
 			ResourceInfo: ResourceInfo{
 				ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
@@ -48,7 +48,7 @@ func TestNewContext(t *testing.T) {
 				EnvironmentNamespace: "radius-test-env",
 			},
 		},
-		Azure: &ProviderAzure{
+		Azure: ProviderAzure{
 			ResourceGroup: AzureResourceGroup{
 				Name: "testGroup",
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup",
@@ -58,7 +58,7 @@ func TestNewContext(t *testing.T) {
 				ID:             "/subscriptions/testSub",
 			},
 		},
-		AWS: &ProviderAWS{
+		AWS: ProviderAWS{
 			Region:  "us-west-2",
 			Account: "1234567890",
 		},
@@ -86,7 +86,7 @@ func TestNewContext(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, expectedLinkContext, *linkContext)
+	require.Equal(t, expectedLinkContext, linkContext)
 }
 
 func TestNewContext_failures(t *testing.T) {

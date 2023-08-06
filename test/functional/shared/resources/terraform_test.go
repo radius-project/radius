@@ -17,7 +17,11 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
@@ -60,6 +64,8 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
 
+	appNamespace := "corerp-resources-terraform-context-app"
+
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
@@ -77,10 +83,18 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-resources-terraform-context-app": {
+					appNamespace: {
 						validation.NewK8sSecretForResource(name, name),
 					},
 				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
+				require.NoError(t, err)
+
+				t.Logf("resource.id: %s", string(s.Data["resource.id"]))
+				t.Logf("resource.type: %s", string(s.Data["resource.type"]))
+				t.Logf("recipe_context: %s", string(s.Data["recipe_context"]))
 			},
 			SkipResourceDeletion: true,
 		},

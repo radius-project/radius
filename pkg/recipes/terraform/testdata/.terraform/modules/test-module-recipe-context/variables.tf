@@ -1,6 +1,6 @@
 variable "context" {
   description = "This variable contains Radius recipe context."
-  type        = object({
+  type = object({
     resource = object({
       name = string
       id = string

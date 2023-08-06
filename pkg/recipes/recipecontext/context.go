@@ -53,7 +53,7 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 		},
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace:            config.Runtime.Kubernetes.EnvironmentNamespace,
+				Namespace:            config.Runtime.Kubernetes.Namespace,
 				EnvironmentNamespace: config.Runtime.Kubernetes.EnvironmentNamespace,
 			},
 		},
@@ -77,7 +77,7 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 		}
 		subID := p.FindScope(resources.SubscriptionsSegment)
 		rgName := p.FindScope(resources.ResourceGroupsSegment)
-		recipeContext.Azure = &ProviderAzure{
+		recipeContext.Azure = ProviderAzure{
 			ResourceGroup: AzureResourceGroup{
 				Name: rgName,
 				ID:   "/subscriptions/" + subID + "/resourceGroups/" + rgName,
@@ -94,7 +94,7 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 		if err != nil {
 			return nil, fmt.Errorf(ErrParseFormat, "AWS scope", providers.AWS.Scope, err)
 		}
-		recipeContext.AWS = &ProviderAWS{
+		recipeContext.AWS = ProviderAWS{
 			Region:  p.FindScope(resources.RegionsSegment),
 			Account: p.FindScope(resources.AccountsSegment),
 		}

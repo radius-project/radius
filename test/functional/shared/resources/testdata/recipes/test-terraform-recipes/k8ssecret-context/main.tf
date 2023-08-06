@@ -19,8 +19,8 @@ resource "kubernetes_secret" "recipe-context" {
   }
 
   data = {
-    "resource.id" = base64encode(var.context.resource.id)
-    "resource.type" = base64encode(var.context.resource.type)
+    "resource.id" = var.context.resource.id
+    "resource.type" = var.context.resource.type
     "recipe_context" = jsonencode(var.context)
   }
 

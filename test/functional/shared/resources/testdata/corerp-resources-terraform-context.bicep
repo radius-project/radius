@@ -15,7 +15,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       'Applications.Link/extenders': {
         default: {
           templateKind: 'terraform'
-          templatePath: '${moduleServer}/extender-recipe.zip'
+          templatePath: '${moduleServer}/k8ssecret-context.zip'
         }
       }
     }
