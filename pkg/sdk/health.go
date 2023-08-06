@@ -101,7 +101,7 @@ func reportErrorFromResponse(resp *http.Response) error {
 
 	if resp.Body == nil {
 		_, _ = message.WriteString("Response Body: (empty)\n")
-	} else {
+	} else if resp.Header.Get("Content-Type") == "application/json" {
 		defer resp.Body.Close()
 
 		_, _ = message.WriteString("Response Body:\n")
