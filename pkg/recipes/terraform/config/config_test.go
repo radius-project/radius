@@ -122,6 +122,13 @@ func TestGenerateTFConfigFile(t *testing.T) {
 
 	// Assert that generated config contains the expected data.
 	require.Equal(t, expectedTFConfig, tfConfig)
+
+	// Assert generated config matches expected in JSON format.
+	expectedJSON, err := os.ReadFile("testdata/tfconfig.json")
+	require.NoError(t, err)
+	generatedJSON, err := os.ReadFile(configFilePath)
+	require.NoError(t, err)
+	require.JSONEq(t, string(expectedJSON), string(generatedJSON))
 }
 
 func TestGenerateTFConfig_EmptyParameters(t *testing.T) {

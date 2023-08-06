@@ -5,14 +5,14 @@ param environment string
 param namespace string = 'default'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dsstm-old'
+  name: 'daprrp-rs-statestore-manual'
   properties: {
     environment: environment
   }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-ctnr-old'
+  name: 'dapr-sts-manual-ctnr'
   properties: {
     application: app.id
     connections: {
@@ -31,7 +31,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'gnrc-sts-ctnr-old'
+        appId: 'gnrc-sts-ctnr'
         appPort: 3000
       }
     ]
@@ -39,18 +39,18 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 
-module redis 'modules/redis-selfhost.bicep' = {
-  name: 'dapr-sts-manual-redis-old-deployment'
+module redis '../../../shared/resources/testdata/modules/redis-selfhost.bicep' = {
+  name: 'dapr-sts-manual-redis-deployment'
   params: {
-    name: 'dapr-sts-manual-redis-old'
+    name: 'dapr-sts-manual-redis'
     namespace: namespace
     application: app.name
   }
 }
 
 
-resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-old'
+resource statestore 'Applications.Dapr/stateStores@2022-03-15-privatepreview' = {
+  name: 'dapr-sts-manual'
   properties: {
     application: app.id
     environment: environment
