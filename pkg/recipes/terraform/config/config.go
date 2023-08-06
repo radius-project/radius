@@ -35,6 +35,8 @@ const (
 	modeConfigFile fs.FileMode = 0600
 )
 
+var ErrModuleNotFound = errors.New("module not found in Terraform config")
+
 // New creates TerraformConfig with the given module name, environment recipe and resource recipe metadata.
 func New(moduleName, workingDir string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
 	// Resource parameter gets precedence over environment level parameter,
@@ -72,7 +74,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	logger.Info(fmt.Sprintf("Writing Terraform json config to file: %s", cfg.ConfigFilePath()))
+	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", cfg.ConfigFilePath()))
 	if err = os.WriteFile(cfg.ConfigFilePath(), jsonData, modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
@@ -101,11 +103,13 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 // Like AddProviders, Save() must be called to save this new configuration.
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, recipeCtx *recipecontext.Context) error {
 	mod, ok := cfg.Module[cfg.moduleName]
-	if ok && recipeCtx != nil {
-		mod.SetParams(RecipeParams{ModuleRecipeContextKey: recipeCtx})
-		return nil
+	if !ok {
+		return ErrModuleNotFound
 	}
-	return errors.New("module not found in Terraform config")
+	if recipeCtx != nil {
+		mod.SetParams(RecipeParams{ModuleRecipeContextKey: recipeCtx})
+	}
+	return nil
 }
 
 func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
