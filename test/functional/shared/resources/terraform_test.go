@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -91,10 +92,17 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
 				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
 				require.NoError(t, err)
+				rid, err := base64.StdEncoding.DecodeString(string(s.Data["resource.id"]))
+				require.NoError(t, err)
+				require.Equal(t, "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context", string(rid))
 
-				t.Logf("resource.id: %s", string(s.Data["resource.id"]))
-				t.Logf("resource.type: %s", string(s.Data["resource.type"]))
-				t.Logf("recipe_context: %s", string(s.Data["recipe_context"]))
+				rtype, err := base64.StdEncoding.DecodeString(string(s.Data["resource.type"]))
+				require.NoError(t, err)
+				require.Equal(t, "Applications.Link/extenders", string(rtype))
+
+				rctx, err := base64.StdEncoding.DecodeString(string(s.Data["recipe_context"]))
+				require.NoError(t, err)
+				require.Equal(t, "not matched", string(rctx), "recipe context %s", string(s.Data["recipe_context"]))
 			},
 			SkipResourceDeletion: true,
 		},
