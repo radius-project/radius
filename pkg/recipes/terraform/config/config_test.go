@@ -380,13 +380,22 @@ func TestAddProviders(t *testing.T) {
 	}
 }
 
+func TestSave_overwrite(t *testing.T) {
+	ctx := testcontext.New(t)
+	envRecipe, resourceRecipe := getTestInputs()
+	tfconfig := New(testRecipeName, t.TempDir(), &envRecipe, &resourceRecipe)
+
+	err := tfconfig.Save(ctx)
+	require.NoError(t, err)
+
+	err = tfconfig.Save(ctx)
+	require.NoError(t, err)
+}
+
 func TestSave_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, testDir, &envRecipe, &resourceRecipe)
+	tfconfig := New(testRecipeName, t.TempDir(), &envRecipe, &resourceRecipe)
 
 	// Create a test configuration file.
 	err := os.WriteFile(tfconfig.ConfigFilePath(), []byte(`{"module":{}}`), 0400)

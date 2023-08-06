@@ -104,7 +104,8 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, recipeCtx *recipecontext.Context) error {
 	mod, ok := cfg.Module[cfg.moduleName]
 	if !ok {
-		return ErrModuleNotFound
+		// should not happen
+		panic(ErrModuleNotFound)
 	}
 	if recipeCtx != nil {
 		mod.SetParams(RecipeParams{ModuleRecipeContextKey: recipeCtx})
