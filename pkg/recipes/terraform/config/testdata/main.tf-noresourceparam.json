@@ -20,20 +20,6 @@
             "namespace": "radius-test-app",
             "environmentNamespace": "radius-test-env"
           }
-        },
-        "azure": {
-          "resourceGroup": {
-            "name": "",
-            "id": ""
-          },
-          "subscription": {
-            "subscriptionId": "",
-            "id": ""
-          }
-        },
-        "aws": {
-          "region": "",
-          "account": ""
         }
       },
       "resource_group_name": "test-rg",

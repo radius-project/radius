@@ -26,67 +26,170 @@ import (
 )
 
 func TestNewContext(t *testing.T) {
-	expectedLinkContext := &Context{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
-				ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
-				Name: "mongo0",
-			},
-			Type: "applications.link/mongodatabases",
-		},
-		Application: ResourceInfo{
-			Name: "testApplication",
-			ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-		},
-		Environment: ResourceInfo{
-			Name: "env0",
-			ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-		},
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace:            "radius-test-app",
-				EnvironmentNamespace: "radius-test-env",
-			},
-		},
-		Azure: ProviderAzure{
-			ResourceGroup: AzureResourceGroup{
-				Name: "testGroup",
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup",
-			},
-			Subscription: AzureSubscription{
-				SubscriptionID: "testSub",
-				ID:             "/subscriptions/testSub",
-			},
-		},
-		AWS: ProviderAWS{
-			Region:  "us-west-2",
-			Account: "1234567890",
-		},
-	}
-
-	linkContext, err := New(&recipes.ResourceMetadata{
+	testMetadata := &recipes.ResourceMetadata{
 		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-	}, &recipes.Configuration{
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace:            "radius-test-app",
-				EnvironmentNamespace: "radius-test-env",
-			},
-		},
-		Providers: coredm.Providers{
-			Azure: coredm.ProvidersAzure{
-				Scope: "/subscriptions/testSub/resourceGroups/testGroup",
-			},
-			AWS: coredm.ProvidersAWS{
-				Scope: "/planes/aws/aws/accounts/1234567890/regions/us-west-2",
-			},
-		},
-	})
+	}
 
-	require.NoError(t, err)
-	require.Equal(t, expectedLinkContext, linkContext)
+	ctxTests := []struct {
+		name      string
+		metadata  *recipes.ResourceMetadata
+		providers *recipes.Configuration
+		out       *Context
+	}{
+		{
+			name:     "all providers",
+			metadata: testMetadata,
+			providers: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Providers: coredm.Providers{
+					Azure: coredm.ProvidersAzure{
+						Scope: "/subscriptions/testSub/resourceGroups/testGroup",
+					},
+					AWS: coredm.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/1234567890/regions/us-west-2",
+					},
+				},
+			},
+			out: &Context{
+				Resource: Resource{
+					ResourceInfo: ResourceInfo{
+						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+						Name: "mongo0",
+					},
+					Type: "applications.link/mongodatabases",
+				},
+				Application: ResourceInfo{
+					Name: "testApplication",
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Environment: ResourceInfo{
+					Name: "env0",
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Azure: &ProviderAzure{
+					ResourceGroup: AzureResourceGroup{
+						Name: "testGroup",
+						ID:   "/subscriptions/testSub/resourceGroups/testGroup",
+					},
+					Subscription: AzureSubscription{
+						SubscriptionID: "testSub",
+						ID:             "/subscriptions/testSub",
+					},
+				},
+				AWS: &ProviderAWS{
+					Region:  "us-west-2",
+					Account: "1234567890",
+				},
+			},
+		},
+		{
+			name:     "without cloud providers",
+			metadata: testMetadata,
+			providers: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Providers: coredm.Providers{},
+			},
+			out: &Context{
+				Resource: Resource{
+					ResourceInfo: ResourceInfo{
+						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+						Name: "mongo0",
+					},
+					Type: "applications.link/mongodatabases",
+				},
+				Application: ResourceInfo{
+					Name: "testApplication",
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Environment: ResourceInfo{
+					Name: "env0",
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+			},
+		},
+		{
+			name:     "only azure",
+			metadata: testMetadata,
+			providers: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Providers: coredm.Providers{
+					Azure: coredm.ProvidersAzure{
+						Scope: "/subscriptions/testSub/resourceGroups/testGroup",
+					},
+				},
+			},
+			out: &Context{
+				Resource: Resource{
+					ResourceInfo: ResourceInfo{
+						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+						Name: "mongo0",
+					},
+					Type: "applications.link/mongodatabases",
+				},
+				Application: ResourceInfo{
+					Name: "testApplication",
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Environment: ResourceInfo{
+					Name: "env0",
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "radius-test-app",
+						EnvironmentNamespace: "radius-test-env",
+					},
+				},
+				Azure: &ProviderAzure{
+					ResourceGroup: AzureResourceGroup{
+						Name: "testGroup",
+						ID:   "/subscriptions/testSub/resourceGroups/testGroup",
+					},
+					Subscription: AzureSubscription{
+						SubscriptionID: "testSub",
+						ID:             "/subscriptions/testSub",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range ctxTests {
+		t.Run(tc.name, func(t *testing.T) {
+			recipeContext, err := New(tc.metadata, tc.providers)
+			require.NoError(t, err)
+			require.Equal(t, tc.out, recipeContext)
+		})
+	}
 }
 
 func TestNewContext_failures(t *testing.T) {

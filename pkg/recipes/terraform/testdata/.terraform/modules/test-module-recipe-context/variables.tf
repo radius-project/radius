@@ -18,13 +18,13 @@ variable "context" {
     })
 
     runtime = object({
-      kubernetes = object({
+      kubernetes = optional(object({
         namespace = string
         environmentNamespace = string
-      })
+      }))
     })
 
-    azure = object({
+    azure = optional(object({
       resourceGroup = object({
         name = string
         id = string
@@ -33,11 +33,11 @@ variable "context" {
         subscriptionId = string
         id = string
       })
-    })
+    }))
     
-    aws = object({
+    aws = optional(object({
       region = string
       account = string
-    })
+    }))
   })
 }
