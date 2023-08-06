@@ -90,19 +90,33 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				// `k8ssecret-context` recipe should have created a secret with the populated recipe context.
 				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
 				require.NoError(t, err)
-				rid, err := base64.StdEncoding.DecodeString(string(s.Data["resource.id"]))
-				require.NoError(t, err)
-				require.Equal(t, "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context", string(rid))
 
-				rtype, err := base64.StdEncoding.DecodeString(string(s.Data["resource.type"]))
-				require.NoError(t, err)
-				require.Equal(t, "Applications.Link/extenders", string(rtype))
+				tests := []struct {
+					key      string
+					expected string
+				}{
+					{
+						key:      "resource.id",
+						expected: "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context",
+					},
+					{
+						key:      "resource.type",
+						expected: "Applications.Link/extenders",
+					},
+					{
+						key:      "recipe_context",
+						expected: "{\"application\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"aws\":null,\"azure\":null,\"environment\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"resource\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\",\"type\":\"Applications.Link/extenders\"},\"runtime\":{\"kubernetes\":{\"environmentNamespace\":\"\",\"namespace\":\"corerp-resources-terraform-context-app\"}}}",
+					},
+				}
 
-				rctx, err := base64.StdEncoding.DecodeString(string(s.Data["recipe_context"]))
-				require.NoError(t, err)
-				require.Equal(t, "not matched", string(rctx), "recipe context %s", string(s.Data["recipe_context"]))
+				for _, tc := range tests {
+					decoded, err := base64.StdEncoding.DecodeString(string(s.Data[tc.key]))
+					require.NoErrorf(t, err, "failed to decode secret data, key: %s", tc.key)
+					require.Equalf(t, tc.expected, string(decoded), "secret data mismatch, key: %s", tc.key)
+				}
 			},
 			SkipResourceDeletion: true,
 		},

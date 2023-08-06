@@ -34,11 +34,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
-func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) *executor {
-	return &executor{ucpConn: ucpConn, secretProvider: secretProvider}
-}
-
 const (
 	executionSubDir = "deploy"
 )
@@ -49,6 +44,11 @@ var (
 )
 
 var _ TerraformExecutor = (*executor)(nil)
+
+// NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
+func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider}
+}
 
 type executor struct {
 	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
@@ -126,21 +126,23 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return ErrRecipeNameEmpty
 	}
 
+	// Create a new Terraform JSON config with the given recipe parameters and working directory.
 	tfConfig := config.New(localModuleName, workingDir, options.EnvRecipe, options.ResourceRecipe)
 
-	// Before downloading module, Teraform configuration needs to be saved.
+	// Before downloading module, Teraform configuration needs to be saved because downloading module
+	// requires the default config.
 	if err := tfConfig.Save(ctx); err != nil {
 		return err
 	}
 
 	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
-	// Get the required providers from the module
+	// Download module in the working directory.
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
 
 	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
-	// Get the inspection result from downloaded module to extract context existency and providers.
+	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
 	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
 		logger.Error(err, "Failed to inspect module")
@@ -154,7 +156,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return err
 	}
 
-	// Populate recipe context into TF config only if the download module has a context variable.
+	// Populate recipecontext into TF JSON config only if the downloaded module has a context variable.
 	if result.ContextExists {
 		// create the context object to be passed to the recipe deployment
 		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
@@ -166,7 +168,9 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		}
 	}
 
-	// Ensure that we need to save the configuration after adding providers and context.
+	// Add more configurations here.
+
+	// Ensure that we need to save the configuration after adding providers and recipecontext.
 	if err := tfConfig.Save(ctx); err != nil {
 		return err
 	}
