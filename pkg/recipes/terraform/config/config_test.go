@@ -25,7 +25,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -256,7 +255,7 @@ func TestAddProviders(t *testing.T) {
 					"features":        map[string]any{},
 				},
 				{
-					"config_path": clientcmd.RecommendedHomeFile,
+					"config_path": "/home/radius/.kube/config",
 				},
 			},
 			modProviderErr: nil,

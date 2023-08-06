@@ -8,7 +8,7 @@
       "subscription_id": "test-sub"
     },
     "kubernetes": {
-      "config_path": "/Users/youngp/.kube/config"
+      "config_path": "/home/radius/.kube/config"
     }
   },
   "module": {
