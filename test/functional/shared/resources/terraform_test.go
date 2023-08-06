@@ -29,7 +29,7 @@ import (
 //
 // - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service.
-func Test_TerraformRecipe_Redis(t *testing.T) {
+func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-redis.bicep"
 	name := "corerp-resources-terraform-redis"
 	appName := "corerp-resources-terraform-redis-app"
@@ -37,7 +37,7 @@ func Test_TerraformRecipe_Redis(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "namespace="+appName, "redisCacheName="+redisCacheName, "appName="+appName),
+			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
