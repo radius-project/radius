@@ -32,10 +32,12 @@ import (
 func Test_TerraformRecipe_Redis(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-redis.bicep"
 	name := "corerp-resources-terraform-redis"
+	appName := "corerp-resources-terraform-redis-app"
+	redisCacheName := "tf-redis-cache"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
+			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "namespace="+appName, "redisCacheName="+redisCacheName, "appName="+appName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -43,21 +45,21 @@ func Test_TerraformRecipe_Redis(t *testing.T) {
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-terraform-redis-app",
+						Name: appName,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name:            "corerp-resources-terraform-redis",
 						Type:            validation.ExtendersResource,
-						App:             "corerp-resources-terraform-redis-app",
+						App:             appName,
 						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sServiceForResource(name, "redis-cache-tf-recipe"),
+					appName: {
+						validation.NewK8sServiceForResource(appName, redisCacheName).ValidateLabels(false),
 					},
 				},
 			},

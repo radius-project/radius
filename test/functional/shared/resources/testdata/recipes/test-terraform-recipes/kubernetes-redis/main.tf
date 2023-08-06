@@ -48,7 +48,7 @@ resource "kubernetes_deployment" "redis" {
 resource "kubernetes_service" "redis" {
   metadata {
     name = var.redis_cache_name
-    namespace = var.namespace
+    namespace = var.namespace // Update this to use context parameter once implemented
   }
 
   spec {
