@@ -11,11 +11,10 @@ resource "kubernetes_secret" "recipe-context" {
   metadata {
     name = var.context.resource.name
     namespace = var.context.runtime.kubernetes.namespace
-  }
-
-  labels = {
-    "radius.dev/application" = var.context.application.name
-    "radius.dev/resource" = var.context.resource.name
+    labels = {
+      "radius.dev/application" = var.context.application.name
+      "radius.dev/resource" =  var.context.resource.name
+    }
   }
 
   data = {
