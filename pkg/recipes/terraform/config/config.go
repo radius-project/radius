@@ -37,8 +37,9 @@ const (
 
 var ErrModuleNotFound = errors.New("module not found in Terraform config")
 
-// New creates TerraformConfig with the given module name, environment recipe and resource recipe metadata.
-func New(moduleName, workingDir string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
+// New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
+// from environment recipe and resource recipe metadata.
+func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
 	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
@@ -48,20 +49,17 @@ func New(moduleName, workingDir string, envRecipe *recipes.EnvironmentDefinition
 		Module: map[string]TFModuleConfig{
 			moduleName: moduleData,
 		},
-
-		// internal purposes.
-		moduleName: moduleName,
-		workingDir: workingDir,
 	}
 }
 
-// ConfigFilePath returns the path of the Terraform main config file.
-func (cfg *TerraformConfig) ConfigFilePath() string {
-	return fmt.Sprintf("%s/%s", cfg.workingDir, mainConfigFileName)
+// getConfigFilePath returns the path of the Terraform main config file.
+func getConfigFilePath(workingDir string) string {
+	return fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 }
 
 // Save writes the Terraform config to the main config file present at ConfigFilePath().
-func (cfg *TerraformConfig) Save(ctx context.Context) error {
+// This overwrites the existing file if it exists.
+func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Write the JSON data to a file in the working directory.
@@ -74,8 +72,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", cfg.ConfigFilePath()))
-	if err = os.WriteFile(cfg.ConfigFilePath(), jsonData, modeConfigFile); err != nil {
+	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getConfigFilePath(workingDir)))
+	if err = os.WriteFile(getConfigFilePath(workingDir), jsonData, modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
 	return nil
@@ -99,12 +97,12 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 	return nil
 }
 
-// AddRecipeContext adds RecipeContext to TerraformConfig if recipeCtx is not nil.
-// Like AddProviders, Save() must be called to save this new configuration.
-func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, recipeCtx *recipecontext.Context) error {
-	mod, ok := cfg.Module[cfg.moduleName]
+// AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
+// Save() must be called after adding recipe context to the module config.
+func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {
+	mod, ok := cfg.Module[moduleName]
 	if !ok {
-		// should not happen
+		// must not happen because module key is set in New().
 		panic(ErrModuleNotFound)
 	}
 	if recipeCtx != nil {
@@ -113,6 +111,8 @@ func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, recipeCtx *rec
 	return nil
 }
 
+// newModuleConfig creates a new TFModuleConfig object with the given module source and version
+// and also populates RecipeParams in TF module config.
 func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
 	moduleConfig := TFModuleConfig{
 		ModuleSourceKey: moduleSource,

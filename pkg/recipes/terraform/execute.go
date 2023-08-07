@@ -127,11 +127,11 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	}
 
 	// Create a new Terraform JSON config with the given recipe parameters and working directory.
-	tfConfig := config.New(localModuleName, workingDir, options.EnvRecipe, options.ResourceRecipe)
+	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
 
 	// Before downloading module, Teraform configuration needs to be saved because downloading module
 	// requires the default config.
-	if err := tfConfig.Save(ctx); err != nil {
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}
 
@@ -163,7 +163,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		if err != nil {
 			return err
 		}
-		if err = tfConfig.AddRecipeContext(ctx, recipectx); err != nil {
+		if err = tfConfig.AddRecipeContext(ctx, localModuleName, recipectx); err != nil {
 			return err
 		}
 	}
@@ -171,7 +171,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	// Add more configurations here.
 
 	// Ensure that we need to save the configuration after adding providers and recipecontext.
-	if err := tfConfig.Save(ctx); err != nil {
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}
 

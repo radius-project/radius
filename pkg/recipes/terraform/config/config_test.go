@@ -63,7 +63,7 @@ func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider)
 	return *mProvider, providers
 }
 
-func getTestContext() *recipecontext.Context {
+func getTestRecipeContext() *recipecontext.Context {
 	return &recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
@@ -127,7 +127,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Name:       testRecipeName,
 				Parameters: resourceParams,
 			},
-			recipeContext:      getTestContext(),
+			recipeContext:      getTestRecipeContext(),
 			expectedConfigFile: "testdata/main.tf-all.json",
 		},
 		{
@@ -140,7 +140,7 @@ func TestAddRecipeContext(t *testing.T) {
 			metadata: &recipes.ResourceMetadata{
 				Name: testRecipeName,
 			},
-			recipeContext:      getTestContext(),
+			recipeContext:      getTestRecipeContext(),
 			expectedConfigFile: "testdata/main.tf-noparams.json",
 		},
 		{
@@ -154,7 +154,7 @@ func TestAddRecipeContext(t *testing.T) {
 			metadata: &recipes.ResourceMetadata{
 				Name: testRecipeName,
 			},
-			recipeContext:      getTestContext(),
+			recipeContext:      getTestRecipeContext(),
 			expectedConfigFile: "testdata/main.tf-noresourceparam.json",
 		},
 		{
@@ -209,12 +209,12 @@ func TestAddRecipeContext(t *testing.T) {
 			if tc.configPath == "" {
 				tc.configPath = t.TempDir()
 			}
-			tfconfig := New(testRecipeName, tc.configPath, tc.envdef, tc.metadata)
+			tfconfig := New(testRecipeName, tc.envdef, tc.metadata)
 			if tc.recipeContext != nil {
-				err := tfconfig.AddRecipeContext(ctx, tc.recipeContext)
+				err := tfconfig.AddRecipeContext(ctx, testRecipeName, tc.recipeContext)
 				require.NoError(t, err)
 			}
-			err := tfconfig.Save(ctx)
+			err := tfconfig.Save(ctx, tc.configPath)
 			if tc.err != "" {
 				require.ErrorContains(t, err, tc.err)
 				return
@@ -223,7 +223,7 @@ func TestAddRecipeContext(t *testing.T) {
 			require.NoError(t, err)
 
 			// assert
-			actualConfig, err := os.ReadFile(tfconfig.ConfigFilePath())
+			actualConfig, err := os.ReadFile(getConfigFilePath(tc.configPath))
 			require.NoError(t, err)
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
@@ -346,12 +346,10 @@ func TestAddProviders(t *testing.T) {
 			ctx := testcontext.New(t)
 			workingDir := t.TempDir()
 
-			tfconfig := New(testRecipeName, workingDir, &envRecipe, &resourceRecipe)
-
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
 			for _, p := range tc.modProviders {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
 			}
-
 			if tc.modProviderErr != nil {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.modProviderErr)
 			}
@@ -364,13 +362,11 @@ func TestAddProviders(t *testing.T) {
 
 			require.NoError(t, err)
 
-			err = tfconfig.Save(ctx)
+			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)
 
-			t.Log(tfconfig.ConfigFilePath())
-
 			// assert
-			actualConfig, err := os.ReadFile(tfconfig.ConfigFilePath())
+			actualConfig, err := os.ReadFile(getConfigFilePath(workingDir))
 			require.NoError(t, err)
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
@@ -381,27 +377,29 @@ func TestAddProviders(t *testing.T) {
 
 func TestSave_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
+	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, t.TempDir(), &envRecipe, &resourceRecipe)
+	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
 
-	err := tfconfig.Save(ctx)
+	err := tfconfig.Save(ctx, testDir)
 	require.NoError(t, err)
 
-	err = tfconfig.Save(ctx)
+	err = tfconfig.Save(ctx, testDir)
 	require.NoError(t, err)
 }
 
 func TestSave_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
+	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
-	tfconfig := New(testRecipeName, t.TempDir(), &envRecipe, &resourceRecipe)
+	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
 
 	// Create a test configuration file.
-	err := os.WriteFile(tfconfig.ConfigFilePath(), []byte(`{"module":{}}`), 0400)
+	err := os.WriteFile(getConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
 	require.NoError(t, err)
 
 	// Assert that AddProviders returns an error.
-	err = tfconfig.Save(ctx)
+	err = tfconfig.Save(ctx, testDir)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "permission denied")
 }

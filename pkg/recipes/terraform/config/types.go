@@ -47,10 +47,4 @@ type TerraformConfig struct {
 
 	// Module is the Terraform module configuration.
 	Module map[string]TFModuleConfig `json:"module"`
-
-	// moduleName is the internal property to identity the module name in the configuration. This isn't marshalled to JSON.
-	moduleName string `json:"-"`
-
-	// workingDir is the internal property to represent the working directory of the module. This isn't marshalled to JSON.
-	workingDir string `json:"-"`
 }
