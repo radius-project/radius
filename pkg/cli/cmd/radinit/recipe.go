@@ -175,12 +175,6 @@ func getLinkType(resourceType string) string {
 		return linkrp.SqlDatabasesResourceType
 	case "rabbitmqqueues":
 		return linkrp.N_RabbitMQQueuesResourceType
-	case "pubsubbrokers":
-		return linkrp.N_DaprPubSubBrokersResourceType
-	case "secretstores":
-		return linkrp.N_DaprSecretStoresResourceType
-	case "statestores":
-		return linkrp.N_DaprStateStoresResourceType
 	default:
 		return ""
 	}
