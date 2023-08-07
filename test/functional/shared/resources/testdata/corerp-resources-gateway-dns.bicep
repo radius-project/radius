@@ -21,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-gtwy'
+  name: 'http-gtwy-gtwy-dns'
   location: location
   properties: {
     application: app.id

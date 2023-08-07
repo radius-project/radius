@@ -157,7 +157,7 @@ func Test_GatewayDNS(t *testing.T) {
                         Type: validation.ApplicationsResource,
                     },
                     {
-                        Name: "http-gtwy-gtwy",
+                        Name: "http-gtwy-gtwy-dns",
                         Type: validation.GatewaysResource,
                         App:  name,
                     },
@@ -180,7 +180,7 @@ func Test_GatewayDNS(t *testing.T) {
                         validation.NewK8sPodForResource(name, "backendcontainerdns"),
                         validation.NewK8sServiceForResource(name, "frontendcontainerdns"),
                         validation.NewK8sServiceForResource(name, "backendcontainerdns"),
-                        validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy"),
+                        validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy-dns"),
                         validation.NewK8sHTTPProxyForResource(name, "frontendcontainerdns"),
                         validation.NewK8sHTTPProxyForResource(name, "backendcontainerdns"),
                     },
