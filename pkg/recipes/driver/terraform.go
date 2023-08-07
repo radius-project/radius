@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
+	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
 	"k8s.io/client-go/kubernetes"
@@ -36,12 +37,11 @@ import (
 
 var _ Driver = (*terraformDriver)(nil)
 
+// # Function Explanation
+//
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, options TerraformOptions, k8sClientSet kubernetes.Interface) Driver {
-	return &terraformDriver{
-		terraformExecutor: terraform.NewExecutor(&ucpConn, k8sClientSet),
-		options:           options,
-	}
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions, k8sClientSet kubernetes.Interface) Driver {
+	return &terraformDriver{terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, k8sClientSet), options: options}
 }
 
 // Options represents the options required for execution of Terraform driver.
@@ -58,7 +58,10 @@ type terraformDriver struct {
 	options TerraformOptions
 }
 
-// Execute deploys a Terraform recipe by using the Terraform CLI through terraform-exec
+// # Function Explanation
+//
+// Execute creates a unique directory for each execution of terraform and deploys the recipe using the
+// the Terraform CLI through terraform-exec. It returns a RecipeOutput or an error if the deployment fails.
 func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -103,6 +106,9 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	return recipeOutputs, nil
 }
 
+// # Function Explanation
+//
+// Delete returns an error if called as it is not yet implemented.
 func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	// TODO: to be implemented in follow up PR
 	return errors.New("terraform delete support is not implemented yet")

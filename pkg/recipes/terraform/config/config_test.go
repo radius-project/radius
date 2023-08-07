@@ -136,6 +136,22 @@ func TestGenerateTFConfigFile(t *testing.T) {
 
 	// Assert that generated config contains the expected data.
 	require.Equal(t, expectedTFConfig, tfConfig)
+
+	// Assert generated config matches expected in JSON format.
+	expectedJSON, err := os.ReadFile("testdata/tfconfig.json")
+	require.NoError(t, err)
+	expectedConfigDatamodel := &TerraformConfig{}
+	err = json.Unmarshal(expectedJSON, expectedConfigDatamodel)
+	require.NoError(t, err)
+	if val, ok := expectedConfigDatamodel.Terraform.Backend["kubernetes"]; ok {
+		backend := val.(map[string]interface{})
+		backend["config_path"] = clientcmd.RecommendedHomeFile
+	}
+	expectedJSON, err = json.Marshal(expectedConfigDatamodel)
+	require.NoError(t, err)
+	generatedJSON, err := os.ReadFile(configFilePath)
+	require.NoError(t, err)
+	require.JSONEq(t, string(expectedJSON), string(generatedJSON))
 }
 
 func TestGenerateTFConfig_EmptyParameters(t *testing.T) {

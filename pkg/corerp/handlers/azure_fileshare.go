@@ -28,6 +28,9 @@ const (
 	FileShareIDKey   = "fileshareid"
 )
 
+// # Function Explanation
+//
+// NewAzureFileShareHandler creates a new instance of azureFileShareHandler with the given arm config.
 func NewAzureFileShareHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureFileShareHandler{arm: arm}
 }
@@ -36,6 +39,9 @@ type azureFileShareHandler struct {
 	arm *armauth.ArmConfig
 }
 
+// # Function Explanation
+//
+// Put validates the required properties for the resource and creates/modifies the resource using the ARMHandler.
 func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {
@@ -56,6 +62,9 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 	return properties, nil
 }
 
+// # Function Explanation
+//
+// No-op. Just returns nil.
 func (handler *azureFileShareHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }

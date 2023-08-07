@@ -54,6 +54,8 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
+
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
 type Service struct {
@@ -118,9 +120,10 @@ func (s *Service) Run(ctx context.Context) error {
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
-				Path: s.Options.Config.Terraform.Path,
-			}, s.KubeClientSet),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: s.Options.Config.Terraform.Path,
+				}, s.KubeClientSet),
 		},
 	})
 

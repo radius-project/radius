@@ -51,7 +51,9 @@ const (
 
 var _ Driver = (*bicepDriver)(nil)
 
-// NewBicepDriver creates the new Driver for Bicep.
+// # Function Explanation
+//
+// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client and resource client.
 func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
 	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient, ResourceClient: client}
 }
@@ -62,7 +64,11 @@ type bicepDriver struct {
 	ResourceClient   processors.ResourceClient
 }
 
-// Execute fetches the recipe contents from acr and deploys the recipe by making a call to ucp and returns the recipe result.
+// # Function Explanation
+//
+// Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
+// a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
+// is done and prepares the recipe response.
 func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
@@ -130,7 +136,10 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	return &recipeResponse, nil
 }
 
-// Delete handles output resource deletion and returns an error on failure to delete.
+// # Function Explanation
+//
+// Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
+// resources that are not managed by Radius. It returns an error if any of the resources fail to delete.
 func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

@@ -38,7 +38,10 @@ import (
 type Renderer struct {
 }
 
-// GetDependencyIDs fetches all the httproutes used by the gateway
+// # Function Explanation
+//
+// GetDependencyIDs parses the gateway data model to get the resource IDs of the httpRoutes and the secretStore resource ID
+// from the certificateFrom property, and returns them as two slices of resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
@@ -69,7 +72,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-// Render creates the kubernetes output resource for the gateway and its dependency - httproute
+// # Function Explanation
+//
+// Render creates a gateway object and http route objects based on the given parameters, and returns them along
+// with a computed value for the gateway's public endpoint.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []rpv1.OutputResource{}
 	gateway, ok := dm.(*datamodel.Gateway)
@@ -119,7 +125,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-// MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
+// # Function Explanation
+//
+// MakeGateway validates the Gateway resource and its dependencies, and creates a Contour HTTPProxy resource
+// to act as the Gateway.
 func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
 	dependencies := options.Dependencies
@@ -285,7 +294,10 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 	return rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
-// MakeHttpRoutes creates the kubernetes httproute construct from the corerp gateway datamodel
+// # Function Explanation
+//
+// MakeHttpRoutes creates HTTPProxy objects for each route in the gateway and returns them as OutputResources. It returns
+// an error if it fails to get the route name.
 func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
 	dependencies := options.Dependencies
 	objects := make(map[string]*contourv1.HTTPProxy)

@@ -1,0 +1,19 @@
+{
+    "terraform": {
+      "backend": {
+        "kubernetes": {
+          "secret_suffix": "env-app-redis.344e96f40425a7345c4f24f5e957661a9bb4c8e5",
+          "namespace": "radius-system"
+        }
+      }
+    },
+    "module": {
+      "redis-azure": {
+        "source": "Azure/redis/azurerm",
+        "version": "1.1.0",
+        "resource_group_name": "test-rg",
+        "redis_cache_name":    "redis-test",
+        "sku":                 "P"
+      }
+    }
+  }

@@ -78,12 +78,17 @@ func isFederatedIdentitySupported(region string) bool {
 	return true
 }
 
-// GetKubeAzureSubject constructs the federated identity subject with Kuberenetes namespace and service account name.
+// # Function Explanation
+//
+// GetKubeAzureSubject constructs the federated identity subject in the format "system:serviceaccount:<namespace>:<saName>"
+// from the given namespace and service account name.
 func GetKubeAzureSubject(namespace, saName string) string {
 	return fmt.Sprintf("system:serviceaccount:%s:%s", namespace, saName)
 }
 
-// NewAzureFederatedIdentity initializes a new handler for federated identity resource.
+// # Function Explanation
+//
+// NewAzureFederatedIdentity creates a new instance of AzureFederatedIdentityHandler.
 func NewAzureFederatedIdentity(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureFederatedIdentityHandler{arm: arm}
 }
@@ -92,7 +97,10 @@ type azureFederatedIdentityHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// Put creates or updates the federated identity resource of the azure identity.
+// # Function Explanation
+//
+// Put creates a federated identity for an Azure AD identity and populates the federated
+// identity credential changes.
 func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -179,6 +187,11 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 }
 
 // Delete deletes the federated identity credential.
+//
+// # Function Explanation
+//
+// azureFederatedIdentityHandler.Delete deletes an Azure Federated Identity resource from the Azure cloud given the
+// resource's data and subscription ID.
 func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	fi := &resourcemodel.AzureFederatedIdentity{}
 	if err := store.DecodeMap(options.Resource.Identity.Data, fi); err != nil {

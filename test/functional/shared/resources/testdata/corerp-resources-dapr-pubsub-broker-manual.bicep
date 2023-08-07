@@ -5,14 +5,14 @@ param environment string
 param namespace string = 'default'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dpsb-manual-app'
+  name: 'dpsb-mnl-app-old'
   properties: {
     environment: environment
   }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dpsb-manual-app-ctnr'
+  name: 'dpsb-mnl-app-ctnr-old'
   properties: {
     application: app.id
     connections: {
@@ -31,18 +31,17 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'dpsb-manual-app-ctnr'
+        appId: 'dpsb-mnl-app-ctnr-old'
         appPort: 3000
       }
     ]
   }
 }
 
-
 module redis 'modules/redis-selfhost.bicep' = {
-  name: 'dpsb-manual-redis-deployment'
+  name: 'dpsb-mnl-redis-old-deployment'
   params: {
-    name: 'dpsb-manual-redis'
+    name: 'dpsb-mnl-redis-old'
     namespace: namespace
     application: app.name
   }
@@ -50,7 +49,7 @@ module redis 'modules/redis-selfhost.bicep' = {
 
 
 resource pubsubBroker 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
-  name: 'dpsb-manual'
+  name: 'dpsb-mnl-old'
   properties: {
     application: app.id
     environment: environment

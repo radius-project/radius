@@ -39,15 +39,15 @@ env:
   GOTESTSUM_VER: 1.10.0
 
   # Helm version
-  HELM_VER: 'v3.11.3'
+  HELM_VER: 'v3.12.0'
   # KinD cluster version
   KIND_VER: 'v0.20.0'
   # Dapr version
-  DAPR_VER: '1.10.0'
+  DAPR_VER: '1.11.0'
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
-  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.0.0'
+  AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
   # Container registry for storing test images and recipes
   CACHE_REGISTRY: ghcr.io/project-radius/dev
   # Container registry for storing recipe artifacts
@@ -307,7 +307,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,shared,msgrp,samples]
+        name: [ucp,shared,msgrp,daprrp,samples]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}

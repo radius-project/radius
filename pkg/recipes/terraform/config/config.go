@@ -35,6 +35,8 @@ const (
 	namespace = "radius-system"
 )
 
+// # Function Explanation
+//
 // GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
 // to a main.tf.json file in the specified working directory. This JSON configuration is needed to retrieve the Terraform
 // module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
@@ -108,6 +110,8 @@ func generateModuleData(ctx context.Context, moduleSource string, moduleVersion 
 	return moduleConfig
 }
 
+// # Function Explanation
+//
 // AddProviders generates and adds provider configurations for requiredProviders that are supported by Radius to generate custom provider configurations.
 // The generated config is added to the existing Terraform main config file present at the configFilePath, and writes the updated configuration data back to the file.
 // requiredProviders contains a list of provider names that are required for the module.
