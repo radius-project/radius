@@ -46,8 +46,8 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		AccountID:       "test-account-id",
 	}
 
-	t.Run("cloud providers skipped in dev mode", func(t *testing.T) {
-		runner := Runner{Dev: true}
+	t.Run("cloud providers skipped when no flags specified", func(t *testing.T) {
+		runner := Runner{}
 
 		options := initOptions{}
 		err := runner.enterCloudProviderOptions(context.Background(), &options)
@@ -56,8 +56,8 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Nil(t, options.CloudProviders.Azure)
 	})
 
-	t.Run("cloud providers skipped for existing environment", func(t *testing.T) {
-		runner := Runner{}
+	t.Run("--full - cloud providers skipped for existing environment", func(t *testing.T) {
+		runner := Runner{Full: true}
 
 		options := initOptions{Environment: environmentOptions{Create: false}}
 		err := runner.enterCloudProviderOptions(context.Background(), &options)
@@ -66,13 +66,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Nil(t, options.CloudProviders.Azure)
 	})
 
-	t.Run("no providers added", func(t *testing.T) {
+	t.Run("--full - no providers added", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
 		azureClient := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
 
 		initAddCloudProviderPromptNo(prompter)
 
@@ -84,13 +84,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
-	t.Run("no providers added (back)", func(t *testing.T) {
+	t.Run("--full - no providers added (back)", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
 		azureClient := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, confirmCloudProviderBackNavigationSentinel)
@@ -103,13 +103,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
-	t.Run("aws provider", func(t *testing.T) {
+	t.Run("--full - aws provider", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
 		azureClient := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
@@ -130,13 +130,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Equal(t, expectedWrites, outputSink.Writes)
 	})
 
-	t.Run("azure provider", func(t *testing.T) {
+	t.Run("--full - azure provider", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
 		azureClient := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, azure.ProviderDisplayName)
@@ -158,13 +158,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		require.Equal(t, expectedWrites, outputSink.Writes)
 	})
 
-	t.Run("both providers", func(t *testing.T) {
+	t.Run("--full - both providers", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
 		azureClient := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)
@@ -195,13 +195,13 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 	})
 
 	// Users can overwrite a previous choice by making the same selection.
-	t.Run("overwrite-provider", func(t *testing.T) {
+	t.Run("--full - overwrite-provider", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		awsClient := aws.NewMockClient(ctrl)
 		azureClient := azure.NewMockClient(ctrl)
 		outputSink := output.MockOutput{}
-		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink}
+		runner := Runner{Prompter: prompter, awsClient: awsClient, azureClient: azureClient, Output: &outputSink, Full: true}
 
 		initAddCloudProviderPromptYes(prompter)
 		initSelectCloudProvider(prompter, aws.ProviderDisplayName)

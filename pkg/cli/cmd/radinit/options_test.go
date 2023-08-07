@@ -33,12 +33,12 @@ import (
 )
 
 func Test_enterInitOptions(t *testing.T) {
-	t.Run("dev", func(t *testing.T) {
+	t.Run("no flags", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		k8s := kubernetes.NewMockInterface(ctrl)
 		helm := helm.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Dev: true, ConfigHolder: &framework.ConfigHolder{Config: viper.New()}}
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, ConfigHolder: &framework.ConfigHolder{Config: viper.New()}}
 
 		initGetKubeContextSuccess(k8s)
 		initHelmMockRadiusNotInstalled(helm)
@@ -77,12 +77,12 @@ func Test_enterInitOptions(t *testing.T) {
 		require.Equal(t, expectedOptions, *options)
 	})
 
-	t.Run("non-dev", func(t *testing.T) {
+	t.Run("--full", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		k8s := kubernetes.NewMockInterface(ctrl)
 		helm := helm.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, ConfigHolder: &framework.ConfigHolder{Config: viper.New()}}
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true, ConfigHolder: &framework.ConfigHolder{Config: viper.New()}}
 
 		initGetKubeContextSuccess(k8s)
 		initKubeContextWithKind(prompter)
@@ -140,7 +140,7 @@ workspaces:
       environment: /a/b/c/providers/Applications.Core/environments/ice-cold
 `
 		v, err := makeConfig(yaml)
-		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, ConfigHolder: &framework.ConfigHolder{Config: v}}
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true, ConfigHolder: &framework.ConfigHolder{Config: v}}
 
 		require.NoError(t, err)
 		initGetKubeContextSuccess(k8s)
