@@ -331,6 +331,11 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 				return []rpv1.OutputResource{}, err
 			}
 
+			// bound check intURLport
+			if intURLport < 0 || intURLport > 65535 {
+				return []rpv1.OutputResource{}, fmt.Errorf("port %d is out of range", intURLport)
+			}
+			
 			port = int32(intURLport)
 		}
 
@@ -422,7 +427,7 @@ func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 			return "", v1.NewClientErrInvalidRequest(err.Error())
 		}
 
-		return fmt.Sprintf("%s", u.Hostname()), nil
+		return u.Hostname(), nil
 	}
 
 	// if not URL, then name is the resourceID (HTTProute case)

@@ -142,6 +142,91 @@ func Test_Gateway(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_GatewayDNS(t *testing.T) {
+	template := "testdata/corerp-resources-gateway-dns.bicep"
+	name := "corerp-resources-gateway-dns"
+	appNamespace := "default-corerp-resources-gateway-dns"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "http-gtwy-gtwy",
+						Type: validation.GatewaysResource,
+						App:  name,
+					},
+					{
+						Name: "frontendcontainerdns",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "backendcontainerdns",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "frontendcontainerdns"),
+						validation.NewK8sPodForResource(name, "backendcontainerdns"),
+						validation.NewK8sServiceForResource(name, "frontendcontainerdns"),
+						validation.NewK8sServiceForResource(name, "backendcontainerdns"),
+						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "frontendcontainerdns"),
+						validation.NewK8sHTTPProxyForResource(name, "backendcontainerdns"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
+				// Get hostname from root HTTPProxy in application namespace
+				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
+				require.NoError(t, err)
+				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
+
+				// Set up pod port-forwarding for contour-envoy
+				t.Logf("Setting up portforward")
+
+				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
+					// /healthz is exposed on frontend container
+					{
+						Path:               "healthz",
+						ExpectedStatusCode: http.StatusOK,
+					},
+					// /backend2 uses 'replacePrefix', so it can access /healthz on backend container
+					{
+						Path:               "backend2/healthz",
+						ExpectedStatusCode: http.StatusOK,
+					},
+					// since /backend1/healthz is not exposed on frontend container, it should return 404
+					{
+						Path:               "backend1/healthz",
+						ExpectedStatusCode: http.StatusNotFound,
+					},
+				})
+				if err != nil {
+					t.Logf("Failed to test Gateway via portforward with error: %s", err)
+				} else {
+					// Successfully ran tests
+					return
+				}
+
+				require.Fail(t, "Gateway tests failed")
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
 func Test_Gateway_SSLPassthrough(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
 	name := "corerp-resources-gateway-sslpassthrough"
