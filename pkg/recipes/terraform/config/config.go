@@ -80,9 +80,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 }
 
 // AddProviders adds provider configurations for requiredProviders that are supported
-// by Radius to generate custom provider configurations. After adding providers, Save()
-// must be called to save this new requiredProviders contains a list of provider names
-// that are required for the module.
+// by Radius to generate custom provider configurations. Save() must be called to save
+// this new requiredProviders.
 func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
 	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
 	if err != nil {
