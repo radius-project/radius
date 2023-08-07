@@ -103,6 +103,96 @@ func Test_ContainerHttpRoute(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
+	template := "testdata/corerp-resources-container-two-containers-dns.bicep"
+	name := "corerp-resources-container-two-containers-dns"
+	appNamespace := "corerp-resources-container-two-containers-dns"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "containerad",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containeraf",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "containerad"),
+						validation.NewK8sPodForResource(name, "containeraf"),
+						validation.NewK8sServiceForResource(name, "containeraf"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
+	template := "testdata/corerp-resources-container-optional-port-scheme.bicep"
+	name := "corerp-resources-container-optional-port-scheme"
+	appNamespace := "corerp-resources-container-optional-port-scheme"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "containerqy",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerqu",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerqi",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "containerqy"),
+						validation.NewK8sPodForResource(name, "containerqu"),
+						validation.NewK8sPodForResource(name, "containerqi"),
+						validation.NewK8sServiceForResource(name, "containerqy"),
+						validation.NewK8sServiceForResource(name, "containerqu"),
+						validation.NewK8sServiceForResource(name, "containerqi"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
