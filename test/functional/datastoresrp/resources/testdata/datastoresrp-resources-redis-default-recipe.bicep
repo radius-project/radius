@@ -7,13 +7,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-default-recipe-env'
+  name: 'dsrp-resources-env-default-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-default-recipe-env'
+      namespace: 'dsrp-resources-env-default-recipe-env'
     }
     providers: {
       azure: {
@@ -21,7 +21,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Link/redisCaches': {
+      'Applications.Datastores/redisCaches': {
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/redis-recipe-value-backed:${version}'
@@ -32,21 +32,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-redis-default-recipe'
+  name: 'dsrp-resources-redis-default-recipe'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-redis-default-recipe-app'
+        namespace: 'dsrp-resources-redis-default-recipe-app'
       }
     ]
   }
 }
 
-resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
-  name: 'rds-default-recipe-o'
+resource redis 'Applications.Datastores/redisCaches@2022-03-15-privatepreview' = {
+  name: 'rds-default-recipe'
   location: 'global'
   properties: {
     environment: env.id

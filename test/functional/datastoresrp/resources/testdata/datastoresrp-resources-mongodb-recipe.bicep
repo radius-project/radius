@@ -11,13 +11,13 @@ param version string
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-env-recipes-context-env'
+  name: 'dsrp-resources-mongodb-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-env-recipes-context-env'
+      namespace: 'dsrp-resources-mongodb-recipe-env'
     }
     providers: {
       azure: {
@@ -25,10 +25,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Link/mongoDatabases':{
-        default: {
+      'Applications.Datastores/mongoDatabases':{
+        mongoazure: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/mongodb-recipe-context:${version}' 
+          templatePath: '${registry}/test/functional/shared/recipes/mongodb-recipe-kubernetes:${version}' 
         }
       }
     }
@@ -36,21 +36,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-mongodb-recipe-context'
+  name: 'dsrp-resources-mongodb-recipe'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-mongodb-recipe-context-app'
+          namespace: 'dsrp-resources-mongodb-recipe-app'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx-ctnr-o'
+  name: 'mongodb-app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -73,11 +73,14 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx-o'
+resource recipedb 'Applications.Datastores/mongoDatabases@2022-03-15-privatepreview' = {
+  name: 'mongodb-db'
   location: 'global'
   properties: {
     application: app.id
     environment: env.id
+    recipe: {
+      name: 'mongoazure'
+    }
   }
 }

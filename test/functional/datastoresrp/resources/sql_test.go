@@ -31,9 +31,9 @@ func Test_SQL(t *testing.T) {
 	if runtime.GOARCH == "arm64" {
 		t.Skip("skipping Test_SQL, unsupported architecture")
 	}
-	template := "testdata/corerp-resources-sql.bicep"
-	name := "corerp-resources-sql"
-	appNamespace := "default-corerp-resources-sql"
+	template := "testdata/datastoresrp-resources-sql.bicep"
+	name := "dsrp-resources-sql"
+	appNamespace := "default-dsrp-resources-sql"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -45,22 +45,22 @@ func Test_SQL(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "sql-app-ctnr-o",
+						Name: "sql-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "sql-db-o",
+						Name: "sql-db",
 						Type: validation.SQLDatabasesResource,
 						App:  name,
 					},
 					{
-						Name: "sql-rte-o",
+						Name: "sql-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "sql-ctnr-o",
+						Name: "sql-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -69,9 +69,9 @@ func Test_SQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "sql-app-ctnr-o"),
-						validation.NewK8sPodForResource(name, "sql-ctnr-o"),
-						validation.NewK8sServiceForResource(name, "sql-rte-o"),
+						validation.NewK8sPodForResource(name, "sql-app-ctnr"),
+						validation.NewK8sPodForResource(name, "sql-ctnr"),
+						validation.NewK8sServiceForResource(name, "sql-rte"),
 					},
 				},
 			},

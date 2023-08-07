@@ -50,7 +50,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mongodb-app-ctnr'
+  name: 'mongodb-app-ctnr-o'
   location: 'global'
   properties: {
     application: app.id
@@ -74,7 +74,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongodb-db'
+  name: 'mongodb-db-o'
   location: 'global'
   properties: {
     application: app.id

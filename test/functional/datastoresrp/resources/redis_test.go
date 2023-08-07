@@ -26,9 +26,9 @@ import (
 )
 
 func Test_RedisManualProvisioning(t *testing.T) {
-	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
-	name := "corerp-resources-redis-mp"
-	appNamespace := "default-corerp-resources-redis-mp"
+	template := "testdata/datastoresrp-resources-redis-manualprovisioning.bicep"
+	name := "dsrp-resources-redis-manualprovisioning"
+	appNamespace := "default-dsrp-resources-redis-manualprovisioning"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -40,22 +40,22 @@ func Test_RedisManualProvisioning(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-app-ctnr-o",
+						Name: "rds-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rds-ctnr-o",
+						Name: "rds-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rds-rte-o",
+						Name: "rds-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "rds-rds-o",
+						Name: "rds-rds",
 						Type: validation.RedisCachesResource,
 						App:  name,
 					},
@@ -64,9 +64,9 @@ func Test_RedisManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rds-app-ctnr-o"),
-						validation.NewK8sPodForResource(name, "rds-ctnr-o"),
-						validation.NewK8sServiceForResource(name, "rds-rte-o"),
+						validation.NewK8sPodForResource(name, "rds-app-ctnr"),
+						validation.NewK8sPodForResource(name, "rds-ctnr"),
+						validation.NewK8sServiceForResource(name, "rds-rte"),
 					},
 				},
 			},
@@ -77,8 +77,8 @@ func Test_RedisManualProvisioning(t *testing.T) {
 }
 
 func Test_RedisRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-redis-recipe.bicep"
-	name := "corerp-resources-redis-recipe"
+	template := "testdata/datastoresrp-resources-redis-recipe.bicep"
+	name := "dsrp-resources-redis-recipe"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -86,7 +86,7 @@ func Test_RedisRecipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-environment-recipe-env",
+						Name: "dsrp-resources-env-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -94,7 +94,7 @@ func Test_RedisRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-recipe-o",
+						Name: "rds-recipe",
 						Type: validation.RedisCachesResource,
 						App:  name,
 					},
@@ -108,8 +108,8 @@ func Test_RedisRecipe(t *testing.T) {
 }
 
 func Test_RedisDefaultRecipe(t *testing.T) {
-	template := "testdata/corerp-resources-redis-default-recipe.bicep"
-	name := "corerp-resources-redis-default-recipe"
+	template := "testdata/datastoresrp-resources-redis-default-recipe.bicep"
+	name := "dsrp-resources-redis-default-recipe"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -117,7 +117,7 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-environment-default-recipe-env",
+						Name: "dsrp-resources-env-default-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -125,7 +125,7 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-default-recipe-o",
+						Name: "rds-default-recipe",
 						Type: validation.RedisCachesResource,
 						App:  name,
 					},

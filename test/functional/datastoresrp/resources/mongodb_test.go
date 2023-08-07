@@ -29,9 +29,9 @@ import (
 
 // Opt-out case for manual resource provisioning
 func Test_MongoDB_ManualProvisioning(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb-manual-provisioning.bicep"
-	name := "corerp-resources-mongodb-manual-provisioning"
-	appNamespace := "default-ccorerp-resources-mongodb-manual-provisioning"
+	template := "testdata/datastoresrp-resources-mongodb-manual-provisioning.bicep"
+	name := "dsrp-resources-mongodb-manual-provisioning"
+	appNamespace := "default-cdsrp-resources-mongodb-manual-provisioning"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -82,9 +82,9 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 // Test_MongoDB_Recipe validates:
 // the creation of a mongoDB from a recipe that uses an Azure resource
 func Test_MongoDB_Recipe(t *testing.T) {
-	template := "testdata/corerp-resources-mongodb-recipe.bicep"
-	name := "corerp-resources-mongodb-recipe"
-	appNamespace := "corerp-resources-mongodb-recipe-app"
+	template := "testdata/datastoresrp-resources-mongodb-recipe.bicep"
+	name := "dsrp-resources-mongodb-recipe"
+	appNamespace := "dsrp-resources-mongodb-recipe-app"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -92,21 +92,21 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-mongodb-recipe-env",
+						Name: "dsrp-resources-mongodb-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-recipe",
+						Name: "dsrp-resources-mongodb-recipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-app-ctnr-o",
+						Name: "mongodb-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-db-o",
+						Name: "mongodb-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 					},
@@ -115,7 +115,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-app-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongodb-app-ctnr").ValidateLabels(false),
 					},
 				},
 			},
@@ -132,9 +132,9 @@ func Test_MongoDB_Recipe(t *testing.T) {
 func Test_MongoDB_RecipeParameters(t *testing.T) {
 	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/project-radius/radius/issues/5929")
 
-	template := "testdata/corerp-resources-mongodb-recipe-parameters.bicep"
-	name := "corerp-resources-mongodb-recipe-parameters"
-	appNamespace := "corerp-resources-mongodb-recipe-param-app"
+	template := "testdata/datastoresrp-resources-mongodb-recipe-parameters.bicep"
+	name := "dsrp-resources-mongodb-recipe-parameters"
+	appNamespace := "dsrp-resources-mongodb-recipe-param-app"
 	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 	// Error the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
 	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
@@ -148,7 +148,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-env-recipe-parameters-env",
+						Name: "dsrp-resources-env-recipe-parameters-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -157,12 +157,12 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-param-ctnr-o",
+						Name: "mdb-param-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-recipe-param-db-o",
+						Name: "mdb-recipe-param-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
@@ -181,7 +181,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-param-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-param-ctnr").ValidateLabels(false),
 					},
 				},
 			},
@@ -197,9 +197,9 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/project-radius/radius/issues/5929")
 
-	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
-	name := "corerp-resources-mongodb-recipe-context"
-	appNamespace := "corerp-resources-mongodb-recipe-context-app"
+	template := "testdata/datastoresrp-resources-mongodb-recipe-context.bicep"
+	name := "dsrp-resources-mongodb-recipe-context"
+	appNamespace := "dsrp-resources-mongodb-recipe-context-app"
 	rg := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 	// Error the test if INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set
 	// for running locally set the INTEGRATION_TEST_RESOURCE_GROUP_NAME with the test resourceGroup
@@ -213,7 +213,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-env-recipes-context-env",
+						Name: "dsrp-resources-env-recipes-context-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -222,12 +222,12 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx-ctnr-o",
+						Name: "mdb-ctx-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx-o",
+						Name: "mdb-ctx",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
@@ -246,7 +246,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr").ValidateLabels(false),
 					},
 				},
 			},

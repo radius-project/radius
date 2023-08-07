@@ -20,16 +20,16 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-env-sql-recipe-env'
+  name: 'dsrp-resources-env-sql-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-env-sql-recipe-env'
+      namespace: 'dsrp-resources-env-sql-recipe-env'
     }
     recipes: {
-      'Applications.Link/sqlDatabases': {
+      'Applications.Datastores/sqlDatabases': {
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/sqldb-recipe:${version}'
@@ -44,21 +44,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sqldb-recipe'
+  name: 'dsrp-resources-sqldb-recipe'
   location: location
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-sqldb-recipe-app'
+        namespace: 'dsrp-resources-sqldb-recipe-app'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-recipe-app-ctnr-o'
+  name: 'sql-recipe-app-ctnr'
   location: location
   properties: {
     application: app.id
@@ -81,8 +81,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'sql-db-recipe-o'
+resource db 'Applications.Datastores/sqlDatabases@2022-03-15-privatepreview' = {
+  name: 'sql-db-recipe'
   location: location
   properties: {
     application: app.id

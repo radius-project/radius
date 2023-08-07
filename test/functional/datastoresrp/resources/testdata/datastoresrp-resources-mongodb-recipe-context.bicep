@@ -11,13 +11,13 @@ param version string
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-env-recipes-context-env'
+  name: 'dsrp-resources-env-recipes-context-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-env-recipes-context-env'
+      namespace: 'dsrp-resources-env-recipes-context-env'
     }
     providers: {
       azure: {
@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Link/mongoDatabases':{
+      'Applications.Datastores/mongoDatabases':{
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/mongodb-recipe-context:${version}' 
@@ -36,21 +36,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-mongodb-recipe-context'
+  name: 'dsrp-resources-mongodb-recipe-context'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-mongodb-recipe-context-app'
+          namespace: 'dsrp-resources-mongodb-recipe-context-app'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx-ctnr-o'
+  name: 'mdb-ctx-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -73,8 +73,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx-o'
+resource recipedb 'Applications.Datastores/mongoDatabases@2022-03-15-privatepreview' = {
+  name: 'mdb-ctx'
   location: 'global'
   properties: {
     application: app.id
