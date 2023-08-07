@@ -68,21 +68,6 @@ func (d *DeployExecutor) GetDescription() string {
 	return d.Description
 }
 
-// # Function Explanation
-//
-// Execute deploys an application from a template file using the provided parameters and logs the deployment process.
-func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-
-	templateFilePath := filepath.Join(cwd, d.Template)
-	t.Logf("deploying %s from file %s", d.Description, d.Template)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
-	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
-	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
-}
-
 func unpackErrorAndMatch(err error, failWithAny []string) bool {
 	for _, errString := range failWithAny {
 		cliErr := err.(*radcli.CLIError)
@@ -97,4 +82,19 @@ func unpackErrorAndMatch(err error, failWithAny []string) bool {
 		}
 	}
 	return false
+}
+
+// # Function Explanation
+//
+// Execute deploys an application from a template file using the provided parameters and logs the deployment process.
+func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	templateFilePath := filepath.Join(cwd, d.Template)
+	t.Logf("deploying %s from file %s", d.Description, d.Template)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
+	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
+	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
