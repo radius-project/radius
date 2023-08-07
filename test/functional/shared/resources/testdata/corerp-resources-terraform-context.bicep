@@ -11,6 +11,11 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       resourceId: 'self'
       namespace: 'corerp-resources-terraform-context-env'
     }
+    providers: {
+      azure: {
+        scope: '/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context'
+      }
+    }
     recipes: {
       'Applications.Link/extenders': {
         default: {

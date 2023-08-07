@@ -107,6 +107,10 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 						expected: "Applications.Link/extenders",
 					},
 					{
+						key:      "azure.subscription_id",
+						expected: "00000000-0000-0000-0000-100000000000",
+					},
+					{
 						key:      "recipe_context",
 						expected: "{\"application\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"aws\":null,\"azure\":null,\"environment\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"resource\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\",\"type\":\"Applications.Link/extenders\"},\"runtime\":{\"kubernetes\":{\"environmentNamespace\":\"\",\"namespace\":\"corerp-resources-terraform-context-app\"}}}",
 					},
