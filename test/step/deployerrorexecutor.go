@@ -18,7 +18,6 @@ package step
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -86,8 +85,7 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError
-	ok := errors.As(err, &cliErr)
-	require.True(t, ok)
+	require.ErrorAs(t, err, &cliErr, "error should be a CLIError and it was not")
 	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 
 	if len(d.ExpectedInnerError) > 0 {

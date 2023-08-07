@@ -47,10 +47,10 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 		},
 	}
 
-	t.Run("radius not installed", func(t *testing.T) {
+	t.Run("--full - radius not installed", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter}
+		runner := Runner{Prompter: prompter, Full: true}
 
 		initEnvNamePrompt(prompter, "test-env")
 		initNamespacePrompt(prompter, "test-namespace")
@@ -67,14 +67,14 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 		require.Equal(t, expected, options.Environment)
 	})
 
-	t.Run("create new environment", func(t *testing.T) {
+	t.Run("--full - create new environment", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Full: true}
 
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, selectExistingEnvironmentCreateSentinel)
@@ -93,14 +93,14 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 		require.Equal(t, expected, options.Environment)
 	})
 
-	t.Run("select existing environment", func(t *testing.T) {
+	t.Run("--full - select existing environment", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Full: true}
 
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, "test-env1")
@@ -134,14 +134,14 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		},
 	}
 
-	t.Run("dev - chooses default", func(t *testing.T) {
+	t.Run("no flags - chooses default", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Dev: true}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
 
 		setExistingEnvironments(applicationsClient, environments)
 
@@ -150,14 +150,14 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		require.Equal(t, defaultEnvironmentName, *name)
 	})
 
-	t.Run("dev - no default", func(t *testing.T) {
+	t.Run("no flags - no default", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Dev: true}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
 
 		environments := environments[1:]
 		setExistingEnvironments(applicationsClient, environments)
@@ -168,14 +168,14 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		require.Equal(t, "test-env1", *name)
 	})
 
-	t.Run("no existing environments", func(t *testing.T) {
+	t.Run("--full - no existing environments", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Full: true}
 
 		environments := []corerp.EnvironmentResource{}
 		setExistingEnvironments(applicationsClient, environments)
@@ -185,14 +185,14 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		require.Nil(t, name)
 	})
 
-	t.Run("choose existing environment", func(t *testing.T) {
+	t.Run("--full - choose existing environment", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Full: true}
 
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, "test-env1")
@@ -202,14 +202,14 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		require.Equal(t, "test-env1", *name)
 	})
 
-	t.Run("choose create new", func(t *testing.T) {
+	t.Run("--full - choose create new", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
 		applicationsClient := clients.NewMockApplicationsManagementClient(ctrl)
 		connectionFactory := connections.MockFactory{
 			ApplicationsManagementClient: applicationsClient,
 		}
-		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory}
+		runner := Runner{Prompter: prompter, ConnectionFactory: &connectionFactory, Full: true}
 
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, selectExistingEnvironmentCreateSentinel)
@@ -243,20 +243,20 @@ func Test_buildExistingEnvironmentList(t *testing.T) {
 }
 
 func Test_enterEnvironmentName(t *testing.T) {
-	t.Run("dev", func(t *testing.T) {
+	t.Run("no flags", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter, Dev: true}
+		runner := Runner{Prompter: prompter}
 
 		name, err := runner.enterEnvironmentName(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, defaultEnvironmentName, name)
 	})
 
-	t.Run("non-dev", func(t *testing.T) {
+	t.Run("--full", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter}
+		runner := Runner{Prompter: prompter, Full: true}
 
 		initEnvNamePrompt(prompter, "test-name")
 
@@ -267,20 +267,20 @@ func Test_enterEnvironmentName(t *testing.T) {
 }
 
 func Test_enterEnvironmentNamespace(t *testing.T) {
-	t.Run("dev", func(t *testing.T) {
+	t.Run("no flags", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter, Dev: true}
+		runner := Runner{Prompter: prompter}
 
 		namespace, err := runner.enterEnvironmentNamespace(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, defaultEnvironmentNamespace, namespace)
 	})
 
-	t.Run("non-dev", func(t *testing.T) {
+	t.Run("--full", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		prompter := prompt.NewMockInterface(ctrl)
-		runner := Runner{Prompter: prompter}
+		runner := Runner{Prompter: prompter, Full: true}
 
 		initNamespacePrompt(prompter, "test-namespace")
 

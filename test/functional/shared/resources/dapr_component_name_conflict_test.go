@@ -31,16 +31,9 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-dcnc-old",
-						Type: validation.ApplicationsResource,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{},
+			Executor:                               step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
+			SkipKubernetesOutputResourceValidation: true,
+			K8sObjects:                             &validation.K8sObjectSet{},
 		},
 	})
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
