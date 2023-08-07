@@ -27,26 +27,26 @@ import (
 func TestStringifyModuleInspectResult(t *testing.T) {
 	tests := []struct {
 		name string
-		r    *ModuleInspectResult
+		r    *moduleInspectResult
 		out  string
 	}{
 		{
 			name: "no context",
-			r: &ModuleInspectResult{
+			r: &moduleInspectResult{
 				ContextExists: false,
 				Providers:     []string{"aws"},
 			},
 			out: "RecipeContextExists: false, Providers: [aws]",
 		}, {
 			name: "with empty providers",
-			r: &ModuleInspectResult{
+			r: &moduleInspectResult{
 				ContextExists: true,
 				Providers:     []string{},
 			},
 			out: "RecipeContextExists: true, Providers: []",
 		}, {
 			name: "with context and providers",
-			r: &ModuleInspectResult{
+			r: &moduleInspectResult{
 				ContextExists: true,
 				Providers:     []string{"aws"},
 			},
@@ -66,14 +66,14 @@ func TestInspectTFModuleConfig(t *testing.T) {
 		name       string
 		workingDir string
 		moduleName string
-		result     *ModuleInspectResult
+		result     *moduleInspectResult
 		err        string
 	}{
 		{
 			name:       "aws provider only",
 			workingDir: "testdata",
 			moduleName: "test-module-provideronly",
-			result: &ModuleInspectResult{
+			result: &moduleInspectResult{
 				ContextExists: false,
 				Providers:     []string{"aws"},
 			},
@@ -81,7 +81,7 @@ func TestInspectTFModuleConfig(t *testing.T) {
 			name:       "aws provider with recipecontext",
 			workingDir: "testdata",
 			moduleName: "test-module-recipe-context",
-			result: &ModuleInspectResult{
+			result: &moduleInspectResult{
 				ContextExists: true,
 				Providers:     []string{"aws"},
 			},

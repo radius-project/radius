@@ -30,7 +30,7 @@ var (
 
 // New creates the context parameter for the recipe with the link, environment and application info
 func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Context, error) {
-	parsedLink, err := resources.ParseResource(metadata.ResourceID)
+	parsedResource, err := resources.ParseResource(metadata.ResourceID)
 	if err != nil {
 		return nil, fmt.Errorf(ErrParseFormat, "resourceID", metadata.ResourceID, err)
 	}
@@ -43,10 +43,10 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 	recipeContext := Context{
 		Resource: Resource{
 			ResourceInfo: ResourceInfo{
-				Name: parsedLink.Name(),
+				Name: parsedResource.Name(),
 				ID:   metadata.ResourceID,
 			},
-			Type: parsedLink.Type(),
+			Type: parsedResource.Type(),
 		},
 		Environment: ResourceInfo{
 			Name: parsedEnv.Name(),
