@@ -105,15 +105,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		
 		// if the source is not a URL, it either a resourceID or invalid.
 		resourceID, err := resources.ParseResource(connection.Source)
-
-		// example origin: 'http://containerY:3000'. Used for DNS-SD connections.
-		origin := connection.Origin
-
-		// If origin is not empty, then the container uses DNS-SD connections.
-		if origin != "" {
-			usesDNSSD = true
-		}
-
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
 		}
@@ -392,32 +383,6 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		container.LivenessProbe, err = r.makeHealthProbe(properties.Container.LivenessProbe)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
-		}
-	}
-
-	for connectionName, connection := range properties.Connections {
-		source := connection.Source
-		if source == "" {
-			continue
-		}
-
-		// handles case where container has source field structured as a URL.
-		if (isURL(source)) {
-			// parse source into scheme, hostname, and port.
-			scheme, hostname, port, err := parseURL(source)
-			if err != nil {
-				return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to parse source URL: %w", err)
-			}
-
-			// add scheme, hostname, and port into environment.
-			// if env is nil, initialize the env map.
-			if properties.Container.Env == nil {
-				properties.Container.Env = map[string]string{}
-			}
-
-			properties.Container.Env["CONNECTIONS_" + connectionName + "_SCHEME"] = scheme
-			properties.Container.Env["CONNECTIONS_" + connectionName + "_HOSTNAME"] = hostname
-			properties.Container.Env["CONNECTIONS_" + connectionName + "_PORT"] = port
 		}
 	}
 
