@@ -128,7 +128,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      getTestRecipeContext(),
-			expectedConfigFile: "testdata/main.tf-all.json",
+			expectedConfigFile: "testdata/main-all.tf.json",
 		},
 		{
 			name: "without environment definition and metadata params",
@@ -141,7 +141,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Name: testRecipeName,
 			},
 			recipeContext:      getTestRecipeContext(),
-			expectedConfigFile: "testdata/main.tf-noparams.json",
+			expectedConfigFile: "testdata/main-noparams.tf.json",
 		},
 		{
 			name: "without metadata params",
@@ -155,7 +155,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Name: testRecipeName,
 			},
 			recipeContext:      getTestRecipeContext(),
-			expectedConfigFile: "testdata/main.tf-noresourceparam.json",
+			expectedConfigFile: "testdata/main-noresourceparam.tf.json",
 		},
 		{
 			name: "without context",
@@ -170,7 +170,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      nil,
-			expectedConfigFile: "testdata/main.tf-nocontext.json",
+			expectedConfigFile: "testdata/main-nocontext.tf.json",
 		},
 		{
 			name: "without template version",
@@ -184,7 +184,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      nil,
-			expectedConfigFile: "testdata/main.tf-notplver.json",
+			expectedConfigFile: "testdata/main-notplver.tf.json",
 		},
 		{
 			name: "invalid working dir",
@@ -275,7 +275,7 @@ func TestAddProviders(t *testing.T) {
 				providers.KubernetesProviderName,
 				"sql",
 			},
-			expectedConfigFile: "testdata/main.tf-provider-valid.json",
+			expectedConfigFile: "testdata/main-provider-valid.tf.json",
 		},
 		{
 			name:           "invalid scope",
@@ -302,7 +302,7 @@ func TestAddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AWSProviderName,
 			},
-			expectedConfigFile: "testdata/main.tf-provider-empty.json",
+			expectedConfigFile: "testdata/main-provider-empty.tf.json",
 		},
 		{
 			name: "empty aws scope",
@@ -323,7 +323,7 @@ func TestAddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AWSProviderName,
 			},
-			expectedConfigFile: "testdata/main.tf-provider-empty.json",
+			expectedConfigFile: "testdata/main-provider-empty.tf.json",
 		},
 		{
 			name: "missing azure provider",
@@ -337,7 +337,7 @@ func TestAddProviders(t *testing.T) {
 			requiredProviders: []string{
 				providers.AzureProviderName,
 			},
-			expectedConfigFile: "testdata/main.tf-provider-missingazure.json",
+			expectedConfigFile: "testdata/main-provider-missingazure.tf.json",
 		},
 	}
 
