@@ -415,7 +415,7 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
-	// if isURL, then name is <scheme>-<hostname>-<port> (DNS-SD case)
+	// if isURL, then name is hostname (DNS-SD case)
 	if isURL(route.Destination) {
 		u, err := url.Parse(route.Destination)
 		if err != nil {
