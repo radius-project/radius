@@ -55,17 +55,31 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "init",
-		Short:   "Initialize Radius",
-		Long:    "Interactively initialize the Radius control-plane, create an environment, and configure a workspace",
-		Example: `rad init`,
-		Args:    cobra.ExactArgs(0),
-		RunE:    framework.RunCommand(runner),
+		Use:   "init",
+		Short: "Initialize Radius",
+		Long: `
+Interactively install the Radius control-plane and setup an environment.
+
+If an environment already exists, 'rad init' will prompt the user to use the existing environment or create a new one.
+
+By default, 'rad init' will optimize for a developer-focused environment with an environment named "default" and Recipes that support prototyping, development and testing using lightweight containers. These environments are great for building and testing your application.
+
+Specifying the '--full' flag will cause 'rad init' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
+`,
+		Example: `
+## Create a new development environment named "default"
+rad init
+
+## Prompt the user for all available options to create a new environment
+rad init --full
+`,
+		Args: cobra.ExactArgs(0),
+		RunE: framework.RunCommand(runner),
 	}
 
 	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
-	cmd.Flags().Bool("dev", false, "Setup Radius for development")
+	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
 	return cmd, runner
 }
 
@@ -104,8 +118,8 @@ type Runner struct {
 	// Workspace is the workspace to use. This will be populated by Validate.
 	Workspace *workspaces.Workspace
 
-	// Dev determines whether or not we're in dev mode.
-	Dev bool
+	// Full determines whether or not we ask the user for all options.
+	Full bool
 
 	// Options provides the options to used for Radius initialization. This will be populated by Validate.
 	Options *initOptions
@@ -147,7 +161,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
-	r.Dev, err = cmd.Flags().GetBool("dev")
+	r.Full, err = cmd.Flags().GetBool("full")
 	if err != nil {
 		return err
 	}
@@ -158,9 +172,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// Show a confirmation screen unless we're in dev mode.
+		// Show a confirmation screen if we're in full mode.
 		confirmed := true
-		if !r.Dev {
+		if r.Full {
 			confirmed, err = r.confirmOptions(cmd.Context(), options)
 			if err != nil {
 				return err
