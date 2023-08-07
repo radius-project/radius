@@ -149,7 +149,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Inspected module result: %s", result))
+	logger.Info(fmt.Sprintf("Inspected module result: %+v", result))
 	// Add the required providers to the terraform configuration.
 	if err := tfConfig.AddProviders(ctx, result.Providers, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {

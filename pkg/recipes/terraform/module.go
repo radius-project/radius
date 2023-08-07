@@ -41,11 +41,6 @@ type moduleInspectResult struct {
 	// We can add more inspection results here in the future.
 }
 
-// String returns a string representation of the ModuleInspectResult.
-func (mi moduleInspectResult) String() string {
-	return fmt.Sprintf("RecipeContextExists: %t, Providers: %v", mi.ContextExists, mi.Providers)
-}
-
 // inspectTFModuleConfig inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
 // and returns the instpection result which includes the list of required providers and recipe context status.
 // localModuleName is the name of the module specified in the configuration used to download the module.
