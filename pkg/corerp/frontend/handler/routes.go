@@ -18,6 +18,7 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -43,6 +44,9 @@ import (
 
 const (
 	ProviderNamespaceName = "Applications.Core"
+
+	// AsyncOperationRetryAfter is polling interval for async create/update or delete resource operations.
+	AsyncOperationRetryAfter = time.Duration(5) * time.Second
 )
 
 // # Function Explanation
@@ -217,8 +221,9 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
-						RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
-						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+						RequestConverter:         converter.HTTPRouteDataModelFromVersioned,
+						ResponseConverter:        converter.HTTPRouteDataModelToVersioned,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -230,8 +235,9 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
-						RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
-						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+						RequestConverter:         converter.HTTPRouteDataModelFromVersioned,
+						ResponseConverter:        converter.HTTPRouteDataModelToVersioned,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -243,8 +249,9 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
-						RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
-						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+						RequestConverter:         converter.HTTPRouteDataModelFromVersioned,
+						ResponseConverter:        converter.HTTPRouteDataModelToVersioned,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -307,6 +314,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -324,6 +332,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 							rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 							ctr_ctrl.ValidateAndMutateRequest,
 						},
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -335,8 +344,9 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.ContainerResource]{
-						RequestConverter:  converter.ContainerDataModelFromVersioned,
-						ResponseConverter: converter.ContainerDataModelToVersioned,
+						RequestConverter:         converter.ContainerDataModelFromVersioned,
+						ResponseConverter:        converter.ContainerDataModelToVersioned,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -492,6 +502,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 							rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
 							gtwy_ctrl.ValidateAndMutateRequest,
 						},
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -509,6 +520,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 							rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
 							gtwy_ctrl.ValidateAndMutateRequest,
 						},
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -520,8 +532,9 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Gateway]{
-						RequestConverter:  converter.GatewayDataModelFromVersioned,
-						ResponseConverter: converter.GatewayDataModelToVersioned,
+						RequestConverter:         converter.GatewayDataModelFromVersioned,
+						ResponseConverter:        converter.GatewayDataModelToVersioned,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -586,6 +599,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 							vol_ctrl.ValidateRequest,
 						},
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -603,6 +617,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 							vol_ctrl.ValidateRequest,
 						},
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -614,8 +629,9 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
-						RequestConverter:  converter.VolumeResourceModelFromVersioned,
-						ResponseConverter: converter.VolumeResourceModelToVersioned,
+						RequestConverter:         converter.VolumeResourceModelFromVersioned,
+						ResponseConverter:        converter.VolumeResourceModelToVersioned,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 					},
 				)
 			},
