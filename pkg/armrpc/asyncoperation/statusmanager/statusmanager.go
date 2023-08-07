@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -75,7 +76,7 @@ func New(storeClient store.StorageClient, q queue.Client, providerName, location
 
 // operationStatusResourceID function is to build the operationStatus resourceID.
 func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID uuid.UUID) string {
-	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), id.ProviderNamespace(), aom.location, operationID)
+	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), strings.ToLower(id.ProviderNamespace()), aom.location, operationID)
 }
 
 // # Function Explanation

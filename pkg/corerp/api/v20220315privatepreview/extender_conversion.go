@@ -23,6 +23,8 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
+// # Function Explanation
+//
 // ConvertTo converts from the versioned Extender resource to version-agnostic datamodel.
 func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.Extender{
@@ -51,6 +53,8 @@ func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
+// # Function Explanation
+//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Extender resource.
 func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	extender, ok := src.(*datamodel.Extender)

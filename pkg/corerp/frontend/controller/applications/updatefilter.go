@@ -49,7 +49,10 @@ const (
 // | envNS           | appNS              | envNS                         | appNS                         |
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
-// CreateAppScopedNamespace creates application-scoped namespace if it does not exist.
+// # Function Explanation
+//
+// CreateAppScopedNamespace checks if a namespace already exists for the application and creates one if it doesn't,
+// returning an error if a conflict is found.
 func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *datamodel.Application, opt *controller.Options) (rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
