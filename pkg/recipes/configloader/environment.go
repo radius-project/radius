@@ -18,6 +18,7 @@ package configloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -28,6 +29,10 @@ import (
 	"github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+)
+
+var (
+	ErrUnsupportedComputeKind = errors.New("unsupported compute kind in environment resource")
 )
 
 //go:generate mockgen -destination=./mock_config_loader.go -package=configloader -self_package github.com/project-radius/radius/pkg/recipes/configloader github.com/project-radius/radius/pkg/recipes/configloader ConfigurationLoader
@@ -74,21 +79,29 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 		Providers: datamodel.Providers{},
 	}
 
-	compute := environment.Properties.Compute
-	if compute != nil && *compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
+	switch environment.Properties.Compute.(type) {
+	case *v20220315privatepreview.KubernetesCompute:
 		config.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 		var err error
+
+		// Environment-scoped namespace must be given all the time.
+		config.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResource(environment)
+		if err != nil {
+			return nil, err
+		}
+
 		if application != nil {
 			config.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
 			if err != nil {
 				return nil, err
 			}
+		} else {
+			// Use environment-scoped namespace if application is not set.
+			config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
 		}
-		// Environtment-scoped namespace must be given all the time.
-		config.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResource(environment)
-		if err != nil {
-			return nil, err
-		}
+
+	default:
+		return nil, ErrUnsupportedComputeKind
 	}
 
 	providers := environment.Properties.Providers
