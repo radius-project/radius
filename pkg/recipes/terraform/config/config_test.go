@@ -116,7 +116,7 @@ func TestAddRecipeContext(t *testing.T) {
 		err                string
 	}{
 		{
-			name: "recipe context, environment, and resource metadata params are given",
+			name: "recipe context, env, and resource metadata params are given",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
 				TemplatePath:    testTemplatePath,
