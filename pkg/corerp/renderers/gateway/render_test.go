@@ -1299,6 +1299,36 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 	validateGateway(t, output.Resources, expectedGatewaySpec, "")
 }
 
+func Test_ParseURL(t *testing.T) {
+	const valid_url = "http://examplehost:80"
+	const invalid_url = "http://abc:def"
+	const invalid_port_url = "http://examplehost:99999"
+
+	t.Run("valid URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(valid_url)
+		require.Equal(t, scheme, "http")
+		require.Equal(t, hostname, "examplehost")
+		require.Equal(t, port, "80")
+		require.Equal(t, err, nil)
+	})
+
+	t.Run("invalid URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(invalid_url)
+		require.Equal(t, scheme, "")
+		require.Equal(t, hostname, "")
+		require.Equal(t, port, "")
+		require.NotEqual(t, err, nil)
+	})
+
+	t.Run("invalid port URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(invalid_port_url)
+		require.Equal(t, scheme, "")
+		require.Equal(t, hostname, "")
+		require.Equal(t, port, "")
+		require.Equal(t, err, fmt.Errorf("port 99999 is out of range"))
+	})
+}
+
 func validateGateway(t *testing.T, outputResources []rpv1.OutputResource, expectedGatewaySpec *contourv1.HTTPProxySpec, kmeOption string) {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 

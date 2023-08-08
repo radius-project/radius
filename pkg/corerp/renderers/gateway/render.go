@@ -325,13 +325,13 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 				return []rpv1.OutputResource{}, err
 			}
 
-			// bound check intURLport
-			if intURLport < 0 || intURLport > 65535 {
-				return []rpv1.OutputResource{}, fmt.Errorf("port %d is out of range", intURLport)
-			}
+			// // bound check intURLport
+			// if intURLport < 0 || intURLport > 65535 {
+			// 	return []rpv1.OutputResource{}, fmt.Errorf("port %d is out of range", intURLport)
+			// }
 
 			port = int32(intURLport)
-			
+
 		} else {
 			routeProperties := dependencies[route.Destination]
 			routePort, ok := routeProperties.ComputedValues["port"].(float64)
@@ -532,6 +532,16 @@ func parseURL(sourceURL string) (scheme, hostname, port string, err error) {
 	hostname, port, err = net.SplitHostPort(host)
 	if err != nil {
 		return "", "", "", err
+	}
+
+	// bound check port
+	portInt, err := strconv.Atoi(port)
+	if err != nil {
+		return "", "", "", err
+	}
+	
+	if portInt < 0 || portInt > 65535 {
+		return "", "", "", fmt.Errorf("port %s is out of range", port)
 	}
 
 	return scheme, hostname, port, nil
