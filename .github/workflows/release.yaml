@@ -47,7 +47,8 @@ jobs:
           tag_name: 'v0.25.0'
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           relnote_root: radius-pr/docs/release-notes
-          version: 0.24.0
+          version: 0.25.0
+          config_file: radius-pr/.github/release.yaml
   release:
     name: Create a new Radius release
     if: ${{ false }}
