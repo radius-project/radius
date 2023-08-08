@@ -13,6 +13,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     providers: {
       azure: {
+        // This is the fake scope for testing purposes.
         scope: '/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context'
       }
     }

@@ -116,7 +116,7 @@ func TestAddRecipeContext(t *testing.T) {
 		err                string
 	}{
 		{
-			name: "context, environment definition, and metadata params",
+			name: "recipe context, environment, and resource metadata params are given",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
 				TemplatePath:    testTemplatePath,
@@ -131,7 +131,7 @@ func TestAddRecipeContext(t *testing.T) {
 			expectedConfigFile: "testdata/main-all.tf.json",
 		},
 		{
-			name: "without environment definition and metadata params",
+			name: "only recipe context is given without env and resource metadata params",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
 				TemplatePath:    testTemplatePath,
@@ -144,7 +144,7 @@ func TestAddRecipeContext(t *testing.T) {
 			expectedConfigFile: "testdata/main-noparams.tf.json",
 		},
 		{
-			name: "without metadata params",
+			name: "recipe context and env params are given",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
 				TemplatePath:    testTemplatePath,
@@ -158,7 +158,7 @@ func TestAddRecipeContext(t *testing.T) {
 			expectedConfigFile: "testdata/main-noresourceparam.tf.json",
 		},
 		{
-			name: "without context",
+			name: "env and resource metadata params are given without recipe context",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
 				TemplatePath:    testTemplatePath,
