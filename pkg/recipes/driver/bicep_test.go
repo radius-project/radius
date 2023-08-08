@@ -25,6 +25,7 @@ import (
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
@@ -64,56 +65,25 @@ func Test_ParameterConflict(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_ContextParameter(t *testing.T) {
-	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
-	expectedLinkContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
-				Name: "mongo0",
-			},
-			Type: "applications.link/mongodatabases",
-		},
-		Application: ResourceInfo{
-			Name: "testApplication",
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-		},
-		Environment: ResourceInfo{
-			Name: "env0",
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-		},
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace:            "radius-test-app",
-				EnvironmentNamespace: "radius-test-env",
-			},
-		},
-	}
-
-	linkContext, err := createRecipeContextParameter(linkID, "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0", "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
-	require.NoError(t, err)
-	require.Equal(t, expectedLinkContext, *linkContext)
-}
-
 func Test_DevParameterWithContextParameter(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
+	recipeContext := recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: ResourceInfo{
+		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: ResourceInfo{
+		Environment: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
@@ -149,19 +119,19 @@ func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
+	recipeContext := recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: ResourceInfo{
+		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: ResourceInfo{
+		Environment: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
@@ -201,19 +171,19 @@ func Test_DevParameterWithOperatorParameter(t *testing.T) {
 		"throughput": 800,
 		"port":       2060,
 	}
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
+	recipeContext := recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: ResourceInfo{
+		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: ResourceInfo{
+		Environment: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
@@ -242,12 +212,6 @@ func Test_DevParameterWithOperatorParameter(t *testing.T) {
 	actualParams := createRecipeParameters(devParams, operatorParams, true, &recipeContext)
 	require.Equal(t, expectedParams, actualParams)
 }
-func Test_ContextParameterError(t *testing.T) {
-	envID := "error-env"
-	linkContext, err := createRecipeContextParameter("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0", envID, "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
-	require.Error(t, err)
-	require.Nil(t, linkContext)
-}
 
 func Test_createDeploymentID(t *testing.T) {
 	expected, err := resources.ParseResource("/planes/radius/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
@@ -260,7 +224,7 @@ func Test_createDeploymentID(t *testing.T) {
 
 func Test_createProviderConfig_defaults(t *testing.T) {
 	expected := clients.NewDefaultProviderConfig("test-rg")
-	actual := createProviderConfig("test-rg", corerp_datamodel.Providers{})
+	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{})
 	require.Equal(t, expected, actual)
 }
 
@@ -281,7 +245,7 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 		Type:  clients.ProviderTypeAWS,
 		Value: clients.Value{Scope: aws},
 	}
-	actual := createProviderConfig("test-rg", providers)
+	actual := newProviderConfig("test-rg", providers)
 	require.Equal(t, expected, actual)
 }
 func Test_RecipeResponseSuccess(t *testing.T) {
