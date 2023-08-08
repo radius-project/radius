@@ -312,14 +312,8 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 	objects := make(map[string]*contourv1.HTTPProxy)
 
 	for _, route := range gateway.Routes {
-		routeProperties := dependencies[route.Destination]
 		port := renderers.DefaultPort
-		routePort, ok := routeProperties.ComputedValues["port"].(float64)
-		if ok {
-			port = int32(routePort)
-		}
 
-		// if the route destination is a URL, then we need to parse the port from the URL
 		if isURL(route.Destination) {
 			_, _, urlPort, err := parseURL(route.Destination)
 			if err != nil {
@@ -335,8 +329,16 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			if intURLport < 0 || intURLport > 65535 {
 				return []rpv1.OutputResource{}, fmt.Errorf("port %d is out of range", intURLport)
 			}
-			
+
 			port = int32(intURLport)
+			
+		} else {
+			routeProperties := dependencies[route.Destination]
+			routePort, ok := routeProperties.ComputedValues["port"].(float64)
+			if ok {
+				port = int32(routePort)
+			}
+
 		}
 
 		routeName, err := getRouteName(&route)
@@ -510,8 +512,7 @@ func getPublicEndpoint(hostname string, port string, isHttps bool) string {
 
 func isURL(input string) bool {
 	_, err := url.ParseRequestURI(input)
-	fmt.Println(err)
-	fmt.Println(input)
+
 	// if first character is a slash, it's not a URL. It's a path.
 	if (err != nil || input[0] == '/') {
 		return false

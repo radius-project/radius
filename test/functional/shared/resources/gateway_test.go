@@ -212,13 +212,8 @@ func Test_GatewayDNS(t *testing.T) {
 						ExpectedStatusCode: http.StatusNotFound,
 					},
 				})
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
-				}
-
+				
+				require.NoError(t, err)
 				require.Fail(t, "Gateway tests failed")
 			},
 		},
