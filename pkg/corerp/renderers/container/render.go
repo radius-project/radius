@@ -288,7 +288,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		ports = append(ports, corev1.ServicePort{
 			Name:       containerPorts.names[i],
 			Port:       port,
-			TargetPort: intstr.FromString(containerPorts.names[i]),
+			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
 			Protocol:  corev1.ProtocolTCP,
 		})
 	}
