@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
@@ -176,19 +177,28 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envRecipes := envResource.Properties.Recipes
 	if envRecipes == nil {
-		envRecipes = map[string]map[string]*corerp.EnvironmentRecipeProperties{}
+		envRecipes = map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
 	}
-
-	properties := &corerp.EnvironmentRecipeProperties{
-		TemplateKind:    &r.TemplateKind,
-		TemplatePath:    &r.TemplatePath,
-		TemplateVersion: &r.TemplateVersion,
-		Parameters:      bicep.ConvertToMapStringInterface(r.Parameters),
+	var properties corerp.EnvironmentRecipePropertiesClassification
+	switch r.TemplateKind {
+	case recipes.TemplateKindTerraform:
+		properties = &corerp.TerraformRecipeProperties{
+			TemplateKind:    &r.TemplateKind,
+			TemplatePath:    &r.TemplatePath,
+			TemplateVersion: &r.TemplateVersion,
+			Parameters:      bicep.ConvertToMapStringInterface(r.Parameters),
+		}
+	case recipes.TemplateKindBicep:
+		properties = &corerp.BicepRecipeProperties{
+			TemplateKind: &r.TemplateKind,
+			TemplatePath: &r.TemplatePath,
+			Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
+		}
 	}
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		envRecipes[r.LinkType] = map[string]*corerp.EnvironmentRecipeProperties{
+		envRecipes[r.LinkType] = map[string]corerp.EnvironmentRecipePropertiesClassification{
 			r.RecipeName: properties,
 		}
 	}

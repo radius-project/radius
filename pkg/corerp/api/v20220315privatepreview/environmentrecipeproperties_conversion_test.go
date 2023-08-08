@@ -29,7 +29,7 @@ import (
 
 func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
-		r := &EnvironmentRecipeProperties{}
+		r := &RecipeMetadataProperties{}
 		// act
 		_, err := r.ConvertTo()
 
@@ -46,7 +46,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 
 		// act
-		versioned := &EnvironmentRecipeProperties{}
+		versioned := &RecipeMetadataProperties{}
 		err = versioned.ConvertFrom(r)
 		// assert
 		require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKin
 		require.NoError(t, err)
 
 		// act
-		versioned := &EnvironmentRecipeProperties{}
+		versioned := &RecipeMetadataProperties{}
 		err = versioned.ConvertFrom(r)
 		// assert
 		require.NoError(t, err)

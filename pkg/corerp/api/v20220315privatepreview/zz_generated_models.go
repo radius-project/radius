@@ -210,6 +210,27 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// BicepRecipeProperties - Properties of a Recipe linked to an Environment.
+type BicepRecipeProperties struct {
+	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
+	TemplateKind *string `json:"templateKind,omitempty"`
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string `json:"templatePath,omitempty"`
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type BicepRecipeProperties.
+func (b *BicepRecipeProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties {
+	return &EnvironmentRecipeProperties{
+		TemplateKind: b.TemplateKind,
+		TemplatePath: b.TemplatePath,
+		Parameters: b.Parameters,
+	}
+}
+
 type CertificateObjectProperties struct {
 	// REQUIRED; The name of the certificate
 	Name *string `json:"name,omitempty"`
@@ -545,10 +566,19 @@ type EnvironmentProperties struct {
 	Providers *Providers `json:"providers,omitempty"`
 
 	// Specifies Recipes linked to the Environment.
-	Recipes map[string]map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	Recipes map[string]map[string]EnvironmentRecipePropertiesClassification `json:"recipes,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// EnvironmentRecipePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetEnvironmentRecipeProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *BicepRecipeProperties, *EnvironmentRecipeProperties, *RecipeMetadataProperties, *TerraformRecipeProperties
+type EnvironmentRecipePropertiesClassification interface {
+	// GetEnvironmentRecipeProperties returns the EnvironmentRecipeProperties content of the underlying type.
+	GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties
 }
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
@@ -561,12 +591,10 @@ type EnvironmentRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
-
-	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
-// for other module sources. For Bicep this is not applicable, as the Bicep version
-// is part of the templatePath.
-	TemplateVersion *string `json:"templateVersion,omitempty"`
 }
+
+// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type EnvironmentRecipeProperties.
+func (e *EnvironmentRecipeProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties { return e }
 
 // EnvironmentResource - Application environment.
 type EnvironmentResource struct {
@@ -1263,6 +1291,32 @@ type Recipe struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// RecipeMetadataProperties - Properties of a Recipe linked to an Environment.
+type RecipeMetadataProperties struct {
+	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
+	TemplateKind *string `json:"templateKind,omitempty"`
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string `json:"templatePath,omitempty"`
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources. For Bicep this is not applicable, as the Bicep version
+// is part of the templatePath.
+	TemplateVersion *string `json:"templateVersion,omitempty"`
+}
+
+// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type RecipeMetadataProperties.
+func (r *RecipeMetadataProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties {
+	return &EnvironmentRecipeProperties{
+		TemplateKind: r.TemplateKind,
+		TemplatePath: r.TemplatePath,
+		Parameters: r.Parameters,
+	}
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -1452,6 +1506,32 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 		FailureThreshold: t.FailureThreshold,
 		PeriodSeconds: t.PeriodSeconds,
 		TimeoutSeconds: t.TimeoutSeconds,
+	}
+}
+
+// TerraformRecipeProperties - Properties of a Recipe linked to an Environment.
+type TerraformRecipeProperties struct {
+	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
+	TemplateKind *string `json:"templateKind,omitempty"`
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string `json:"templatePath,omitempty"`
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources. For Bicep this is not applicable, as the Bicep version
+// is part of the templatePath.
+	TemplateVersion *string `json:"templateVersion,omitempty"`
+}
+
+// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type TerraformRecipeProperties.
+func (t *TerraformRecipeProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties {
+	return &EnvironmentRecipeProperties{
+		TemplateKind: t.TemplateKind,
+		TemplatePath: t.TemplatePath,
+		Parameters: t.Parameters,
 	}
 }
 
