@@ -26,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/rp/util"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -68,37 +69,39 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 }
 
 func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*recipes.Configuration, error) {
-	configuration := recipes.Configuration{Runtime: recipes.RuntimeConfiguration{}, Providers: datamodel.Providers{}}
-	if environment.Properties.Compute != nil && *environment.Properties.Compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
-		// This is a Kubernetes environment
-		configuration.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
+	config := recipes.Configuration{
+		Runtime:   recipes.RuntimeConfiguration{},
+		Providers: datamodel.Providers{},
+	}
+
+	compute := environment.Properties.Compute
+	if compute != nil && *compute.GetEnvironmentCompute().Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
+		config.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 		var err error
-		// Prefer application namespace if set
 		if application != nil {
-			configuration.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			configuration.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResource(environment)
+			config.Runtime.Kubernetes.Namespace, err = kube.FetchNamespaceFromApplicationResource(application)
 			if err != nil {
 				return nil, err
 			}
 		}
-
-	}
-
-	if environment.Properties.Providers != nil {
-		if environment.Properties.Providers.Aws != nil {
-			configuration.Providers.AWS.Scope = *environment.Properties.Providers.Aws.Scope
-		}
-
-		if environment.Properties.Providers.Azure != nil {
-			configuration.Providers.Azure.Scope = *environment.Properties.Providers.Azure.Scope
+		// Environtment-scoped namespace must be given all the time.
+		config.Runtime.Kubernetes.EnvironmentNamespace, err = kube.FetchNamespaceFromEnvironmentResource(environment)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return &configuration, nil
+	providers := environment.Properties.Providers
+	if providers != nil {
+		if providers.Aws != nil {
+			config.Providers.AWS.Scope = to.String(providers.Aws.Scope)
+		}
+		if providers.Azure != nil {
+			config.Providers.Azure.Scope = to.String(providers.Azure.Scope)
+		}
+	}
+
+	return &config, nil
 }
 
 // # Function Explanation

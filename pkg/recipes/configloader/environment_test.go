@@ -98,7 +98,8 @@ func Test_GetConfigurationAWS(t *testing.T) {
 	appConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace: "app-default",
+				Namespace:            "app-default",
+				EnvironmentNamespace: envNamespace,
 			},
 		},
 		Providers: createAWSProvider(),
@@ -242,5 +243,4 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
-
 }
