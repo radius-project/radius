@@ -25,6 +25,8 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - 'versions.json'
 
 env:
   RELEASE_VERSION: ''
@@ -38,13 +40,52 @@ jobs:
     steps:
       - name: Checkout project-radius/radius
         uses: actions/checkout@v3
-      - name: Generate Release note
-        uses: ./.github/actions/generate-release-notes
+      - name: Determine release version from versions.json
+        run: |
+          ./.github/scripts/release-get-version.sh "."
+      - name: Find the previous tag
+        uses: actions/github-script@v6
+        id: latest-release-tag
         with:
-          tag_name: 'v0.25.0'
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          relnote_root: docs/release-notes
-          version: 0.25.0
+          result-encoding: string
+          script: |
+            const { data } = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
+            return data.tag_name
+      - name: Generate the release notes
+        uses: actions/github-script@v6
+        id: generate-notes
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          result-encoding: string
+          script: |
+            const { data } = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ env.RELEASE_VERSION }}',
+              target_commitish: 'main',
+              previous_tag_name: '${{ steps.latest-release-tag.outputs.result }}',
+            })
+            return data.body
+      - uses: marocchino/sticky-pull-request-comment@v2
+        continue-on-error: true
+        with:
+          header: relnote-${{ github.run_id }}
+          number: ${{ github.event.pull_request.number }}
+          hide: true
+          hide_classify: 'OUTDATED'
+          message: |
+            ## Release Information
+            * Previous version: ${{ steps.latest-release-tag.outputs.result }}
+            * New version: ${{ env.RELEASE_VERSION }}
+
+            ## Change logs
+            ```
+            ${{ steps.generate-notes.outputs.result }}
+            ```
   release:
     name: Create a new Radius release
     if: ${{ false }}
