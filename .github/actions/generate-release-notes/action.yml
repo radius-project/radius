@@ -15,10 +15,6 @@ inputs:
   version:
     description: The version of the release
     required: true
-  config_file:
-    description: The path to the release config file
-    required: true
-    default: .github/release.yaml
 runs:
   using: 'composite'
   steps:
@@ -47,7 +43,6 @@ runs:
             tag_name: '${{ inputs.tag_name }}',
             target_commitish: 'main',
             previous_tag_name: '${{ steps.latest-release-tag.outputs.result }}',
-            configuration_file_path: '${{ inputs.config_file }}',
           })
           return data.body
     - name: Generate release note file from template
