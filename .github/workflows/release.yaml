@@ -44,7 +44,7 @@ jobs:
       - name: Generate Release note
         uses: ./radius-pr/.github/actions/generate-release-notes
         with:
-          tag_name: ''
+          tag_name: 'v0.25.0'
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           relnote_root: radius-pr/docs/release-notes
           version: 0.24.0
