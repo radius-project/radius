@@ -62,6 +62,10 @@ type K8sObject struct {
 	SkipLabelValidation  bool
 }
 
+// # Function Explanation
+//
+// NewK8sPodForResource creates a new K8sObject with Kind set to "Pod" and the selector labels for the pod
+// set to the given application and name.
 func NewK8sPodForResource(application string, name string) K8sObject {
 	return K8sObject{
 		// NOTE: we use the selector labels here because the selector labels are intended
@@ -76,12 +80,18 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 	}
 }
 
+// # Function Explanation
+//
+// ValidateLabels creates a copy of the K8sObject and sets the SkipLabelValidation field based on the validate parameter.
 func (k K8sObject) ValidateLabels(validate bool) K8sObject {
 	copy := k
 	copy.SkipLabelValidation = !validate
 	return copy
 }
 
+// # Function Explanation
+//
+// NewK8sHTTPProxyForResource creates a K8sObject for a HttpProxy with the Labels set to the application and name provided.
 func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
@@ -94,6 +104,9 @@ func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
 	}
 }
 
+// # Function Explanation
+//
+// NewK8sServiceForResource creates a new K8sObject for a service with the Labels set to the application and name.
 func NewK8sServiceForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
@@ -106,6 +119,9 @@ func NewK8sServiceForResource(application string, name string) K8sObject {
 	}
 }
 
+// # Function Explanation
+//
+// NewK8sSecretForResource creates a K8sObject for a secret with the Labels set to the application and name.
 func NewK8sSecretForResource(application string, name string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
@@ -118,6 +134,11 @@ func NewK8sSecretForResource(application string, name string) K8sObject {
 	}
 }
 
+// # Function Explanation
+//
+// ValidateDeploymentsRunning checks if the expected deployments have been created in the given namespace and logs any
+// unrecognized deployments. If all expected deployments have been created, it returns, otherwise it retries until the
+// context is done.
 func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, expected K8sObjectSet) {
 	for namespace, expectedPods := range expected.Namespaces {
 		t.Logf("validating deployments in namespace %v", namespace)
@@ -165,12 +186,17 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 	}
 }
 
-// SaveContainerLogs get container logs for all containers in a namespace and saves them to disk.
+// # Function Explanation
+//
+// SaveContainerLogs watches for all pods in the given namespace and saves their container logs to disk.
 func SaveContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) (watchk8s.Interface, error) {
 	return watchForPods(ctx, k8s, namespace, logPrefix, "")
 }
 
-// SaveAndWatchContainerLogsForApp watches for all containers in a namespace and saves them to disk.
+// # Function Explanation
+//
+// SaveLogsForApplication watches for all radius pods that are part of the given application in a given namespace
+// and saves their container logs to disk.
 func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) (watchk8s.Interface, error) {
 	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", kuberneteskeys.LabelRadiusApplication, appName))
 }
@@ -284,7 +310,9 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	log.Printf("Saved container logs to %s", filename)
 }
 
-// ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
+// # Function Explanation
+//
+// ValidateObjectsRunning checks if the expected Kubernetes objects are running in the given namespace.
 func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
@@ -354,6 +382,10 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 	}
 }
 
+// # Function Explanation
+//
+// ValidateNoPodsInApplication checks if there are any pods in the given namespace for the given application and waits for
+// them to be deleted if found.
 func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string, application string) {
 	labelset := kuberneteskeys.MakeSelectorLabels(application, "")
 
@@ -414,6 +446,10 @@ type PodMonitor struct {
 	Pod corev1.Pod
 }
 
+// # Function Explanation
+//
+// PodMonitor ValidateRunning watches a pod for its status to become running and checks its readiness, retrying a few times
+// if the readiness check fails. If the pod enters a failing state, an error is returned.
 func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 	if pm.Pod.Status.Phase == corev1.PodRunning {
 		if checkReadiness(t, &pm.Pod) {
