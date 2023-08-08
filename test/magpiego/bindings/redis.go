@@ -9,6 +9,10 @@ import (
 	redis "github.com/go-redis/redis/v8"
 )
 
+// # Function Explanation
+// 
+// RedisBinding checks if a connection can be established with a Redis instance using the provided environment parameters 
+// and returns a BindingStatus indicating if the connection was successful.
 func RedisBinding(envParams map[string]string) BindingStatus {
 	// session from your local session pool.
 	var err error

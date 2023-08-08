@@ -99,10 +99,16 @@ type TestOptions struct {
 	DiscoveryClient discovery.DiscoveryInterface
 }
 
+// # Function Explanation
+//
+// NewTestOptions creates a new TestOptions object with the given testing.T object.
 func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
+// # Function Explanation
+//
+// NewRPTest creates a new RPTest instance with the given name, steps and initial resources.
 func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) RPTest {
 	return RPTest{
 		Options:          NewRPTestOptions(t),
@@ -113,7 +119,10 @@ func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...
 	}
 }
 
-// K8sSecretResource creates the secret resource for Initial Resource in NewRPTest().
+// # Function Explanation
+//
+// K8sSecretResource creates the secret resource from the given namespace, name, secretType and key-value pairs,
+// for Initial Resource in NewRPTest().
 func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructured.Unstructured {
 	if len(kv)%2 != 0 {
 		panic("key value pairs must be even")
@@ -152,6 +161,10 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 	}
 }
 
+// # Function Explanation
+//
+// CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
+// RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name); err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
@@ -166,13 +179,19 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
+// # Function Explanation
+//
+// Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
 func (ct RPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
 		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
 	}
 }
 
-// CheckRequiredFeatures checks the test environment for the features that the test requires.
+// # Function Explanation
+//
+// CheckRequiredFeatures checks the test environment for the features that the test requires and skips the test if not, otherwise
+// returns an error if there is an issue.
 func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 	for _, feature := range ct.RequiredFeatures {
 		var crd, message string

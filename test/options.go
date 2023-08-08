@@ -37,6 +37,9 @@ type TestOptions struct {
 	Client         client.Client
 }
 
+// # Function Explanation
+// 
+// NewTestOptions creates a TestOptions struct with the necessary clients and configs for testing.
 func NewTestOptions(t *testing.T) TestOptions {
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")

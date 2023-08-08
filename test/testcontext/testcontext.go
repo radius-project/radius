@@ -25,23 +25,31 @@ import (
 	"github.com/go-logr/logr/testr"
 )
 
+// # Function Explanation
+//
 // New creates a new context with test logger for testing.
 func New(t *testing.T) context.Context {
 	ctx, _ := Wrap(t, context.Background())
 	return ctx
 }
 
+// # Function Explanation
+//
 // NewWithCancel creates a new cancellable context with test logger for testing.
 func NewWithCancel(t *testing.T) (context.Context, context.CancelFunc) {
 	return Wrap(t, context.Background())
 }
 
-// NewWithDeadline creates a new deadline context with test logger for testing.
+// # Function Explanation
+//
+// NewWithDeadline creates a new deadline context based on the given duration, with test logger for testing.
 func NewWithDeadline(t *testing.T, duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, _ := Wrap(t, context.Background())
 	return context.WithDeadline(ctx, time.Now().Add(duration))
 }
 
+// # Function Explanation
+//
 // Wrap wraps a context with test logger for testing and returns the context with cancel function.
 func Wrap(t *testing.T, ctx context.Context) (context.Context, context.CancelFunc) {
 	if ctx == nil {

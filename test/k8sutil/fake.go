@@ -30,7 +30,9 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 )
 
-// NewFakeKubeClient create new fake kube dynamic client.
+// # Function Explanation
+//
+// NewFakeKubeClient create new fake kube dynamic client with the given scheme and initial objects.
 func NewFakeKubeClient(scheme *runtime.Scheme, initObjs ...client.Object) client.WithWatch {
 	builder := fake.NewClientBuilder()
 	if scheme != nil {
@@ -39,6 +41,8 @@ func NewFakeKubeClient(scheme *runtime.Scheme, initObjs ...client.Object) client
 	return &testClient{builder.WithObjects(initObjs...).Build()}
 }
 
+// # Function Explanation
+//
 // PrependPatchReactor prepends patch reactor to fake client. This is workaround because clientset
 // fake doesn't support patch verb. https://github.com/kubernetes/client-go/issues/1184
 func PrependPatchReactor(f *k8sfake.Clientset, resource string, objFunc func(clienttesting.PatchAction) runtime.Object) {
@@ -78,7 +82,10 @@ type testClient struct {
 	client.WithWatch
 }
 
-// Patch implements client.Patch for apply patches.
+// # Function Explanation
+//
+// Patch implements client.Patch for apply patches. It checks if the patch type is Apply, then attempts to get
+// the object, create it if it doesn't exist, or update it if it does. If an error is encountered, it is returned.
 func (c *testClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	if patch.Type() != client.Apply.Type() {
 		return c.WithWatch.Patch(ctx, obj, patch, opts...)
