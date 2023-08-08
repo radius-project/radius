@@ -223,7 +223,7 @@ func TestAddRecipeContext(t *testing.T) {
 			require.NoError(t, err)
 
 			// assert
-			actualConfig, err := os.ReadFile(getConfigFilePath(tc.configPath))
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(tc.configPath))
 			require.NoError(t, err)
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
@@ -366,7 +366,7 @@ func TestAddProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			// assert
-			actualConfig, err := os.ReadFile(getConfigFilePath(workingDir))
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
 			require.NoError(t, err)
@@ -395,7 +395,7 @@ func TestSave_Failure(t *testing.T) {
 	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
 
 	// Create a test configuration file.
-	err := os.WriteFile(getConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
+	err := os.WriteFile(getMainConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
 	require.NoError(t, err)
 
 	// Assert that AddProviders returns an error.

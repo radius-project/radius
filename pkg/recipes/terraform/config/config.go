@@ -52,8 +52,8 @@ func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRe
 	}
 }
 
-// getConfigFilePath returns the path of the Terraform main config file.
-func getConfigFilePath(workingDir string) string {
+// getMainConfigFilePath returns the path of the Terraform main config file.
+func getMainConfigFilePath(workingDir string) string {
 	return fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 }
 
@@ -72,8 +72,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getConfigFilePath(workingDir)))
-	if err = os.WriteFile(getConfigFilePath(workingDir), jsonData, modeConfigFile); err != nil {
+	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
+	if err = os.WriteFile(getMainConfigFilePath(workingDir), jsonData, modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
 	return nil
@@ -81,7 +81,8 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 
 // AddProviders adds provider configurations for requiredProviders that are supported
 // by Radius to generate custom provider configurations. Save() must be called to save
-// this new requiredProviders.
+// the generated providers config. requiredProviders contains a list of provider names
+// that are required for the module.
 func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
 	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
 	if err != nil {
@@ -111,7 +112,8 @@ func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName str
 }
 
 // newModuleConfig creates a new TFModuleConfig object with the given module source and version
-// and also populates RecipeParams in TF module config.
+// and also populates RecipeParams in TF module config. If same parameter key exists across params
+// then the last map specified gets precedence.
 func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
 	moduleConfig := TFModuleConfig{
 		ModuleSourceKey: moduleSource,
