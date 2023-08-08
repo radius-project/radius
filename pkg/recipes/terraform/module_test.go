@@ -37,16 +37,16 @@ func TestInspectTFModuleConfig(t *testing.T) {
 			workingDir: "testdata",
 			moduleName: "test-module-provideronly",
 			result: &moduleInspectResult{
-				ContextExists: false,
-				Providers:     []string{"aws"},
+				ContextExists:     false,
+				RequiredProviders: []string{"aws"},
 			},
 		}, {
 			name:       "aws provider with recipecontext",
 			workingDir: "testdata",
 			moduleName: "test-module-recipe-context",
 			result: &moduleInspectResult{
-				ContextExists: true,
-				Providers:     []string{"aws"},
+				ContextExists:     true,
+				RequiredProviders: []string{"aws"},
 			},
 		}, {
 			name:       "invalid module name",

@@ -17,12 +17,10 @@ limitations under the License.
 package config
 
 const (
-	// ModuleSourceKey represents the key for the module source parameter.
-	ModuleSourceKey = "source"
-	// ModuleVersionKey represents the key for the module version parameter.
-	ModuleVersionKey = "version"
-	// ModuleRecipeContextKey represents the key for the module recipe context object parameter.
-	ModuleRecipeContextKey = "context"
+	// moduleSourceKey represents the key for the module source parameter.
+	moduleSourceKey = "source"
+	// moduleVersionKey represents the key for the module version parameter.
+	moduleVersionKey = "version"
 
 	mainConfigFileName = "main.tf.json"
 )

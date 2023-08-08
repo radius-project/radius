@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -35,7 +36,8 @@ import (
 )
 
 const (
-	executionSubDir = "deploy"
+	executionSubDir                = "deploy"
+	workingDirFileMode fs.FileMode = 0700
 )
 
 var (
@@ -105,7 +107,7 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 
 	workingDir := filepath.Join(tfDir, executionSubDir)
 	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
-	if err := os.MkdirAll(workingDir, 0755); err != nil {
+	if err := os.MkdirAll(workingDir, workingDirFileMode); err != nil {
 		return "", fmt.Errorf("failed to create working directory for terraform execution: %w", err)
 	}
 
@@ -145,13 +147,12 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
 	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
-		logger.Error(err, "Failed to inspect module")
 		return err
 	}
 
 	logger.Info(fmt.Sprintf("Inspected module result: %+v", result))
 	// Add the required providers to the terraform configuration.
-	if err := tfConfig.AddProviders(ctx, result.Providers, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+	if err := tfConfig.AddProviders(ctx, result.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {
 		return err
 	}

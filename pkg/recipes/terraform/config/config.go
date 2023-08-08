@@ -106,7 +106,7 @@ func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName str
 		panic(ErrModuleNotFound)
 	}
 	if recipeCtx != nil {
-		mod.SetParams(RecipeParams{ModuleRecipeContextKey: recipeCtx})
+		mod.SetParams(RecipeParams{recipecontext.RecipeContextParamKey: recipeCtx})
 	}
 	return nil
 }
@@ -116,13 +116,13 @@ func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName str
 // then the last map specified gets precedence.
 func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
 	moduleConfig := TFModuleConfig{
-		ModuleSourceKey: moduleSource,
+		moduleSourceKey: moduleSource,
 	}
 
 	// Not all sources use versions, so only add the version if it's specified.
 	// Registries require versions, but HTTP or filesystem sources do not.
 	if moduleVersion != "" {
-		moduleConfig[ModuleVersionKey] = moduleVersion
+		moduleConfig[moduleVersionKey] = moduleVersion
 	}
 
 	// Populate recipe parameters

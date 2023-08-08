@@ -23,7 +23,7 @@ import (
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 )
 
 const (
@@ -35,8 +35,8 @@ type moduleInspectResult struct {
 	// ContextExists is true if the module contains a recipe context.
 	ContextExists bool
 
-	// Providers is a list of names of required providers for the module.
-	Providers []string
+	// RequiredProviders is a list of names of required providers for the module.
+	RequiredProviders []string
 
 	// We can add more inspection results here in the future.
 }
@@ -47,7 +47,7 @@ type moduleInspectResult struct {
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
 func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectResult, error) {
-	result := &moduleInspectResult{ContextExists: false, Providers: []string{}}
+	result := &moduleInspectResult{ContextExists: false, RequiredProviders: []string{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
@@ -58,13 +58,13 @@ func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectRe
 	}
 
 	// Ensure that the module has a recipe context.
-	if _, ok := mod.Variables[config.ModuleRecipeContextKey]; ok {
+	if _, ok := mod.Variables[recipecontext.RecipeContextParamKey]; ok {
 		result.ContextExists = true
 	}
 
 	// Extract the list of required providers.
 	for providerName := range mod.RequiredProviders {
-		result.Providers = append(result.Providers, providerName)
+		result.RequiredProviders = append(result.RequiredProviders, providerName)
 	}
 
 	return result, nil

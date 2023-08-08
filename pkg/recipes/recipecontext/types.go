@@ -20,6 +20,11 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 )
 
+const (
+	// RecipeContextParamKey represents the key for the recipe context object parameter.
+	RecipeContextParamKey = "context"
+)
+
 // Context represents the context information which accesses Link properties. Recipe template authors
 // can leverage the RecipeContext parameter to access Link properties to generate name and properties
 // that are unique for the Link calling the recipe.
