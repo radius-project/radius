@@ -43,6 +43,7 @@ runs:
             tag_name: '${{ inputs.tag_name }}',
             target_commitish: 'main',
             previous_tag_name: '${{ steps.latest-release-tag.outputs.result }}',
+            configuration_file_path: '.github/release.yml',
           })
           return data.body
     - name: Generate release note file from template
@@ -54,13 +55,13 @@ runs:
         
         echo "Full Changelog:"
         CHANGELOG="${{ steps.generate-notes.outputs.result }}"
-        echo -e "$CHANGELOG"
+        echo "$CHANGELOG"
 
         RELNOTE_FILE=${{ inputs.relnote_root }}/v${{ inputs.version }}.md
         cp ${{ inputs.relnote_root }}/template.md $RELNOTE_FILE
 
-        sed -i "s/vX.Y.Z/${{ inputs.version }}/gi" $RELNOTE_FILE
+        sed -i "s/X.Y.Z/${{ inputs.version }}/gi" $RELNOTE_FILE
 
-        echo -e "$CHANGELOG" >> $RELNOTE_FILE
+        echo "$CHANGELOG" >> $RELNOTE_FILE
 
         cat $RELNOTE_FILE
