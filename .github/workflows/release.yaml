@@ -94,9 +94,6 @@ jobs:
           if [ -f ./docs/release-notes/${{ env.RELEASE_VERSION }}.md ]; then
             echo "RELNOTE_FOUND=true" >> $GITHUB_ENV
           fi
-      - name: Stop the workflow if release note is not found.
-        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
-        run: exit 1
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
@@ -110,6 +107,9 @@ jobs:
             This is the official Radius release. Please create the release note by following instruction:            
             1. Create ./docs/release-notes/v${{ env.RELEASE_VERSION }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
             2. Update the each section and add the above Change logs to the end of release note.
+      - name: Stop the workflow if release note is not found.
+        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
+        run: exit 1
   release:
     name: Create a new Radius release
     if: github.event_name == 'push'
