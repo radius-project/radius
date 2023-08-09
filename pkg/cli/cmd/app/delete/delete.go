@@ -143,7 +143,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // client, and deletes the application if it exists. If the application does not exist, it logs a message. It returns an
 // error if there is an issue with the connection or the prompt.
 func (r *Runner) Run(ctx context.Context) error {
-
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, r.Workspace.Name), prompt.ConfirmNo, r.InputPrompter)
