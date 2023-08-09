@@ -1,6 +1,3 @@
-@description('Radius-provided object containing information about the resouce calling the Recipe')
-param context object
-
 resource redis 'Microsoft.Cache/redis@2022-06-01' = {
   name: 'rds-${uniqueString(resourceGroup().id, deployment().name)}'
   location: 'global'

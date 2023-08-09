@@ -1,27 +1,36 @@
 import radius as radius
 
+param location string = resourceGroup().location
+
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
-
-@description('Name of the Redis Cache resource.')
-param redisCacheName string
 
 @description('Name of the Radius Application.')
 param appName string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-terraform-redis-env'
+  name: 'corerp-resources-terraform-azstorage-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-redis-env'
+      namespace: 'corerp-resources-terraform-azstorage-env'
+    }
+    providers: {
+      azure: {
+        scope: resourceGroup().id
+      }
     }
     recipes: {
       'Applications.Link/extenders': {
         default: {
           templateKind: 'terraform'
-          templatePath: '${moduleServer}/kubernetes-redis.zip'
+          templatePath: '${moduleServer}/azure-storage.zip'
+          parameters: {
+            name: 'blob${uniqueString(resourceGroup().id)}'
+            resource_group_name: resourceGroup().name
+            location: location
+          }
         }
       }
     }
@@ -42,15 +51,9 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-terraform-redis'
+  name: 'corerp-resources-terraform-azstorage'
   properties: {
     application: app.id
     environment: env.id
-    recipe: {
-      name: 'default'
-      parameters: {
-        redis_cache_name: redisCacheName
-      }
-    }
   }
 }

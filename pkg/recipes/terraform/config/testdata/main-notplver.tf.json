@@ -1,0 +1,10 @@
+{
+  "module": {
+    "redis-azure": {
+      "redis_cache_name": "redis-test",
+      "resource_group_name": "test-rg",
+      "sku": "P",
+      "source": "Azure/redis/azurerm"
+    }
+  }
+}

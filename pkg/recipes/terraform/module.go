@@ -23,17 +23,32 @@ import (
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 )
 
 const (
 	moduleRootDir = ".terraform/modules"
 )
 
-// getRequiredProviders returns a list of names of required providers for the module present at workingDir/.terraform/modules/<localModuleName> directory.
+// moduleInspectResult contains the result of inspecting a Terraform module config.
+type moduleInspectResult struct {
+	// ContextExists is true if the module contains a recipe context.
+	ContextExists bool
+
+	// RequiredProviders is a list of names of required providers for the module.
+	RequiredProviders []string
+
+	// We can add more inspection results here in the future.
+}
+
+// inspectTFModuleConfig inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
+// and returns the instpection result which includes the list of required providers and recipe context status.
 // localModuleName is the name of the module specified in the configuration used to download the module.
-// It uses terraform-config-inspect to load the module from the directory.
-// An error is returned if the module could not be loaded.
-func getRequiredProviders(workingDir, localModuleName string) ([]string, error) {
+// It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
+// could not be loaded.
+func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectResult, error) {
+	result := &moduleInspectResult{ContextExists: false, RequiredProviders: []string{}}
+
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
@@ -42,12 +57,17 @@ func getRequiredProviders(workingDir, localModuleName string) ([]string, error) 
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
 
-	requiredProviders := []string{}
-	for providerName := range mod.RequiredProviders {
-		requiredProviders = append(requiredProviders, providerName)
+	// Ensure that the module has a recipe context.
+	if _, ok := mod.Variables[recipecontext.RecipeContextParamKey]; ok {
+		result.ContextExists = true
 	}
 
-	return requiredProviders, nil
+	// Extract the list of required providers.
+	for providerName := range mod.RequiredProviders {
+		result.RequiredProviders = append(result.RequiredProviders, providerName)
+	}
+
+	return result, nil
 }
 
 // downloadModule downloads the module to the workingDir from the module source specified in the Terraform configuration.

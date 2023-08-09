@@ -10,7 +10,7 @@ terraform {
 resource "kubernetes_deployment" "redis" {
   metadata {
     name = var.redis_cache_name
-    namespace = var.namespace
+    namespace = var.context.runtime.kubernetes.namespace
     labels = {
       app = "redis"
     }
@@ -48,7 +48,7 @@ resource "kubernetes_deployment" "redis" {
 resource "kubernetes_service" "redis" {
   metadata {
     name = var.redis_cache_name
-    namespace = var.namespace // Update this to use context parameter once implemented
+    namespace = var.context.runtime.kubernetes.namespace
   }
 
   spec {
