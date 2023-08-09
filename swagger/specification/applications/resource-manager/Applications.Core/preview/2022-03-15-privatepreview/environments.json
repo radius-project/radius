@@ -486,6 +486,9 @@
           "type": "string"
         }
       },
+      "required": [
+        "templateVersion"
+      ],
       "type": "object",
       "x-ms-discriminator-value": "terraform"
     },

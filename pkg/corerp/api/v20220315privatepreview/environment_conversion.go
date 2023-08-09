@@ -296,6 +296,9 @@ func toEnvironmentRecipeProperties(e EnvironmentRecipePropertiesClassification) 
 	switch c := e.(type) {
 	case *TerraformRecipeProperties:
 		if c.TemplatePath != nil {
+			if *c.TemplateKind == types.TemplateKindTerraform && (c.TemplateVersion == nil || *c.TemplateVersion == "") {
+				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest("templateVersion is a required property for templateKind: 'terraform'")
+			}
 			// Check for local paths
 			if strings.HasPrefix(to.String(c.TemplatePath), "/") || strings.HasPrefix(to.String(c.TemplatePath), "./") || strings.HasPrefix(to.String(c.TemplatePath), "../") {
 				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))
@@ -303,14 +306,14 @@ func toEnvironmentRecipeProperties(e EnvironmentRecipePropertiesClassification) 
 		}
 		return datamodel.EnvironmentRecipeProperties{
 			TemplateKind:    types.TemplateKindTerraform,
-			TemplateVersion: *c.TemplateVersion,
-			TemplatePath:    *c.TemplatePath,
+			TemplateVersion: to.String(c.TemplateVersion),
+			TemplatePath:    to.String(c.TemplatePath),
 			Parameters:      c.Parameters,
 		}, nil
 	case *BicepRecipeProperties:
 		return datamodel.EnvironmentRecipeProperties{
 			TemplateKind: types.TemplateKindBicep,
-			TemplatePath: *c.TemplatePath,
+			TemplatePath: to.String(c.TemplatePath),
 			Parameters:   c.Parameters,
 		}, nil
 	}

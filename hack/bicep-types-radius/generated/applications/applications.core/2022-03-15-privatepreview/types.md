@@ -395,7 +395,7 @@
 ### TerraformRecipeProperties
 #### Properties
 * **templateKind**: 'terraform' (Required): Format of the template provided by the recipe. Allowed values: bicep, terraform.
-* **templateVersion**: string: Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.
+* **templateVersion**: string (Required): Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.
 
 
 ## TrackedResourceTags

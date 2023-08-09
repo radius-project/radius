@@ -258,10 +258,6 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
 		},
 		{
-			filename: "environmentresource-invalid-property-templateversion.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath."},
-		},
-		{
 			filename: "environmentresource-terraformrecipe-localpath.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
 		},
@@ -329,16 +325,16 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 // 				require.Equal(t, "kubernetes", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
 // 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
 // 				require.Equal(t, 1, len(versioned.Properties.Recipes))
-// 				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath))
-// 				require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind))
+// 				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetEnvironmentRecipeProperties().TemplatePath))
+// 				require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetEnvironmentRecipeProperties().TemplateKind))
 // 				require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].Parameters)
 // 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 // 				require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
 // 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 // 				require.Equal(t, 1, len(versioned.Properties.Extensions))
 // 				if tt.filename == "environmentresourcedatamodel.json" {
-// 					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplatePath))
-// 					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateKind))
+// 					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].GetEnvironmentRecipeProperties().TemplatePath))
+// 					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"]TemplateKind))
 // 					require.Equal(t, "1.1.0", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateVersion))
 // 				}
 // 				if tt.filename == "environmentresourcedatamodelemptyext.json" {
