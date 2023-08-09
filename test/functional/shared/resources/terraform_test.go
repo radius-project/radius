@@ -140,3 +140,37 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	})
 	test.Test(t)
 }
+
+// Test_TerraformRecipe_AzureStorage creates an Extender resource consuming a Terraform recipe that deploys an Azure blob storage instance.
+func Test_TerraformRecipe_AzureStorage(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-azurestorage.bicep"
+	name := "corerp-resources-terraform-azstorage"
+	appName := "corerp-resources-terraform-azstorage-app"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "corerp-resources-terraform-azstorage-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name:            "corerp-resources-terraform-azstorage",
+						Type:            validation.ExtendersResource,
+						App:             appName,
+						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
+					},
+				},
+			},
+			SkipObjectValidation: true,
+			SkipResourceDeletion: true, // Skip deletion because Terraform Recipe deletion isn't supported yet.
+		},
+	})
+	test.Test(t)
+}
