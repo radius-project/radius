@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -124,7 +125,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Warn user if they specify a Bicep filename or path instead of an application name
 	if strings.HasSuffix(r.ApplicationName, ".bicep") {
-		return fmt.Errorf(bicepWarning, r.ApplicationName)
+		return clierrors.Message(bicepWarning, r.ApplicationName)
 	}
 
 	r.Confirm, err = cmd.Flags().GetBool("yes")
