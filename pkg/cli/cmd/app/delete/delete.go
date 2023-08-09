@@ -33,7 +33,7 @@ import (
 
 const (
 	deleteConfirmation = "Are you sure you want to delete application '%v' from '%v'?"
-	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius application. Specify the name of a valid application and try again."
+	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius application. Specify the name of a valid application and try again"
 )
 
 // NewCommand creates an instance of the `rad app delete` command and runner.
@@ -122,6 +122,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Warn user if they specify a Bicep filename or path instead of an application name
+	if strings.HasSuffix(r.ApplicationName, ".bicep") {
+		return fmt.Errorf(bicepWarning, r.ApplicationName)
+	}
+
 	r.Confirm, err = cmd.Flags().GetBool("yes")
 	if err != nil {
 		return err
@@ -138,10 +143,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // client, and deletes the application if it exists. If the application does not exist, it logs a message. It returns an
 // error if there is an issue with the connection or the prompt.
 func (r *Runner) Run(ctx context.Context) error {
-	// Warn user if they specify a Bicep filename or path instead of an application name
-	if strings.HasSuffix(r.ApplicationName, ".bicep") {
-		return fmt.Errorf(bicepWarning, r.ApplicationName)
-	}
 
 	// Prompt user to confirm deletion
 	if !r.Confirm {
