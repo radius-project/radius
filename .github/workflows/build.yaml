@@ -402,7 +402,7 @@ jobs:
       - name: Create GitHub RC Release (pre-release and auto-generate release notes)
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
-          gh release create ${{ env.REL_VERSION }} \
+          gh release create v${{ env.REL_VERSION }} \
             ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --generate-notes \
@@ -413,7 +413,7 @@ jobs:
       - name: Create GitHub Official Release
         if: ${{ !contains(env.REL_VERSION, 'rc') }}
         run: |
-          gh release create ${{ env.REL_VERSION }} \
+          gh release create v${{ env.REL_VERSION }} \
             ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
@@ -506,8 +506,8 @@ jobs:
 
   delete_artifacts:
     name: Delete artifacts
-    if: ${{ success() }}
     needs: [ 'build', 'publish' ]
+    if: ${{ always() && !contains(needs.build.result, 'failure') }}
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Delete release artifacts
