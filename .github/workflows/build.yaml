@@ -518,4 +518,6 @@ jobs:
             rad_cli_linux_amd64
             rad_cli_darwin_amd64
             rad_cli_linux_arm
+            rad_cli_darwin_arm64
+            rad_cli_linux_arm64
           failOnError: false
