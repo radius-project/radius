@@ -37,6 +37,9 @@ jobs:
   generate_release_note:
     name: Generate release note from template
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    if: github.event_name == 'pull_request'
+    env:
+      RELNOTE_FOUND: false
     steps:
       - name: Checkout project-radius/radius
         uses: actions/checkout@v3
@@ -71,7 +74,6 @@ jobs:
             })
             return data.body
       - uses: marocchino/sticky-pull-request-comment@v2
-        continue-on-error: true
         with:
           header: relnote-${{ github.run_id }}
           number: ${{ github.event.pull_request.number }}
@@ -86,9 +88,31 @@ jobs:
             ```
             ${{ steps.generate-notes.outputs.result }}
             ```
+      - name: Find release note
+        shell: bash
+        run: |
+          if [ -f ./docs/release-notes/${{ env.RELEASE_VERSION }}.md ]; then
+            echo "RELNOTE_FOUND=true" >> $GITHUB_ENV
+          fi
+      - name: Stop the workflow if release note is not found.
+        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
+        run: exit 1
+      - uses: marocchino/sticky-pull-request-comment@v2
+        continue-on-error: true
+        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' && env.FINAL_RELEASE == 'true' }}
+        with:
+          header: relnote-${{ github.run_id }}
+          number: ${{ github.event.pull_request.number }}
+          append: true
+          message: |
+            ## Create release note
+            
+            This is the official Radius release. Please create the release note by following instruction:            
+            1. Create ./docs/release-notes/v${{ env.RELEASE_VERSION }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
+            2. Update the each section and add the above Change logs to the end of release note.
   release:
     name: Create a new Radius release
-    if: ${{ false }}
+    if: github.event_name == 'push'
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
       - name: Checkout project-radius/radius@${{ github.event.pull_request.head.sha }}
