@@ -102,12 +102,13 @@ jobs:
           number: ${{ github.event.pull_request.number }}
           append: true
           message: |
-            ## Create release note
+            ## Create release note :warning:
             
-            This is the official Radius release. Please create the release note by following instruction:            
-            1. Create ./docs/release-notes/v${{ env.RELEASE_VERSION }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
+            This is the official Radius release. Create the release note by following instruction:            
+            1. Create ./docs/release-notes/${{ env.RELEASE_VERSION }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
             2. Update the each section and add the above Change logs to the end of release note.
-      - name: Stop the workflow if release note is not found.
+            3. Push release note changes to the PR branch.
+      - name: Stop the workflow if release is the offical and its release note is not found.
         if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
         run: exit 1
   release:
