@@ -23,7 +23,6 @@ resource "kubernetes_secret" "recipe-context" {
     "resource.id" = base64encode(var.context.resource.id)
     "resource.type" = base64encode(var.context.resource.type)
     "azure.subscription_id" = base64encode(var.context.azure.subscription.subscriptionId)
-    "azure.resourcegroup" = base64encode(var.context.azure.resourceGroup.name)
     # Serialize the entire recipe context object. Functional test code will decode and assert the entire values.
     "recipe_context" = base64encode(jsonencode(var.context))
   }

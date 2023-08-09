@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -108,18 +109,17 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
 				require.NoError(t, err)
 
-				decoded, err := base64.StdEncoding.DecodeString(string(s.Data["azure.resourcegroup"]))
+				decoded, err := base64.StdEncoding.DecodeString(string(s.Data["resource.id"]))
 				require.NoError(t, err)
-				rgName := string(decoded)
+				r, err := resources.ParseResource(string(decoded))
+				require.NoError(t, err)
+
+				rgName := r.FindScope(resources.ResourceGroupsSegment)
 
 				tests := []struct {
 					key      string
 					expected string
 				}{
-					{
-						key:      "resource.id",
-						expected: "/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Link/extenders/corerp-resources-terraform-context",
-					},
 					{
 						key:      "resource.type",
 						expected: "Applications.Link/extenders",
