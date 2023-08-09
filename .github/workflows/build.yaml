@@ -51,6 +51,9 @@ env:
   # Container registry url for GitHub container registry.
   CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/project-radius/dev' || 'ghcr.io/project-radius/radius' }}
 
+  # Local file path to the release binaries.
+  RELEASE_PATH: ./release
+
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -123,18 +126,19 @@ jobs:
       - name: Copy cli binaries to release (unix-like)
         if: matrix.target_os != 'windows'
         run: |
-          mkdir ./release
-          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ./release/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}
+          mkdir ${{ env.RELEASE_PATH }}
+          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}
       - name: Copy cli binaries to release (windows)
         if: matrix.target_os == 'windows'
         run: |
-          mkdir ./release
-          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ./release/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
+          mkdir ${{ env.RELEASE_PATH }}
+          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
       - name: Upload Release binaries 
         uses: actions/upload-artifact@v3
         with:
           name: rad_cli_release
-          path: ./release
+          path: ${{ env.RELEASE_PATH }}
+      # TOOD_LAUNCH: Remove this step when we opensource the repo - https://github.com/project-radius/radius/issues/5892
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:
@@ -392,30 +396,31 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: rad_cli_release
-          path: release
+          path: ${{ env.RELEASE_PATH }}
       - name: generate checksum files
-        run: cd release && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
-      - name: Create GitHub RC Release
+        run: cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+      - name: Create GitHub RC Release (pre-release and auto-generate release notes)
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
-          #  gh release create v0.23.0 ./release/* --generate-notes --prerelease --draft --verify-tags --title "Radius Bicep v0.23.0"
           gh release create ${{ env.REL_VERSION }} \
-            ./release/* \
+            ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
-            --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
+            --generate-notes \
             --verify-tags \
-            --prerelease \
-            --draft
+            --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - name: Create GitHub Official Release
         if: ${{ !contains(env.REL_VERSION, 'rc') }}
         run: |
-          #  gh release create v0.23.0 ./release/* --generate-notes --prerelease --draft --verify-tags --title "Radius Bicep v0.23.0"
           gh release create ${{ env.REL_VERSION }} \
-            ./release/* \
+            ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
-            --verify-tags \
-            --draft
+            --verify-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+  # TODO_LAUNCH: Remove this job once we opensource - https://github.com/project-radius/radius/issues/5892
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]

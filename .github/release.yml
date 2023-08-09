@@ -5,9 +5,9 @@ changelog:
     authors:
       - rad-ci-bot
   categories:
-    - title: ## Breaking Changes
+    - title: '## Breaking Changes'
       labels:
         - breaking-change
-    - title: ## Full changelog
+    - title: '## changelog'
       labels:
         - "*"

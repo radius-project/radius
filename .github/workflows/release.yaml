@@ -99,7 +99,7 @@ jobs:
         run: exit 1
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
-        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' && env.FINAL_RELEASE == 'true' }}
+        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
         with:
           header: relnote-${{ github.run_id }}
           number: ${{ github.event.pull_request.number }}
