@@ -33,7 +33,6 @@
 # information. On workflow initiation, it checks the last build time to determine if 
 # the previous build is still valid. If valid, the workflow skips the build steps 
 # and uses the cached 'rad cli' for testing.
-#
 # Grafana dashboard URL: https://radiuse2e00-dashboard-audycmffgberbghy.wus3.grafana.azure.com/
 
 name: E2E test on Azure
