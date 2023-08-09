@@ -212,9 +212,8 @@ func Test_GatewayDNS(t *testing.T) {
 						ExpectedStatusCode: http.StatusNotFound,
 					},
 				})
-				
+
 				require.NoError(t, err)
-				require.Fail(t, "Gateway tests failed")
 			},
 		},
 	})
