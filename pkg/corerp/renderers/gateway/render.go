@@ -319,18 +319,7 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 			if err != nil {
 				return []rpv1.OutputResource{}, err
 			}
-
-			intURLport, err := strconv.Atoi(urlPort)
-			if err != nil {
-				return []rpv1.OutputResource{}, err
-			}
-
-			// bound check intURLport
-			if intURLport < 0 || intURLport > 65535 {
-				return []rpv1.OutputResource{}, fmt.Errorf("port %d is out of range", intURLport)
-			}
-
-			port = int32(intURLport)
+			port = urlPort
 
 		} else {
 			routeProperties := dependencies[route.Destination]
@@ -520,29 +509,43 @@ func isURL(input string) bool {
 	return true
 }
 
-func parseURL(sourceURL string) (scheme, hostname, port string, err error) {
+func parseURL(sourceURL string) (scheme string, hostname string, port int32, err error) {
 	u, err := url.Parse(sourceURL)
 	if err != nil {
-		return "", "", "", err
+		return "", "", 0, err
 	}
 
 	scheme = u.Scheme
 	host := u.Host
 
-	hostname, port, err = net.SplitHostPort(host)
-	if err != nil {
-		return "", "", "", err
+	hostname, strPort, err := net.SplitHostPort(host)
+	_, ok := err.(*net.AddrError)
+	if ok {
+		strPort = ""
+		hostname = host
+	} else if err != nil {
+		return "", "", 0, err
+	}
+
+	if scheme == "http" && strPort == "" {
+		strPort = "80"
+	}
+
+	if scheme == "https" && strPort == "" {
+		strPort = "443"
 	}
 
 	// bound check port
-	portInt, err := strconv.Atoi(port)
+	portInt, err := strconv.Atoi(strPort)
 	if err != nil {
-		return "", "", "", err
+		return "", "", 0, err
 	}
 
 	if portInt < 0 || portInt > 65535 {
-		return "", "", "", fmt.Errorf("port %s is out of range", port)
+		return "", "", 0, fmt.Errorf("port %d is out of range", port)
 	}
+
+	port = int32(portInt)
 
 	return scheme, hostname, port, nil
 }
