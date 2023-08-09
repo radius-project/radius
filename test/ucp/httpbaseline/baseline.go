@@ -51,6 +51,10 @@ type Response struct {
 	Body string `json:"body"`
 }
 
+// # Function Explanation
+//
+// NewRequest creates a new Request object, excluding certain headers. It returns an error
+// if there is an issue reading from the body or closing the body.
 func NewRequest(r *http.Request) (*Request, error) {
 	request := Request{
 		Headers: map[string][]string{},
@@ -85,6 +89,10 @@ func NewRequest(r *http.Request) (*Request, error) {
 	return &request, nil
 }
 
+// # Function Explanation
+//
+// NewResponse creates a new Response object, excluding certain headers. It returns an error
+// if there is an issue reading from the body or closing it.
 func NewResponse(r *http.Response) (*Response, error) {
 	response := Response{
 		Headers:    map[string][]string{},
@@ -118,6 +126,10 @@ func NewResponse(r *http.Response) (*Response, error) {
 	return &response, nil
 }
 
+// # Function Explanation
+//
+// ReadRequestFromFile reads a Request from a file and returns it, or an error if the file cannot be read or the Request
+// cannot be unmarshalled.
 func ReadRequestFromFile(path string) (Request, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -133,6 +145,10 @@ func ReadRequestFromFile(path string) (Request, error) {
 	return request, nil
 }
 
+// # Function Explanation
+//
+// ReadResponseFromFile reads a Response from a file at the given path and returns it, or an error if the file could not
+// be read or the Response could not be unmarshalled.
 func ReadResponseFromFile(path string) (Response, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -148,6 +164,9 @@ func ReadResponseFromFile(path string) (Response, error) {
 	return response, nil
 }
 
+// # Function Explanation
+//
+// ToTestRequest converts the given request object into an http-test-request.
 func (req Request) ToTestRequest(ctx context.Context) *http.Request {
 	result := httptest.NewRequest(req.Method, req.URL, bytes.NewBufferString(req.Body))
 	result = result.WithContext(ctx)
@@ -158,6 +177,9 @@ func (req Request) ToTestRequest(ctx context.Context) *http.Request {
 	return result
 }
 
+// # Function Explanation
+//
+// CreateRoundTripper creates a RoundTripper instance with the Response instance as its Response field.
 func (res Response) CreateRoundTripper() *RoundTripper {
 	return &RoundTripper{
 		Response: res,
@@ -173,6 +195,10 @@ type RoundTripper struct {
 
 var _ http.RoundTripper = (*RoundTripper)(nil)
 
+// # Function Explanation
+//
+// RoundTrip captures and responds to a request, setting the response headers and body from the request,
+// returning an error if one occurs.
 func (rt *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Capture and respond.
 	captured, err := NewRequest(req)

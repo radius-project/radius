@@ -49,7 +49,6 @@ resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
     recipe: {
       name: 'default'
       parameters: {
-        namespace: app.name // This will be replaced by context parameter after that is implemented
         redis_cache_name: redisCacheName
       }
     }
