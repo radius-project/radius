@@ -44,17 +44,6 @@ const (
 	AsnycOperationDuration = "asyncoperation.duration"
 )
 
-const (
-	// ResourceTypeAttrKey is the attribute name for resource type.
-	ResourceTypeAttrKey = "resource_type"
-
-	// OperationTypeAttrKey is the attribute name for operation type.
-	OperationTypeAttrKey = "operation_type"
-
-	// OperationStateAttrKey is the attribute name for operation state.
-	OperationStateAttrKey = "operation_state"
-)
-
 type asyncOperationMetrics struct {
 	counters       map[string]metric.Int64Counter
 	valueRecorders map[string]metric.Float64Histogram
@@ -118,7 +107,7 @@ func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) 
 // when an async operation is completed.
 func (a *asyncOperationMetrics) RecordAsyncOperation(ctx context.Context, req *ctrl.Request, res *ctrl.Result) {
 	if a.counters[AsyncOperationCount] != nil {
-		a.counters[AsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newCommonAttributes(req, res)...))
+		a.counters[AsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newAsyncOperationCommonAttributes(req, res)...))
 	}
 }
 
@@ -128,7 +117,7 @@ func (a *asyncOperationMetrics) RecordAsyncOperation(ctx context.Context, req *c
 // be called with an async operation is extended.
 func (a *asyncOperationMetrics) RecordExtendedAsyncOperation(ctx context.Context, req *ctrl.Request) {
 	if a.counters[ExtendedAsyncOperationCount] != nil {
-		a.counters[ExtendedAsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newCommonAttributes(req, nil)...))
+		a.counters[ExtendedAsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newAsyncOperationCommonAttributes(req, nil)...))
 	}
 }
 
@@ -138,11 +127,11 @@ func (a *asyncOperationMetrics) RecordExtendedAsyncOperation(ctx context.Context
 func (a *asyncOperationMetrics) RecordAsyncOperationDuration(ctx context.Context, req *ctrl.Request, startTime time.Time) {
 	if a.valueRecorders[AsnycOperationDuration] != nil {
 		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
-		a.valueRecorders[AsnycOperationDuration].Record(ctx, elapsedTime, metric.WithAttributes(newCommonAttributes(req, nil)...))
+		a.valueRecorders[AsnycOperationDuration].Record(ctx, elapsedTime, metric.WithAttributes(newAsyncOperationCommonAttributes(req, nil)...))
 	}
 }
 
-func newCommonAttributes(req *ctrl.Request, res *ctrl.Result) []attribute.KeyValue {
+func newAsyncOperationCommonAttributes(req *ctrl.Request, res *ctrl.Result) []attribute.KeyValue {
 	attrs := make([]attribute.KeyValue, 0)
 
 	resourceID, err := resources.ParseResource(req.ResourceID)
@@ -157,6 +146,7 @@ func newCommonAttributes(req *ctrl.Request, res *ctrl.Result) []attribute.KeyVal
 
 	if res != nil && res.ProvisioningState() != "" {
 		attrs = append(attrs, attribute.String(OperationStateAttrKey, normalizeAttrValue(string(res.ProvisioningState()))))
+		attrs = append(attrs, attribute.String(OperationErrorCodeAttrKey, normalizeAttrValue(string(res.Error.Code))))
 	}
 
 	return attrs

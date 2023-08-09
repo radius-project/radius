@@ -19,11 +19,21 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+)
+
+const (
+	LoadRecipeError        = "LOAD_RECIPE_ERROR"
+	DriverNotFoundError    = "DRIVER_NOT_FOUND_ERROR"
+	LoadConfigurationError = "LOAD_CONFIGURATION_ERROR"
+	RecipeExecutionError   = "RECIPE_EXECUTION_ERROR"
+	RecipeDeletionError    = "RECIPE_DELETION_ERROR"
 )
 
 // # Function Explanation
@@ -51,40 +61,96 @@ type engine struct {
 // configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
 // an error if one occurs.
 func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
+	executionStart := time.Now()
+
+	recipeOutput, definition, err := e.executeCore(ctx, recipe)
+	if err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
+			metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Execute, recipe.Name, definition, metrics.RecipeOperationResult_Failed))
+
+		return recipeOutput, err
+	}
+
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
+		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Execute, recipe.Name,
+			definition, metrics.RecipeOperationResult_Success))
+
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, executionStart,
+		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Execute, recipe.Name,
+			definition, metrics.RecipeOperationResult_Success))
+
+	return recipeOutput, nil
+}
+
+// executeCore function is the core logic of the Execute function.
+// Any changes to the core logic of the Execute function should be made here.
+func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
-		return nil, fmt.Errorf("could not find driver %s", definition.Driver)
+		return nil, definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
-		return nil, err
+		return nil, definition, err
 	}
 
-	return driver.Execute(ctx, *configuration, recipe, *definition)
+	res, err := driver.Execute(ctx, *configuration, recipe, *definition)
+	if err != nil {
+		return nil, definition, err
+	}
+
+	return res, definition, nil
 }
 
 // # Function Explanation
 //
 // Delete calls the Delete method of the driver specified in the recipe definition to delete the output resources.
 func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error {
+	deletionStart := time.Now()
+
+	definition, err := e.deleteCore(ctx, recipe, outputResources)
+	if err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
+			metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Delete, recipe.Name, definition, metrics.RecipeOperationResult_Failed))
+
+		return err
+	}
+
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
+		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Delete, recipe.Name, definition, metrics.RecipeOperationResult_Success))
+
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, deletionStart,
+		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Delete, recipe.Name, definition, metrics.RecipeOperationResult_Success))
+
+	return nil
+}
+
+// deleteCore function is the core logic of the Delete function.
+// Any changes to the core logic of the Delete function should be made here.
+func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) (*recipes.EnvironmentDefinition, error) {
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
-		return fmt.Errorf("could not find driver %s", definition.Driver)
+		return definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	return driver.Delete(ctx, outputResources)
+	err = driver.Delete(ctx, outputResources)
+	if err != nil {
+		return definition, err
+	}
+
+	return definition, nil
 }

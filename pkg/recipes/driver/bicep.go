@@ -31,6 +31,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -76,10 +77,14 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
 
 	recipeData := make(map[string]any)
+	downloadStartTime := time.Now()
 	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}
+	metrics.DefaultRecipeDriverMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Download, recipe.Name, &definition, metrics.SuccessfulOperationState))
+
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&recipe, &configuration)
 	if err != nil {

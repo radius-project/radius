@@ -19,6 +19,15 @@ package metrics
 var (
 	// DefaultAsyncOperationMetrics holds async operation metrics definitions.
 	DefaultAsyncOperationMetrics = newAsyncOperationMetrics()
+
+	// DefaultRecipeEngineMetrics holds recipe engine metrics definitions.
+	DefaultRecipeEngineMetrics = newRecipeEngineMetrics()
+
+	// DefaultRecipeDriverMetrics holds recipe driver metrics definitions.
+	DefaultRecipeDriverMetrics = newRecipeDriverMetrics()
+
+	// DefaultTerraformDriverMetrics holds Terraform driver metrics definitions.
+	DefaultTerraformDriverMetrics = newTerraformDriverMetrics()
 )
 
 // # Function Explanation
@@ -26,6 +35,18 @@ var (
 // InitMetrics initializes metrics for Radius.
 func InitMetrics() error {
 	if err := DefaultAsyncOperationMetrics.Init(); err != nil {
+		return err
+	}
+
+	if err := DefaultRecipeEngineMetrics.Init(); err != nil {
+		return err
+	}
+
+	if err := DefaultRecipeDriverMetrics.Init(); err != nil {
+		return err
+	}
+
+	if err := DefaultTerraformDriverMetrics.Init(); err != nil {
 		return err
 	}
 
