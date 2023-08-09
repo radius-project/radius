@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"encoding/base64"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -107,13 +108,17 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 				s, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
 				require.NoError(t, err)
 
+				decoded, err := base64.StdEncoding.DecodeString(string(s.Data["azure.resourcegroup"]))
+				require.NoError(t, err)
+				rgName := string(decoded)
+
 				tests := []struct {
 					key      string
 					expected string
 				}{
 					{
 						key:      "resource.id",
-						expected: "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context",
+						expected: "/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Link/extenders/corerp-resources-terraform-context",
 					},
 					{
 						key:      "resource.type",
@@ -125,14 +130,16 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					},
 					{
 						key:      "recipe_context",
-						expected: "{\"application\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"aws\":null,\"azure\":{\"resourceGroup\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context\",\"name\":\"rg-terraform-context\"},\"subscription\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000\",\"subscriptionId\":\"00000000-0000-0000-0000-100000000000\"}},\"environment\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"resource\":{\"id\":\"/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Link/extenders/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\",\"type\":\"Applications.Link/extenders\"},\"runtime\":{\"kubernetes\":{\"environmentNamespace\":\"corerp-resources-terraform-context-env\",\"namespace\":\"corerp-resources-terraform-context-app\"}}}",
+						expected: "{\"application\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/applications/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"aws\":null,\"azure\":{\"resourceGroup\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context\",\"name\":\"rg-terraform-context\"},\"subscription\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000\",\"subscriptionId\":\"00000000-0000-0000-0000-100000000000\"}},\"environment\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/environments/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"resource\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Link/extenders/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\",\"type\":\"Applications.Link/extenders\"},\"runtime\":{\"kubernetes\":{\"environmentNamespace\":\"corerp-resources-terraform-context-env\",\"namespace\":\"corerp-resources-terraform-context-app\"}}}",
 					},
 				}
 
 				for _, tc := range tests {
 					decoded, err := base64.StdEncoding.DecodeString(string(s.Data[tc.key]))
 					require.NoErrorf(t, err, "failed to decode secret data, key: %s", tc.key)
-					require.Equalf(t, tc.expected, string(decoded), "secret data mismatch, key: %s", tc.key)
+					// Replace the resource group name with a fake name because resourcegroup can be changed by test setup.
+					replaced := strings.ReplaceAll(string(decoded), "resourcegroups/"+rgName, "resourcegroups/radiusGroup")
+					require.Equalf(t, tc.expected, replaced, "secret data mismatch, key: %s", tc.key)
 				}
 			},
 			SkipResourceDeletion: true,
