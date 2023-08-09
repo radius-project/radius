@@ -123,7 +123,7 @@ func (s *Service) Run(ctx context.Context) error {
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: s.Options.Config.Terraform.Path,
-				}),
+				}, s.KubeClientSet),
 		},
 	})
 
