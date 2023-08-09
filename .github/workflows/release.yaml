@@ -102,7 +102,7 @@ jobs:
           number: ${{ github.event.pull_request.number }}
           append: true
           message: |
-            ## Create release note :warning:
+            ## :warning: Missing release note :warning:
             
             This is the official Radius release. Create the release note by following instruction:            
             1. Create ./docs/release-notes/${{ env.RELEASE_VERSION }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
