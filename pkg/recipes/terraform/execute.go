@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 
 	install "github.com/hashicorp/hc-install"
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
@@ -183,7 +182,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	tf, err := tfexec.NewTerraform(workingDir, execPath)
+	tf, err := NewTerraform(ctx, workingDir, execPath)
 	if err != nil {
 		return err
 	}

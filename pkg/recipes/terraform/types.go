@@ -18,8 +18,12 @@ package terraform
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/go-logr/logr"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 //go:generate mockgen -destination=./mock_executor.go -package=terraform -self_package github.com/project-radius/radius/pkg/recipes/terraform github.com/project-radius/radius/pkg/recipes/terraform TerraformExecutor
@@ -42,4 +46,57 @@ type Options struct {
 
 	// ResourceRecipe is recipe metadata associated with the Radius resource deploying the Terraform recipe.
 	ResourceRecipe *recipes.ResourceMetadata
+}
+
+// NewTerraform creates a new Terraform executor.
+func NewTerraform(ctx context.Context, workingDir, execPath string) (*tfexec.Terraform, error) {
+	tf, err := tfexec.NewTerraform(workingDir, execPath)
+	if err != nil {
+		return nil, err
+	}
+
+	configureTerraformLogs(ctx, tf)
+
+	return tf, err
+}
+
+// StreamingWriter is a writer that processes data in a streaming manner.
+type StreamingWriter struct {
+	logger logr.Logger
+}
+
+// Write processes the data in a streaming manner.
+func (w *StreamingWriter) Write(p []byte) (n int, err error) {
+	w.logger.Info(string(p))
+	return len(p), nil
+}
+
+type StreamingErrorWriter struct {
+	logger logr.Logger
+}
+
+func (w *StreamingErrorWriter) Write(p []byte) (n int, err error) {
+	w.logger.Error(fmt.Errorf(string(p)), string(p))
+	return len(p), nil
+}
+
+// configureTerraformLogs configures the Terraform logs to be streamed to the Radius logs.
+func configureTerraformLogs(ctx context.Context, tf *tfexec.Terraform) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	err := tf.SetLog("TRACE")
+	if err != nil {
+		logger.Error(err, "Failed to set log level for Terraform")
+		return
+	}
+
+	streamingWriter := &StreamingWriter{
+		logger: logger,
+	}
+	tf.SetStdout(streamingWriter)
+
+	streamingErrorWriter := &StreamingErrorWriter{
+		logger: logger,
+	}
+	tf.SetStderr(streamingErrorWriter)
 }
