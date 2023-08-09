@@ -18,6 +18,7 @@ package validation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -114,10 +115,14 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 
 	// Wait till the delete is complete
 	maxWaitTime := 300 * time.Second
-	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client)
-	return waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client, func(options *cloudcontrol.ResourceRequestSuccessWaiterOptions) {
+		options.LogWaitAttempts = true
+	})
+	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)
+
+	return fmt.Errorf("failed to delete resource %s after %s: %w", resource.Identifier, maxWaitTime, err)
 }
 
 // # Function Explanation
