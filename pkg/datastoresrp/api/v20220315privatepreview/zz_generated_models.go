@@ -12,10 +12,10 @@ import "time"
 
 // BasicDaprResourceProperties - Basic properties of a Dapr component object.
 type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
@@ -28,10 +28,10 @@ type BasicDaprResourceProperties struct {
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Status of a resource.
@@ -72,58 +72,61 @@ type ErrorResponse struct {
 	Error *ErrorDetail `json:"error,omitempty"`
 }
 
-// MongoDatabaseListSecretsResult - The secret values for the given MongoDatabase resource
+// MongoDatabaseListSecretsResult - The secret values for the given Mongo database resource
 type MongoDatabaseListSecretsResult struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
 
 	// Password to use when connecting to the target Mongo database
 	Password *string `json:"password,omitempty"`
+}
+
+// MongoDatabaseProperties - Mongo database portable resource properties
+type MongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Database name of the target Mongo database
+	Database *string `json:"database,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the Mongo database portable resource
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the Mongo database resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
 
 	// Username to use when connecting to the target Mongo database
 	Username *string `json:"username,omitempty"`
-}
 
-// MongoDatabasePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetMongoDatabaseProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *MongoDatabaseProperties, *RecipeMongoDatabaseProperties, *ResourceMongoDatabaseProperties, *ValuesMongoDatabaseProperties
-type MongoDatabasePropertiesClassification interface {
-	// GetMongoDatabaseProperties returns the MongoDatabaseProperties content of the underlying type.
-	GetMongoDatabaseProperties() *MongoDatabaseProperties
-}
-
-// MongoDatabaseProperties - MongoDatabase portable resource properties
-type MongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the mongo database portable resource at the time the operation was called
+	// READ-ONLY; Provisioning state of the Mongo database portable resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseProperties.
-func (m *MongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties { return m }
-
-// MongoDatabaseResource - MongoDatabase portable resource
+// MongoDatabaseResource - Mongo database portable resource
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties MongoDatabasePropertiesClassification `json:"properties,omitempty"`
+	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -150,16 +153,13 @@ type MongoDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
+// MongoDatabaseSecrets - The secret values for the given Mongo database resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
 
 	// Password to use when connecting to the target Mongo database
 	Password *string `json:"password,omitempty"`
-
-	// Username to use when connecting to the target Mongo database
-	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.
@@ -244,7 +244,7 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
@@ -253,63 +253,24 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RecipeMongoDatabaseProperties - MongoDatabase Properties for Mode Recipe
-type RecipeMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
+// RedisCacheListSecretsResult - The secret values for the given Redis cache resource
+type RedisCacheListSecretsResult struct {
+	// The connection string used to connect to the Redis cache
+	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
+	// The password for this Redis cache instance
+	Password *string `json:"password,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabases portable resource
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
-func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// RecipeRedisCacheProperties - RedisCache Properties for Mode Recipe
-type RecipeRedisCacheProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+// RedisCacheProperties - Redis cache portable resource properties
+type RedisCacheProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for RedisCacheProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rediscaches portable resource
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The host name of the target Redis cache
@@ -318,118 +279,38 @@ type RecipeRedisCacheProperties struct {
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// Secrets provided by resource
-	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the redis cache portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
-}
-
-// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RecipeRedisCacheProperties.
-func (r *RecipeRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
-	return &RedisCacheProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// RecipeSQLDatabaseProperties - SqlDatabase Properties for Mode Recipe
-type RecipeSQLDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for SqlDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the sqldatabases portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the Redis cache portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// The name of the Sql database.
-	Database *string `json:"database,omitempty"`
-
-	// The fully qualified domain name of the Sql database.
-	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; Provisioning state of the Sql database portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type RecipeSQLDatabaseProperties.
-func (r *RecipeSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
-	return &SQLDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// RedisCacheListSecretsResult - The secret values for the given RedisCache resource
-type RedisCacheListSecretsResult struct {
-	// The connection string used to connect to the Redis cache
-	ConnectionString *string `json:"connectionString,omitempty"`
-
-	// The password for this Redis cache instance
-	Password *string `json:"password,omitempty"`
-}
-
-// RedisCachePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetRedisCacheProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *RecipeRedisCacheProperties, *RedisCacheProperties, *ResourceRedisCacheProperties, *ValuesRedisCacheProperties
-type RedisCachePropertiesClassification interface {
-	// GetRedisCacheProperties returns the RedisCacheProperties content of the underlying type.
-	GetRedisCacheProperties() *RedisCacheProperties
-}
-
-// RedisCacheProperties - RedisCache portable resource properties
-type RedisCacheProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for RedisCacheProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
+	// List of the resource IDs that support the Redis resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache portable resource at the time the operation was called
+	// Specifies whether to enable SSL connections to the Redis cache
+	TLS *bool `json:"tls,omitempty"`
+
+	// The username for Redis cache
+	Username *string `json:"username,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache portable at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RedisCacheProperties.
-func (r *RedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties { return r }
-
-// RedisCacheResource - RedisCache portable resource
+// RedisCacheResource - Redis cache portable resource
 type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties RedisCachePropertiesClassification `json:"properties,omitempty"`
+	Properties *RedisCacheProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -456,13 +337,16 @@ type RedisCacheResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// RedisCacheSecrets - The secret values for the given RedisCache resource
+// RedisCacheSecrets - The secret values for the given Redis cache resource
 type RedisCacheSecrets struct {
 	// The connection string used to connect to the Redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
+
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
 // RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate method.
@@ -505,132 +389,10 @@ type Resource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// ResourceMongoDatabaseProperties - MongoDatabase Properties for Mode Resource
-type ResourceMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this portable resource
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
-func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// ResourceRedisCacheProperties - RedisCache Properties for Mode Resource
-type ResourceRedisCacheProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for RedisCacheProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID of a supported resource with Redis API to use for this portable resource
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The host name of the target Redis cache
-	Host *string `json:"host,omitempty"`
-
-	// The port value of the target Redis cache
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets provided by resource
-	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the redis cache portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
-}
-
-// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ResourceRedisCacheProperties.
-func (r *ResourceRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
-	return &RedisCacheProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Secrets: r.Secrets,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
-}
-
-// ResourceSQLDatabaseProperties - SqlDatabase Properties for Mode Resource
-type ResourceSQLDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for SqlDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID of a supported resource with Sql API to use for this portable resource
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The name of the Sql database.
-	Database *string `json:"database,omitempty"`
-
-	// The fully qualified domain name of the Sql database.
-	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; Provisioning state of the Sql database portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ResourceSQLDatabaseProperties.
-func (r *ResourceSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
-	return &SQLDatabaseProperties{
-		Mode: r.Mode,
-		ProvisioningState: r.ProvisioningState,
-		Status: r.Status,
-		Environment: r.Environment,
-		Application: r.Application,
-	}
+// ResourceReference - Describes a reference to an existing resource
+type ResourceReference struct {
+	// REQUIRED; Resource id of an existing resource
+	ID *string `json:"id,omitempty"`
 }
 
 // ResourceStatus - Status of a resource.
@@ -639,43 +401,61 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
-// SQLDatabasePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetSQLDatabaseProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *RecipeSQLDatabaseProperties, *ResourceSQLDatabaseProperties, *SQLDatabaseProperties, *ValuesSQLDatabaseProperties
-type SQLDatabasePropertiesClassification interface {
-	// GetSQLDatabaseProperties returns the SQLDatabaseProperties content of the underlying type.
-	GetSQLDatabaseProperties() *SQLDatabaseProperties
+// SQLDatabaseListSecretsResult - The secret values for the given SQL database resource
+type SQLDatabaseListSecretsResult struct {
+	// Connection string used to connect to the target SQL database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target SQL database
+	Password *string `json:"password,omitempty"`
 }
 
-// SQLDatabaseProperties - SqlDatabase properties
+// SQLDatabaseProperties - Sql database properties
 type SQLDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Discriminator property for SqlDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// READ-ONLY; Provisioning state of the Sql database portable resource at the time the operation was called
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
+	// Port value of the target SQL database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the SQL database portable resource
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the SQL database resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
+	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
+
+	// The fully qualified domain name of the target SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// Username to use when connecting to the target SQL database
+	Username *string `json:"username,omitempty"`
+
+	// READ-ONLY; Provisioning state of the SQL database portable resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLDatabaseProperties.
-func (s *SQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties { return s }
-
-// SQLDatabaseResource - SqlDatabase portable resource
+// SQLDatabaseResource - Sql database portable resource
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// The resource-specific properties for this resource.
-	Properties SQLDatabasePropertiesClassification `json:"properties,omitempty"`
+	Properties *SQLDatabaseProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -702,6 +482,15 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// SQLDatabaseSecrets - The secret values for the given SQL database resource
+type SQLDatabaseSecrets struct {
+	// Connection string used to connect to the target SQL database
+	ConnectionString *string `json:"connectionString,omitempty"`
+
+	// Password to use when connecting to the target SQL database
+	Password *string `json:"password,omitempty"`
+}
+
 // SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
 type SQLDatabasesClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
@@ -719,6 +508,11 @@ type SQLDatabasesClientGetOptions struct {
 
 // SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
 type SQLDatabasesClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets method.
+type SQLDatabasesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -763,124 +557,5 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// ValuesMongoDatabaseProperties - MongoDatabase Properties for Mode Values
-type ValuesMongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// REQUIRED; Discriminator property for MongoDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
-func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Secrets: v.Secrets,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
-}
-
-// ValuesRedisCacheProperties - RedisCache Properties for Mode Values
-type ValuesRedisCacheProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; The host name of the target Redis cache
-	Host *string `json:"host,omitempty"`
-
-	// REQUIRED; Discriminator property for RedisCacheProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The port value of the target Redis cache
-	Port *int32 `json:"port,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Secrets provided by resource
-	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Provisioning state of the redis cache portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
-}
-
-// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ValuesRedisCacheProperties.
-func (v *ValuesRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
-	return &RedisCacheProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Secrets: v.Secrets,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
-}
-
-// ValuesSQLDatabaseProperties - SqlDatabase Properties for Mode Values
-type ValuesSQLDatabaseProperties struct {
-	// REQUIRED; The name of the Sql database.
-	Database *string `json:"database,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; Discriminator property for SqlDatabaseProperties.
-	Mode *string `json:"mode,omitempty"`
-
-	// REQUIRED; The fully qualified domain name of the Sql database.
-	Server *string `json:"server,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// READ-ONLY; Provisioning state of the Sql database portable resource at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ValuesSQLDatabaseProperties.
-func (v *ValuesSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
-	return &SQLDatabaseProperties{
-		Mode: v.Mode,
-		ProvisioningState: v.ProvisioningState,
-		Status: v.Status,
-		Environment: v.Environment,
-		Application: v.Application,
-	}
 }
 

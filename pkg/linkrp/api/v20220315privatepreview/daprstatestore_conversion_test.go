@@ -36,7 +36,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + payload)
+			rawPayload, err := LoadTestData("./testdata/" + payload)
 			require.NoError(t, err)
 			versionedResource := &DaprStateStoreResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -106,7 +106,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &DaprStateStoreResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -129,7 +129,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + payload)
+			rawPayload, err := LoadTestData("./testdata/" + payload)
 			require.NoError(t, err)
 			resource := &datamodel.DaprStateStore{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -196,7 +196,7 @@ func TestDaprStateStore_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
