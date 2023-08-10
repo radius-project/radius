@@ -12,10 +12,10 @@ import "time"
 
 // BasicDaprResourceProperties - Basic properties of a Dapr component object.
 type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
@@ -28,10 +28,10 @@ type BasicDaprResourceProperties struct {
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Status of a resource.
@@ -72,7 +72,7 @@ type ErrorResponse struct {
 	Error *ErrorDetail `json:"error,omitempty"`
 }
 
-// MongoDatabaseListSecretsResult - The secret values for the given MongoDatabase resource
+// MongoDatabaseListSecretsResult - The secret values for the given Mongo database resource
 type MongoDatabaseListSecretsResult struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -81,12 +81,12 @@ type MongoDatabaseListSecretsResult struct {
 	Password *string `json:"password,omitempty"`
 }
 
-// MongoDatabaseProperties - MongoDatabase portable resource properties
+// MongoDatabaseProperties - Mongo database portable resource properties
 type MongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// Database name of the target Mongo database
@@ -98,13 +98,13 @@ type MongoDatabaseProperties struct {
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the MongoDB portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the Mongo database portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// List of the resource IDs that support the MongoDB resource
+	// List of the resource IDs that support the Mongo database resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secret values provided for the resource
@@ -113,14 +113,14 @@ type MongoDatabaseProperties struct {
 	// Username to use when connecting to the target Mongo database
 	Username *string `json:"username,omitempty"`
 
-	// READ-ONLY; Provisioning state of the mongo database portable resource at the time the operation was called
+	// READ-ONLY; Provisioning state of the Mongo database portable resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// MongoDatabaseResource - MongoDatabase portable resource
+// MongoDatabaseResource - Mongo database portable resource
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -153,7 +153,7 @@ type MongoDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
+// MongoDatabaseSecrets - The secret values for the given Mongo database resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -244,7 +244,7 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
@@ -253,7 +253,7 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RedisCacheListSecretsResult - The secret values for the given RedisCache resource
+// RedisCacheListSecretsResult - The secret values for the given Redis cache resource
 type RedisCacheListSecretsResult struct {
 	// The connection string used to connect to the Redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -265,12 +265,12 @@ type RedisCacheListSecretsResult struct {
 	URL *string `json:"url,omitempty"`
 }
 
-// RedisCacheProperties - RedisCache portable resource properties
+// RedisCacheProperties - Redis cache portable resource properties
 type RedisCacheProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The host name of the target Redis cache
@@ -279,7 +279,7 @@ type RedisCacheProperties struct {
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the Redis caches portable
+	// The recipe used to automatically deploy underlying infrastructure for the Redis cache portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -304,7 +304,7 @@ type RedisCacheProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// RedisCacheResource - RedisCache portable resource
+// RedisCacheResource - Redis cache portable resource
 type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -337,7 +337,7 @@ type RedisCacheResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// RedisCacheSecrets - The secret values for the given RedisCache resource
+// RedisCacheSecrets - The secret values for the given Redis cache resource
 type RedisCacheSecrets struct {
 	// The connection string used to connect to the Redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -401,7 +401,7 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
-// SQLDatabaseListSecretsResult - The secret values for the given SQL Database resource
+// SQLDatabaseListSecretsResult - The secret values for the given SQL database resource
 type SQLDatabaseListSecretsResult struct {
 	// Connection string used to connect to the target SQL database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -410,12 +410,12 @@ type SQLDatabaseListSecretsResult struct {
 	Password *string `json:"password,omitempty"`
 }
 
-// SQLDatabaseProperties - SqlDatabase properties
+// SQLDatabaseProperties - Sql database properties
 type SQLDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The name of the SQL database.
@@ -424,19 +424,19 @@ type SQLDatabaseProperties struct {
 	// Port value of the target SQL database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the SQL databases portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the SQL database portable resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// List of the resource IDs that support the SQL Database resource
+	// List of the resource IDs that support the SQL database resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secret values provided for the resource
 	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
 
-	// The fully qualified domain name of the SQL database.
+	// The fully qualified domain name of the target SQL database.
 	Server *string `json:"server,omitempty"`
 
 	// Username to use when connecting to the target SQL database
@@ -449,7 +449,7 @@ type SQLDatabaseProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// SQLDatabaseResource - SqlDatabase portable resource
+// SQLDatabaseResource - Sql database portable resource
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -482,7 +482,7 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// SQLDatabaseSecrets - The secret values for the given SQL Database resource
+// SQLDatabaseSecrets - The secret values for the given SQL database resource
 type SQLDatabaseSecrets struct {
 	// Connection string used to connect to the target SQL database
 	ConnectionString *string `json:"connectionString,omitempty"`

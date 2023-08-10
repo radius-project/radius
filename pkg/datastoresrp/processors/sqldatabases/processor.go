@@ -14,13 +14,13 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
 
-// Processor is a processor for SQL Database resources.
+// Processor is a processor for SQL database resources.
 type Processor struct {
 }
 
 // # Function Explanation
 //
-// Process implements the processors.Processor interface for SQL Database resources. It validates the given resource properties
+// Process implements the processors.Processor interface for SQL database resources. It validates the given resource properties
 // and sets the computed values and secrets in the resource, and applies the values from the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.SqlDatabase, options processors.Options) error {
 	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)

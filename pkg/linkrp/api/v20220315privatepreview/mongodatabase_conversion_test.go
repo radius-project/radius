@@ -28,15 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeResource struct{}
-
-// # Function Explanation
-//
-// Always returns "FakeResource" as the name.
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	testset := []struct {
 		file     string
@@ -131,7 +122,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
 					Host:                 "mynewhost.com",
 					Port:                 10256,
-					Recipe:               linkrp.LinkRecipe{Name: defaultRecipeName, Parameters: nil},
+					Recipe:               linkrp.LinkRecipe{Name: DefaultRecipeName, Parameters: nil},
 				},
 			},
 		},
@@ -174,7 +165,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testset {
 		// arrange
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &MongoDatabaseResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -211,7 +202,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 	}
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &MongoDatabaseResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -324,7 +315,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testset {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.MongoDatabase{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -347,7 +338,7 @@ func TestMongoDatabase_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -360,7 +351,7 @@ func TestMongoDatabase_ConvertFromValidation(t *testing.T) {
 
 func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/mongodatabasesecrets.json")
+	rawPayload, err := LoadTestData("./testdata/mongodatabasesecrets.json")
 	require.NoError(t, err)
 	versioned := &MongoDatabaseSecrets{}
 	err = json.Unmarshal(rawPayload, versioned)
@@ -378,7 +369,7 @@ func TestMongoDatabaseSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestMongoDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/mongodatabasesecretsdatamodel.json")
+	rawPayload, err := LoadTestData("./testdata/mongodatabasesecretsdatamodel.json")
 	require.NoError(t, err)
 	secrets := &datamodel.MongoDatabaseSecrets{}
 	err = json.Unmarshal(rawPayload, secrets)
@@ -399,7 +390,7 @@ func TestMongoDatabaseSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

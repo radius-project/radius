@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	linkrp_shared "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -117,7 +118,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := LoadTestData("./testdata/" + tc.file)
+			rawPayload, err := linkrp_shared.LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &SQLDatabaseResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -219,7 +220,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := LoadTestData("./testdata/" + tc.file)
+			rawPayload, err := linkrp_shared.LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.SqlDatabase{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -257,7 +258,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := LoadTestData("./testdata/" + test.payload)
+			rawPayload, err := linkrp_shared.LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &SQLDatabaseResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -277,7 +278,7 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&linkrp_shared.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -290,7 +291,7 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 
 func TestSqlDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := LoadTestData("./testdata/sqldatabase_secrets_datamodel.json")
+	rawPayload, err := linkrp_shared.LoadTestData("./testdata/sqldatabase_secrets_datamodel.json")
 	require.NoError(t, err)
 	secrets := &datamodel.SqlDatabaseSecrets{}
 	err = json.Unmarshal(rawPayload, secrets)
@@ -311,7 +312,7 @@ func TestSqlDatabaseSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&linkrp_shared.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

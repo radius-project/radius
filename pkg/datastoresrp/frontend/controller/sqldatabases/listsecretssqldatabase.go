@@ -30,7 +30,7 @@ import (
 
 var _ ctrl.Controller = (*ListSecretsSqlDatabase)(nil)
 
-// ListSecretsSqlDatabase is the controller implementation to list secrets for the to access the connected sql database resource resource id passed in the request body.
+// ListSecretsSqlDatabase is the controller implementation to list secrets for the to access the connected SQL database resource resource id passed in the request body.
 type ListSecretsSqlDatabase struct {
 	ctrl.Operation[*datamodel.SqlDatabase, datamodel.SqlDatabase]
 }
@@ -50,7 +50,7 @@ func NewListSecretsSqlDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 
 // # Function Explanation
 //
-// Run returns secrets values for the specified SQL Database resource
+// Run returns secrets values for the specified SQL database resource
 func (ctrl *ListSecretsSqlDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 

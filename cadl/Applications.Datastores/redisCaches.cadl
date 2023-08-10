@@ -33,10 +33,10 @@ using Azure.ResourceManager.Radius;
 using OpenAPI;
 
 namespace Applications.Datastores;
-@doc("RedisCache portable resource")
+@doc("Redis cache portable resource")
 model RedisCacheResource
   is TrackedResource<RedisCacheProperties> {
-  @doc("The name of the RedisCache portable resource")
+  @doc("The name of the Redis cache portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("redisCacheName")
@@ -45,10 +45,10 @@ model RedisCacheResource
   name: string;
 }
 
-@doc("The secret values for the given RedisCache resource")
+@doc("The secret values for the given Redis cache resource")
 model RedisCacheListSecretsResult is RedisCacheSecrets;
 
-@doc("The secret values for the given RedisCache resource")
+@doc("The secret values for the given Redis cache resource")
 model RedisCacheSecrets {
   @doc("The connection string used to connect to the Redis cache")
   connectionString?: string;
@@ -60,7 +60,7 @@ model RedisCacheSecrets {
   url?: string
 }
 
-@doc("RedisCache portable resource properties")
+@doc("Redis cache portable resource properties")
 model RedisCacheProperties extends BasicResourceProperties {
   @doc("Provisioning state of the redis cache portable at the time the operation was called")
   @visibility("read")
@@ -81,7 +81,7 @@ model RedisCacheProperties extends BasicResourceProperties {
   @doc("Specifies whether to enable SSL connections to the Redis cache")  
   tls?: boolean;
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the Redis caches portable")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Redis cache portable resource")
   recipe?: Recipe;
 
   @doc("List of the resource IDs that support the Redis resource")
@@ -91,13 +91,13 @@ model RedisCacheProperties extends BasicResourceProperties {
   resourceProvisioning?: ResourceProvisioning;
 }
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
-@doc("Lists secrets values for the specified RedisCache resource")
+@doc("Lists secrets values for the specified Redis cache resource")
 @route("/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets")
 @post
 op RedisCaches_listSecrets(
   ...ApiVersionParameter,
   ...RootScopeParam, 
-  @doc("The name of the RedisCache portable resource")
+  @doc("The name of the Redis cache portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path

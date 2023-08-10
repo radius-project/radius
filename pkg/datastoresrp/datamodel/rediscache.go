@@ -29,7 +29,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// RedisCache represents RedisCache link resource.
+// RedisCache represents Redis cache portable resource.
 type RedisCache struct {
 	v1.BaseResource
 
@@ -43,7 +43,7 @@ type RedisCache struct {
 // # Function Explanation
 //
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
-// RedisCache instance based on the DeploymentOutput object.
+// Redis cache instance based on the DeploymentOutput object.
 func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
@@ -77,28 +77,28 @@ func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 
 // # Function Explanation
 //
-// OutputResources returns the OutputResources of the RedisCache resource.
+// OutputResources returns the OutputResources of the Redis cache resource.
 func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // # Function Explanation
 //
-// ResourceMetadata returns the BasicResourceProperties of the RedisCache resource.
+// ResourceMetadata returns the BasicResourceProperties of the Redis cache resource.
 func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type of RedisCache resource.
+// ResourceTypeName returns the resource type of Redis cache resource.
 func (redis *RedisCache) ResourceTypeName() string {
 	return linkrp.N_RedisCachesResourceType
 }
 
 // # Function Explanation
 //
-// Recipe returns the LinkRecipe from the RedisCache Properties if ResourceProvisioning is not set to Manual,
+// Recipe returns the LinkRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
 func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
 	if redis.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {

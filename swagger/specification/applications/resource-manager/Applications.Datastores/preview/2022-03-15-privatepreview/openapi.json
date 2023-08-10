@@ -105,7 +105,7 @@
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the MongoDatabase portable resource",
+            "description": "The name of the Mongo database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -144,7 +144,7 @@
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the MongoDatabase portable resource",
+            "description": "The name of the Mongo database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -205,7 +205,7 @@
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the MongoDatabase portable resource",
+            "description": "The name of the Mongo database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -245,7 +245,7 @@
     "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}/listSecrets": {
       "post": {
         "operationId": "MongoDatabases_ListSecrets",
-        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "description": "Lists secrets values for the specified Mongo database resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -257,7 +257,7 @@
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the MongoDatabase portable resource",
+            "description": "The name of the Mongo database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -332,7 +332,7 @@
             "name": "redisCacheName",
             "in": "path",
             "required": true,
-            "description": "The name of the RedisCache portable resource",
+            "description": "The name of the Redis cache portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
@@ -370,7 +370,7 @@
             "name": "redisCacheName",
             "in": "path",
             "required": true,
-            "description": "The name of the RedisCache portable resource",
+            "description": "The name of the Redis cache portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
@@ -430,7 +430,7 @@
             "name": "redisCacheName",
             "in": "path",
             "required": true,
-            "description": "The name of the RedisCache portable resource",
+            "description": "The name of the Redis cache portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
@@ -465,7 +465,7 @@
     "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets": {
       "post": {
         "operationId": "RedisCaches_ListSecrets",
-        "description": "Lists secrets values for the specified RedisCache resource",
+        "description": "Lists secrets values for the specified Redis cache resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -477,7 +477,7 @@
             "name": "redisCacheName",
             "in": "path",
             "required": true,
-            "description": "The name of the RedisCache portable resource",
+            "description": "The name of the Redis cache portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -552,7 +552,7 @@
             "name": "sqlDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the SQL Database portable resource",
+            "description": "The name of the SQL database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -591,7 +591,7 @@
             "name": "sqlDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the SQL Database portable resource",
+            "description": "The name of the SQL database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -652,7 +652,7 @@
             "name": "sqlDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the SQL Database portable resource",
+            "description": "The name of the SQL database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -688,7 +688,7 @@
     "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}/listSecrets": {
       "post": {
         "operationId": "SqlDatabases_ListSecrets",
-        "description": "Lists secrets values for the specified SQL Database resource",
+        "description": "Lists secrets values for the specified SQL database resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -700,7 +700,7 @@
             "name": "sqlDatabaseName",
             "in": "path",
             "required": true,
-            "description": "The name of the SqlDatabase portable resource",
+            "description": "The name of the SQL database portable resource",
             "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -758,7 +758,7 @@
   "definitions": {
     "Application": {
       "type": "string",
-      "description": "Fully qualified resource ID for the application that the link is consumed by"
+      "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
     },
     "BasicDaprResourceProperties": {
       "type": "object",
@@ -786,11 +786,11 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
         },
         "application": {
           "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       },
       "description": "Basic properties of a Radius resource.",
@@ -810,14 +810,14 @@
           "description": "Connection string used to connect to the target Mongo database"
         }
       },
-      "description": "The secret values for the given MongoDatabase resource"
+      "description": "The secret values for the given Mongo database resource"
     },
     "MongoDatabaseProperties": {
       "type": "object",
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the mongo database portable resource at the time the operation was called",
+          "description": "Provisioning state of the Mongo database portable resource at the time the operation was called",
           "readOnly": true
         },
         "secrets": {
@@ -839,7 +839,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the MongoDB portable resource"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Mongo database portable resource"
         },
         "resources": {
           "type": "array",
@@ -847,7 +847,7 @@
             "$ref": "#/definitions/ResourceReference"
           },
           "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the MongoDB resource"
+          "description": "List of the resource IDs that support the Mongo database resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -858,7 +858,7 @@
           "description": "Username to use when connecting to the target Mongo database"
         }
       },
-      "description": "MongoDatabase portable resource properties",
+      "description": "Mongo database portable resource properties",
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -878,7 +878,7 @@
           ]
         }
       },
-      "description": "MongoDatabase portable resource",
+      "description": "Mongo database portable resource",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -920,7 +920,7 @@
           "description": "Connection string used to connect to the target Mongo database"
         }
       },
-      "description": "The secret values for the given MongoDatabase resource"
+      "description": "The secret values for the given Mongo database resource"
     },
     "OutputResource": {
       "type": "object",
@@ -934,7 +934,7 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the link at the time the operation was called",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -961,7 +961,7 @@
           "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "required": [
         "name"
       ]
@@ -982,7 +982,7 @@
           "description": "The URL used to connect to the Redis cache"
         }
       },
-      "description": "The secret values for the given RedisCache resource"
+      "description": "The secret values for the given Redis cache resource"
     },
     "RedisCacheProperties": {
       "type": "object",
@@ -1015,7 +1015,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the Redis caches portable"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Redis cache portable resource"
         },
         "resources": {
           "type": "array",
@@ -1030,7 +1030,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "RedisCache portable resource properties",
+      "description": "Redis cache portable resource properties",
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -1050,7 +1050,7 @@
           ]
         }
       },
-      "description": "RedisCache portable resource",
+      "description": "Redis cache portable resource",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1096,7 +1096,7 @@
           "description": "The URL used to connect to the Redis cache"
         }
       },
-      "description": "The secret values for the given RedisCache resource"
+      "description": "The secret values for the given Redis cache resource"
     },
     "ResourceProvisioning": {
       "type": "string",
@@ -1150,7 +1150,7 @@
           "description": "Connection string used to connect to the target SQL database"
         }
       },
-      "description": "The secret values for the given SQL Database resource"
+      "description": "The secret values for the given SQL database resource"
     },
     "SqlDatabaseProperties": {
       "type": "object",
@@ -1166,7 +1166,7 @@
         },
         "server": {
           "type": "string",
-          "description": "The fully qualified domain name of the SQL database."
+          "description": "The fully qualified domain name of the target SQL database."
         },
         "port": {
           "type": "integer",
@@ -1179,7 +1179,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the SQL databases portable resource"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the SQL database portable resource"
         },
         "resources": {
           "type": "array",
@@ -1187,7 +1187,7 @@
             "$ref": "#/definitions/ResourceReference"
           },
           "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the SQL Database resource"
+          "description": "List of the resource IDs that support the SQL database resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -1198,7 +1198,7 @@
           "description": "Secret values provided for the resource"
         }
       },
-      "description": "SqlDatabase properties",
+      "description": "Sql database properties",
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -1218,7 +1218,7 @@
           ]
         }
       },
-      "description": "SqlDatabase portable resource",
+      "description": "Sql database portable resource",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1260,7 +1260,7 @@
           "description": "Connection string used to connect to the target SQL database"
         }
       },
-      "description": "The secret values for the given SQL Database resource"
+      "description": "The secret values for the given SQL database resource"
     }
   },
   "parameters": {

@@ -58,7 +58,7 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SQL Database portable resource
+// sqlDatabaseName - The name of the SQL database portable resource
 // resource - Resource create parameters.
 // options - SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate
 // method.
@@ -116,7 +116,7 @@ func (client *SQLDatabasesClient) createOrUpdateHandleResponse(resp *http.Respon
 // Delete - Deletes an existing SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SQL Database portable resource
+// sqlDatabaseName - The name of the SQL database portable resource
 // options - SQLDatabasesClientDeleteOptions contains the optional parameters for the SQLDatabasesClient.Delete method.
 func (client *SQLDatabasesClient) Delete(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientDeleteOptions) (SQLDatabasesClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, sqlDatabaseName, options)
@@ -169,7 +169,7 @@ func (client *SQLDatabasesClient) deleteHandleResponse(resp *http.Response) (SQL
 // Get - Retrieves information about a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SQL Database portable resource
+// sqlDatabaseName - The name of the SQL database portable resource
 // options - SQLDatabasesClientGetOptions contains the optional parameters for the SQLDatabasesClient.Get method.
 func (client *SQLDatabasesClient) Get(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientGetOptions) (SQLDatabasesClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, sqlDatabaseName, options)
@@ -270,10 +270,10 @@ func (client *SQLDatabasesClient) listByRootScopeHandleResponse(resp *http.Respo
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified SQL Database resource
+// ListSecrets - Lists secrets values for the specified SQL database resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SqlDatabase portable resource
+// sqlDatabaseName - The name of the SQL database portable resource
 // options - SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets
 // method.
 func (client *SQLDatabasesClient) ListSecrets(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientListSecretsOptions) (SQLDatabasesClientListSecretsResponse, error) {

@@ -24,6 +24,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	linkrp "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,7 +52,7 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
+			c, err := linkrp.LoadTestData(tc.dataModelFile)
 			require.NoError(t, err)
 			dm := &datamodel.RedisCache{}
 			_ = json.Unmarshal(c, dm)
@@ -96,7 +97,7 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.versionedModelFile)
+			c, err := linkrp.LoadTestData(tc.versionedModelFile)
 			require.NoError(t, err)
 			dm, err := RedisCacheDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
@@ -132,7 +133,7 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
+			c, err := linkrp.LoadTestData(tc.dataModelFile)
 			require.NoError(t, err)
 			dm := &datamodel.RedisCacheSecrets{}
 			_ = json.Unmarshal(c, dm)

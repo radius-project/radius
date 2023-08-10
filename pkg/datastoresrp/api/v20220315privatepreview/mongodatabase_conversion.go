@@ -26,7 +26,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel and returns it,
+// ConvertTo converts from the versioned Mongo database resource to version-agnostic datamodel and returns it,
 // returning an error if any of the inputs are invalid.
 func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabase{
@@ -81,8 +81,8 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabase resource. It returns an error if the
-// DataModelInterface is not a MongoDatabase.
+// ConvertFrom converts from version-agnostic datamodel to the versioned Mongo database resource. It returns an error if the
+// DataModelInterface is not a Mongo database.
 func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	mongo, ok := src.(*datamodel.MongoDatabase)
 	if !ok {

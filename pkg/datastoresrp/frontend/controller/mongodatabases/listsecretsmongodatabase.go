@@ -30,14 +30,14 @@ import (
 
 var _ ctrl.Controller = (*ListSecretsMongoDatabase)(nil)
 
-// ListSecretsMongoDatabase is the controller implementation to list secrets for the to access the connected mongo database resource resource id passed in the request body.
+// ListSecretsMongoDatabase is the controller implementation to list secrets for the to access the connected Mongo database resource resource id passed in the request body.
 type ListSecretsMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
 }
 
 // # Function Explanation
 //
-// NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase, or an error if the controller could not be created.
+// NewListSecretsMongoDatabase creates a new instance of ListSecretsMongo database, or an error if the controller could not be created.
 func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsMongoDatabase{
 		Operation: ctrl.NewOperation(opts,
@@ -50,7 +50,7 @@ func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 
 // # Function Explanation
 //
-// Run returns secrets values for the specified MongoDatabase resource.
+// Run returns secrets values for the specified Mongo database resource.
 func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 

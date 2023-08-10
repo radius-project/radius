@@ -26,7 +26,7 @@ import (
 
 // # Function Explanation
 //
-// RedisCacheDataModelToVersioned converts a RedisCache data model to a versioned model interface and returns an error if
+// RedisCacheDataModelToVersioned converts a Redis cache data model to a versioned model interface and returns an error if
 // the conversion fails.
 func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -46,7 +46,7 @@ func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string)
 
 // # Function Explanation
 //
-// RedisCacheDataModelFromVersioned converts a versioned RedisCacheResource to a datamodel.RedisCache and returns an error
+// RedisCacheDataModelFromVersioned converts a versioned Redis cache resource to a datamodel.RedisCache and returns an error
 // if the conversion fails.
 func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamodel.RedisCache, error) {
 	switch version {

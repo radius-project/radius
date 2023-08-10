@@ -26,7 +26,7 @@ import (
 
 // # Function Explanation
 //
-// ConvertTo converts from the versioned SQL Database resource to version-agnostic datamodel
+// ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel
 // and returns an error if the inputs are invalid.
 func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabase{
@@ -82,7 +82,7 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 
 // # Function Explanation
 //
-// ConvertFrom converts from version-agnostic datamodel to the versioned SQL Database resource.
+// ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabase resource.
 func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	sql, ok := src.(*datamodel.SqlDatabase)
 	if !ok {

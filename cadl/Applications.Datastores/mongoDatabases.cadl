@@ -33,9 +33,9 @@ using Azure.ResourceManager.Radius;
 using OpenAPI;
 
 namespace Applications.Datastores;
-@doc("MongoDatabase portable resource")
+@doc("Mongo database portable resource")
 model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
-  @doc("The name of the MongoDatabase portable resource")
+  @doc("The name of the Mongo database portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
@@ -45,10 +45,10 @@ model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
   name: string;
 }
 
-@doc("The secret values for the given MongoDatabase resource")
+@doc("The secret values for the given Mongo database resource")
 model MongoDatabaseListSecretsResult is MongoDatabaseSecrets;
 
-@doc("The secret values for the given MongoDatabase resource")
+@doc("The secret values for the given Mongo database resource")
 model MongoDatabaseSecrets {
   @doc("Password to use when connecting to the target Mongo database")
   password?: string;
@@ -57,9 +57,9 @@ model MongoDatabaseSecrets {
   connectionString?: string;
 }
 
-@doc("MongoDatabase portable resource properties")
+@doc("Mongo database portable resource properties")
 model MongoDatabaseProperties extends BasicResourceProperties{
-  @doc("Provisioning state of the mongo database portable resource at the time the operation was called")
+  @doc("Provisioning state of the Mongo database portable resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
@@ -75,10 +75,10 @@ model MongoDatabaseProperties extends BasicResourceProperties{
   @doc("Database name of the target Mongo database")
   database?: string;
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the MongoDB portable resource")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Mongo database portable resource")
   recipe?: Recipe;
 
-  @doc("List of the resource IDs that support the MongoDB resource")
+  @doc("List of the resource IDs that support the Mongo database resource")
   resources?: ResourceReference[];
 
   @doc("Specifies how the underlying service/resource is provisioned and managed.")
@@ -89,12 +89,12 @@ model MongoDatabaseProperties extends BasicResourceProperties{
 }
 
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
-@doc("Lists secrets values for the specified MongoDatabase resource")
+@doc("Lists secrets values for the specified Mongo database resource")
 @post
 @route("/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}/listSecrets")
 op MongoDatabases_listSecrets(...ApiVersionParameter,
   ...RootScopeParam,
-  @doc("The name of the MongoDatabase portable resource")
+  @doc("The name of the Mongo database portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path

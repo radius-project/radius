@@ -32,7 +32,7 @@ import (
 
 var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)
 
-// ListSecretsRedisCache is the controller implementation to list secrets for the to access the connected redis cache resource resource id passed in the request body.
+// ListSecretsRedisCache is the controller implementation to list secrets for the to access the connected Redis cache resource resource id passed in the request body.
 type ListSecretsRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
 }
@@ -52,7 +52,7 @@ func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 
 // # Function Explanation
 //
-// Run returns secrets values for the specified RedisCache resource
+// Run returns secrets values for the specified Redis cache resource
 func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 

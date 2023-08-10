@@ -27,21 +27,21 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// MongoDatabase represents MongoDatabase link resource.
+// MongoDatabase represents Mongo database portable resource.
 type MongoDatabase struct {
 	v1.BaseResource
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
+	// LinkMetadata represents internal DataModel properties common to all portable resources.
 	linkrp_dm.LinkMetadata
 
 	// Properties is the properties of the resource.
 	Properties MongoDatabaseProperties `json:"properties"`
 }
 
-// MongoDatabaseProperties represents the properties of MongoDatabase resource.
+// MongoDatabaseProperties represents the properties of Mongo database resource.
 type MongoDatabaseProperties struct {
 	rpv1.BasicResourceProperties
-	// Secrets values provided for the resource
+	// Secrets values provided for the Mongo database resource
 	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
 	// Host name of the target Mongo database
 	Host string `json:"host,omitempty"`
@@ -49,9 +49,9 @@ type MongoDatabaseProperties struct {
 	Port int32 `json:"port,omitempty"`
 	// Database name of the target Mongo database
 	Database string `json:"database,omitempty"`
-	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
+	// The recipe used to automatically deploy underlying infrastructure for the Mongo database link
 	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
-	// List of the resource IDs that support the MongoDB resource
+	// List of the resource IDs that support the Mongo database resource
 	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
@@ -106,7 +106,7 @@ func (mongodb *MongoDatabase) VerifyInputs() error {
 
 // # Function Explanation
 //
-// ApplyDeploymentOutput updates the MongoDatabase instance's database property, output resources, computed values
+// ApplyDeploymentOutput updates the Mongo database instance's database property, output resources, computed values
 // and secret values with the given DeploymentOutput.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
@@ -121,21 +121,21 @@ func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 
 // # Function Explanation
 //
-// OutputResources returns the OutputResources of the MongoDatabase instance.
+// OutputResources returns the OutputResources of the Mongo database instance.
 func (r *MongoDatabase) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
 // # Function Explanation
 //
-// ResourceMetadata returns the BasicResourceProperties of the MongoDatabase instance i.e. application resource metadata.
+// ResourceMetadata returns the BasicResourceProperties of the Mongo database instance i.e. application resource metadata.
 func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
 // # Function Explanation
 //
-// Recipe returns the LinkRecipe associated with the MongoDatabase instance, or nil if the
+// Recipe returns the LinkRecipe associated with the Mongo database instance, or nil if the
 // ResourceProvisioning is set to Manual.
 func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
@@ -146,14 +146,14 @@ func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type for MongoDatabase resource.
+// ResourceTypeName returns the resource type for Mongo database resource.
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 	return linkrp.N_MongoDatabasesResourceType
 }
 
 // # Function Explanation
 //
-// ResourceTypeName returns the resource type for MongoDatabase resource.
+// ResourceTypeName returns the resource type for Mongo database resource.
 func (mongo *MongoDatabase) ResourceTypeName() string {
 	return linkrp.N_MongoDatabasesResourceType
 }

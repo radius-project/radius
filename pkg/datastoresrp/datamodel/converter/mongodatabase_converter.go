@@ -26,7 +26,7 @@ import (
 
 // # Function Explanation
 //
-// MongoDatabaseDataModelToVersioned converts a MongoDatabase data model to a versioned model interface based on the
+// MongoDatabaseDataModelToVersioned converts a Mongo database data model to a versioned model interface based on the
 // specified version, and returns an error if the version is not supported.
 func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -41,7 +41,7 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 
 // # Function Explanation
 //
-// MongoDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a MongoDatabase instance and
+// MongoDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a Mongo database instance and
 // an error if the version is unsupported.
 func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.MongoDatabase, error) {
 	switch version {
