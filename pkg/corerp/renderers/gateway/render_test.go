@@ -1228,11 +1228,11 @@ func Test_RenderDNS_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) 
 	r := &Renderer{}
 
 	routePathA := "/routea"
-    validPortDestination := "http://test-cntr:3234"
-    routeA := datamodel.GatewayRoute{
-        Destination: validPortDestination,
-        Path:        routePathA,
-    }
+	validURL := "http://test-cntr:3234"
+	routeA := datamodel.GatewayRoute{
+		Destination: validURL,
+		Path:        routePathA,
+	}
 
 	var routes []datamodel.GatewayRoute
 	routeName := "test-cntr"
@@ -1282,11 +1282,11 @@ func Test_RenderDNS_WithEnvironment_KubernetesMetadata(t *testing.T) {
 	r := &Renderer{}
 
 	routePathA := "/routea"
-    validPortDestination := "http://test-cntr:3234"
-    routeA := datamodel.GatewayRoute{
-        Destination: validPortDestination,
-        Path:        routePathA,
-    }
+	validPortDestination := "http://test-cntr:3234"
+	routeA := datamodel.GatewayRoute{
+		Destination: validPortDestination,
+		Path:        routePathA,
+	}
 
 	var routes []datamodel.GatewayRoute
 	routeName := "test-cntr"
