@@ -68,18 +68,22 @@ func NewUserAssignedIdentityClient(subscriptionID string, options *Options) (*ar
 //
 // NewCustomActionClient creates a new CustomActionClient with the provided subscriptionID and Options, and returns an
 // error if one occurs.
-func NewCustomActionClient(subscriptionID string, options *Options) (*CustomActionClient, error) {
+func NewCustomActionClient(subscriptionID string, options *Options, clientOptions *arm.ClientOptions) (*CustomActionClient, error) {
 	baseURI := DefaultBaseURI
 	if options.BaseURI != "" {
 		baseURI = options.BaseURI
 	}
 
-	client, err := armresources.NewClient(subscriptionID, options.Cred, defaultClientOptions)
+	if clientOptions == nil {
+		clientOptions = defaultClientOptions
+	}
+
+	client, err := armresources.NewClient(subscriptionID, options.Cred, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, defaultClientOptions)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}

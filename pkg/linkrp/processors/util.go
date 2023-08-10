@@ -41,6 +41,10 @@ func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]
 		}
 
 		identity := resourcemodel.FromUCPID(id, "")
+		if (identity == resourcemodel.ResourceIdentity{}) {
+			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q is invalid", resource)}
+		}
+
 		result := rpv1.OutputResource{
 			LocalID:       fmt.Sprintf("Resource%d", i), // The dependency sorting code requires unique LocalIDs
 			Identity:      identity,
@@ -66,6 +70,10 @@ func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputRe
 		}
 
 		identity := resourcemodel.FromUCPID(id, "")
+		if (identity == resourcemodel.ResourceIdentity{}) {
+			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q returned by recipe is invalid", resource)}
+		}
+
 		result := rpv1.OutputResource{
 			LocalID:       fmt.Sprintf("RecipeResource%d", i), // The dependency sorting code requires unique LocalIDs
 			Identity:      identity,

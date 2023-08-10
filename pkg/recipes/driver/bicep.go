@@ -88,7 +88,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
-	_, isContextParameterDefined := recipeData[recipeParameters].(map[string]any)[datamodel.RecipeContextParameter]
+	isContextParameterDefined := hasContextParameter(recipeData)
 	parameters := createRecipeParameters(recipe.Parameters, definition.Parameters, isContextParameterDefined, recipeContext)
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -171,6 +171,21 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 	}
 
 	return nil
+}
+
+func hasContextParameter(recipeData map[string]any) bool {
+	parametersAny, ok := recipeData[recipeParameters]
+	if !ok {
+		return false
+	}
+
+	parameters, ok := parametersAny.(map[string]any)
+	if !ok {
+		return false
+	}
+
+	_, ok = parameters[datamodel.RecipeContextParameter]
+	return ok
 }
 
 // createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer.

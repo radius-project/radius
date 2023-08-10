@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -76,22 +75,6 @@ func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
 // GetDescription returns the Description field of the DeployExecutor instance.
 func (d *DeployExecutor) GetDescription() string {
 	return d.Description
-}
-
-func unpackErrorAndMatch(err error, failWithAny []string) bool {
-	for _, errString := range failWithAny {
-		cliErr := err.(*radcli.CLIError)
-		for _, detail := range cliErr.ErrorResponse.Error.Details {
-			if detail.Code != "OK" {
-				for _, innerDetail := range detail.Details {
-					if strings.Contains(innerDetail.Message, errString) {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 // # Function Explanation

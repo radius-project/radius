@@ -316,12 +316,32 @@ func Test_Container_FailDueToNonExistentImage(t *testing.T) {
 	template := "testdata/corerp-resources-container-nonexistent-container-image.bicep"
 	name := "corerp-resources-container-badimage"
 	appNamespace := "corerp-resources-container-badimage-app"
-	cliError := "Internal"
-	innerError := []string{"ErrImagePull", "ImagePullBackOff"}
+
+	// We might see either of these states depending on the timing.
+	validate := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "Internal",
+					MessageContains: "ErrImagePull",
+				},
+			},
+		},
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "Internal",
+					MessageContains: "ImagePullBackOff",
+				},
+			},
+		},
+	})
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, cliError, innerError, "magpieimage=non-existent-image"),
+			Executor:                               step.NewDeployErrorExecutor(template, validate, "magpieimage=non-existent-image"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			RPResources: &validation.RPResourceSet{
@@ -344,12 +364,19 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 	template := "testdata/corerp-resources-container-bad-healthprobe.bicep"
 	name := "corerp-resources-container-bad-healthprobe"
 	appNamespace := "corerp-resources-container-bad-healthprobe-app"
-	cliError := "Internal"
-	innerError := []string{"CrashLoopBackOff"}
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "Internal",
+				MessageContains: "CrashLoopBackOff",
+			},
+		},
+	})
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, cliError, innerError, functional.GetMagpieImage()),
+			Executor:                               step.NewDeployErrorExecutor(template, validate, functional.GetMagpieImage()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			RPResources: &validation.RPResourceSet{
