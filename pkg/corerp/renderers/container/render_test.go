@@ -1565,7 +1565,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		expectedServicePort := corev1.ServicePort{
 			Name:       "web",
 			Port:       containerPortNumber,
-			TargetPort: intstr.FromString("web"),
+			TargetPort: intstr.FromInt(80),
 			Protocol:   "TCP",
 		}
 
