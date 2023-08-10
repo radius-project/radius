@@ -33,10 +33,9 @@ using Azure.ResourceManager.Radius;
 using OpenAPI;
 
 namespace Applications.Datastores;
-
-@doc("MongoDatabase portable resource")
+@doc("Mongo database portable resource")
 model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
-  @doc("The name of the MongoDatabase portable resource")
+  @doc("The name of the Mongo database portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
@@ -46,14 +45,11 @@ model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
   name: string;
 }
 
-@doc("The secret values for the given MongoDatabase resource")
+@doc("The secret values for the given Mongo database resource")
 model MongoDatabaseListSecretsResult is MongoDatabaseSecrets;
 
-@doc("The secret values for the given MongoDatabase resource")
+@doc("The secret values for the given Mongo database resource")
 model MongoDatabaseSecrets {
-  @doc("Username to use when connecting to the target Mongo database")
-  username?: string;
-
   @doc("Password to use when connecting to the target Mongo database")
   password?: string;
 
@@ -61,75 +57,44 @@ model MongoDatabaseSecrets {
   connectionString?: string;
 }
 
-@doc("MongoDatabase Properties for Mode Resource")
-model ResourceMongoDatabaseProperties extends MongoDatabaseProperties{
-  @doc("Fully qualified resource ID of a supported resource with Mongo API to use for this portable resource")
-  resource: string;
-
-  @doc("Host name of the target Mongo database")
-  host?: string;
-
-  @doc("Port value of the target Mongo database")
-  port?: int32;
-
-  @doc("Database name of the target Mongo database")
-  @visibility("read")
-  database?: string;
-
-  @doc("How to build the Mongo database resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-}
-@doc("MongoDatabase Properties for Mode Values")
-model ValuesMongoDatabaseProperties extends MongoDatabaseProperties{
-  @doc("Host name of the target Mongo database")
-  host: string;
-
-  @doc("Port value of the target Mongo database")
-  port: int32;
-
-  @doc("Database name of the target Mongo database")
-  @visibility("read")
-  database?: string; 
-
-  @doc("How to build the Mongo database portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-}
-@doc("MongoDatabase Properties for Mode Recipe")
-model RecipeMongoDatabaseProperties extends MongoDatabaseProperties{
-  @doc("Host name of the target Mongo database")
-  host?: string;
-
-  @doc("Port value of the target Mongo database")
-  port?: int32;
-
-  @doc("Database name of the target Mongo database")
-  @visibility("read")
-  database?: string;
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the mongodatabases portable resource")
-  recipe: Recipe;
-
-  @doc("How to build the Mongo database portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-}
-@doc("MongoDatabase portable resource properties")
-@discriminator("mode")
+@doc("Mongo database portable resource properties")
 model MongoDatabaseProperties extends BasicResourceProperties{
-  @doc("Provisioning state of the mongo database portable resource at the time the operation was called")
+  @doc("Provisioning state of the Mongo database portable resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Secrets values provided for the resource")
+  @doc("Secret values provided for the resource")
   secrets?: MongoDatabaseSecrets;
+
+  @doc("Host name of the target Mongo database")
+  host?: string;
+
+  @doc("Port value of the target Mongo database")
+  port?: int32;
+
+  @doc("Database name of the target Mongo database")
+  database?: string;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Mongo database portable resource")
+  recipe?: Recipe;
+
+  @doc("List of the resource IDs that support the Mongo database resource")
+  resources?: ResourceReference[];
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+
+  @doc("Username to use when connecting to the target Mongo database")
+  username?: string;
 }
 
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
-@doc("Lists secrets values for the specified MongoDatabase resource")
+@doc("Lists secrets values for the specified Mongo database resource")
 @post
 @route("/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}/listSecrets")
 op MongoDatabases_listSecrets(...ApiVersionParameter,
   ...RootScopeParam,
-  @doc("The name of the MongoDatabase portable resource")
+  @doc("The name of the Mongo database portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path

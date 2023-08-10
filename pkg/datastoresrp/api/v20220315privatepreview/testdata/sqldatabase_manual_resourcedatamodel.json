@@ -1,0 +1,40 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+    "name": "sql0",
+    "type": "Applications.Datastores/sqlDatabases",
+    "location": "global",
+    "systemData": {
+        "createdBy": "fakeid@live.com",
+        "createdByType": "User",
+        "createdAt": "2021-09-24T19:09:54.2403864Z",
+        "lastModifiedBy": "fakeid@live.com",
+        "lastModifiedByType": "User",
+        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+    },
+    "tags": {
+        "env": "dev"
+    },
+    "properties": {
+        "status": {
+            "outputResources": [{
+              "LocalID": "Deployment",
+              "ResourceType": {
+                "Type": "azure.sql.database",
+                "Provider": "azure"
+              }
+            }]
+        },
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+        "resources":[
+            {
+                "id":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+            }
+        ],
+        "database": "testDatabase",
+        "server": "testAccount1.sql.cosmos.azure.com",
+        "resourceProvisioning":"manual",
+        "username": "testUser",
+        "port":1433
+    }
+}

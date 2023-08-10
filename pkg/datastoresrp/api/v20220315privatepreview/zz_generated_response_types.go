@@ -91,3 +91,8 @@ type SQLDatabasesClientListByRootScopeResponse struct {
 	SQLDatabaseResourceListResult
 }
 
+// SQLDatabasesClientListSecretsResponse contains the response from method SQLDatabasesClient.ListSecrets.
+type SQLDatabasesClientListSecretsResponse struct {
+	SQLDatabaseListSecretsResult
+}
+

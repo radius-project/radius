@@ -29,10 +29,14 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
+	// TODO: Rename alias to remove n prefix for resources in new namespace
 	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
 	dapr_conv "github.com/project-radius/radius/pkg/daprrp/datamodel/converter"
 	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	ds_conv "github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
+	mongon_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller/mongodatabases"
+	redisn_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller/rediscaches"
+	sqln_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller/sqldatabases"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
@@ -83,12 +87,10 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 		return err
 	}
 
-	/* The following routes will be configured in upcoming PRs
 	err = AddDatastoresRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
-	*/
 
 	return nil
 }
@@ -679,9 +681,9 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      mongoResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      linkrp.MongoDatabasesResourceType,
-			Method:            mongo_ctrl.OperationListSecret,
-			ControllerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
+			ResourceType:      linkrp.N_MongoDatabasesResourceType,
+			Method:            mongon_ctrl.OperationListSecret,
+			ControllerFactory: mongon_ctrl.NewListSecretsMongoDatabase,
 		},
 	}
 
@@ -781,9 +783,9 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      redisResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      linkrp.RedisCachesResourceType,
-			Method:            redis_ctrl.OperationListSecret,
-			ControllerFactory: redis_ctrl.NewListSecretsRedisCache,
+			ResourceType:      linkrp.N_RedisCachesResourceType,
+			Method:            redisn_ctrl.OperationListSecret,
+			ControllerFactory: redisn_ctrl.NewListSecretsRedisCache,
 		},
 	}...)
 
@@ -879,6 +881,13 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 					},
 				)
 			},
+		},
+		{
+			ParentRouter:      sqlResourceRouter,
+			Path:              "/listsecrets",
+			ResourceType:      linkrp.N_SqlDatabasesResourceType,
+			Method:            sqln_ctrl.OperationListSecret,
+			ControllerFactory: sqln_ctrl.NewListSecretsSqlDatabase,
 		},
 	}...)
 
