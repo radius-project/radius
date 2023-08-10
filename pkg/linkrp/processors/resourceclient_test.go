@@ -19,9 +19,11 @@ package processors
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
@@ -358,6 +360,31 @@ func Test_Delete_UCP(t *testing.T) {
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
+
+	t.Run("success - delete fails and succeeds on retry", func(t *testing.T) {
+		callbackServer := Start(t)
+		callbackServer.Handler = handleFailure(t)
+
+		// create a goroutine to change the callback server handler
+		// after 20 seconds to simulate a successful delete
+		go func() {
+			time.Sleep(20 * time.Second)
+			callbackServer.Handler = handleSuccess(t)
+		}()
+
+		mux := http.NewServeMux()
+		mux.HandleFunc(AWSResourceID, handleDeleteInitiatedAsync(t, "http://"+callbackServer.Address()))
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+
+		c := NewResourceClient(nil, connection, nil, nil)
+
+		err = c.Delete(context.Background(), AWSResourceID, "")
+		require.NoError(t, err)
+	})
 }
 
 func newArmOptions(url string) *armauth.ArmConfig {
@@ -385,6 +412,18 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 	}
 }
 
+func handleSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
+	return handleJSONResponse(t, v1.AsyncOperationStatus{
+		Status: v1.ProvisioningStateSucceeded,
+	}, 200)
+}
+
+func handleFailure(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
+	return handleJSONResponse(t, v1.AsyncOperationStatus{
+		Status: v1.ProvisioningStateFailed,
+	}, 400)
+}
+
 func handleDeleteSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
@@ -392,12 +431,20 @@ func handleDeleteSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+func handleDeleteInitiatedAsync(t *testing.T, url string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		w.Header().Set("Azure-AsyncOperation", url)
+		w.WriteHeader(202)
+	}
+}
+
 func handleJSONResponse(t *testing.T, response any, statusCode int) func(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("in handleJSONResponse")
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		b, err := json.Marshal(&response)
 		require.NoError(t, err)
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		_, err = w.Write(b)
