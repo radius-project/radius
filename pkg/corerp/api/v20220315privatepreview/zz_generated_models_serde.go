@@ -2309,7 +2309,7 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 func (r RecipeMetadataProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "parameters", r.Parameters)
-	objectMap["templateKind"] = "RecipeMetadataProperties"
+	populate(objectMap, "templateKind", r.TemplateKind)
 	populate(objectMap, "templatePath", r.TemplatePath)
 	populate(objectMap, "templateVersion", r.TemplateVersion)
 	return json.Marshal(objectMap)

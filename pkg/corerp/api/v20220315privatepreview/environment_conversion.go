@@ -296,9 +296,6 @@ func toEnvironmentRecipeProperties(e EnvironmentRecipePropertiesClassification) 
 	switch c := e.(type) {
 	case *TerraformRecipeProperties:
 		if c.TemplatePath != nil {
-			if *c.TemplateKind == types.TemplateKindTerraform && (c.TemplateVersion == nil || *c.TemplateVersion == "") {
-				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest("templateVersion is a required property for templateKind: 'terraform'")
-			}
 			// Check for local paths
 			if strings.HasPrefix(to.String(c.TemplatePath), "/") || strings.HasPrefix(to.String(c.TemplatePath), "./") || strings.HasPrefix(to.String(c.TemplatePath), "../") {
 				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))

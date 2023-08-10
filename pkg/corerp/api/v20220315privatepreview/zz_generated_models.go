@@ -1069,28 +1069,19 @@ type Recipe struct {
 
 // RecipeMetadataProperties - Properties of a Recipe linked to an Environment.
 type RecipeMetadataProperties struct {
-	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
-	TemplateKind *string
-
-	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-	TemplatePath *string
-
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Format of the template provided by the recipe. Allowed values: bicep, terraform.
+	TemplateKind *string
+
+	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
 
 	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
 // for other module sources. For Bicep this is not applicable, as the Bicep version
 // is part of the templatePath.
 	TemplateVersion *string
-}
-
-// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type RecipeMetadataProperties.
-func (r *RecipeMetadataProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties {
-	return &EnvironmentRecipeProperties{
-		Parameters: r.Parameters,
-		TemplateKind: r.TemplateKind,
-		TemplatePath: r.TemplatePath,
-	}
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
@@ -1263,13 +1254,13 @@ type TerraformRecipeProperties struct {
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
-	// REQUIRED; Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be
-// omitted for other module sources. For Bicep this is not applicable, as the Bicep version
-// is part of the templatePath.
-	TemplateVersion *string
-
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources. For Bicep this is not applicable, as the Bicep version
+// is part of the templatePath.
+	TemplateVersion *string
 }
 
 // GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type TerraformRecipeProperties.

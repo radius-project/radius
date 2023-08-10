@@ -486,9 +486,6 @@
           "type": "string"
         }
       },
-      "required": [
-        "templateVersion"
-      ],
       "type": "object",
       "x-ms-discriminator-value": "terraform"
     },
@@ -546,15 +543,27 @@
     },
     "RecipeMetadataProperties": {
       "description": "Properties of a Recipe linked to an Environment.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/EnvironmentRecipeProperties"
-        }
-      ],
       "properties": {
+        "templateKind": {
+          "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform.",
+          "type": "string"
+        },
+        "templatePath": {
+          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
+          "type": "string"
+        },
         "templateVersion": {
           "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.",
           "type": "string"
+        },
+        "parameters": {
+          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "type": "object",
+          "example": [
+            {
+              "port": 6060
+            }
+          ]
         }
       }
     }

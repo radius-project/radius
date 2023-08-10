@@ -49,7 +49,7 @@ type EnvironmentExtensionClassification interface {
 // EnvironmentRecipePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetEnvironmentRecipeProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *BicepRecipeProperties, *EnvironmentRecipeProperties, *RecipeMetadataProperties, *TerraformRecipeProperties
+// - *BicepRecipeProperties, *EnvironmentRecipeProperties, *TerraformRecipeProperties
 type EnvironmentRecipePropertiesClassification interface {
 	// GetEnvironmentRecipeProperties returns the EnvironmentRecipeProperties content of the underlying type.
 	GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties

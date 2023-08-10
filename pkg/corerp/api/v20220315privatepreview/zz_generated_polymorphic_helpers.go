@@ -166,8 +166,6 @@ func unmarshalEnvironmentRecipePropertiesClassification(rawMsg json.RawMessage) 
 	}
 	var b EnvironmentRecipePropertiesClassification
 	switch m["templateKind"] {
-	case "RecipeMetadataProperties":
-		b = &RecipeMetadataProperties{}
 	case "bicep":
 		b = &BicepRecipeProperties{}
 	case "terraform":

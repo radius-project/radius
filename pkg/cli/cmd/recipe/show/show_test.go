@@ -96,7 +96,7 @@ func Test_Validate(t *testing.T) {
 func Test_Run(t *testing.T) {
 	t.Run("Show bicep recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		envRecipe := v20220315privatepreview.EnvironmentRecipeProperties{
+		envRecipe := v20220315privatepreview.RecipeMetadataProperties{
 			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 			TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 			Parameters: map[string]any{
