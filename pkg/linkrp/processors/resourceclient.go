@@ -193,10 +193,8 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID,
 	for attempt := 1; attempt <= allowedDeletionRetries; attempt++ {
 		poller, err := client.BeginDelete(ctx, id.Name(), nil)
 		if err != nil {
-			// If we failed to start the deletion, add the error to the list of errors and try again.
-			// return err
-			errors = append(errors, err)
-			continue
+			// If we failed to start the deletion, return the error
+			return err
 		}
 
 		// If we successfully started the deletion, wait for it to complete.
