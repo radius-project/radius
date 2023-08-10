@@ -51,7 +51,7 @@ func Test_SQL(t *testing.T) {
 					},
 					{
 						Name: "sql-db-o",
-						Type: validation.SQLDatabasesResource,
+						Type: validation.O_SQLDatabasesResource,
 						App:  name,
 					},
 					{

@@ -56,7 +56,7 @@ func Test_RedisManualProvisioning(t *testing.T) {
 					},
 					{
 						Name: "rds-rds-o",
-						Type: validation.RedisCachesResource,
+						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
 				},
@@ -95,7 +95,7 @@ func Test_RedisRecipe(t *testing.T) {
 					},
 					{
 						Name: "rds-recipe-o",
-						Type: validation.RedisCachesResource,
+						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
 				},
@@ -126,7 +126,7 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 					},
 					{
 						Name: "rds-default-recipe-o",
-						Type: validation.RedisCachesResource,
+						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
 				},

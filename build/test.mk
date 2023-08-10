@@ -68,9 +68,6 @@ test-functional-msgrp: ## Runs Messaging RP functional tests
 test-functional-daprrp: ## Runs Dapr RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
-test-functional-datastoresrrp: ## Runs Dapr RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
-
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 

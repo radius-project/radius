@@ -30,8 +30,8 @@ import (
 // Opt-out case for manual resource provisioning
 func Test_MongoDB_ManualProvisioning(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-manual-provisioning.bicep"
-	name := "corerp-resources-mongodb-manual-provisioning"
-	appNamespace := "default-ccorerp-resources-mongodb-manual-provisioning"
+	name := "corerp-resources-mongodb-mp"
+	appNamespace := "default-ccorerp-resources-mp"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -43,23 +43,23 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "mdb-us-app-ctnr",
+						Name: "mdb-us-app-ctnr-o",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-ctnr",
+						Name: "mdb-us-ctnr-o",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-rte",
+						Name: "mdb-us-rte-o",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-db",
-						Type: validation.MongoDatabasesResource,
+						Name: "mdb-us-db-o",
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 					},
 				},
@@ -67,9 +67,9 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "mdb-us-ctnr").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "mdb-us-rte").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-ctnr-o").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "mdb-us-rte-o").ValidateLabels(false),
 					},
 				},
 			},
@@ -107,7 +107,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 					},
 					{
 						Name: "mongodb-db-o",
-						Type: validation.MongoDatabasesResource,
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 					},
 				},
@@ -163,7 +163,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 					},
 					{
 						Name: "mdb-recipe-param-db-o",
-						Type: validation.MongoDatabasesResource,
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
@@ -228,7 +228,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 					},
 					{
 						Name: "mdb-ctx-o",
-						Type: validation.MongoDatabasesResource,
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
