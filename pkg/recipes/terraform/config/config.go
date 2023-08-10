@@ -158,17 +158,16 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.
 // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata) (string, error) {
-	k := backends.NewKubernetesBackend()
-	backend, err := k.BuildBackend(resourceRecipe)
+func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (string, error) {
+	backendConfig, err := backend.BuildBackend(resourceRecipe)
 	if err != nil {
 		return "", err
 	}
 	cfg.Terraform = TerraformDefinition{
-		Backend: backend,
+		Backend: backendConfig,
 	}
 	var secretSuffix string
-	if backendDetails, ok := backend["kubernetes"]; ok {
+	if backendDetails, ok := backendConfig["kubernetes"]; ok {
 		backendMap := backendDetails.(map[string]any)
 		if secret, ok := backendMap["secret"]; ok {
 			secretSuffix = secret.(string)
@@ -176,60 +175,3 @@ func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata)
 	}
 	return secretSuffix, nil
 }
-
-// // generateSecretSuffix returns a unique string from the resourceID which is used as key for kubernetes secret in defining terraform backend.
-// func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
-// 	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	parsedEnvID, err := resources.Parse(resourceRecipe.EnvironmentID)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	parsedAppID, err := resources.Parse(resourceRecipe.ApplicationID)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	prefix := fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.Name())
-// 	// Kubernetes enforces a character limit of 63 characters on the suffix for state file stored in kubernetes secret.
-// 	// 22 = 63 (max length of Kubernetes secret suffix) - 40 (hex hash length) - 1 (dot separator)
-// 	maxResourceNameLen := 22
-// 	if len(prefix) >= maxResourceNameLen {
-// 		prefix = prefix[:maxResourceNameLen]
-// 	}
-
-// 	hasher := sha1.New()
-// 	_, _ = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
-// 	hash := hasher.Sum(nil)
-
-// 	suffix := fmt.Sprintf("%s.%x", prefix, hash)
-
-// 	return suffix, nil
-// }
-
-// // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.
-// // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-// func generateKubernetesBackendConfig(resourceRecipe *recipes.ResourceMetadata, secretSuffix string) (map[string]interface{}, error) {
-// 	backend := map[string]interface{}{
-// 		"kubernetes": map[string]interface{}{
-// 			"config_path":   clientcmd.RecommendedHomeFile,
-// 			"secret_suffix": secretSuffix,
-// 			"namespace":     namespace,
-// 		},
-// 	}
-// 	_, err := rest.InClusterConfig()
-// 	if err == nil {
-// 		if value, found := backend["kubernetes"]; found {
-// 			backendValue := value.(map[string]interface{})
-// 			backendValue["in_cluster_config"] = true
-// 		}
-// 	}
-// 	return map[string]interface{}{
-// 		"kubernetes": map[string]interface{}{
-// 			"config_path":   clientcmd.RecommendedHomeFile,
-// 			"secret_suffix": secretSuffix,
-// 			"namespace":     namespace,
-// 		},
-// 	}, nil
-// }

@@ -1,4 +1,11 @@
 {
+  "terraform":{
+    "kubernetes":{
+      "config_path":   "/home/radius/.kube/config",
+      "secret_suffix": "test-secret-suffix",
+      "namespace":     "radius-system"
+    }
+  },
   "provider": {
     "aws": {
       "region": "test-region"

@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
@@ -173,7 +174,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return "", err
 	}
 
-	secretSuffix, err := tfConfig.AddBackend(options.ResourceRecipe)
+	secretSuffix, err := tfConfig.AddBackend(options.ResourceRecipe, backends.NewKubernetesBackend())
 	if err != nil {
 		return "", err
 	}

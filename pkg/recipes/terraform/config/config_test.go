@@ -386,7 +386,7 @@ func TestAddProviders(t *testing.T) {
 			}
 			require.NoError(t, err)
 			mBackend.EXPECT().BuildBackend(&resourceRecipe).Times(1).Return(tc.expectedBackend, nil)
-			_, err = tfconfig.AddBackend(&resourceRecipe)
+			_, err = tfconfig.AddBackend(&resourceRecipe, &mBackend)
 			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)
