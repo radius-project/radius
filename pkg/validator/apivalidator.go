@@ -47,7 +47,10 @@ type Options struct {
 	ResourceTypeGetter func(*http.Request) (string, error)
 }
 
-// RadiusResourceTypeGetter is the function to get the resource type for Radius resource ID.
+// # Function Explanation
+//
+// RadiusResourceTypeGetter parses the request URL and method to get the resource type and returns it, returning an error
+// if parsing fails.
 func RadiusResourceTypeGetter(r *http.Request) (string, error) {
 	resourceID, err := resources.ParseByMethod(r.URL.Path, r.Method)
 	if err != nil {
@@ -56,12 +59,17 @@ func RadiusResourceTypeGetter(r *http.Request) (string, error) {
 	return resourceID.Type(), nil
 }
 
-// UCPEndpointTypeGetter is the function to get the resource type for UCP.
+// # Function Explanation
+//
+// UCPResourceTypeGetter returns the UCPEndpointType string and no error.
 func UCPResourceTypeGetter(r *http.Request) (string, error) {
 	return UCPEndpointType, nil
 }
 
-// APIValidator is the middleware to validate incoming request with OpenAPI spec.
+// # Function Explanation
+//
+// APIValidator is the middleware to validate incoming request with OpenAPI spec. It wraps a handler to validate requests
+// against a given spec loader and resource type getter.
 func APIValidator(options Options) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +179,10 @@ func handleError(ctx context.Context, w http.ResponseWriter, err error) {
 	logger.Error(err, "error writing marshaled data to output")
 }
 
-// APINotFoundHandler is the handler when the request url route does not exist
+// # Function Explanation
+//
+// APINotFoundHandler is the handler when the request url route does not exist. It handles requests that are invalid and returns
+// a NotFoundMessageResponse. If an error occurs, it is handled by the handleError function.
 //
 //	r := mux.NewRouter()
 //	r.NotFoundHandler = APINotFoundHandler()
@@ -184,7 +195,10 @@ func APINotFoundHandler() http.HandlerFunc {
 	}
 }
 
-// APIMethodNotAllowedHandler is the handler when the request method does not match the route.
+// # Function Explanation
+//
+// APIMethodNotAllowedHandler is the handler when the request method does not match the route. It handles requests with invalid
+// methods by returning a MethodNotAllowedResponse and an error if the response fails to be applied.
 //
 //	r := mux.NewRouter()
 //	r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()

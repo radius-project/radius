@@ -23,6 +23,9 @@ type bindingTypeKey struct {
 	bindingKey  string
 }
 
+// # Function Explanation
+//
+// LoadBindings parses environment variables and creates a slice of Providers based on the registered BindingProviders.
 func LoadBindings(registeredProviders map[string]BindingProvider) []Providers {
 	valueByBinding := make(map[string]map[string]string)
 	// We match env-vars using the form CONNECTION_<KIND>_VALUE, so group them by that structure.

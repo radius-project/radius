@@ -33,6 +33,8 @@ const (
 	invalidLocalModulePathFmt        = "local module paths are not supported with Terraform Recipes. The 'templatePath' '%s' was detected as a local module path because it begins with '/' or './' or '../'."
 )
 
+// # Function Explanation
+//
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -128,6 +130,8 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
+// # Function Explanation
+//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
 func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	env, ok := src.(*datamodel.Environment)

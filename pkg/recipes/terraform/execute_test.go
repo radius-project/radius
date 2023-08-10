@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateWorkingDir(t *testing.T) {
+func TestCreateWorkingDir_Created(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
 
@@ -66,56 +66,56 @@ func TestInitAndApply_EmptyWorkingDirPath(t *testing.T) {
 	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
 }
 
-func TestGenerateConfig_EmptyRecipeName(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	workingDir := t.TempDir()
-	execPath := filepath.Join(workingDir, "terraform")
-
-	options := Options{
-		EnvRecipe: &recipes.EnvironmentDefinition{
-			TemplatePath: "test/module/source",
+func TestGeneratedConfig(t *testing.T) {
+	configTests := []struct {
+		name       string
+		workingDir string
+		opts       Options
+		err        string
+	}{
+		{
+			name: "empty recipe name",
+			opts: Options{
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					TemplatePath: "test/module/source",
+				},
+			},
+			err: ErrRecipeNameEmpty.Error(),
+		}, {
+			name:       "invalid working dir",
+			workingDir: "/invalid-dir",
+			opts: Options{
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					Name:         "test-recipe",
+					TemplatePath: "test/module/source",
+				},
+				ResourceRecipe: &recipes.ResourceMetadata{},
+			},
+			err: "error creating file: open /invalid-dir/main.tf.json",
+		}, {
+			name: "invalid exec path",
+			opts: Options{
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					Name:         "test-recipe",
+					TemplatePath: "test/module/source",
+				},
+				ResourceRecipe: &recipes.ResourceMetadata{},
+			},
+			err: "/terraform: no such file or directory",
 		},
 	}
 
-	err := generateConfig(ctx, workingDir, execPath, options)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "recipe name cannot be empty")
-}
-
-func TestGenerateConfig_MissingWorkingDirectory(t *testing.T) {
-	ctx := testcontext.New(t)
-	workingDir := "/invalid-dir"
-	execPath := filepath.Join(workingDir, "terraform")
-
-	options := Options{
-		EnvRecipe: &recipes.EnvironmentDefinition{
-			Name:         "test-recipe",
-			TemplatePath: "test/module/source",
-		},
-		ResourceRecipe: &recipes.ResourceMetadata{},
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			if tc.workingDir == "" {
+				tc.workingDir = t.TempDir()
+			}
+			execPath := filepath.Join(tc.workingDir, "terraform")
+			e := executor{}
+			err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
+			require.Error(t, err)
+			require.ErrorContains(t, err, tc.err)
+		})
 	}
-
-	err := generateConfig(ctx, workingDir, execPath, options)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "error creating file: open /invalid-dir/main.tf.json: no such file or directory")
-}
-
-func TestGenerateConfig_InvalidExecPath(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	workingDir := t.TempDir()
-	execPath := filepath.Join(workingDir, "terraform")
-
-	options := Options{
-		EnvRecipe: &recipes.EnvironmentDefinition{
-			Name:         "test-recipe",
-			TemplatePath: "test/module/source",
-		},
-		ResourceRecipe: &recipes.ResourceMetadata{},
-	}
-
-	err := generateConfig(ctx, workingDir, execPath, options)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "/terraform: no such file or directory")
 }

@@ -38,6 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// # Function Explanation
+//
+// NewApplicationModel configures RBAC support on connections based on connection kind, configures the providers supported by the appmodel,
+// registers the renderers and handlers for various resources, and checks for duplicate registrations.
 func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sClientSet kubernetes.Interface) (ApplicationModel, error) {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.

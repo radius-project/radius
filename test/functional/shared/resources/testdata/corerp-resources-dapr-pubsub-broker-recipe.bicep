@@ -5,12 +5,12 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-env'
+  name: 'dpsb-recipe-env-old'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'dpsb-recipe-env'
+      namespace: 'dpsb-recipe-env-old'
     }
     recipes: {
       'Applications.Link/daprPubSubBrokers': {
@@ -24,20 +24,20 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-app'
+  name: 'dpsb-recipe-app-old'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'dpsb-recipe-app'
+        namespace: 'dpsb-recipe-app-old'
       }
     ]
   }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe-app-ctnr'
+  name: 'dpsb-recipe-app-ctnr-old'
   properties: {
     application: app.id
     connections: {
@@ -56,7 +56,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'dpsb-recipe-app-ctnr'
+        appId: 'dpsb-recipe-app-ctnr-old'
         appPort: 3000
       }
     ]
@@ -64,7 +64,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource pubsubBroker 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
-  name: 'dpsb-recipe'
+  name: 'dpsb-recipe-old'
   properties: {
     application: app.id
     environment: env.id

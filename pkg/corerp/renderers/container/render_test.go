@@ -38,12 +38,14 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
 	applicationName       = "test-app"
 	applicationResourceID = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
 	resourceName          = "test-container"
 	envVarName1           = "TEST_VAR_1"
 	envVarValue1          = "TEST_VALUE_1"
@@ -54,6 +56,22 @@ const (
 	tempVolName      = "TempVolume"
 	tempVolMountPath = "/tmpfs"
 	testResourceID   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
+
+	// User Inputs for testing labels and annotations
+	appAnnotationKey1 = "app.ann1"
+	appAnnotationKey2 = "app.ann2"
+	appAnnotationVal1 = "app.annval1"
+	appAnnotationVal2 = "app.annval2"
+
+	appLabelKey1 = "app.lbl1"
+	appLabelKey2 = "app.lbl2"
+	appLabelVal1 = "env.lblval1"
+	appLabelVal2 = "env.lblval2"
+
+	overrideKey1 = "test.ann1"
+	overrideKey2 = "test.lbl1"
+	overrideVal1 = "override.app.annval1"
+	overrideVal2 = "override.app.lblval1"
 )
 
 var (
@@ -221,7 +239,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.Error(t, err)
 	require.Equal(t, err.(*apiv1.ErrClientRP).Code, apiv1.CodeInvalid)
-	require.Equal(t, err.(*apiv1.ErrClientRP).Message, "'/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Equal(t, err.(*apiv1.ErrClientRP).Message, "invalid source: //subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace. Must be either a URL or a valid resourceID")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }
@@ -396,7 +414,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
-	require.Empty(t, output.ComputedValues)
+	require.Len(t, output.ComputedValues, 0)
 	require.Empty(t, output.SecretValues)
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -416,7 +434,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 		require.Equal(t, expected, port)
 
 	})
-	require.Len(t, output.Resources, 3)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
@@ -1485,4 +1503,124 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 
 		require.Equal(t, expectedLivenessProbe, container.LivenessProbe)
 	})
+}
+
+func Test_IsURL(t *testing.T) {
+	const valid_url = "http://examplehost:80"
+	const invalid_url = "http://abc:def"
+	const path = "/testpath/testfolder/testfile.txt"
+
+	require.True(t, isURL(valid_url))
+	require.False(t, isURL(invalid_url))
+	require.False(t, isURL(path))
+}
+
+func Test_ParseURL(t *testing.T) {
+	const valid_url = "http://examplehost:80"
+	const invalid_url = "http://abc:def"
+
+	t.Run("valid URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(valid_url)
+		require.Equal(t, scheme, "http")
+		require.Equal(t, hostname, "examplehost")
+		require.Equal(t, port, "80")
+		require.Equal(t, err, nil)
+	})
+
+	t.Run("invalid URL test", func(t *testing.T) {
+		scheme, hostname, port, err := parseURL(invalid_url)
+		require.Equal(t, scheme, "")
+		require.Equal(t, hostname, "")
+		require.Equal(t, port, "")
+		require.NotEqual(t, err, nil)
+	})
+}
+
+func Test_DNS_Service_Generation(t *testing.T) {
+	var containerPortNumber int32 = 80
+	t.Run("verify service generation", func(t *testing.T) {
+		properties := datamodel.ContainerProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Application: applicationResourceID,
+			},
+			Container: datamodel.Container{
+				Image: "someimage:latest",
+				Ports: map[string]datamodel.ContainerPort{
+					"web": {
+						ContainerPort: int32(containerPortNumber),
+					},
+				},
+			},
+		}
+
+		resource := makeResource(t, properties)
+		ctx := testcontext.New(t)
+		renderer := Renderer{}
+		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
+
+		require.NoError(t, err)
+		require.Len(t, output.Resources, 4)
+		require.Empty(t, output.SecretValues)
+
+		expectedServicePort := corev1.ServicePort{
+			Name:       "web",
+			Port:       containerPortNumber,
+			TargetPort: intstr.FromInt(80),
+			Protocol:   "TCP",
+		}
+
+		require.Len(t, output.ComputedValues, 0)
+
+		service, outputResource := kubernetes.FindService(output.Resources)
+		expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
+
+		require.Equal(t, expectedOutputResource, outputResource)
+		require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)
+		require.Equal(t, "", service.Namespace)
+		require.Equal(t, kubernetes.MakeSelectorLabels(applicationName, resource.Name), service.Spec.Selector)
+		require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
+		require.Len(t, service.Spec.Ports, 1)
+
+		servicePort := service.Spec.Ports[0]
+		require.Equal(t, expectedServicePort, servicePort)
+	})
+}
+
+func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
+	dependencies := map[string]renderers.RendererDependency{}
+	option := renderers.RenderOptions{Dependencies: dependencies}
+
+	option.Application = renderers.ApplicationOptions{
+		KubernetesMetadata: &datamodel.KubeMetadataExtension{
+			Annotations: getAppSetup().appKubeMetadataExt.Annotations,
+			Labels:      getAppSetup().appKubeMetadataExt.Labels,
+		},
+	}
+
+	return option
+}
+
+func getAppSetup() *setupMaps {
+	setupMap := setupMaps{}
+
+	appKubeMetadataExt := &datamodel.KubeMetadataExtension{
+		Annotations: map[string]string{
+			appAnnotationKey1: appAnnotationVal1,
+			appAnnotationKey2: appAnnotationVal2,
+			overrideKey1:      overrideVal1,
+		},
+		Labels: map[string]string{
+			appLabelKey1: appLabelVal1,
+			appLabelKey2: appLabelVal2,
+			overrideKey2: overrideVal2,
+		},
+	}
+
+	setupMap.appKubeMetadataExt = appKubeMetadataExt
+
+	return &setupMap
+}
+
+type setupMaps struct {
+	appKubeMetadataExt *datamodel.KubeMetadataExtension
 }

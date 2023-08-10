@@ -33,6 +33,9 @@ const (
 	AzureFileShareStorageAccountBaseName = "storageaccountbase"
 )
 
+// # Function Explanation
+//
+// NewAzureFileShareStorageAccountHandler creates a new instance of the azureFileShareStorageAccountHandler object.
 func NewAzureFileShareStorageAccountHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureFileShareStorageAccountHandler{arm: arm}
 }
@@ -41,6 +44,9 @@ type azureFileShareStorageAccountHandler struct {
 	arm *armauth.ArmConfig
 }
 
+// # Function Explanation
+//
+// Put validates the required properties for the resource and checks if the storage account exists.
 func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {
@@ -63,6 +69,9 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 	return nil, nil
 }
 
+// # Function Explanation
+//
+// No-op. Just returns nil.
 func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }

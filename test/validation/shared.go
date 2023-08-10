@@ -46,13 +46,16 @@ const (
 	O_RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
 	RedisCachesResource             = "applications.link/redisCaches"
 	SQLDatabasesResource            = "applications.link/sqlDatabases"
-	DaprPubSubBrokersResource       = "applications.link/daprPubSubBrokers"
-	DaprSecretStoresResource        = "applications.link/daprSecretStores"
-	DaprStateStoresResource         = "applications.link/daprStateStores"
+	O_DaprPubSubBrokersResource     = "applications.link/daprPubSubBrokers"
+	O_DaprSecretStoresResource      = "applications.link/daprSecretStores"
+	O_DaprStateStoresResource       = "applications.link/daprStateStores"
 	ExtendersResource               = "applications.link/extenders"
 
 	// New resources after splitting LinkRP namespace
-	RabbitMQQueuesResource = "applications.messaging/rabbitMQQueues"
+	RabbitMQQueuesResource    = "applications.messaging/rabbitMQQueues"
+	DaprPubSubBrokersResource = "applications.dapr/pubSubBrokers"
+	DaprSecretStoresResource  = "applications.dapr/secretStores"
+	DaprStateStoresResource   = "applications.dapr/stateStores"
 )
 
 type RPResource struct {
@@ -75,6 +78,10 @@ type RPResourceSet struct {
 	Resources []RPResource
 }
 
+// # Function Explanation
+//
+// DeleteRPResource deletes an environment or application resource depending on the type of the resource passed in, and
+// returns an error if one occurs.
 func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
@@ -102,6 +109,9 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	return nil
 }
 
+// # Function Explanation
+//
+// ValidateRPResources checks if the expected resources exist in the response and validates the output resources if present.
 func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {

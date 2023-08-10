@@ -21,7 +21,9 @@ import (
 	"os"
 )
 
-// MustGetTestData reads testdata and unmarshals it to the given type.
+// # Function Explanation
+//
+// MustGetTestData reads testdata and unmarshals it to the given type, panicking if an error occurs.
 func MustGetTestData[T any](file string) *T {
 	var data T
 	err := json.Unmarshal(ReadFixture(file), &data)
@@ -31,7 +33,9 @@ func MustGetTestData[T any](file string) *T {
 	return &data
 }
 
-// ReadFixture reads testdata fixtures.
+// # Function Explanation
+//
+// ReadFixture reads testdata fixtures, panicking if an error occurs.
 func ReadFixture(filename string) []byte {
 	raw, err := os.ReadFile("./testdata/" + filename)
 	if err != nil {

@@ -5,14 +5,14 @@ param environment string
 param namespace string = 'default'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-statestore-manual'
+  name: 'corerp-resources-dsstm-old'
   properties: {
     environment: environment
   }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual-ctnr'
+  name: 'dapr-sts-manual-ctnr-old'
   properties: {
     application: app.id
     connections: {
@@ -31,7 +31,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'gnrc-sts-ctnr'
+        appId: 'gnrc-sts-ctnr-old'
         appPort: 3000
       }
     ]
@@ -40,9 +40,9 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 
 module redis 'modules/redis-selfhost.bicep' = {
-  name: 'dapr-sts-manual-redis-deployment'
+  name: 'dapr-sts-manual-redis-old-deployment'
   params: {
-    name: 'dapr-sts-manual-redis'
+    name: 'dapr-sts-manual-redis-old'
     namespace: namespace
     application: app.name
   }
@@ -50,7 +50,7 @@ module redis 'modules/redis-selfhost.bicep' = {
 
 
 resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-manual'
+  name: 'dapr-sts-manual-old'
   properties: {
     application: app.id
     environment: environment

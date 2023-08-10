@@ -50,7 +50,9 @@ const (
 	DefaultCacheResyncInterval = time.Second * time.Duration(30)
 )
 
-// NewKubernetesHandler creates Kubernetes Resource handler instance.
+// # Function Explanation
+//
+// NewKubernetesHandler creates a new KubernetesHandler which is used to handle Kubernetes resources.
 func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
 	return &kubernetesHandler{
 		client:              client,
@@ -68,7 +70,10 @@ type kubernetesHandler struct {
 	cacheResyncInterval time.Duration
 }
 
-// Put creates or updates a Kubernetes resource described in PutOptions.
+// # Function Explanation
+//
+// Put stores the Kubernetes resource in the cluster and returns the properties of the resource. If the resource is a
+// deployment, it also waits until the deployment is ready.
 func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	item, err := convertToUnstructured(*options.Resource)
@@ -406,7 +411,10 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 	return true, nil
 }
 
-// Delete deletes a Kubernetes resource.
+// # Function Explanation
+//
+// Delete decodes the identity data from the DeleteOptions, creates an unstructured object from the identity data,
+// and then attempts to delete the object from the Kubernetes cluster, returning an error if one occurs.
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	identity := &resourcemodel.KubernetesIdentity{}
 	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {

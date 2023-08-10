@@ -26,7 +26,7 @@ import shutil
 import subprocess
 
 if len(sys.argv) != 4:
-    print("Usage: publish-terraform-recipes.py <recipe root> <namespace> <config map name>")
+    print("Usage: publish-test-terraform-recipes.py <recipe root> <namespace> <config map name>")
     sys.exit(1)
 recipe_root = sys.argv[1]
 namespace = sys.argv[2]

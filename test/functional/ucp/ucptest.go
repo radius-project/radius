@@ -47,6 +47,9 @@ type UCPTest struct {
 type TestStep struct {
 }
 
+// # Function Explanation
+//
+// NewUCPTest creates a new UCPTest instance with the given name and run method.
 func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) UCPTest {
 	return UCPTest{
 		Options:     test.NewTestOptions(t),
@@ -92,6 +95,10 @@ func (ucptest UCPTest) Test(t *testing.T) {
 
 }
 
+// # Function Explanation
+//
+// NewUCPRequest creates an HTTP request with the given method, URL and body, and adds a Content-Type header to it,
+// returning the request or an error if one occurs.
 func NewUCPRequest(method string, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
