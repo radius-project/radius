@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -211,11 +212,38 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 		return err
 	}
 
+	// ###################### Debugging Pipeline issue ###############################
+	workspaces, current, err := tf.WorkspaceList(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the list of workspaces
+	fmt.Printf("-----------current workspace:%s---------", current)
+	fmt.Println("-----------Workspaces-------------")
+	for _, workspace := range workspaces {
+		fmt.Println(workspace)
+	}
+	// #################################################################################
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("terraform init failure: %w", err)
 	}
+
+	// ###################### Debugging Pipeline issue ###############################
+	workspaces, current, err = tf.WorkspaceList(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the list of workspaces
+	fmt.Printf("-----------current workspace:%s---------", current)
+	fmt.Println("-----------Workspaces-------------")
+	for _, workspace := range workspaces {
+		fmt.Println(workspace)
+	}
+	// #################################################################################
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
