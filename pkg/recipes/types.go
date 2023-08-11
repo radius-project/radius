@@ -105,29 +105,22 @@ type RecipeOutput struct {
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
-// outputs is the value of "result" output from the recipe deployment response.
-func (ro RecipeOutput) PrepareRecipeOutput(outputs map[string]any) (RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set)
-	// and the resources created by the template.
-	//
-	// Note that there are two ways a resource can be returned:
-	// - Implicitly when it is created in the template (it will be in 'resources').
-	// - Explicitly as part of the 'result' output.
-	// recipeOutput := RecipeOutput{}
-	b, err := json.Marshal(&outputs)
+// outputs map is the value of "result" output from the recipe deployment response.
+func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error {
+	b, err := json.Marshal(&resultValue)
 	if err != nil {
-		return RecipeOutput{}, err
+		return err
 	}
 
 	// Using a decoder to block unknown fields.
 	decoder := json.NewDecoder(bytes.NewBuffer(b))
 	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&ro)
+	err = decoder.Decode(ro)
 	if err != nil {
-		return RecipeOutput{}, err
+		return err
 	}
 
-	// Make sure our maps are non-nil (it's just friendly).
+	// Make sure maps are non-nil (it's just friendly).
 	if ro.Secrets == nil {
 		ro.Secrets = map[string]any{}
 	}
@@ -135,5 +128,5 @@ func (ro RecipeOutput) PrepareRecipeOutput(outputs map[string]any) (RecipeOutput
 		ro.Values = map[string]any{}
 	}
 
-	return ro, nil
+	return nil
 }

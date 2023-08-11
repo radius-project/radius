@@ -93,14 +93,32 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
-			"port": json.Number("6379"),
+			"port": float64(6379),
+		},
+		Secrets: map[string]any{},
+	}
+
+	expectedTFState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				resultPropertyName: {
+					Value: map[string]interface{}{
+						"values": map[string]interface{}{
+							"host": "myrediscache.redis.cache.windows.net",
+							"port": json.Number("6379"),
+						},
+					},
+				},
+			},
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
+	// tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.NoError(t, err)
+	// require.Equal(t, expectedTFState, recipeOutput)
 	require.Equal(t, expectedOutput, recipeOutput)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
@@ -153,11 +171,28 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
-			"port": json.Number("6379"),
+			"port": float64(6379),
+		},
+		Secrets: map[string]any{},
+	}
+
+	expectedTFState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				resultPropertyName: {
+					Value: map[string]interface{}{
+						"values": map[string]interface{}{
+							"host": "myrediscache.redis.cache.windows.net",
+							"port": json.Number("6379"),
+						},
+					},
+				},
+			},
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	// tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.NoError(t, err)
@@ -264,7 +299,7 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 	tests := []struct {
 		desc             string
 		state            *tfjson.State
-		expectedResponse recipes.RecipeOutput
+		expectedResponse *recipes.RecipeOutput
 		expectedErr      bool
 	}{
 		{
@@ -305,7 +340,7 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 					},
 				},
 			},
-			expectedResponse: recipes.RecipeOutput{
+			expectedResponse: &recipes.RecipeOutput{
 				Values: map[string]any{
 					"host": "testhost",
 					"port": float64(6379),
@@ -320,13 +355,13 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 		{
 			desc:             "nil state",
 			state:            nil,
-			expectedResponse: recipes.RecipeOutput{},
+			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      true,
 		},
 		{
 			desc:             "empty state",
 			state:            &tfjson.State{},
-			expectedResponse: recipes.RecipeOutput{},
+			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      true,
 		},
 	}
@@ -393,12 +428,12 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 	// Test preparing the Terraform recipe response with a nil state.
 	tfState = nil
 	recipeResponse, err = prepareTFRecipeResponse(tfState)
-	require.Equal(t, recipes.RecipeOutput{}, recipeResponse)
+	require.Equal(t, &recipes.RecipeOutput{}, recipeResponse)
 	require.Error(t, err)
 
 	// Empty state
 	tfState = &tfjson.State{}
 	recipeResponse, err = prepareTFRecipeResponse(tfState)
-	require.Equal(t, recipes.RecipeOutput{}, recipeResponse)
+	require.Equal(t, &recipes.RecipeOutput{}, recipeResponse)
 	require.Error(t, err)
 }

@@ -17,16 +17,14 @@ limitations under the License.
 package driver
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -135,7 +133,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		return nil, fmt.Errorf("failed to read the recipe output %q: %w", resultPropertyName, err)
 	}
 
-	return &recipeResponse, nil
+	return recipeResponse, nil
 }
 
 // Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
@@ -244,6 +242,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
+/*
 func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
@@ -293,10 +292,11 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 
 	return recipeResponse, nil
 }
+*/
 
-// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
+// prepareBicepRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func prepareBicepRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
+func prepareBicepRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -306,20 +306,15 @@ func prepareBicepRecipeResponse(outputs any, resources []*armresources.ResourceR
 	//
 	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
 	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-	recipeResponse := recipes.RecipeOutput{}
-
+	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok {
-		recipeOutput, ok := out[resultPropertyName].(map[string]any)
-		if ok {
-			result, ok := recipeOutput["value"].(map[string]any)
-			if ok {
-				// output, err := recipes.PrepareRecipeOutput(result)
-				output, err := recipeResponse.PrepareRecipeOutput(result)
+		if result, ok := out[resultPropertyName].(map[string]any); ok {
+			if resultValue, ok := result["value"].(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(resultValue)
 				if err != nil {
-					return recipes.RecipeOutput{}, err
+					return &recipes.RecipeOutput{}, err
 				}
-				recipeResponse = output
 			}
 		}
 	}
@@ -327,14 +322,6 @@ func prepareBicepRecipeResponse(outputs any, resources []*armresources.ResourceR
 	// process the 'resources' created by the template
 	for _, id := range resources {
 		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
-	}
-
-	// Make sure our maps are non-nil (it's just friendly).
-	if recipeResponse.Secrets == nil {
-		recipeResponse.Secrets = map[string]any{}
-	}
-	if recipeResponse.Values == nil {
-		recipeResponse.Values = map[string]any{}
 	}
 
 	return recipeResponse, nil

@@ -28,6 +28,7 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
+	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
@@ -63,7 +64,7 @@ type executor struct {
 
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
-func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
+func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Install Terraform
@@ -93,12 +94,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	}
 
 	// Run TF Init and Apply in the working directory
-	err = initAndApply(ctx, workingDir, execPath)
+	tfState, err := initAndApply(ctx, workingDir, execPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return tfState, nil
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
@@ -183,12 +184,12 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, workingDir, execPath string) error {
+func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	tf, err := NewTerraform(ctx, workingDir, execPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Initialize Terraform
@@ -196,15 +197,21 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
-		return fmt.Errorf("terraform init failure: %w", err)
+		return nil, fmt.Errorf("terraform init failure: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
 	if err := tf.Apply(ctx); err != nil {
-		return fmt.Errorf("terraform apply failure: %w", err)
+		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
-	return nil
+	logger.Info("Fetching module outputs")
+	tfState, err := tf.Show(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tfState, nil
 }
