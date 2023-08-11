@@ -210,20 +210,6 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	if err != nil {
 		return err
 	}
-
-	// ###################### Debugging Pipeline issue ###############################
-	workspaces, current, err := tf.WorkspaceList(ctx)
-	if err != nil {
-		return fmt.Errorf("terraform error:%w", err)
-	}
-
-	// Print the list of workspaces
-	logger.Info("-----------current workspace:" + current + "---------")
-	logger.Info("-----------Workspaces-------------")
-	for _, workspace := range workspaces {
-		logger.Info(workspace)
-	}
-	// #################################################################################
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	if err := tf.Init(ctx); err != nil {
@@ -231,7 +217,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	}
 
 	// ###################### Debugging Pipeline issue ###############################
-	workspaces, current, err = tf.WorkspaceList(ctx)
+	workspaces, current, err := tf.WorkspaceList(ctx)
 	if err != nil {
 		return fmt.Errorf("terraform error:%w", err)
 	}
