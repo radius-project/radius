@@ -171,7 +171,7 @@ func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata,
 	var secretSuffix string
 	if backendDetails, ok := backendConfig["kubernetes"]; ok {
 		backendMap := backendDetails.(map[string]any)
-		if secret, ok := backendMap["secret"]; ok {
+		if secret, ok := backendMap["secret_suffix"]; ok {
 			secretSuffix = secret.(string)
 		}
 	}

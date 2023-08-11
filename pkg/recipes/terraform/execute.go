@@ -45,6 +45,7 @@ const (
 	// Default prefix string added to secret suffix by terraform while creating kubernetes secret.
 	// Kubernetes secrets to store terraform state files are named in the format: tfstate-{workspace}-{secret_suffix}. And we always use "default" workspace for terraform operations.
 	terraformSecretPrefix = "tfstate-default-"
+	radiusNameSpace       = "radius-system"
 )
 
 var (
@@ -226,7 +227,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 }
 
 func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface, secretSuffix string) error {
-	_, err := k8s.CoreV1().Secrets(options.EnvConfig.Runtime.Kubernetes.Namespace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
+	_, err := k8s.CoreV1().Secrets(radiusNameSpace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
