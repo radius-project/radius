@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -51,7 +52,7 @@ var (
 	}
 )
 
-func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider, backends.MockBackend) {
+func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider, *backends.MockBackend) {
 	ctrl := gomock.NewController(t)
 	mProvider := providers.NewMockProvider(ctrl)
 	mBackend := backends.NewMockBackend(ctrl)
@@ -61,7 +62,7 @@ func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider,
 		providers.KubernetesProviderName: mProvider,
 	}
 
-	return *mProvider, providers, *mBackend
+	return *mProvider, providers, mBackend
 }
 
 func getTestRecipeContext() *recipecontext.Context {
@@ -237,7 +238,7 @@ func TestAddRecipeContext(t *testing.T) {
 }
 
 func TestAddProviders(t *testing.T) {
-	mProvider, supportedProviders, mBackend := setup(t)
+	mProvider, supportedProviders, _ := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()
 
 	configTests := []struct {
@@ -246,7 +247,6 @@ func TestAddProviders(t *testing.T) {
 		modProviderErr     error
 		envConfig          recipes.Configuration
 		requiredProviders  []string
-		expectedBackend    map[string]any
 		expectedConfigFile string
 	}{
 		{
@@ -280,91 +280,71 @@ func TestAddProviders(t *testing.T) {
 				providers.KubernetesProviderName,
 				"sql",
 			},
-			expectedBackend: map[string]any{
-				"kubernetes": map[string]any{
-					"config_path":   "/home/radius/.kube/config",
-					"secret_suffix": "test-secret-suffix",
-					"namespace":     "radius-system",
-				},
-			},
+
 			expectedConfigFile: "testdata/main-provider-valid.tf.json",
 		},
-		// {
-		// 	name:           "invalid scope",
-		// 	modProviders:   nil,
-		// 	modProviderErr: errors.New("Invalid AWS provider scope"),
-		// 	envConfig: recipes.Configuration{
-		// 		Providers: datamodel.Providers{
-		// 			AWS: datamodel.ProvidersAWS{
-		// 				Scope: "invalid",
-		// 			},
-		// 		},
-		// 	},
-		// 	requiredProviders: []string{
-		// 		providers.AWSProviderName,
-		// 	},
-		// },
-		// {
-		// 	name: "empty provider",
-		// 	modProviders: []map[string]any{
-		// 		{},
-		// 	},
-		// 	modProviderErr: nil,
-		// 	envConfig:      recipes.Configuration{},
-		// 	requiredProviders: []string{
-		// 		providers.AWSProviderName,
-		// 	},
-		// 	expectedBackend: map[string]any{
-		// 		"kubernetes": map[string]any{
-		// 			"config_path":   "/home/radius/.kube/config",
-		// 			"secret_suffix": "test-secret-suffix",
-		// 			"namespace":     "radius-system",
-		// 		},
-		// 	},
-		// 	expectedConfigFile: "testdata/main-provider-empty.tf.json",
-		// },
-		// {
-		// 	name: "empty aws scope",
-		// 	modProviders: []map[string]any{
-		// 		nil,
-		// 	},
-		// 	modProviderErr: nil,
-		// 	envConfig: recipes.Configuration{
-		// 		Providers: datamodel.Providers{
-		// 			AWS: datamodel.ProvidersAWS{
-		// 				Scope: "",
-		// 			},
-		// 			Azure: datamodel.ProvidersAzure{
-		// 				Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
-		// 			},
-		// 		},
-		// 	},
-		// 	requiredProviders: []string{
-		// 		providers.AWSProviderName,
-		// 	},
-		// 	expectedBackend: map[string]any{
-		// 		"kubernetes": map[string]any{
-		// 			"config_path":   "/home/radius/.kube/config",
-		// 			"secret_suffix": "test-secret-suffix",
-		// 			"namespace":     "radius-system",
-		// 		},
-		// 	},
-		// 	expectedConfigFile: "testdata/main-provider-empty.tf.json",
-		// },
-		// {
-		// 	name: "missing azure provider",
-		// 	modProviders: []map[string]any{
-		// 		{
-		// 			"features": map[string]any{},
-		// 		},
-		// 	},
-		// 	modProviderErr: nil,
-		// 	envConfig:      recipes.Configuration{},
-		// 	requiredProviders: []string{
-		// 		providers.AzureProviderName,
-		// 	},
-		// 	expectedConfigFile: "testdata/main-provider-missingazure.tf.json",
-		// },
+		{
+			name:           "invalid scope",
+			modProviders:   nil,
+			modProviderErr: errors.New("Invalid AWS provider scope"),
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "invalid",
+					},
+				},
+			},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+			},
+		},
+		{
+			name: "empty provider",
+			modProviders: []map[string]any{
+				{},
+			},
+			modProviderErr: nil,
+			envConfig:      recipes.Configuration{},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+			},
+			expectedConfigFile: "testdata/main-provider-empty.tf.json",
+		},
+		{
+			name: "empty aws scope",
+			modProviders: []map[string]any{
+				nil,
+			},
+			modProviderErr: nil,
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "",
+					},
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+					},
+				},
+			},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+			},
+			expectedConfigFile: "testdata/main-provider-empty.tf.json",
+		},
+		{
+			name: "missing azure provider",
+			modProviders: []map[string]any{
+				{
+					"features": map[string]any{},
+				},
+			},
+			modProviderErr: nil,
+			envConfig:      recipes.Configuration{},
+			requiredProviders: []string{
+				providers.AzureProviderName,
+			},
+			expectedConfigFile: "testdata/main-provider-missingazure.tf.json",
+		},
 	}
 
 	for _, tc := range configTests {
@@ -385,8 +365,57 @@ func TestAddProviders(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			mBackend.EXPECT().BuildBackend(&resourceRecipe).Times(1).Return(tc.expectedBackend, nil)
-			_, err = tfconfig.AddBackend(&resourceRecipe, &mBackend)
+			err = tfconfig.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// assert
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func TestAddBackend(t *testing.T) {
+	_, _, mBackend := setup(t)
+	envRecipe, resourceRecipe := getTestInputs()
+	configTests := []struct {
+		name               string
+		envConfig          recipes.Configuration
+		expectedBackend    map[string]any
+		expectedConfigFile string
+	}{
+		{
+			name: "valid-backend-kubernetes",
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
+					},
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+					},
+				},
+			},
+			expectedBackend: map[string]any{
+				"kubernetes": map[string]any{
+					"config_path":   "/home/radius/.kube/config",
+					"secret_suffix": "test-secret-suffix",
+					"namespace":     "radius-system",
+				},
+			},
+			expectedConfigFile: "testdata/main-backend-kubernetes-valid.tf.json",
+		},
+	}
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(tc.expectedBackend, nil)
+			_, err := tfconfig.AddBackend(&resourceRecipe, mBackend)
 			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)

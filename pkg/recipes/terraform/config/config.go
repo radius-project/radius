@@ -46,7 +46,8 @@ func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRe
 	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	return &TerraformConfig{
-		Provider: nil,
+		Terraform: nil,
+		Provider:  nil,
 		Module: map[string]TFModuleConfig{
 			moduleName: moduleData,
 		},
@@ -163,7 +164,7 @@ func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata,
 	if err != nil {
 		return "", err
 	}
-	cfg.Terraform = TerraformDefinition{
+	cfg.Terraform = &TerraformDefinition{
 		Backend: backendConfig,
 	}
 	var secretSuffix string

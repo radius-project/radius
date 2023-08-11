@@ -1,14 +1,11 @@
 {
-  "provider": {
-    "aws": {
-      "region": "test-region"
-    },
-    "azurerm": {
-      "features": {},
-      "subscription_id": "test-sub"
-    },
-    "kubernetes": {
-      "config_path": "/home/radius/.kube/config"
+  "terraform": {
+    "backend": {
+      "kubernetes": {
+        "config_path": "/home/radius/.kube/config",
+        "namespace": "radius-system",
+        "secret_suffix": "test-secret-suffix"
+      }
     }
   },
   "module": {

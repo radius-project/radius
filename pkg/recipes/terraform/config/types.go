@@ -41,7 +41,7 @@ func (tf TFModuleConfig) SetParams(params RecipeParams) {
 // TerraformConfig represents the Terraform configuration file structure for properties populated in the configuration by Radius.
 type TerraformConfig struct {
 	// Terraform represents number of settings related to Terraform's behavior.
-	Terraform TerraformDefinition `json:"terraform"`
+	Terraform *TerraformDefinition `json:"terraform,omitempty"`
 
 	// Provider is the Terraform provider configuration.
 	Provider map[string]any `json:"provider,omitempty"`
@@ -52,5 +52,5 @@ type TerraformConfig struct {
 
 type TerraformDefinition struct {
 	// Backend defines where Terraform stores its state data files.
-	Backend map[string]interface{} `json:"backend"`
+	Backend map[string]interface{} `json:"backend,omitempty"`
 }
