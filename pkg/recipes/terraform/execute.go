@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -215,7 +214,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	// ###################### Debugging Pipeline issue ###############################
 	workspaces, current, err := tf.WorkspaceList(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("terraform error:%w", err)
 	}
 
 	// Print the list of workspaces
@@ -234,7 +233,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	// ###################### Debugging Pipeline issue ###############################
 	workspaces, current, err = tf.WorkspaceList(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("terraform error:%w", err)
 	}
 
 	// Print the list of workspaces
