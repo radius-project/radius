@@ -21,7 +21,20 @@ import (
 	"time"
 )
 
-func loadTestData(testfile string) ([]byte, error) {
+// FakeResource is a fake resource type.
+type FakeResource struct{}
+
+// # Function Explanation
+//
+// Always returns "FakeResource" as the name.
+func (f *FakeResource) ResourceTypeName() string {
+	return "FakeResource"
+}
+
+// LoadTestData reads the contents of a file and returns it as a byte slice.
+// It takes a single argument, testfile, which is the path to the file to be read.
+// If the file cannot be read, an error is returned.
+func LoadTestData(testfile string) ([]byte, error) {
 	d, err := os.ReadFile(testfile)
 	if err != nil {
 		return nil, err
@@ -29,7 +42,8 @@ func loadTestData(testfile string) ([]byte, error) {
 	return d, nil
 }
 
-func unmarshalTimeString(ts string) *time.Time {
+// UnmarshalTimeString unmarshals a string representation of a time in RFC3339 format into a time.Time object.
+func UnmarshalTimeString(ts string) *time.Time {
 	var tt timeRFC3339
 	_ = tt.UnmarshalText([]byte(ts))
 	return (*time.Time)(&tt)

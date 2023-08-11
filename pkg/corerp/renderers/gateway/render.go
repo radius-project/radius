@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"strings"
+	"strconv"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,8 +52,13 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	gtwyProperties := gateway.Properties
 
 	// Get all httpRoutes that are used by this gateway
-	for _, httpRoute := range gtwyProperties.Routes {
-		resourceID, err := resources.ParseResource(httpRoute.Destination)
+	for _, route := range gtwyProperties.Routes {
+		// Skip if destination is a URL. DNS-SD will resolve the route.
+		if (isURL(route.Destination)) {
+			continue
+		}
+
+		resourceID, err := resources.ParseResource(route.Destination)
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
@@ -139,6 +146,8 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 
 	sslPassthrough := false
 	var contourTLSConfig *contourv1.TLS
+
+	// configure TLS if it is enabled
 	if gateway.Properties.TLS != nil {
 		sslPassthrough = gateway.Properties.TLS.SSLPassthrough
 
@@ -303,11 +312,22 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 	objects := make(map[string]*contourv1.HTTPProxy)
 
 	for _, route := range gateway.Routes {
-		routeProperties := dependencies[route.Destination]
 		port := renderers.DefaultPort
-		routePort, ok := routeProperties.ComputedValues["port"].(float64)
-		if ok {
-			port = int32(routePort)
+
+		if isURL(route.Destination) {
+			_, _, urlPort, err := parseURL(route.Destination)
+			if err != nil {
+				return []rpv1.OutputResource{}, err
+			}
+			port = urlPort
+
+		} else {
+			routeProperties := dependencies[route.Destination]
+			routePort, ok := routeProperties.ComputedValues["port"].(float64)
+			if ok {
+				port = int32(routePort)
+			}
+
 		}
 
 		routeName, err := getRouteName(&route)
@@ -391,6 +411,17 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
+	// if isURL, then name is hostname (DNS-SD case)
+	if isURL(route.Destination) {
+		u, err := url.Parse(route.Destination)
+		if err != nil {
+			return "", v1.NewClientErrInvalidRequest(err.Error())
+		}
+
+		return u.Hostname(), nil
+	}
+
+	// if not URL, then name is the resourceID (HTTProute case)
 	resourceID, err := resources.ParseResource(route.Destination)
 	if err != nil {
 		return "", v1.NewClientErrInvalidRequest(err.Error())
@@ -467,3 +498,55 @@ func getPublicEndpoint(hostname string, port string, isHttps bool) string {
 
 	return fmt.Sprintf("%s://%s", scheme, authority)
 }
+
+func isURL(input string) bool {
+	_, err := url.ParseRequestURI(input)
+
+	// if first character is a slash, it's not a URL. It's a path.
+	if (err != nil || input[0] == '/') {
+		return false
+	}
+	return true
+}
+
+func parseURL(sourceURL string) (scheme string, hostname string, port int32, err error) {
+	u, err := url.Parse(sourceURL)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	scheme = u.Scheme
+	host := u.Host
+
+	hostname, strPort, err := net.SplitHostPort(host)
+	_, ok := err.(*net.AddrError)
+	if ok {
+		strPort = ""
+		hostname = host
+	} else if err != nil {
+		return "", "", 0, err
+	}
+
+	if scheme == "http" && strPort == "" {
+		strPort = "80"
+	}
+
+	if scheme == "https" && strPort == "" {
+		strPort = "443"
+	}
+
+	// bound check port
+	portInt, err := strconv.Atoi(strPort)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	if portInt < 0 || portInt > 65535 {
+		return "", "", 0, fmt.Errorf("port %d is out of range", port)
+	}
+
+	port = int32(portInt)
+
+	return scheme, hostname, port, nil
+}
+

@@ -24,7 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-const defaultRecipeName = "default"
+// DefaultRecipeName represents the default recipe name.
+const DefaultRecipeName = "default"
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
 	if state == nil {
@@ -103,22 +104,22 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
 		CreatedBy:          to.Ptr(s.CreatedBy),
 		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
-		CreatedAt:          unmarshalTimeString(s.CreatedAt),
+		CreatedAt:          UnmarshalTimeString(s.CreatedAt),
 		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
-		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+		LastModifiedAt:     UnmarshalTimeString(s.LastModifiedAt),
 	}
 }
 
 func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
 		return linkrp.LinkRecipe{
-			Name: defaultRecipeName,
+			Name: DefaultRecipeName,
 		}
 	}
 	recipe := linkrp.LinkRecipe{}
 	if r.Name == nil {
-		recipe.Name = defaultRecipeName
+		recipe.Name = DefaultRecipeName
 	} else {
 		recipe.Name = to.String(r.Name)
 	}

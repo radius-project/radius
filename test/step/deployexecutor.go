@@ -40,6 +40,10 @@ type DeployExecutor struct {
 	// Application sets the `--application` command-line parameter. This is needed in cases where
 	// the application is not defined in bicep.
 	Application string
+
+	// Environment sets the `--environment` command-line parameter. This is needed in cases where
+	// the environment is not defined in bicep.
+	Environment string
 }
 
 // # Function Explanation
@@ -58,6 +62,12 @@ func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 // WithApplication sets the application name for the DeployExecutor instance and returns the same instance.
 func (d *DeployExecutor) WithApplication(application string) *DeployExecutor {
 	d.Application = application
+	return d
+}
+
+// WithEnvironment sets the environment name for the DeployExecutor instance and returns the same instance.
+func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
+	d.Environment = environment
 	return d
 }
 
@@ -94,7 +104,7 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
+	err = cli.Deploy(ctx, templateFilePath, d.Environment, d.Application, d.Parameters...)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }

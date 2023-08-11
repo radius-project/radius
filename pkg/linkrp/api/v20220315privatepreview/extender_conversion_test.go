@@ -125,7 +125,7 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		// arrange
-		rawPayload, err := loadTestData("./testdata/" + payload.file)
+		rawPayload, err := LoadTestData("./testdata/" + payload.file)
 		require.NoError(t, err)
 		versionedResource := &ExtenderResource{}
 		err = json.Unmarshal(rawPayload, versionedResource)
@@ -233,7 +233,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.Extender{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -256,7 +256,7 @@ func TestExtender_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
