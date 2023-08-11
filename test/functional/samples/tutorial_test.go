@@ -52,8 +52,6 @@ var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO
 // You can set the variables used by vscode codelens (e.g. 'debug test', 'run test') using 'go.testEnvVars' in vscode settings.json
 // Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
 func Test_FirstApplicationSample(t *testing.T) {
-	t.Skip("Skipping test due to changes in `rad init` and dev recipes")
-
 	if !samplesRepoEnvVarSet {
 		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
 	}
@@ -64,11 +62,17 @@ func Test_FirstApplicationSample(t *testing.T) {
 	require.NoError(t, err)
 	template := filepath.Join(relPathSamplesRepo, "demo/app.bicep")
 	appName := "demo"
-	appNamespace := "default-demo"
+	appNamespace := "tutorial-demo"
 
 	test := shared.NewRPTest(t, appName, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template).WithApplication(appName),
+			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep", functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+		},
+		{
+
+			Executor: step.NewDeployExecutor(template).WithEnvironment("tutorial").WithApplication(appName),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
