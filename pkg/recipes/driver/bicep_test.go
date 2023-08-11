@@ -292,7 +292,7 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := prepareBicepRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -323,7 +323,7 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := prepareBicepRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -341,7 +341,7 @@ func Test_RecipeResponseWithoutResult(t *testing.T) {
 		Values:    map[string]any{},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := prepareBicepRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }

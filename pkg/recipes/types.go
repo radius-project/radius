@@ -105,6 +105,7 @@ type RecipeOutput struct {
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
+// outputs is the value of "result" output from the recipe deployment response.
 func (ro RecipeOutput) PrepareRecipeOutput(outputs map[string]any) (RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
