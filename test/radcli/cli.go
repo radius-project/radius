@@ -91,7 +91,7 @@ func (err *CLIError) GetFirstErrorCode() string {
 //
 // Deploy runs the rad deploy command. It checks if the template file path exists and runs the command with the
 // given parameters, returning an error if the command fails.
-func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, application string, parameters ...string) error {
+func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, environment string, application string, parameters ...string) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
@@ -100,6 +100,10 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, application
 	args := []string{
 		"deploy",
 		templateFilePath,
+	}
+
+	if environment != "" {
+		args = append(args, "--environment", environment)
 	}
 
 	if application != "" {
