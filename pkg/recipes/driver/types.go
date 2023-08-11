@@ -23,6 +23,11 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
+const (
+	// Recipe outputs are expected to be wrapped under an object named
+	resultPropertyName = "result"
+)
+
 // Driver is an interface to implement recipe deployment.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.

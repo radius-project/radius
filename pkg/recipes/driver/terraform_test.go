@@ -25,9 +25,12 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	tfjson "github.com/hashicorp/terraform-json"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
+
+	// recipe_output "github.com/project-radius/radius/pkg/recipes/output"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testcontext"
@@ -161,8 +164,9 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
-func TestTerraformDriver_Execute_InvalidContextPanics(t *testing.T) {
+func TestTerraformDriver_Execute_InvalidARMRequestContext_Panics(t *testing.T) {
 	ctx := testcontext.New(t)
+	// Do not add ARMRequestContext to the context
 
 	_, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -180,4 +184,221 @@ func TestTerraformDriver_Delete_Success(t *testing.T) {
 	err := driver.Delete(ctx, []rpv1.OutputResource{})
 	require.Error(t, err)
 	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
+}
+
+func TestGetDeployedOutputResources(t *testing.T) {
+	tests := []struct {
+		desc        string
+		stateModule *tfjson.StateModule
+		expectedIDs []string
+	}{
+		{
+			desc: "valid module",
+			stateModule: &tfjson.StateModule{
+				ChildModules: []*tfjson.StateModule{
+					{
+						Resources: []*tfjson.StateResource{
+							{
+								AttributeValues: map[string]interface{}{
+									"id": "outputResourceId1",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedIDs: []string{"outputResourceId1"},
+		},
+		{
+			desc: "nested modules",
+			stateModule: &tfjson.StateModule{
+				Resources: []*tfjson.StateResource{
+					{
+						AttributeValues: map[string]interface{}{
+							"id": "outputResourceId1",
+						},
+					},
+					{
+						AttributeValues: map[string]interface{}{
+							"id": "outputResourceId2",
+						},
+					},
+				},
+				ChildModules: []*tfjson.StateModule{
+					{
+						Resources: []*tfjson.StateResource{
+							{
+								AttributeValues: map[string]interface{}{
+									"id": "outputResourceId3",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedIDs: []string{"outputResourceId1", "outputResourceId2", "outputResourceId3"},
+		},
+		{
+			desc:        "nil module",
+			stateModule: nil,
+			expectedIDs: []string{},
+		},
+		{
+			desc: "empty module",
+			stateModule: &tfjson.StateModule{
+				ChildModules: []*tfjson.StateModule{},
+			},
+			expectedIDs: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			ids := getDeployedOutputResources(tt.stateModule)
+			require.Equal(t, tt.expectedIDs, ids)
+		})
+	}
+}
+
+func TestPrepareTFRecipeResponse2(t *testing.T) {
+	tests := []struct {
+		desc             string
+		state            *tfjson.State
+		expectedResponse recipes.RecipeOutput
+		expectedErr      bool
+	}{
+		{
+			desc: "valid state",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						resultPropertyName: {
+							Value: map[string]interface{}{
+								"values": map[string]interface{}{
+									"host": "testhost",
+									"port": json.Number("6379"),
+								},
+								"secrets": map[string]interface{}{
+									"connectionString": "testConnectionString",
+								},
+								"resources": []any{"outputResourceId1", "outputResourceId2"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										AttributeValues: map[string]interface{}{
+											"id": "outputResourceId1",
+										},
+									},
+									{
+										AttributeValues: map[string]interface{}{
+											"id": "outputResourceId2",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: recipes.RecipeOutput{
+				Values: map[string]any{
+					"host": "testhost",
+					"port": float64(6379),
+				},
+				Secrets: map[string]any{
+					"connectionString": "testConnectionString",
+				},
+				Resources: []string{"outputResourceId1", "outputResourceId2", "outputResourceId1", "outputResourceId2"},
+			},
+			expectedErr: false,
+		},
+		{
+			desc:             "nil state",
+			state:            nil,
+			expectedResponse: recipes.RecipeOutput{},
+			expectedErr:      true,
+		},
+		{
+			desc:             "empty state",
+			state:            &tfjson.State{},
+			expectedResponse: recipes.RecipeOutput{},
+			expectedErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			if tt.expectedErr {
+				recipeResponse, err := prepareTFRecipeResponse(tt.state)
+				require.Error(t, err)
+				require.Equal(t, tt.expectedResponse, recipeResponse)
+			} else {
+				recipeResponse, err := prepareTFRecipeResponse(tt.state)
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedResponse, recipeResponse)
+			}
+		})
+	}
+}
+
+func TestPrepareTFRecipeResponse(t *testing.T) {
+	tfState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				resultPropertyName: {
+					Value: map[string]interface{}{
+						"values": map[string]interface{}{
+							"host": "testhost",
+							"port": float64(6379),
+						},
+						"secrets": map[string]interface{}{
+							"connectionString": "testConnectionString",
+						},
+						"resources": []any{"outputResourceId1", "outputResourceId2"},
+					},
+				},
+			},
+			RootModule: &tfjson.StateModule{
+				ChildModules: []*tfjson.StateModule{
+					{
+						Resources: []*tfjson.StateResource{
+							{
+								AttributeValues: map[string]interface{}{
+									"id": "outputResourceId1",
+								},
+							},
+							{
+								AttributeValues: map[string]interface{}{
+									"id": "outputResourceId2",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	recipeResponse, err := prepareTFRecipeResponse(tfState)
+	require.NoError(t, err)
+	require.Equal(t, map[string]interface{}{"host": "testhost", "port": float64(6379)}, recipeResponse.Values)
+	require.Equal(t, map[string]interface{}{"connectionString": "testConnectionString"}, recipeResponse.Secrets)
+	require.Equal(t, []string{"outputResourceId1", "outputResourceId2", "outputResourceId1", "outputResourceId2"}, recipeResponse.Resources)
+
+	// Test preparing the Terraform recipe response with a nil state.
+	tfState = nil
+	recipeResponse, err = prepareTFRecipeResponse(tfState)
+	require.Equal(t, recipes.RecipeOutput{}, recipeResponse)
+	require.Error(t, err)
+
+	// Empty state
+	tfState = &tfjson.State{}
+	recipeResponse, err = prepareTFRecipeResponse(tfState)
+	require.Equal(t, recipes.RecipeOutput{}, recipeResponse)
+	require.Error(t, err)
 }

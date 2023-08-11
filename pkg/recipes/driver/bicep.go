@@ -46,10 +46,9 @@ import (
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
 const (
-	deploymentPrefix   = "recipe"
-	pollFrequency      = time.Second * 5
-	ResultPropertyName = "result"
-	recipeParameters   = "parameters"
+	deploymentPrefix = "recipe"
+	pollFrequency    = time.Second * 5
+	recipeParameters = "parameters"
 )
 
 var _ Driver = (*bicepDriver)(nil)
@@ -133,7 +132,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 
 	recipeResponse, err := prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read the recipe output %q: %w", ResultPropertyName, err)
+		return nil, fmt.Errorf("failed to read the recipe output %q: %w", resultPropertyName, err)
 	}
 
 	return &recipeResponse, nil
@@ -259,7 +258,7 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 
 	out, ok := outputs.(map[string]any)
 	if ok {
-		recipeOutput, ok := out[ResultPropertyName].(map[string]any)
+		recipeOutput, ok := out[resultPropertyName].(map[string]any)
 		if ok {
 			output, ok := recipeOutput["value"].(map[string]any)
 			if ok {
@@ -275,6 +274,52 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 				if err != nil {
 					return recipes.RecipeOutput{}, err
 				}
+			}
+		}
+	}
+
+	// process the 'resources' created by the template
+	for _, id := range resources {
+		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
+	}
+
+	// Make sure our maps are non-nil (it's just friendly).
+	if recipeResponse.Secrets == nil {
+		recipeResponse.Secrets = map[string]any{}
+	}
+	if recipeResponse.Values == nil {
+		recipeResponse.Values = map[string]any{}
+	}
+
+	return recipeResponse, nil
+}
+
+// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
+// resources created by the template.
+func prepareRecipeResponseNew(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
+	// We populate the recipe response from the 'result' output (if set)
+	// and the resources created by the template.
+	//
+	// Note that there are two ways a resource can be returned:
+	// - Implicitly when it is created in the template (it will be in 'resources').
+	// - Explicitly as part of the 'result' output.
+	//
+	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
+	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+	recipeResponse := recipes.RecipeOutput{}
+
+	out, ok := outputs.(map[string]any)
+	if ok {
+		recipeOutput, ok := out[resultPropertyName].(map[string]any)
+		if ok {
+			result, ok := recipeOutput["value"].(map[string]any)
+			if ok {
+				// output, err := recipes.PrepareRecipeOutput(result)
+				output, err := recipeResponse.PrepareRecipeOutput(result)
+				if err != nil {
+					return recipes.RecipeOutput{}, err
+				}
+				recipeResponse = output
 			}
 		}
 	}

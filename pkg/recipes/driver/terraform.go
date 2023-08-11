@@ -26,12 +26,16 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
+
+	// recipe_output "github.com/project-radius/radius/pkg/recipes/output"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
+
+	tfjson "github.com/hashicorp/terraform-json"
 )
 
 var _ Driver = (*terraformDriver)(nil)
@@ -106,4 +110,70 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	// TODO: to be implemented in follow up PR
 	return errors.New("terraform delete support is not implemented yet")
+}
+
+// prepareTFRecipeResponse populates the recipe response from the module output named "result" and the
+// resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
+func prepareTFRecipeResponse(tfState *tfjson.State) (recipes.RecipeOutput, error) {
+	// We populate the recipe response from the 'result' output (if set)
+	// and the resources created by the template.
+	//
+	// Note that there are two ways a resource can be returned:
+	// - Implicitly when it is created in the template (it will be in 'resources').
+	// - Explicitly as part of the 'result' output.
+
+	if tfState == nil || (*tfState == tfjson.State{}) {
+		return recipes.RecipeOutput{}, errors.New("terraform state is nil")
+	}
+
+	recipeResponse := recipes.RecipeOutput{}
+	moduleOutputs := tfState.Values.Outputs
+
+	if result, ok := moduleOutputs[resultPropertyName].Value.(map[string]any); ok {
+		output, err := recipeResponse.PrepareRecipeOutput(result)
+		if err != nil {
+			return recipes.RecipeOutput{}, err
+		}
+		recipeResponse = output
+	}
+
+	deployedResources := getDeployedOutputResources(tfState.Values.RootModule)
+	recipeResponse.Resources = append(recipeResponse.Resources, deployedResources...)
+
+	// Make sure our maps are non-nil (it's just friendly).
+	if recipeResponse.Secrets == nil {
+		recipeResponse.Secrets = map[string]any{}
+	}
+	if recipeResponse.Values == nil {
+		recipeResponse.Values = map[string]any{}
+	}
+
+	return recipeResponse, nil
+}
+
+// getDeployedOutputResources returns the list of IDs of the resources deployed by the Terraform module.
+// It traverses the module tree stored in the Terraform state and returns the list of resources that have
+// an 'id' attribute.
+// Note that this function is recursive.
+func getDeployedOutputResources(module *tfjson.StateModule) []string {
+	ids := []string{}
+
+	if module == nil {
+		return ids
+	}
+
+	for _, resource := range module.Resources {
+		if resource.AttributeValues != nil {
+			if id, ok := resource.AttributeValues["id"].(string); ok {
+				ids = append(ids, id)
+			}
+		}
+	}
+
+	for _, childModule := range module.ChildModules {
+		childIDs := getDeployedOutputResources(childModule)
+		ids = append(ids, childIDs...)
+	}
+
+	return ids
 }
