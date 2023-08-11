@@ -302,7 +302,7 @@
   "definitions": {
     "Application": {
       "type": "string",
-      "description": "Fully qualified resource ID for the application that the link is consumed by"
+      "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
     },
     "BasicDaprResourceProperties": {
       "type": "object",
@@ -330,11 +330,11 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
         },
         "application": {
           "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       },
       "description": "Basic properties of a Radius resource.",
@@ -354,7 +354,7 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the link at the time the operation was called",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -513,7 +513,7 @@
           "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "required": [
         "name"
       ]
