@@ -59,7 +59,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "mssql-app-ctnr-o",
+						Name: "mssql-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -68,7 +68,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mssql-app-ctnr-o"),
+						validation.NewK8sPodForResource(name, "mssql-app-ctnr-old"),
 					},
 				},
 			},
@@ -100,7 +100,7 @@ func Test_SQLDatabase_Recipe(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "sql-recipe-app-ctnr-o",
+						Name: "sql-recipe-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},

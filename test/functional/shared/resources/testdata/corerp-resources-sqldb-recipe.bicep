@@ -58,7 +58,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-recipe-app-ctnr-o'
+  name: 'sql-recipe-app-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -82,7 +82,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'sql-db-recipe-o'
+  name: 'sql-db-recipe-old'
   location: location
   properties: {
     application: app.id

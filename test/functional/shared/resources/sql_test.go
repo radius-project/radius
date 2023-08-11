@@ -45,22 +45,22 @@ func Test_SQL(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "sql-app-ctnr-o",
+						Name: "sql-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "sql-db-o",
+						Name: "sql-db-old",
 						Type: validation.O_SQLDatabasesResource,
 						App:  name,
 					},
 					{
-						Name: "sql-rte-o",
+						Name: "sql-rte-old",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "sql-ctnr-o",
+						Name: "sql-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -69,9 +69,9 @@ func Test_SQL(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "sql-app-ctnr-o"),
-						validation.NewK8sPodForResource(name, "sql-ctnr-o"),
-						validation.NewK8sServiceForResource(name, "sql-rte-o"),
+						validation.NewK8sPodForResource(name, "sql-app-ctnr-old"),
+						validation.NewK8sPodForResource(name, "sql-ctnr-old"),
+						validation.NewK8sServiceForResource(name, "sql-rte-old"),
 					},
 				},
 			},

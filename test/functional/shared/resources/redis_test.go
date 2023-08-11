@@ -40,22 +40,22 @@ func Test_RedisManualProvisioning(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-app-ctnr-o",
+						Name: "rds-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rds-ctnr-o",
+						Name: "rds-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rds-rte-o",
+						Name: "rds-rte-old",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "rds-rds-o",
+						Name: "rds-rds-old",
 						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
@@ -64,9 +64,9 @@ func Test_RedisManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rds-app-ctnr-o"),
-						validation.NewK8sPodForResource(name, "rds-ctnr-o"),
-						validation.NewK8sServiceForResource(name, "rds-rte-o"),
+						validation.NewK8sPodForResource(name, "rds-app-ctnr-old"),
+						validation.NewK8sPodForResource(name, "rds-ctnr-old"),
+						validation.NewK8sServiceForResource(name, "rds-rte-old"),
 					},
 				},
 			},
@@ -94,7 +94,7 @@ func Test_RedisRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-recipe-o",
+						Name: "rds-recipe-old",
 						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
@@ -125,7 +125,7 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-default-recipe-o",
+						Name: "rds-default-recipe-old",
 						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},

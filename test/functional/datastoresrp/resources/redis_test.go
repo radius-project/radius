@@ -25,10 +25,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_RedisManualProvisioning(t *testing.T) {
-	template := "testdata/datastoresrp-resources-redis-manualprovisioning.bicep"
-	name := "dsrp-resources-redis-manualprovisioning"
-	appNamespace := "default-dsrp-resources-redis-manualprovisioning"
+func Test_Redis_Manual(t *testing.T) {
+	template := "testdata/datastoresrp-resources-redis-manual.bicep"
+	name := "dsrp-resources-redis-manual"
+	appNamespace := "default-dsrp-resources-redis-manual"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -76,7 +76,7 @@ func Test_RedisManualProvisioning(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_RedisRecipe(t *testing.T) {
+func Test_Redis_Recipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-redis-recipe.bicep"
 	name := "dsrp-resources-redis-recipe"
 
@@ -107,7 +107,7 @@ func Test_RedisRecipe(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_RedisDefaultRecipe(t *testing.T) {
+func Test_Redis_DefaultRecipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-redis-default-recipe.bicep"
 	name := "dsrp-resources-redis-default-recipe"
 

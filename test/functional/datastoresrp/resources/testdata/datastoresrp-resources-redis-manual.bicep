@@ -4,7 +4,7 @@ param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
-  name: 'dsrp-resources-redis-manualprovisioning'
+  name: 'dsrp-resources-redis-manual'
   location: 'global'
   properties:{
     environment: environment

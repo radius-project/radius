@@ -12,7 +12,7 @@ param environment string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'dsrp-resources-mongodb-manual-provisioning'
+  name: 'dsrp-resources-mongodb-manual'
   location: 'global'
   properties: {
     environment: environment

@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rds-app-ctnr-o'
+  name: 'rds-app-ctnr-old'
   location: 'global'
   properties: {
     application: app.id
@@ -36,7 +36,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rds-ctnr-o'
+  name: 'rds-ctnr-old'
   location: 'global'
   properties: {
     application: app.id
@@ -54,7 +54,7 @@ resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview'
 }
 
 resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'rds-rte-o'
+  name: 'rds-rte-old'
   location: 'global'
   properties: {
     application: app.id
@@ -62,7 +62,7 @@ resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
 }
 
 resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
-  name: 'rds-rds-o'
+  name: 'rds-rds-old'
   location: 'global'
   properties: {
     environment: environment

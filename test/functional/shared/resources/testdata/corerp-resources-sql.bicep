@@ -34,7 +34,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-app-ctnr-o'
+  name: 'sql-app-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -58,7 +58,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'sql-db-o'
+  name: 'sql-db-old'
   location: location
   properties: {
     application: app.id
@@ -75,7 +75,7 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'sql-rte-o'
+  name: 'sql-rte-old'
   location: location
   properties: {
     application: app.id
@@ -84,7 +84,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
 }
 
 resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-ctnr-o'
+  name: 'sql-ctnr-old'
   location: location
   properties: {
     application: app.id

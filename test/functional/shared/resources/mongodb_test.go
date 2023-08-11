@@ -43,22 +43,22 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "mdb-us-app-ctnr-o",
+						Name: "mdb-us-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-ctnr-o",
+						Name: "mdb-us-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-rte-o",
+						Name: "mdb-us-rte-old",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-db-o",
+						Name: "mdb-us-db-old",
 						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 					},
@@ -67,9 +67,9 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr-o").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "mdb-us-ctnr-o").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "mdb-us-rte-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-ctnr-old").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "mdb-us-rte-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -101,12 +101,12 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongodb-app-ctnr-o",
+						Name: "mongodb-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-db-o",
+						Name: "mongodb-db-old",
 						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 					},
@@ -115,7 +115,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-app-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongodb-app-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -157,12 +157,12 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-param-ctnr-o",
+						Name: "mdb-param-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-recipe-param-db-o",
+						Name: "mdb-recipe-param-db-old",
 						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
@@ -181,7 +181,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-param-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-param-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -222,12 +222,12 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx-ctnr-o",
+						Name: "mdb-ctx-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx-o",
+						Name: "mdb-ctx-old",
 						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
@@ -246,7 +246,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr-o").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},

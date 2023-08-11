@@ -34,7 +34,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mssql-app-ctnr-o'
+  name: 'mssql-app-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -58,7 +58,7 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'mssql-db-o'
+  name: 'mssql-db-old'
   location: location
   properties: {
     application: app.id

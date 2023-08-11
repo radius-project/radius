@@ -28,10 +28,10 @@ import (
 )
 
 // Opt-out case for manual resource provisioning
-func Test_MongoDB_ManualProvisioning(t *testing.T) {
-	template := "testdata/datastoresrp-rs-mongodb-manual-provisioning.bicep"
-	name := "dsrp-resources-mongodb-manual-provisioning"
-	appNamespace := "default-cdsrp-resources-mongodb-manual-provisioning"
+func Test_MongoDB_Manual(t *testing.T) {
+	template := "testdata/datastoresrp-rs-mongodb-manual.bicep"
+	name := "dsrp-resources-mongodb-manual"
+	appNamespace := "default-cdsrp-resources-mongodb-manual"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
