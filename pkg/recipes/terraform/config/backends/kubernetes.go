@@ -39,6 +39,11 @@ func NewKubernetesBackend() Backend {
 	return &kubernetesBackend{}
 }
 
+// # Function Explanation
+// BuildKubernetesBackendConfig generates the Terraform backend configuration for Kubernetes backend.
+// It returns an error if the in cluster config cannot be retrieved, and uses default kubeconfig file if
+// in-cluster config is not present.
+// https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
 func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error) {
 	secretSuffix, err := generateSecretSuffix(resourceRecipe)
 	if err != nil {

@@ -21,6 +21,11 @@ import (
 )
 
 //go:generate mockgen -destination=./mock_backend.go -package=backends -self_package github.com/project-radius/radius/pkg/recipes/terraform/config/backends github.com/project-radius/radius/pkg/recipes/terraform/config/backends Backend
+
+// Backend is an interface for generating Terraform backend configurations.
 type Backend interface {
+	// BuildBackend generates the Terraform backend configuration for the backend.
+	// Returns a map of Terraform backend name to values representing the backend configuration.
+	// Returns an error if the backend configuration cannot be generated.
 	BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error)
 }
