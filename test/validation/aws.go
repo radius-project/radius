@@ -121,8 +121,11 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)
+	if err != nil {
+		return fmt.Errorf("failed to delete resource %s after %s: %w", resource.Identifier, maxWaitTime, err)
+	}
 
-	return fmt.Errorf("failed to delete resource %s after %s: %w", resource.Identifier, maxWaitTime, err)
+	return nil
 }
 
 // # Function Explanation
