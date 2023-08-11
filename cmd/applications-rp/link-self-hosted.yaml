@@ -1,12 +1,4 @@
-# This configuration file is used in development when launching from VS Code.
-#
-# This configures the link RP to...
-#
-# - Use Kubernetes (namespace: radius-testing) for storage and secrets
-# - Listen on port 8081
-# - Talk to UCP on port 9000
-# - Disables metrics and profiler
-#
+# This is an example of configuration file.
 environment:
   name: Dev
   roleLocation: "global"
@@ -14,12 +6,12 @@ storageProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'radius-testing'
+    namespace: 'default'
 queueProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'radius-testing'
+    namespace: 'default'
 profilerProvider:
   enabled: false
   port: 6060
@@ -47,4 +39,4 @@ logging:
   level: "info"
   json: false
 terraform:
-  path: "/tmp"
+  path: "/Users/vishwa/Documents/terraformFunctionalTest"

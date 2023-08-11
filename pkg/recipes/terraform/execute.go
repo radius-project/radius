@@ -212,7 +212,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	}
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
-	if err := tf.Init(ctx); err != nil {
+	if err := tf.Init(ctx, tfexec.Reconfigure(true)); err != nil {
 		return fmt.Errorf("terraform init failure: %w", err)
 	}
 
