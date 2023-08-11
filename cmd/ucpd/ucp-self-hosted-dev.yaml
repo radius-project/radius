@@ -1,22 +1,19 @@
-# This is an example of configuration file.
+# This configuration file is used in development when launching from VS Code.
+#
+# This configures UCP to...
+#
+# - Use Kubernetes (namespace: radius-testing) for storage and secrets
+# - Listen on port 9000
+# - Talk to Deployment Engine on port 5017
+# - Talk to Core RP on port 8080
+# - Talk to Link RP on port 8081
+# - Disables metrics and profiler
+#
 storageProvider:
-  # provider: "cosmosdb"
-  # cosmosdb:
-  #   # Create your own SQL API Cosmos DB account and set url in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_URL environment variable
-  #   url: https://radius-eastus-test.documents.azure.com:443/
-  #   database: applicationscore
-  #   # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
-  #   masterKey: set-me-in-a-different-way
-
-  # provider: "apiserver"
-  # apiserver:
-  #   context: ''
-  #   namespace: 'default'
-
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'default'
+    namespace: 'radius-testing'
 
 secretProvider:
   provider: "kubernetes"
@@ -25,11 +22,11 @@ queueProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'default'
+    namespace: 'radius-testing'
 
 profilerProvider:
   enabled: false
-  port: 6060
+  port: 6061
 
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
@@ -47,13 +44,14 @@ planes:
         Applications.Datastores: "http://localhost:8081"
         Microsoft.Resources: "http://localhost:5017"
       kind: "UCPNative"
+
 identity:
   authMethod: default
 
 ucp:
   kind: direct
   direct:
-    endpoint: "http://localhost:9000"
+    endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
 
 # Metrics configuration
 # port is not the same as metrics configuration in radius-self-hosted.yaml

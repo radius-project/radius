@@ -104,11 +104,5 @@ func generateKubernetesBackendConfig(resourceRecipe *recipes.ResourceMetadata, s
 			backendValue["in_cluster_config"] = true
 		}
 	}
-	return map[string]interface{}{
-		"kubernetes": map[string]interface{}{
-			"config_path":   clientcmd.RecommendedHomeFile,
-			"secret_suffix": secretSuffix,
-			"namespace":     namespace,
-		},
-	}, nil
+	return backend, nil
 }

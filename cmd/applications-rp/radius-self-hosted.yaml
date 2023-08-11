@@ -1,4 +1,12 @@
-# This is an example of configuration file.
+# This configuration file is used in development when launching from VS Code.
+#
+# This configures the core RP to...
+#
+# - Use Kubernetes (namespace: radius-testing) for storage and secrets
+# - Listen on port 8080
+# - Talk to UCP on port 9000
+# - Disables metrics and profiler
+#
 environment:
   name: Dev
   roleLocation: "global"
@@ -6,12 +14,12 @@ storageProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'default'
+    namespace: 'radius-testing'
 queueProvider:
   provider: "apiserver"
   apiserver:
     context: ''
-    namespace: 'default'
+    namespace: 'radius-testing'
 secretProvider:
   provider: "kubernetes"
 metricsProvider:
@@ -44,4 +52,4 @@ tracerProvider:
   zipkin:
     url: "http://localhost:9411/api/v2/spans"
 terraform:
-  path: "/Users/vishwa/Documents/terraformFunctionalTest"
+  path: "/tmp"

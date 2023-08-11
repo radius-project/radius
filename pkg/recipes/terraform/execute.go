@@ -212,24 +212,9 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	}
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
-	if err := tf.Init(ctx, tfexec.Reconfigure(true)); err != nil {
+	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("terraform init failure: %w", err)
 	}
-
-	// ###################### Debugging Pipeline issue ###############################
-	workspaces, current, err := tf.WorkspaceList(ctx)
-	if err != nil {
-		return fmt.Errorf("terraform error:%w", err)
-	}
-
-	// Print the list of workspaces
-	logger.Info("-----------current workspace:" + current + "---------")
-	logger.Info("-----------Workspaces-------------")
-	for _, workspace := range workspaces {
-		logger.Info(workspace)
-	}
-	// #################################################################################
-
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
 	if err := tf.Apply(ctx); err != nil {
