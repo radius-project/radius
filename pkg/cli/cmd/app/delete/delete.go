@@ -123,7 +123,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Warn user if they specify a Bicep filename or path instead of an application name
+	// Throw error if user specifies a Bicep filename or path instead of an application name
 	if strings.HasSuffix(r.ApplicationName, ".bicep") {
 		return clierrors.Message(bicepWarning, r.ApplicationName)
 	}
