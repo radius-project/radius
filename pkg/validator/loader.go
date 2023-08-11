@@ -115,7 +115,7 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 		// Check if specification file pathname is valid and skip global.json.
 		parsed := parseSpecFilePath(path)
 		if parsed == nil {
-			log.V(ucplog.Warn).Info(fmt.Sprintf("failed to parse %s", path))
+			log.Error(nil, fmt.Sprintf("failed to parse OpenAPI spec %s", path))
 			return nil
 		}
 
