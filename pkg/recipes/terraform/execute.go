@@ -218,10 +218,10 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	}
 
 	// Print the list of workspaces
-	fmt.Printf("-----------current workspace:%s---------", current)
-	fmt.Println("-----------Workspaces-------------")
+	logger.Info("-----------current workspace:" + current + "---------")
+	logger.Info("-----------Workspaces-------------")
 	for _, workspace := range workspaces {
-		fmt.Println(workspace)
+		logger.Info(workspace)
 	}
 	// #################################################################################
 	// Initialize Terraform
@@ -237,10 +237,10 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	}
 
 	// Print the list of workspaces
-	fmt.Printf("-----------current workspace:%s---------", current)
-	fmt.Println("-----------Workspaces-------------")
+	logger.Info("-----------current workspace:" + current + "---------")
+	logger.Info("-----------Workspaces-------------")
 	for _, workspace := range workspaces {
-		fmt.Println(workspace)
+		logger.Info(workspace)
 	}
 	// #################################################################################
 
