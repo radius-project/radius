@@ -213,6 +213,18 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	}
 
 	// ###################### Debugging Pipeline issue ###############################
+
+	newWorkspace := "radius"
+	err = tf.WorkspaceNew(ctx, newWorkspace)
+	if err != nil {
+		return fmt.Errorf("create new workspace error:%w", err)
+	}
+
+	// Select the new workspace as default
+	err = tf.WorkspaceSelect(ctx, newWorkspace)
+	if err != nil {
+		return fmt.Errorf("selecting workspace error:%w", err)
+	}
 	workspaces, current, err := tf.WorkspaceList(ctx)
 	if err != nil {
 		log.Fatal(err)
