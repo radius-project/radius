@@ -55,6 +55,11 @@
       "description": "Specifies the resource id of the application",
       "type": "string"
     },
+    "Parameters": {
+      "type": "object",
+      "properties": {},
+      "description": "Key/value parameters to pass into the recipe at deployment"
+    },
     "BasicResourceProperties": {
       "description": "Basic properties of a Radius resource.",
       "type": "object",

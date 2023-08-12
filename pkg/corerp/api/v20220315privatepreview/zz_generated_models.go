@@ -616,16 +616,16 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
-// ExtenderList - Object that includes an array of Extender and a possible link for next set
+// ExtenderList - Object that includes an array of Extender and a possible portable resource for next set.
 type ExtenderList struct {
 	// The link used to fetch the next page of Extender list.
 	NextLink *string
 
-	// List of Extender resources
-	Value []*ExtenderResponseResource
+	// List of Extender portable resources.
+	Value []*ExtenderResource `json:"value,omitempty"`
 }
 
-// ExtenderProperties - Extender link properties
+// ExtenderProperties - Extender portable resource properties.
 type ExtenderProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string
@@ -636,23 +636,29 @@ type ExtenderProperties struct {
 	// The resource id of the environment linked to the resource
 	Environment *string
 
-	// The secret values for the given Extender resource
-	Secrets map[string]any
+	// The recipe used to automatically deploy underlying infrastructure for the Extender portable resource.
+	Recipe *RecipeDef `json:"recipe,omitempty"`
 
-	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
-	ProvisioningState *ProvisioningState
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// The secret values for the given Extender portable resource.
+	Secrets map[string]interface{} `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus
 }
 
-// ExtenderResource - Extender link
+// ExtenderResource - Extender portable resource.
 type ExtenderResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Extender link properties
-	Properties *ExtenderProperties
+	// REQUIRED; Extender portable resource properties.
+	Properties *ExtenderProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string
@@ -1064,7 +1070,7 @@ type Recipe struct {
 	LinkType *string
 
 	// Name of the recipe registered to the environment.
-	Name *string
+	Name *string  `json:"name,omitempty"`
 }
 
 // RecipeMetadataProperties - Properties of a Recipe linked to an Environment.
@@ -1081,6 +1087,24 @@ type RecipeMetadataProperties struct {
 	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
 // for other module sources.
 	TemplateVersion *string
+}
+
+// RecipeDef - The recipe used to automatically deploy underlying infrastructure for a portable resource.
+type RecipeDef struct {
+	// REQUIRED; The name of the recipe within the environment to use.
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment.
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// RecipeDef - The recipe used to automatically deploy underlying infrastructure for a portable resource.
+type RecipeDef struct {
+	// REQUIRED; The name of the recipe within the environment to use.
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment.
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
