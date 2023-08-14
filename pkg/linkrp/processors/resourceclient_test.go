@@ -19,7 +19,6 @@ package processors
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -386,18 +385,6 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 	}
 }
 
-func handleSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
-	return handleJSONResponse(t, v1.AsyncOperationStatus{
-		Status: v1.ProvisioningStateSucceeded,
-	}, 200)
-}
-
-func handleFailure(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
-	return handleJSONResponse(t, v1.AsyncOperationStatus{
-		Status: v1.ProvisioningStateFailed,
-	}, 400)
-}
-
 func handleDeleteSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
@@ -405,20 +392,12 @@ func handleDeleteSuccess(t *testing.T) func(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func handleDeleteInitiatedAsync(t *testing.T, url string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		w.Header().Set("Azure-AsyncOperation", url)
-		w.WriteHeader(202)
-	}
-}
-
 func handleJSONResponse(t *testing.T, response any, statusCode int) func(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("in handleJSONResponse")
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		b, err := json.Marshal(&response)
 		require.NoError(t, err)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		_, err = w.Write(b)

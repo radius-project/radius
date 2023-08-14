@@ -173,7 +173,6 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID,
 	// For AWS resources, the server does not yet validate the API version.
 	//
 	// In the future we should change this to look up API versions dynamically like we do for ARM.
-
 	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		return err
@@ -181,11 +180,9 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID,
 
 	poller, err := client.BeginDelete(ctx, id.Name(), nil)
 	if err != nil {
-		// If we failed to start the deletion, return the error
 		return err
 	}
 
-	// If we successfully started the deletion, wait for it to complete.
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		return err
