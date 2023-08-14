@@ -160,20 +160,13 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 // AddBackend adds backend configurations to store Terraform state file for the deployment.
 // Save() must be called to save the generated backend config.
 // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (string, error) {
+func (cfg *TerraformConfig) AddBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (map[string]any, error) {
 	backendConfig, err := backend.BuildBackend(resourceRecipe)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	cfg.Terraform = &TerraformDefinition{
 		Backend: backendConfig,
 	}
-	var secretSuffix string
-	if backendDetails, ok := backendConfig["kubernetes"]; ok {
-		backendMap := backendDetails.(map[string]any)
-		if secret, ok := backendMap["secret_suffix"]; ok {
-			secretSuffix = secret.(string)
-		}
-	}
-	return secretSuffix, nil
+	return backendConfig, nil
 }

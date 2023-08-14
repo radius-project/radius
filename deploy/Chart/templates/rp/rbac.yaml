@@ -23,6 +23,7 @@ rules:
   - patch
   - update
   - watch
+# Adding coordination.k8s.io api group as terraform need to access leases resource for backend initialization.
 - apiGroups:
   - coordination.k8s.io
   resources:

@@ -109,6 +109,8 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	if err != nil {
 		return nil, err
 	}
+	// verifying if kubernetes secret is created as part of terraform init
+	// this is valid only for the backend of type kubernetes
 	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet, secretSuffix)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -175,9 +177,18 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return "", err
 	}
 
-	secretSuffix, err := tfConfig.AddBackend(options.ResourceRecipe, backends.NewKubernetesBackend())
+	backendConfig, err := tfConfig.AddBackend(options.ResourceRecipe, backends.NewKubernetesBackend())
 	if err != nil {
 		return "", err
+	}
+	// Parsing the secret_suffix property from backend config to use it to verify secret creation during terraform init.
+	// This is only used for the backend of type kubernetes and should be moved inside an if block when we add more backends.
+	var secretSuffix string
+	if backendDetails, ok := backendConfig["kubernetes"]; ok {
+		backendMap := backendDetails.(map[string]any)
+		if secret, ok := backendMap["secret_suffix"]; ok {
+			secretSuffix = secret.(string)
+		}
 	}
 
 	// Populate recipecontext into TF JSON config only if the downloaded module has a context variable.
@@ -224,6 +235,8 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	return nil
 }
 
+// verifyKubernetesSecret is used to verify if the secret is created as part of terraform backend initialization.
+// It takes secret_suffix created during AddBackend as input and looks for the secret in radius-system namespace
 func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface, secretSuffix string) error {
 	_, err := k8s.CoreV1().Secrets(radiusNameSpace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
 	if err != nil {
