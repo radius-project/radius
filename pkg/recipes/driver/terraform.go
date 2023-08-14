@@ -27,7 +27,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
 
-	// recipe_output "github.com/project-radius/radius/pkg/recipes/output"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -134,7 +133,7 @@ func prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, erro
 	recipeResponse := &recipes.RecipeOutput{}
 	moduleOutputs := tfState.Values.Outputs
 	if moduleOutputs != nil {
-		if result, ok := moduleOutputs[resultPropertyName].Value.(map[string]any); ok {
+		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
 			err := recipeResponse.PrepareRecipeResponse(result)
 			if err != nil {
 				return &recipes.RecipeOutput{}, err

@@ -45,4 +45,6 @@ type TerraformConfig struct {
 
 	// Module is the Terraform module configuration.
 	Module map[string]TFModuleConfig `json:"module"`
+
+	Output map[string]any `json:"output,omitempty"`
 }

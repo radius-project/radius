@@ -101,7 +101,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	expectedTFState := &tfjson.State{
 		Values: &tfjson.StateValues{
 			Outputs: map[string]*tfjson.StateOutput{
-				resultPropertyName: {
+				recipes.ResultPropertyName: {
 					Value: map[string]interface{}{
 						"values": map[string]interface{}{
 							"host": "myrediscache.redis.cache.windows.net",
@@ -179,7 +179,7 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	expectedTFState := &tfjson.State{
 		Values: &tfjson.StateValues{
 			Outputs: map[string]*tfjson.StateOutput{
-				resultPropertyName: {
+				recipes.ResultPropertyName: {
 					Value: map[string]interface{}{
 						"values": map[string]interface{}{
 							"host": "myrediscache.redis.cache.windows.net",
@@ -307,7 +307,7 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{
 					Outputs: map[string]*tfjson.StateOutput{
-						resultPropertyName: {
+						recipes.ResultPropertyName: {
 							Value: map[string]interface{}{
 								"values": map[string]interface{}{
 									"host": "testhost",
@@ -385,7 +385,7 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 	tfState := &tfjson.State{
 		Values: &tfjson.StateValues{
 			Outputs: map[string]*tfjson.StateOutput{
-				resultPropertyName: {
+				recipes.ResultPropertyName: {
 					Value: map[string]interface{}{
 						"values": map[string]interface{}{
 							"host": "testhost",

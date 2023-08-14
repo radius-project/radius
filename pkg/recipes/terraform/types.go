@@ -30,7 +30,6 @@ import (
 
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
-	// Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error)
 	Deploy(ctx context.Context, options Options) (*tfjson.State, error)
 }
 

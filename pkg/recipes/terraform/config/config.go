@@ -154,3 +154,17 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 
 	return providerConfigs, nil
 }
+
+// Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
+// Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddOutputs(localModuleName, workingDir string) error {
+	cfg.Output = map[string]any{
+		recipes.ResultPropertyName: map[string]any{
+			"value":     "${module." + localModuleName + ".result}",
+			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
+		},
+	}
+
+	return nil
+}

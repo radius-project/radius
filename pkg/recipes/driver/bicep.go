@@ -130,7 +130,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 
 	recipeResponse, err := prepareBicepRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read the recipe output %q: %w", resultPropertyName, err)
+		return nil, fmt.Errorf("failed to read the recipe output %q: %w", recipes.ResultPropertyName, err)
 	}
 
 	return recipeResponse, nil
@@ -309,7 +309,7 @@ func prepareBicepRecipeResponse(outputs any, resources []*deployments.ResourceRe
 	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok {
-		if result, ok := out[resultPropertyName].(map[string]any); ok {
+		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
 			if resultValue, ok := result["value"].(map[string]any); ok {
 				err := recipeResponse.PrepareRecipeResponse(resultValue)
 				if err != nil {

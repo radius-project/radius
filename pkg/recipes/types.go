@@ -78,6 +78,9 @@ type ResourceMetadata struct {
 const (
 	TemplateKindBicep     = "bicep"
 	TemplateKindTerraform = "terraform"
+
+	// Recipe outputs are expected to be wrapped under an object named
+	ResultPropertyName = "result"
 )
 
 var (
