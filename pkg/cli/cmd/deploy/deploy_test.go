@@ -128,6 +128,15 @@ func Test_Validate(t *testing.T) {
 					Return(v20220315privatepreview.EnvironmentResource{}, nil).
 					Times(1)
 			},
+			ValidateCallback: func(t *testing.T, obj framework.Runner) {
+				runner := obj.(*Runner)
+				scope := "/planes/radius/local/resourceGroups/test-resource-group"
+				environmentID := scope + "/providers/applications.core/environments/prod"
+				applicationID := scope + "/providers/applications.core/applications/my-app"
+				require.Equal(t, scope, runner.Workspace.Scope)
+				require.Equal(t, environmentID, runner.Workspace.Environment)
+				require.Equal(t, clients.RadiusProvider{ApplicationID: applicationID, EnvironmentID: environmentID}, *runner.Providers.Radius)
+			},
 		},
 		{
 			Name:          "rad deploy - app set by directory config",

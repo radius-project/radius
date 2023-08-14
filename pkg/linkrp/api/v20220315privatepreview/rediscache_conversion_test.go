@@ -132,7 +132,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testset {
 		// arrange
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &RedisCacheResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -290,7 +290,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset1 {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.RedisCache{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -312,7 +312,7 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 	testset := []string{"rediscacheresource-invalid.json", "rediscacheresource-invalid2.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload, err := loadTestData("./testdata/" + payload)
+		rawPayload, err := LoadTestData("./testdata/" + payload)
 		require.NoError(t, err)
 		versionedResource := &RedisCacheResource{}
 		err = json.Unmarshal(rawPayload, versionedResource)
@@ -335,7 +335,7 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -348,7 +348,7 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rediscachesecrets.json")
+	rawPayload, err := LoadTestData("./testdata/rediscachesecrets.json")
 	require.NoError(t, err)
 	versioned := &RedisCacheSecrets{}
 	err = json.Unmarshal(rawPayload, versioned)
@@ -367,7 +367,7 @@ func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rediscachesecretsdatamodel.json")
+	rawPayload, err := LoadTestData("./testdata/rediscachesecretsdatamodel.json")
 	require.NoError(t, err)
 	secrets := &datamodel.RedisCacheSecrets{}
 	err = json.Unmarshal(rawPayload, secrets)
@@ -389,7 +389,7 @@ func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

@@ -285,7 +285,7 @@ func (ct RPTest) Test(t *testing.T) {
 			if step.SkipKubernetesOutputResourceValidation {
 				t.Logf("skipping validation of resources...")
 			} else if step.RPResources == nil || len(step.RPResources.Resources) == 0 {
-				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
+				require.Fail(t, "no resource set was specified and SkipKubernetesOutputResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
