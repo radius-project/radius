@@ -285,7 +285,7 @@ func (ct RPTest) Test(t *testing.T) {
 			if step.SkipKubernetesOutputResourceValidation {
 				t.Logf("skipping validation of resources...")
 			} else if step.RPResources == nil || len(step.RPResources.Resources) == 0 {
-				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
+				require.Fail(t, "no resource set was specified and SkipKubernetesOutputResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
@@ -338,10 +338,11 @@ func (ct RPTest) Test(t *testing.T) {
 
 					// Use the AWS CloudControl.Delete method to delete the resource
 					err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
-					require.NoErrorf(t, err, "failed to delete %s", resource.Name)
-					t.Logf("finished deleting %s", ct.Description)
+					if err != nil {
+						t.Logf("failed to delete %s: %s", resource.Name, err)
+					}
 
-					// Retry
+					// Ensure that the resource is deleted with retries
 					notFound := false
 					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
@@ -360,6 +361,7 @@ func (ct RPTest) Test(t *testing.T) {
 							time.Sleep(10 * time.Second)
 						}
 					}
+
 					require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
 					t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 				} else {

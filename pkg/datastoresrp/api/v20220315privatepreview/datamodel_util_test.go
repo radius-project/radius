@@ -17,11 +17,13 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
+	"fmt"
 	"testing"
-	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-
+	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,19 +65,6 @@ func TestFromProvisioningStateDataModel(t *testing.T) {
 		sc := fromProvisioningStateDataModel(testCase.datamodel)
 		require.Equal(t, testCase.versioned, *sc)
 	}
-}
-
-func TestUnmarshalTimeString(t *testing.T) {
-	parsedTime := unmarshalTimeString("2021-09-24T19:09:00.000000Z")
-	require.NotNil(t, parsedTime)
-
-	require.Equal(t, 2021, parsedTime.Year())
-	require.Equal(t, time.Month(9), parsedTime.Month())
-	require.Equal(t, 24, parsedTime.Day())
-
-	parsedTime = unmarshalTimeString("")
-	require.NotNil(t, parsedTime)
-	require.Equal(t, 1, parsedTime.Year())
 }
 
 func TestFromSystemDataModel(t *testing.T) {
@@ -123,5 +112,179 @@ func TestFromSystemDataModel(t *testing.T) {
 			tt.LastModifiedAt = "0001-01-01T00:00:00Z"
 		}
 		require.Equal(t, tt.LastModifiedAt, string(c))
+	}
+}
+
+func TestToResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		dm := toResourcesDataModel(tt.VersionedResources)
+		require.Equal(t, tt.DMResources, dm)
+
+	}
+}
+
+func TestFromResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		versioned := fromResourcesDataModel(tt.DMResources)
+		require.Equal(t, tt.VersionedResources, versioned)
+
+	}
+}
+
+func TestToResourceProvisiongDataModel(t *testing.T) {
+	testset := []struct {
+		versioned ResourceProvisioning
+		datamodel linkrp.ResourceProvisioning
+		err       error
+	}{
+		{
+			ResourceProvisioningManual,
+			linkrp.ResourceProvisioningManual,
+			nil,
+		},
+		{
+			ResourceProvisioningRecipe,
+			linkrp.ResourceProvisioningRecipe,
+			nil,
+		},
+		{
+			"",
+			"",
+			&v1.ErrModelConversion{
+				PropertyName: "$.properties.resourceProvisioning",
+				ValidValue:   fmt.Sprintf("one of %s", PossibleResourceProvisioningValues()),
+			},
+		},
+	}
+	for _, tt := range testset {
+		sc, err := toResourceProvisiongDataModel(&tt.versioned)
+
+		if tt.err != nil {
+			require.EqualError(t, err, tt.err.Error())
+			continue
+		}
+
+		require.NoError(t, err)
+		require.Equal(t, tt.datamodel, sc)
+	}
+}
+
+func TestFromResourceProvisiongDataModel(t *testing.T) {
+	testCases := []struct {
+		datamodel linkrp.ResourceProvisioning
+		versioned ResourceProvisioning
+	}{
+		{linkrp.ResourceProvisioningManual, ResourceProvisioningManual},
+		{linkrp.ResourceProvisioningRecipe, ResourceProvisioningRecipe},
+		{"", ResourceProvisioningRecipe},
+	}
+
+	for _, testCase := range testCases {
+		sc := fromResourceProvisioningDataModel(testCase.datamodel)
+		require.Equal(t, testCase.versioned, *sc)
+	}
+}
+func TestToRecipeDataModel(t *testing.T) {
+	testset := []struct {
+		versioned *Recipe
+		datamodel linkrp.LinkRecipe
+	}{
+		{
+			nil,
+			linkrp.LinkRecipe{
+				Name: v20220315privatepreview.DefaultRecipeName,
+			},
+		},
+		{
+			&Recipe{
+				Name: to.Ptr("test"),
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			linkrp.LinkRecipe{
+				Name: "test",
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+		},
+		{
+			&Recipe{
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			linkrp.LinkRecipe{
+				Name: v20220315privatepreview.DefaultRecipeName,
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	for _, testCase := range testset {
+		sc := toRecipeDataModel(testCase.versioned)
+		require.Equal(t, testCase.datamodel, sc)
+	}
+}
+
+func TestFromRecipeDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []linkrp.LinkRecipe
+		VersionedResources []*Recipe
+	}{
+		{
+			DMResources: []linkrp.LinkRecipe{{
+				Name: v20220315privatepreview.DefaultRecipeName,
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			}},
+			VersionedResources: []*Recipe{{
+				Name: to.Ptr(v20220315privatepreview.DefaultRecipeName),
+				Parameters: map[string]any{
+					"foo": "bar",
+				},
+			},
+			},
+		},
+	}
+
+	for _, tt := range testset {
+		var versioned []*Recipe
+		for _, dm := range tt.DMResources {
+			versioned = append(versioned, fromRecipeDataModel(dm))
+		}
+		require.Equal(t, tt.VersionedResources, versioned)
+
 	}
 }

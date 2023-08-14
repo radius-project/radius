@@ -35,6 +35,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
@@ -91,6 +92,7 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1)),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{

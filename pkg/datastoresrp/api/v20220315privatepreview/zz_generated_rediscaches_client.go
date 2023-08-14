@@ -58,7 +58,7 @@ pl: pl,
 // CreateOrUpdate - Creates or updates a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the RedisCache portable resource
+// redisCacheName - The name of the Redis cache portable resource
 // resource - Resource create parameters.
 // options - RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate
 // method.
@@ -116,7 +116,7 @@ func (client *RedisCachesClient) createOrUpdateHandleResponse(resp *http.Respons
 // Delete - Deletes an existing RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the RedisCache portable resource
+// redisCacheName - The name of the Redis cache portable resource
 // options - RedisCachesClientDeleteOptions contains the optional parameters for the RedisCachesClient.Delete method.
 func (client *RedisCachesClient) Delete(ctx context.Context, redisCacheName string, options *RedisCachesClientDeleteOptions) (RedisCachesClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, redisCacheName, options)
@@ -169,7 +169,7 @@ func (client *RedisCachesClient) deleteHandleResponse(resp *http.Response) (Redi
 // Get - Retrieves information about a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the RedisCache portable resource
+// redisCacheName - The name of the Redis cache portable resource
 // options - RedisCachesClientGetOptions contains the optional parameters for the RedisCachesClient.Get method.
 func (client *RedisCachesClient) Get(ctx context.Context, redisCacheName string, options *RedisCachesClientGetOptions) (RedisCachesClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, redisCacheName, options)
@@ -270,10 +270,10 @@ func (client *RedisCachesClient) listByRootScopeHandleResponse(resp *http.Respon
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified RedisCache resource
+// ListSecrets - Lists secrets values for the specified Redis cache resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the RedisCache portable resource
+// redisCacheName - The name of the Redis cache portable resource
 // options - RedisCachesClientListSecretsOptions contains the optional parameters for the RedisCachesClient.ListSecrets method.
 func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName string, options *RedisCachesClientListSecretsOptions) (RedisCachesClientListSecretsResponse, error) {
 	req, err := client.listSecretsCreateRequest(ctx, redisCacheName, options)

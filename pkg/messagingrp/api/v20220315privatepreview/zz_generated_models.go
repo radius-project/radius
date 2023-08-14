@@ -12,10 +12,10 @@ import "time"
 
 // BasicDaprResourceProperties - Basic properties of a Dapr component object.
 type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
@@ -28,10 +28,10 @@ type BasicDaprResourceProperties struct {
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Status of a resource.
@@ -138,10 +138,10 @@ type RabbitMQListSecretsResult struct {
 
 // RabbitMQQueueProperties - RabbitMQQueue portable resource properties
 type RabbitMQQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The hostname of the RabbitMQ instance
@@ -251,7 +251,7 @@ type RabbitMqQueuesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`

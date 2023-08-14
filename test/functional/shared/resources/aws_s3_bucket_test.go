@@ -68,6 +68,7 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 			Executor:                               step.NewDeployExecutor(template, "bucketName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
