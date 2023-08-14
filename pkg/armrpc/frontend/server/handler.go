@@ -157,7 +157,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	// Ensure that the current route is not registered before. We logs the warning message if the route is registered before.
 	duplicated := opts.ParentRouter.Match(chi.NewRouteContext(), opts.Method.HTTPMethod(), opts.Path)
 	if duplicated {
-		logger.V(ucplog.Error).Info(fmt.Sprintf("Warning: skipping handler registration because '%s %s' has been registered before.", opts.Method, opts.Path))
+		logger.Info(fmt.Sprintf("Warning: skipping handler registration because '%s %s' has been registered before.", opts.Method, opts.Path))
 		return nil
 	}
 
