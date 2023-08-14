@@ -29,10 +29,10 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_Extender_Manual(t *testing.T) {
-	template := "testdata/corerp-resources-extender.bicep"
-	name := "corerp-resources-extender"
-	appNamespace := "default-corerp-resources-extender"
+func Test_LinkRP_Extender_Manual(t *testing.T) {
+	template := "testdata/linkrp-resources-extender.bicep"
+	name := "linkrp-resources-extender"
+	appNamespace := "default-linkrp-resources-extender"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -44,20 +44,20 @@ func Test_Extender_Manual(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "extr-ctnr",
+						Name: "extr-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "extr-twilio",
-						Type: validation.ExtendersResource,
+						Name: "extr-twilio-old",
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "extr-ctnr"),
+						validation.NewK8sPodForResource(name, "extr-ctnr-old"),
 					},
 				},
 			},
@@ -67,9 +67,9 @@ func Test_Extender_Manual(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_Extender_Recipe(t *testing.T) {
-	template := "testdata/corerp-resources-extender-recipe.bicep"
-	name := "corerp-resources-extender-recipe"
+func Test_LinkRP_Extender_Recipe(t *testing.T) {
+	template := "testdata/linkrp-resources-extender-recipe.bicep"
+	name := "linkrp-resources-extender-recipe"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -77,7 +77,7 @@ func Test_Extender_Recipe(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-extender-recipe-env",
+						Name: "linkrp-resources-extender-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -85,8 +85,8 @@ func Test_Extender_Recipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "extender-recipe",
-						Type: validation.ExtendersResource,
+						Name: "extender-recipe-old",
+						Type: validation.O_ExtendersResource,
 						App:  name,
 					},
 				},
@@ -98,7 +98,7 @@ func Test_Extender_Recipe(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_Extender_RecipeAWS(t *testing.T) {
+func Test_LinkRP_Extender_RecipeAWS(t *testing.T) {
 	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set
@@ -107,9 +107,9 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
 	}
 
-	template := "testdata/corerp-resources-extenders-aws-s3-recipe.bicep"
-	name := "corerp-resources-extenders-aws-s3-recipe"
-	appName := "corerp-resources-extenders-aws-s3-recipe-app"
+	template := "testdata/linkrp-resources-extenders-aws-s3-recipe.bicep"
+	name := "linkrp-resources-extenders-aws-s3-recipe"
+	appName := "linkrp-resources-extenders-aws-s3-recipe-app"
 	bucketName := generateS3BucketName()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
@@ -125,16 +125,16 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-extenders-aws-s3-recipe-env",
+						Name: "linkrp-resources-extenders-aws-s3-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-extenders-aws-s3-recipe-app",
+						Name: "linkrp-resources-extenders-aws-s3-recipe-app",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-extenders-aws-s3-recipe",
-						Type: validation.ExtendersResource,
+						Name: "linkrp-resources-extenders-aws-s3-recipe",
+						Type: validation.O_ExtendersResource,
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
 							{
