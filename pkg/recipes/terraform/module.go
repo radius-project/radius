@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 )
 
@@ -36,6 +38,9 @@ type moduleInspectResult struct {
 
 	// RequiredProviders is a list of names of required providers for the module.
 	RequiredProviders []string
+
+	// ResultOutputExists is true if the module contains an output named "result".
+	ResultOutputExists bool
 
 	// We can add more inspection results here in the future.
 }
@@ -64,6 +69,11 @@ func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectRe
 	// Extract the list of required providers.
 	for providerName := range mod.RequiredProviders {
 		result.RequiredProviders = append(result.RequiredProviders, providerName)
+	}
+
+	// Ensure that the module has a result output.
+	if _, ok := mod.Outputs[recipes.ResultPropertyName]; ok {
+		result.ResultOutputExists = true
 	}
 
 	return result, nil

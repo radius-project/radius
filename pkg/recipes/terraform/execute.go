@@ -177,7 +177,9 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	}
 
 	// Add outputs to the generated Terraform config.
-	tfConfig.AddOutputs(localModuleName, workingDir)
+	if loadedModule.ResultOutputExists {
+		tfConfig.AddOutputs(localModuleName, workingDir)
+	}
 
 	// Add any future configurations here.
 

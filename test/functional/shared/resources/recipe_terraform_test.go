@@ -69,6 +69,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 						Type: validation.ExtendersResource,
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
+							// Azure storage account, container and blob.
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  "RecipeResource0",
