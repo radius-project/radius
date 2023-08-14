@@ -17,10 +17,10 @@ model BasicResourceProperties {
   @visibility("read")
   status?: ResourceStatus;
 
-  @doc("Fully qualified resource ID for the environment that the link is linked to")
+  @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
   environment: string;
 
-  @doc("Fully qualified resource ID for the application that the link is consumed by")
+  @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
   application?: Application
 }
 
@@ -41,7 +41,7 @@ model ResourceStatus {
 @doc("Properties of an output resource.")
 model OutputResource {}
 
-@doc("Fully qualified resource ID for the application that the link is consumed by")
+@doc("Fully qualified resource ID for the application that the portable resource is consumed by")
 scalar Application extends string;
 
 @doc("Describes a reference to an existing resource")
@@ -50,7 +50,7 @@ model ResourceReference {
   id: string
 }
 
-@doc("Provisioning state of the link at the time the operation was called")
+@doc("Provisioning state of the portable resource at the time the operation was called")
 enum ProvisioningState {
   Succeeded,
   Failed,
@@ -67,7 +67,7 @@ enum ResourceProvisioning {
     manual,
 }
 
-@doc("The recipe used to automatically deploy underlying infrastructure for a link")
+@doc("The recipe used to automatically deploy underlying infrastructure for a portable resource")
 model Recipe{
   @doc("The name of the recipe within the environment to use")
   name: string;

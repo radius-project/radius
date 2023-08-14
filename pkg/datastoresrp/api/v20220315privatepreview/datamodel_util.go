@@ -17,10 +17,11 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"time"
+	"fmt"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 )
 
@@ -71,28 +72,44 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 	return &converted
 }
 
-func unmarshalTimeString(ts string) *time.Time {
-	var tt timeRFC3339
-	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(&tt)
+func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) (linkrp.ResourceProvisioning, error) {
+	if provisioning == nil {
+		return linkrp.ResourceProvisioningRecipe, nil
+	}
+	switch *provisioning {
+	case ResourceProvisioningManual:
+		return linkrp.ResourceProvisioningManual, nil
+	case ResourceProvisioningRecipe:
+		return linkrp.ResourceProvisioningRecipe, nil
+	default:
+		return "", &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
 }
 
-func fromSystemDataModel(s v1.SystemData) *SystemData {
-	return &SystemData{
-		CreatedBy:          to.Ptr(s.CreatedBy),
-		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
-		CreatedAt:          unmarshalTimeString(s.CreatedAt),
-		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
-		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning) *ResourceProvisioning {
+	var converted ResourceProvisioning
+	switch provisioning {
+	case linkrp.ResourceProvisioningManual:
+		converted = ResourceProvisioningManual
+	default:
+		converted = ResourceProvisioningRecipe
 	}
+
+	return &converted
 }
 
 func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
-	recipe := linkrp.LinkRecipe{
-		Name: to.String(r.Name),
+	if r == nil {
+		return linkrp.LinkRecipe{
+			Name: v20220315privatepreview.DefaultRecipeName,
+		}
 	}
-
+	recipe := linkrp.LinkRecipe{}
+	if r.Name == nil {
+		recipe.Name = v20220315privatepreview.DefaultRecipeName
+	} else {
+		recipe.Name = to.String(r.Name)
+	}
 	if r.Parameters != nil {
 		recipe.Parameters = r.Parameters
 	}
@@ -103,5 +120,42 @@ func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
 	return &Recipe{
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
+	}
+}
+
+func toResourcesDataModel(r []*ResourceReference) []*linkrp.ResourceReference {
+	if r == nil {
+		return nil
+	}
+	resources := make([]*linkrp.ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &linkrp.ResourceReference{
+			ID: to.String(resource.ID),
+		}
+	}
+	return resources
+}
+
+func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference {
+	if r == nil {
+		return nil
+	}
+	resources := make([]*ResourceReference, len(r))
+	for i, resource := range r {
+		resources[i] = &ResourceReference{
+			ID: to.Ptr(resource.ID),
+		}
+	}
+	return resources
+}
+
+func fromSystemDataModel(s v1.SystemData) *SystemData {
+	return &SystemData{
+		CreatedBy:          to.Ptr(s.CreatedBy),
+		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
+		CreatedAt:          v20220315privatepreview.UnmarshalTimeString(s.CreatedAt),
+		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
+		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
+		LastModifiedAt:     v20220315privatepreview.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }

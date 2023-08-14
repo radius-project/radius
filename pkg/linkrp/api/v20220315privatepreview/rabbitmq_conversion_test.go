@@ -115,7 +115,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &RabbitMQMessageQueueResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -216,7 +216,7 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.RabbitMQMessageQueue{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -254,7 +254,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *test
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &RabbitMQMessageQueueResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -274,7 +274,7 @@ func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -287,7 +287,7 @@ func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rabbitmqsecrets.json")
+	rawPayload, err := LoadTestData("./testdata/rabbitmqsecrets.json")
 	require.NoError(t, err)
 	versioned := &RabbitMQSecrets{}
 	err = json.Unmarshal(rawPayload, versioned)
@@ -304,7 +304,7 @@ func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rabbitmqsecretsdatamodel.json")
+	rawPayload, err := LoadTestData("./testdata/rabbitmqsecretsdatamodel.json")
 	require.NoError(t, err)
 	secrets := &datamodel.RabbitMQSecrets{}
 	err = json.Unmarshal(rawPayload, secrets)
@@ -324,7 +324,7 @@ func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

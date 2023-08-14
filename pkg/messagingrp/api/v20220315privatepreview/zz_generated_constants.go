@@ -66,7 +66,7 @@ func PossibleOriginValues() []Origin {
 	}
 }
 
-// ProvisioningState - Provisioning state of the link at the time the operation was called
+// ProvisioningState - Provisioning state of the portable resource at the time the operation was called
 type ProvisioningState string
 
 const (

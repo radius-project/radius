@@ -191,11 +191,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Providers = &clients.Providers{}
 	r.Providers.Radius = &clients.RadiusProvider{}
 	r.Providers.Radius.EnvironmentID = r.Workspace.Scope + "/providers/applications.core/environments/" + r.EnvironmentName
+	r.Workspace.Environment = r.Providers.Radius.EnvironmentID
+
 	if r.ApplicationName != "" {
 		r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 	}
-	if env.Properties != nil && env.Properties.Providers != nil {
 
+	if env.Properties != nil && env.Properties.Providers != nil {
 		if env.Properties.Providers.Aws != nil {
 			r.Providers.AWS = &clients.AWSProvider{
 				Scope: *env.Properties.Providers.Aws.Scope,

@@ -33,11 +33,10 @@ using Azure.ResourceManager.Radius;
 using OpenAPI;
 
 namespace Applications.Datastores;
-
-@doc("RedisCache portable resource")
+@doc("Redis cache portable resource")
 model RedisCacheResource
   is TrackedResource<RedisCacheProperties> {
-  @doc("The name of the RedisCache portable resource")
+  @doc("The name of the Redis cache portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("redisCacheName")
@@ -46,88 +45,59 @@ model RedisCacheResource
   name: string;
 }
 
-@doc("The secret values for the given RedisCache resource")
+@doc("The secret values for the given Redis cache resource")
 model RedisCacheListSecretsResult is RedisCacheSecrets;
 
-@doc("The secret values for the given RedisCache resource")
+@doc("The secret values for the given Redis cache resource")
 model RedisCacheSecrets {
   @doc("The connection string used to connect to the Redis cache")
   connectionString?: string;
 
   @doc("The password for this Redis cache instance")
   password?: string;
+  
+  @doc("The URL used to connect to the Redis cache")
+  url?: string
 }
 
-@doc("RedisCache Properties for Mode Resource")
-model ResourceRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the RedisCache portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-
-  @doc("Fully qualified resource ID of a supported resource with Redis API to use for this portable resource")
-  resource: string;
-
-  @doc("The host name of the target Redis cache")
-  host?: string;
-
-  @doc("The port value of the target Redis cache")
-  port?: int32;
-
-  @doc("The username for Redis cache")
-  @visibility("read")
-  username?: string;
-}
-@doc("RedisCache Properties for Mode Values")
-model ValuesRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the RedisCache portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-
-  @doc("The host name of the target Redis cache")
-  host: string;
-
-  @doc("The port value of the target Redis cache")
-  port: int32;
-
-  @doc("The username for Redis cache")
-  @visibility("read")
-  username?: string;
-}
-@doc("RedisCache Properties for Mode Recipe")
-model RecipeRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the RedisCache portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-
-  @doc("The host name of the target Redis cache")
-  host?: string;
-
-  @doc("The port value of the target Redis cache")
-  port?: int32;
-
-  @doc("The username for Redis cache")
-  @visibility("read")
-  username?: string;
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the rediscaches portable resource")
-  recipe: Recipe;
-}
-
-@discriminator("mode")
-@doc("RedisCache portable resource properties")
+@doc("Redis cache portable resource properties")
 model RedisCacheProperties extends BasicResourceProperties {
-  @doc("Provisioning state of the redis cache portable resource at the time the operation was called")
+  @doc("Provisioning state of the redis cache portable at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
   @doc("Secrets provided by resource")
   secrets?: RedisCacheSecrets;
+
+  @doc("The host name of the target Redis cache")
+  host?: string;
+
+  @doc("The port value of the target Redis cache")
+  port?: int32;
+
+  @doc("The username for Redis cache")
+  username?: string;
+
+  @doc("Specifies whether to enable SSL connections to the Redis cache")  
+  tls?: boolean;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the Redis cache portable resource")
+  recipe?: Recipe;
+
+  @doc("List of the resource IDs that support the Redis resource")
+  resources?: ResourceReference[];
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
 }
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
-@doc("Lists secrets values for the specified RedisCache resource")
+@doc("Lists secrets values for the specified Redis cache resource")
 @route("/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets")
 @post
 op RedisCaches_listSecrets(
   ...ApiVersionParameter,
   ...RootScopeParam, 
-  @doc("The name of the RedisCache portable resource")
+  @doc("The name of the Redis cache portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path

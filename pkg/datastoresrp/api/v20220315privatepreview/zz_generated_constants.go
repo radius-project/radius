@@ -66,7 +66,7 @@ func PossibleOriginValues() []Origin {
 	}
 }
 
-// ProvisioningState - Provisioning state of the link at the time the operation was called
+// ProvisioningState - Provisioning state of the portable resource at the time the operation was called
 type ProvisioningState string
 
 const (
@@ -89,6 +89,24 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
+	}
+}
+
+// ResourceProvisioning - Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe',
+// where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user
+// manages the resource and provides the values.
+type ResourceProvisioning string
+
+const (
+	ResourceProvisioningManual ResourceProvisioning = "manual"
+	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
+)
+
+// PossibleResourceProvisioningValues returns the possible values for the ResourceProvisioning const type.
+func PossibleResourceProvisioningValues() []ResourceProvisioning {
+	return []ResourceProvisioning{	
+		ResourceProvisioningManual,
+		ResourceProvisioningRecipe,
 	}
 }
 
