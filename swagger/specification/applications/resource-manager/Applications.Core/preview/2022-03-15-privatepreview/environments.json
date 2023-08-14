@@ -482,7 +482,7 @@
       ],
       "properties": {
         "templateVersion": {
-          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.",
+          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.",
           "type": "string"
         }
       },
@@ -553,7 +553,7 @@
           "type": "string"
         },
         "templateVersion": {
-          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources. For Bicep this is not applicable, as the Bicep version is part of the templatePath.",
+          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.",
           "type": "string"
         },
         "parameters": {

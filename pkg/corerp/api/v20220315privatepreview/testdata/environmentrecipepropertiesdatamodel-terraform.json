@@ -1,0 +1,15 @@
+{
+    "templateKind": "terraform",
+    "templatePath": "Azure/cosmosdb/azurerm",
+    "terraformVersion": "1.1.0",
+    "parameters": {
+      "throughput": {
+        "maxValue": 400,
+        "defaultValue": 200
+      },
+      "location": {
+        "type" : "string",
+        "defaultValue" : "[resourceGroup().location]"
+      }
+    }
+  }

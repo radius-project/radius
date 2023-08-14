@@ -37,7 +37,8 @@ const (
 	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0"
 	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis-0"
 
-	recipeName = "cosmosDB"
+	recipeName      = "cosmosDB"
+	terraformRecipe = "terraform-cosmosDB"
 )
 
 func Test_GetConfigurationAzure(t *testing.T) {
@@ -198,6 +199,11 @@ func TestGetRecipeDefinition(t *testing.T) {
 							"foo": "bar",
 						},
 					},
+					terraformRecipe: &model.TerraformRecipeProperties{
+						TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+						TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
+						TemplateVersion: to.Ptr("1.1.0"),
+					},
 				},
 			},
 		},
@@ -230,6 +236,19 @@ func TestGetRecipeDefinition(t *testing.T) {
 			Parameters: map[string]any{
 				"foo": "bar",
 			},
+		}
+		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
+		require.NoError(t, err)
+		require.Equal(t, recipeDef, &expected)
+	})
+	t.Run("success-terraform", func(t *testing.T) {
+		recipeMetadata.Name = terraformRecipe
+		expected := recipes.EnvironmentDefinition{
+			Name:            terraformRecipe,
+			Driver:          recipes.TemplateKindTerraform,
+			ResourceType:    "Applications.Link/mongoDatabases",
+			TemplatePath:    "Azure/cosmosdb/azurerm",
+			TemplateVersion: "1.1.0",
 		}
 		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
 		require.NoError(t, err)

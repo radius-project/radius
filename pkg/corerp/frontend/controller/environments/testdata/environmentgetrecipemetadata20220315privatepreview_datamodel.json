@@ -25,7 +25,12 @@
                 "mongo-parameters": {
                     "templateKind": "bicep",                  
                     "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
-                  }
+                },
+                "mongo-terraform": {
+                    "templateKind":"terraform",
+                    "templatePath": "Azure/cosmosdb/azurerm",
+                    "templateVersion": "1.1.0"
+                }
             },
             "Applications.Link/redisCache":{
                 "redis": {

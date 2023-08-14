@@ -72,9 +72,6 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
-					// Allowed format hard coded to Bicep in the error until Terraform support is officially implemented.
-					// This check shouldn't be needed once we define an enum for templateKind in the schema.
-					// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7940
 					if recipeDetails.GetEnvironmentRecipeProperties().TemplateKind == nil || !isValidTemplateKind(*recipeDetails.GetEnvironmentRecipeProperties().TemplateKind) {
 						formats := []string{}
 						for _, format := range types.SupportedTemplateKind {

@@ -21,6 +21,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	types "github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 )
 
@@ -41,6 +42,9 @@ func (dst *RecipeMetadataProperties) ConvertFrom(src v1.DataModelInterface) erro
 	}
 	dst.TemplateKind = to.Ptr(recipe.TemplateKind)
 	dst.TemplatePath = to.Ptr(recipe.TemplatePath)
+	if recipe.TemplateKind == types.TemplateKindTerraform {
+		dst.TemplateVersion = to.Ptr(recipe.TemplateVersion)
+	}
 	dst.Parameters = recipe.Parameters
 	return nil
 }

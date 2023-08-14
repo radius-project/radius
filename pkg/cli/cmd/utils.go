@@ -35,7 +35,7 @@ import (
 // CreateEnvProviders iterates through a list of providers and creates a corerp.Providers object with the appropriate
 // scopes for each provider type (Azure or AWS). If more than one provider of the same type is found, an error is returned.
 //
-//	If an invalid type is found, an error is returned.
+// If an invalid type is found, an error is returned.
 func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
 	var res corerp.Providers
 	for _, provider := range providersList {
