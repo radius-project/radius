@@ -29,6 +29,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
+	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -37,11 +38,10 @@ import (
 	"github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
+	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/sync/errgroup"
-
-	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
@@ -147,19 +147,24 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	// Create a waitgroup to track the deletion of each output resource
 	g, groupCtx := errgroup.WithContext(ctx)
 
 	for i := range outputResources {
 		outputResource := outputResources[i]
+
+		// Create a goroutine that handles the deletion of one resource
 		g.Go(func() error {
 			id := outputResource.Identity.GetID()
 			logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
 
+			// If the resource is not managed by Radius, skip the deletion
 			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
 				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id), id)
 				return nil
 			}
 
+			// Only AWS resources are retried on deletion failure
 			maxDeletionRetries := 1
 			if strings.EqualFold(outputResource.ResourceType.Provider, "aws") {
 				maxDeletionRetries = 5
@@ -167,7 +172,10 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 
 			for attempt := 1; attempt <= maxDeletionRetries; attempt++ {
 				err := d.ResourceClient.Delete(groupCtx, id, resourcemodel.APIVersionUnknown)
-				if err != nil {
+				if err != nil && ucp_aws.IsAWSResourceNotFoundError(err) {
+					// If the AWS resource is not found, then it is already deleted
+					break
+				} else if err != nil {
 					if attempt == maxDeletionRetries {
 						deletionErr := fmt.Errorf("failed to delete output resource: %q with error %v", id, err)
 						logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
@@ -178,7 +186,7 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 						continue
 					}
 				} else {
-					// if deletion is successful
+					// If the err is nil, then the resource is deleted successfully
 					break
 				}
 			}

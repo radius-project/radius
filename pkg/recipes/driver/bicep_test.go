@@ -392,6 +392,39 @@ func Test_Driver_Delete_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_Driver_Delete_Success_AfterRetry(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	outputResources := []rpv1.OutputResource{
+		{
+			LocalID: "RecipeResource0",
+			Identity: resourcemodel.ResourceIdentity{
+				Data: map[string]any{},
+			},
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "AWS.RDS/DBInstance",
+				Provider: "aws",
+			},
+			RadiusManaged: to.Ptr(true),
+		},
+	}
+
+	first := client.EXPECT().
+		Delete(gomock.Any(), gomock.Any(), resourcemodel.APIVersionUnknown).
+		Return(fmt.Errorf("concurrent deletion exception"))
+	second := client.EXPECT().
+		Delete(gomock.Any(), gomock.Any(), resourcemodel.APIVersionUnknown).
+		Return(nil)
+
+	gomock.InOrder(
+		first,
+		second,
+	)
+
+	err := driver.Delete(ctx, outputResources)
+	require.NoError(t, err)
+}
+
 func Test_Driver_Delete_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
