@@ -45,13 +45,13 @@ func ClientCertValidator(armCertMgr *ArmCertManager) func(http.Handler) http.Han
 			}
 			clientRequestThumbprint := r.Header.Get(IngressCertThumbprintHeader)
 			if clientRequestThumbprint == "" {
-				log.V(ucplog.Debug).Info("X-SSL-Client-Thumbprint header is missing")
+				log.V(ucplog.LevelDebug).Info("X-SSL-Client-Thumbprint header is missing")
 				handleErr(r.Context(), w, r)
 				return
 			}
 			isValid := IsValidThumbprint(clientRequestThumbprint)
 			if !isValid {
-				log.V(ucplog.Debug).Info("Thumbprint validating failed")
+				log.V(ucplog.LevelDebug).Info("Thumbprint validating failed")
 				handleErr(r.Context(), w, r)
 				return
 			}

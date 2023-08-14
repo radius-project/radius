@@ -192,13 +192,13 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	rID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
-		log.V(ucplog.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
+		log.V(ucplog.LevelDebug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
 	queryItemCount, err := getQueryItemCount(r.URL.Query().Get(TopParameterName))
 	if err != nil {
-		log.V(ucplog.Debug).Info(fmt.Sprintf("Error parsing top query parameter: %v", r.URL.Query()))
+		log.V(ucplog.LevelDebug).Info(fmt.Sprintf("Error parsing top query parameter: %v", r.URL.Query()))
 		return nil, err
 	}
 
