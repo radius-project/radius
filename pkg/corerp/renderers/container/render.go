@@ -60,9 +60,9 @@ const (
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
 
 	defaultServiceAccountName = "default"
-	httpScheme = "http"
-	httpsScheme = "https"
-	httpsPort = 443
+	httpScheme                = "http"
+	httpsScheme               = "https"
+	httpsPort                 = 443
 )
 
 // # Function Explanation
@@ -102,7 +102,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		if isURL(connection.Source) {
 			continue
 		}
-		
+
 		// if the source is not a URL, it either a resourceID or invalid.
 		resourceID, err := resources.ParseResource(connection.Source)
 		if err != nil {
@@ -181,7 +181,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id). 
+		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id).
 		_, err := resources.ParseResource(connection.Source)
 		if err != nil {
 			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
@@ -247,7 +247,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	if needsServiceGeneration {
 		containerPorts := containerPorts{
 			values: []int32{},
-			names: []string{},
+			names:  []string{},
 		}
 
 		for portName, port := range resource.Properties.Container.Ports {
@@ -273,7 +273,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 type containerPorts struct {
 	values []int32
-	names []string
+	names  []string
 }
 
 func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
@@ -289,7 +289,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 			Name:       containerPorts.names[i],
 			Port:       port,
 			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
-			Protocol:  corev1.ProtocolTCP,
+			Protocol:   corev1.ProtocolTCP,
 		})
 	}
 
@@ -307,7 +307,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeSelectorLabels(appId.Name(), resource.Name),
 			Type:     corev1.ServiceTypeClusterIP,
-			Ports: ports,
+			Ports:    ports,
 		},
 	}
 
@@ -362,14 +362,13 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	container := corev1.Container{
 		Name:  kubernetes.NormalizeResourceName(resource.Name),
 		Image: properties.Container.Image,
-		// TODO: use better policies than this when we have a good versioning story
-		ImagePullPolicy: corev1.PullPolicy("Always"),
-		Ports:           ports,
-		Env:             []corev1.EnvVar{},
-		VolumeMounts:    []corev1.VolumeMount{},
-		Command:         properties.Container.Command,
-		Args:            properties.Container.Args,
-		WorkingDir:      properties.Container.WorkingDir,
+		// TODO: Offer a configurable imagePullPolicy
+		Ports:        ports,
+		Env:          []corev1.EnvVar{},
+		VolumeMounts: []corev1.VolumeMount{},
+		Command:      properties.Container.Command,
+		Args:         properties.Container.Args,
+		WorkingDir:   properties.Container.WorkingDir,
 	}
 
 	var err error
@@ -691,10 +690,10 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 					return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
 				}
 
-				env["CONNECTIONS_" + name + "_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
-				env["CONNECTIONS_" + name + "_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
-				env["CONNECTIONS_" + name + "_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
-				
+				env["CONNECTIONS_"+name+"_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
+				env["CONNECTIONS_"+name+"_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
+				env["CONNECTIONS_"+name+"_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
+
 				continue
 			}
 
@@ -938,7 +937,7 @@ func getSortedKeys(env map[string]corev1.EnvVar) []string {
 
 func isURL(input string) bool {
 	_, err := url.ParseRequestURI(input)
-	
+
 	// if first character is a slash, it's not a URL. It's a path.
 	if input == "" || err != nil || input[0] == '/' {
 		return false

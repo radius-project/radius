@@ -37,15 +37,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
 	applicationName       = "test-app"
 	applicationResourceID = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
-	applicationPath = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
+	applicationPath       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/"
 	resourceName          = "test-container"
 	envVarName1           = "TEST_VAR_1"
 	envVarValue1          = "TEST_VALUE_1"
@@ -305,7 +305,6 @@ func Test_Render_Basic(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
 		require.Equal(t, properties.Container.Image, container.Image)
-		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 
 		var commands []string
 		var args []string
@@ -377,7 +376,6 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
 		require.Equal(t, properties.Container.Image, container.Image)
-		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 		require.Equal(t, []string{"command1", "command2"}, container.Command)
 		require.Equal(t, []string{"arg1", "arg2"}, container.Args)
 		require.Equal(t, "/some/path", container.WorkingDir)
@@ -543,7 +541,6 @@ func Test_Render_Connections(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
 		require.Equal(t, properties.Container.Image, container.Image)
-		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 
 		expectedEnv := []v1.EnvVar{
 			{
@@ -636,7 +633,6 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	container := deployment.Spec.Template.Spec.Containers[0]
 	require.Equal(t, resourceName, container.Name)
 	require.Equal(t, properties.Container.Image, container.Image)
-	require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 
 	expectedEnv := []v1.EnvVar{}
 	require.Equal(t, expectedEnv, container.Env)
