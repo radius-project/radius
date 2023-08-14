@@ -18,6 +18,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/algorithm/graph"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -69,6 +70,7 @@ func (resource OutputResource) Key() string {
 // GetDependencies returns a slice of strings containing the LocalIDs of the OutputResource's dependencies, or an error if
 // any of the dependencies are missing a LocalID.
 func (resource OutputResource) GetDependencies() ([]string, error) {
+	fmt.Printf("GetDependencies: %s\n", resource.LocalID)
 	dependencies := []string{}
 	for _, dependency := range resource.Dependencies {
 		if dependency.LocalID == "" {
@@ -76,6 +78,7 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 		}
 		dependencies = append(dependencies, dependency.LocalID)
 	}
+	fmt.Printf("GetDependencies: %s\n", dependencies)
 	return dependencies, nil
 }
 

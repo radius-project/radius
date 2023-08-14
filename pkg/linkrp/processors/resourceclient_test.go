@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
@@ -359,31 +358,6 @@ func Test_Delete_UCP(t *testing.T) {
 		err = c.Delete(context.Background(), AWSResourceID, "")
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
-	})
-
-	t.Run("success - delete fails and succeeds on retry", func(t *testing.T) {
-		callbackServer := Start(t)
-		callbackServer.Handler = handleFailure(t)
-
-		// create a goroutine to change the callback server handler
-		// after 20 seconds to simulate a successful delete
-		go func() {
-			time.Sleep(20 * time.Second)
-			callbackServer.Handler = handleSuccess(t)
-		}()
-
-		mux := http.NewServeMux()
-		mux.HandleFunc(AWSResourceID, handleDeleteInitiatedAsync(t, "http://"+callbackServer.Address()))
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
-		connection, err := sdk.NewDirectConnection(server.URL)
-		require.NoError(t, err)
-
-		c := NewResourceClient(nil, connection, nil, nil)
-
-		err = c.Delete(context.Background(), AWSResourceID, "")
-		require.NoError(t, err)
 	})
 }
 

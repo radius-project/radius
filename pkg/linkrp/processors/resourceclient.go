@@ -20,7 +20,6 @@ import (
 	context "context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -39,14 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	// allowedDeletionRetries is the number of times to retry a UCP resource deletion request
-	allowedDeletionRetries = 10
-
-	// deletionRetryDelay is the interval to wait between UCP resource deletion retries
-	deletionRetryDelay = 10 * time.Second
 )
 
 type resourceClient struct {
@@ -182,39 +173,25 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID,
 	// For AWS resources, the server does not yet validate the API version.
 	//
 	// In the future we should change this to look up API versions dynamically like we do for ARM.
+
 	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		return err
 	}
 
-	var errors []error
-
-	// For each resource, we need to retry deletion because there may be dependent resources that are not yet deleted.
-	for attempt := 1; attempt <= allowedDeletionRetries; attempt++ {
-		poller, err := client.BeginDelete(ctx, id.Name(), nil)
-		if err != nil {
-			// If we failed to start the deletion, return the error
-			return err
-		}
-
-		// If we successfully started the deletion, wait for it to complete.
-		r, err := poller.PollUntilDone(ctx, nil)
-		if err != nil {
-			fmt.Println(r)
-			// If we failed to delete the resource, add the error to the list of errors and try again.
-			errors = append(errors, err)
-		} else {
-			// If we successfully deleted the resource, we're done.
-			return nil
-		}
-
-		// If we're not on the last attempt, wait a bit before trying again.
-		if attempt < allowedDeletionRetries {
-			time.Sleep(deletionRetryDelay)
-		}
+	poller, err := client.BeginDelete(ctx, id.Name(), nil)
+	if err != nil {
+		// If we failed to start the deletion, return the error
+		return err
 	}
 
-	return fmt.Errorf("failed to delete resource %s after %d attempts: %v", id.Name(), allowedDeletionRetries, errors)
+	// If we successfully started the deletion, wait for it to complete.
+	_, err = poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resources.ID, apiVersion string) error {

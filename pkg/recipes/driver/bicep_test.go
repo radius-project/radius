@@ -386,7 +386,7 @@ func Test_Driver_Delete_Success(t *testing.T) {
 			RadiusManaged: to.Ptr(false),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(nil)
+	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(nil)
 
 	err := driver.Delete(ctx, outputResources)
 	require.NoError(t, err)
@@ -413,7 +413,7 @@ func Test_Driver_Delete_Error(t *testing.T) {
 			RadiusManaged: to.Ptr(true),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
 
 	err := driver.Delete(ctx, outputResources)
 	require.Error(t, err)

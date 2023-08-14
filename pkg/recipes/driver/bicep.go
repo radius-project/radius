@@ -22,12 +22,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
@@ -39,16 +39,18 @@ import (
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"golang.org/x/sync/errgroup"
 
 	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
 const (
-	deploymentPrefix   = "recipe"
-	pollFrequency      = time.Second * 5
-	ResultPropertyName = "result"
-	recipeParameters   = "parameters"
+	deploymentPrefix      = "recipe"
+	pollFrequency         = time.Second * 5
+	ResultPropertyName    = "result"
+	recipeParameters      = "parameters"
+	deletionRetryInterval = time.Minute * 1
 )
 
 var _ Driver = (*bicepDriver)(nil)
@@ -112,7 +114,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		ctx,
 		clients.Deployment{
 			Properties: &clients.DeploymentProperties{
-				Mode:           deployments.DeploymentModeIncremental,
+				Mode:           armresources.DeploymentModeIncremental,
 				ProviderConfig: &providerConfig,
 				Parameters:     parameters,
 				Template:       recipeData,
@@ -140,34 +142,57 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 
 // # Function Explanation
 //
-// Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
-// resources that are not managed by Radius. It returns an error if any of the resources fail to delete.
+// Delete deletes the output resources created by the recipe deployment.
+// This operation creates a goroutine for each output resource and deletes them concurrently.
 func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
-	if err != nil {
-		return err
+	g, groupCtx := errgroup.WithContext(ctx)
+
+	for i := range outputResources {
+		outputResource := outputResources[i]
+		g.Go(func() error {
+			id := outputResource.Identity.GetID()
+			logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+
+			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id), id)
+				return nil
+			}
+
+			maxDeletionRetries := 1
+			if strings.EqualFold(outputResource.ResourceType.Provider, "aws") {
+				maxDeletionRetries = 5
+			}
+
+			for attempt := 1; attempt <= maxDeletionRetries; attempt++ {
+				err := d.ResourceClient.Delete(groupCtx, id, resourcemodel.APIVersionUnknown)
+				if err != nil {
+					if attempt == maxDeletionRetries {
+						deletionErr := fmt.Errorf("failed to delete output resource: %q with error %v", id, err)
+						logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
+						return deletionErr
+					} else {
+						logger.Info(fmt.Sprintf("Failed to delete output resource: %q with error %v, retrying in %v\n", id, err, deletionRetryInterval))
+						time.Sleep(deletionRetryInterval)
+						continue
+					}
+				} else {
+					// if deletion is successful
+					break
+				}
+			}
+
+			logger.Info(fmt.Sprintf("Deleted output resource: %q", id), id)
+			return nil
+		})
 	}
 
-	// Loop over each output resource and delete in reverse dependency order
-	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
-		outputResource := orderedOutputResources[i]
-		id := outputResource.Identity.GetID()
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-			continue
-		}
-
-		err = d.ResourceClient.Delete(ctx, id, resourcemodel.APIVersionUnknown)
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
-
+	// g.Wait waits for all goroutines to complete
+	// and returns the first non-nil error returned
+	// by one of the goroutines.
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	return nil
