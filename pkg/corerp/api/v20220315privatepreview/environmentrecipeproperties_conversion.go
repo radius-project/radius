@@ -21,26 +21,30 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	types "github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 )
 
 // # Function Explanation
 //
 // ConvertTo returns an error as it does not support converting Environment Recipe Properties to a version-agnostic object.
-func (src *EnvironmentRecipeProperties) ConvertTo() (v1.DataModelInterface, error) {
+func (src *RecipeMetadataProperties) ConvertTo() (v1.DataModelInterface, error) {
 	return nil, fmt.Errorf("converting Environment Recipe Properties to a version-agnostic object is not supported")
 }
 
 // # Function Explanation
 //
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment recipe properties resource.
-func (dst *EnvironmentRecipeProperties) ConvertFrom(src v1.DataModelInterface) error {
+func (dst *RecipeMetadataProperties) ConvertFrom(src v1.DataModelInterface) error {
 	recipe, ok := src.(*datamodel.EnvironmentRecipeProperties)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
 	dst.TemplateKind = to.Ptr(recipe.TemplateKind)
 	dst.TemplatePath = to.Ptr(recipe.TemplatePath)
+	if recipe.TemplateKind == types.TemplateKindTerraform {
+		dst.TemplateVersion = to.Ptr(recipe.TemplateVersion)
+	}
 	dst.Parameters = recipe.Parameters
 	return nil
 }

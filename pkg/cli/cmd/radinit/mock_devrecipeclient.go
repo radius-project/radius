@@ -36,10 +36,10 @@ func (m *MockDevRecipeClient) EXPECT() *MockDevRecipeClientMockRecorder {
 }
 
 // GetDevRecipes mocks base method.
-func (m *MockDevRecipeClient) GetDevRecipes(arg0 context.Context) (map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties, error) {
+func (m *MockDevRecipeClient) GetDevRecipes(arg0 context.Context) (map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDevRecipes", arg0)
-	ret0, _ := ret[0].(map[string]map[string]*v20220315privatepreview.EnvironmentRecipeProperties)
+	ret0, _ := ret[0].(map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

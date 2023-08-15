@@ -30,7 +30,7 @@ import (
 func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.EnvironmentRecipeProperties, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.EnvironmentRecipeProperties{}
+		versioned := &v20220315privatepreview.RecipeMetadataProperties{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}

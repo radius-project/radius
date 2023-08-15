@@ -656,16 +656,16 @@ func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 //
 // ShowRecipe creates a new EnvironmentsClient, gets the recipe metadata from the
 // environment, and returns the EnvironmentRecipeProperties or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.EnvironmentRecipeProperties, error) {
+func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.RecipeMetadataProperties, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.EnvironmentRecipeProperties{}, err
+		return corerpv20220315.RecipeMetadataProperties{}, err
 	}
 
 	resp, err := client.GetRecipeMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetRecipeMetadataOptions{})
 	if err != nil {
-		return corerpv20220315.EnvironmentRecipeProperties{}, err
+		return corerpv20220315.RecipeMetadataProperties{}, err
 	}
 
-	return corerpv20220315.EnvironmentRecipeProperties(resp.EnvironmentRecipeProperties), nil
+	return corerpv20220315.RecipeMetadataProperties(resp.RecipeMetadataProperties), nil
 }
