@@ -22,9 +22,9 @@ import (
 
 var (
 	// AsyncCreateOrUpdateMongoDatabaseTimeout is the timeout for async create or update Mongo database
-	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(10) * time.Minute
+	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteMongoDatabaseTimeout is the timeout for async delete Mongo database
-	AsyncDeleteMongoDatabaseTimeout = time.Duration(15) * time.Minute
+	AsyncDeleteMongoDatabaseTimeout = time.Duration(30) * time.Minute
 
 	// AsyncCreateOrUpdateRedisCacheTimeout is the timeout for async create or update Redis cache
 	AsyncCreateOrUpdateRedisCacheTimeout = time.Duration(60) * time.Minute

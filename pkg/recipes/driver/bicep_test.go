@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	gomock "github.com/golang/mock/gomock"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
@@ -420,6 +421,34 @@ func Test_Driver_Delete_Success_AfterRetry(t *testing.T) {
 		first,
 		second,
 	)
+
+	err := driver.Delete(ctx, outputResources)
+	require.NoError(t, err)
+}
+
+func Test_Driver_Delete_Success_After404(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	outputResources := []rpv1.OutputResource{
+		{
+			LocalID: "RecipeResource0",
+			Identity: resourcemodel.ResourceIdentity{
+				Data: map[string]any{},
+			},
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "AWS.RDS/DBInstance",
+				Provider: "aws",
+			},
+			RadiusManaged: to.Ptr(true),
+		},
+	}
+
+	expectedErr := &types.ResourceNotFoundException{
+		Message: to.Ptr("Resource not found"),
+	}
+	client.EXPECT().
+		Delete(gomock.Any(), gomock.Any(), resourcemodel.APIVersionUnknown).
+		Return(expectedErr)
 
 	err := driver.Delete(ctx, outputResources)
 	require.NoError(t, err)
