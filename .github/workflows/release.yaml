@@ -118,7 +118,7 @@ jobs:
         run: exit 1
   release:
     name: Create a new Radius release
-    if: github.event_name == 'push'
+    # if: github.event_name == 'push'
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
       - name: Checkout project-radius/radius@main

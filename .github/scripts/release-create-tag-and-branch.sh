@@ -42,19 +42,19 @@ if [[ -z "$RELEASE_BRANCH_NAME" ]]; then
   exit 1
 fi
 
-echo "Creating release branch and tags for ${REPOSITORY}..."
-pushd $REPOSITORY
-RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME)
-if [ -z "$RELEASE_BRANCH_EXISTS" ]; then
-  echo "Creating release branch ${RELEASE_BRANCH_NAME}..."
-  git checkout -b $RELEASE_BRANCH_NAME
-  git push origin $RELEASE_BRANCH_NAME
-else
-  echo "Release branch ${RELEASE_BRANCH_NAME} already exists. Checking out..."
-  git fetch origin $RELEASE_BRANCH_NAME
-  git checkout --track origin/$RELEASE_BRANCH_NAME
-fi
-echo "Creating tag ${TAG_NAME}..."
-git tag $TAG_NAME
-git push origin --tags
-popd
+# echo "Creating release branch and tags for ${REPOSITORY}..."
+# pushd $REPOSITORY
+# RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME)
+# if [ -z "$RELEASE_BRANCH_EXISTS" ]; then
+#   echo "Creating release branch ${RELEASE_BRANCH_NAME}..."
+#   git checkout -b $RELEASE_BRANCH_NAME
+#   git push origin $RELEASE_BRANCH_NAME
+# else
+#   echo "Release branch ${RELEASE_BRANCH_NAME} already exists. Checking out..."
+#   git fetch origin $RELEASE_BRANCH_NAME
+#   git checkout --track origin/$RELEASE_BRANCH_NAME
+# fi
+# echo "Creating tag ${TAG_NAME}..."
+# git tag $TAG_NAME
+# git push origin --tags
+# popd
