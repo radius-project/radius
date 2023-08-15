@@ -158,7 +158,7 @@ jobs:
         uses: mikefarah/yq@v4.34.2
         with:
           # Get a comma-separated list of supported versions
-          cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
+          cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
       - name: Determine desired release version
         id: get-version
         run: |
