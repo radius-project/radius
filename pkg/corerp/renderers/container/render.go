@@ -360,9 +360,8 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	}
 
 	container := corev1.Container{
-		Name:  kubernetes.NormalizeResourceName(resource.Name),
-		Image: properties.Container.Image,
-		// TODO: Offer a configurable imagePullPolicy
+		Name:         kubernetes.NormalizeResourceName(resource.Name),
+		Image:        properties.Container.Image,
 		Ports:        ports,
 		Env:          []corev1.EnvVar{},
 		VolumeMounts: []corev1.VolumeMount{},
