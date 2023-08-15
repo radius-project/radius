@@ -48,7 +48,7 @@ type Options struct {
 	ResourceRecipe *recipes.ResourceMetadata
 }
 
-// NewTerraform creates a new Terraform executor.
+// NewTerraform creates a new Terraform executor with Terraform logs enabled.
 func NewTerraform(ctx context.Context, workingDir, execPath string) (*tfexec.Terraform, error) {
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
