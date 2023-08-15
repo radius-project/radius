@@ -29,7 +29,6 @@ on:
       - 'versions.yaml'
 
 env:
-  REPOS: 'radius,bicep,deployment-engine,recipes'
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
 
 jobs:
@@ -157,9 +156,21 @@ jobs:
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
           echo "* Release driver: $GITHUB_ACTOR ">> $GITHUB_STEP_SUMMARY
-          echo "* Repos: ${{ env.REPOS }}" >> $GITHUB_STEP_SUMMARY
           echo "* Supported versions: ${{ steps.getSupportedVersions.outputs.result }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
-      - name: Create tags and branches
+      - name: Release project-radius/radius versions ${{ steps.getSupportedVersions.outputs.result }}
         run: |
-          ./.github/scripts/release-create-tags-and-branches.sh ${{ env.REPOS }} ${{ steps.getSupportedVersions.outputs.result }}
+          ./radius/.github/scripts/release-create-tags-and-branches.sh radius ${{ steps.getSupportedVersions.outputs.result }}
+        if: success()
+      - name: Release project-radius/bicep version ${{ steps.getSupportedVersions.outputs.result }}
+        run: |
+          ./radius/.github/scripts/release-create-tags-and-branches.sh bicep ${{ steps.getSupportedVersions.outputs.result }}
+        if: success()
+      - name: Release project-radius/deployment-engine version ${{ steps.getSupportedVersions.outputs.result }}
+        run: |
+          ./radius/.github/scripts/release-create-tags-and-branches.sh deployment-engine ${{ steps.getSupportedVersions.outputs.result }}
+        if: success()
+      - name: Release project-radius/recipes version ${{ steps.getSupportedVersions.outputs.result }}
+        run: |
+          ./radius/.github/scripts/release-create-tags-and-branches.sh recipes ${{ steps.getSupportedVersions.outputs.result }}
+        if: success()
