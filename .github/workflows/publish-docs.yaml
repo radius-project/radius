@@ -47,6 +47,8 @@ jobs:
         # if: github.event_name != 'pull_request'
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          add-paths: |
+            *.md
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           branch: reference-cli/patch-${{ github.sha }}
