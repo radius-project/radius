@@ -305,6 +305,7 @@ func Test_Render_Basic(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
 		require.Equal(t, properties.Container.Image, container.Image)
+		require.Empty(t, container.ImagePullPolicy)
 
 		var commands []string
 		var args []string
@@ -376,6 +377,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
 		require.Equal(t, properties.Container.Image, container.Image)
+		require.Empty(t, container.ImagePullPolicy)
 		require.Equal(t, []string{"command1", "command2"}, container.Command)
 		require.Equal(t, []string{"arg1", "arg2"}, container.Args)
 		require.Equal(t, "/some/path", container.WorkingDir)
@@ -541,6 +543,7 @@ func Test_Render_Connections(t *testing.T) {
 		container := deployment.Spec.Template.Spec.Containers[0]
 		require.Equal(t, resourceName, container.Name)
 		require.Equal(t, properties.Container.Image, container.Image)
+		require.Empty(t, container.ImagePullPolicy)
 
 		expectedEnv := []v1.EnvVar{
 			{
@@ -633,6 +636,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	container := deployment.Spec.Template.Spec.Containers[0]
 	require.Equal(t, resourceName, container.Name)
 	require.Equal(t, properties.Container.Image, container.Image)
+	require.Empty(t, container.ImagePullPolicy)
 
 	expectedEnv := []v1.EnvVar{}
 	require.Equal(t, expectedEnv, container.Env)
