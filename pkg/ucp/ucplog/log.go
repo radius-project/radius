@@ -42,15 +42,19 @@ const (
 
 // Log levels
 const (
-	// More details on verbosity levels can be found here: https://pkg.go.dev/go.uber.org/zap@v1.20.0/zapcore#DebugLevel
-	// We do not want to support levels that introduce a new control flow
-	Error int = 1
-	Warn  int = 2
-	Info  int = 3
-	//Verbose = 4
-	Debug int = 9
-	//Trace   = 10
-	DefaultLogLevel int = Info
+	// These log levels can be used with `logger.V(...)` to **add** verbosity to a log message.
+	// These DO NOT map to the underlying Zap log levels.
+	//
+	// Please read the documentation of logger.V(...) before modifying these values.
+	//
+	// You CANNOT use these levels to make a log message more severe, which is why we don't
+	// define log levels for warning or error. Use logger.Error() for errors.
+
+	// LevelInfo is the default.
+	LevelInfo int = 0
+
+	// LevelDebug should be used for messages that should not be shown in production.
+	LevelDebug int = 1
 )
 
 const (

@@ -1079,8 +1079,7 @@ type RecipeMetadataProperties struct {
 	TemplatePath *string
 
 	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
-// for other module sources. For Bicep this is not applicable, as the Bicep version
-// is part of the templatePath.
+// for other module sources.
 	TemplateVersion *string
 }
 
@@ -1258,8 +1257,7 @@ type TerraformRecipeProperties struct {
 	Parameters map[string]any
 
 	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
-// for other module sources. For Bicep this is not applicable, as the Bicep version
-// is part of the templatePath.
+// for other module sources.
 	TemplateVersion *string
 }
 

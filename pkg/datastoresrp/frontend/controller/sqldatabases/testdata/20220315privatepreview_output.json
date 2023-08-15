@@ -1,0 +1,37 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.datastores/sqldatabases/sql0",
+    "location": "West US",
+    "name": "sql0",
+    "properties": {
+        "status": {
+            "outputResources": [{
+                "LocalID": "AzureSqlServer",
+                "Provider": "azure",
+                "Identity": null
+            }]
+        },
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+            }
+          ],
+        "database": "testDatabase",
+        "server": "testAccount1.sql.cosmos.azure.com",
+        "provisioningState": "Succeeded",
+        "resourceProvisioning": "manual",
+        "port": 1433,
+        "username": "testUser"
+    },
+    "systemData": {
+        "createdAt": "2022-03-22T18:54:52.6857175Z",
+        "createdBy": "fake@hotmail.com",
+        "createdByType": "User",
+        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+        "lastModifiedBy": "fake@hotmail.com",
+        "lastModifiedByType": "User"
+    },
+    "tags": {},
+    "type": "applications.datastores/sqldatabases"
+}

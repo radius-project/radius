@@ -41,6 +41,10 @@ type DeployErrorExecutor struct {
 	// Application sets the `--application` command-line parameter. This is needed in cases where
 	// the application is not defined in bicep.
 	Application string
+
+	// Environment sets the `--environment` command-line parameter. This is needed in cases where
+	// the environment is not defined in bicep.
+	Environment string
 }
 
 // # Function Explanation
@@ -64,6 +68,12 @@ func (d *DeployErrorExecutor) WithApplication(application string) *DeployErrorEx
 	return d
 }
 
+// WithEnvironment sets the environment name for the DeployExecutor instance and returns the same instance.
+func (d *DeployErrorExecutor) WithEnvironment(environment string) *DeployErrorExecutor {
+	d.Environment = environment
+	return d
+}
+
 // # Function Explanation
 //
 // GetDescription returns the Description field of the DeployErrorExecutor instance.
@@ -81,7 +91,7 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
+	err = cli.Deploy(ctx, templateFilePath, d.Environment, d.Application, d.Parameters...)
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError

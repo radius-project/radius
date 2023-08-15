@@ -38,12 +38,12 @@
 
 ## DaprPubSubBrokerProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the Dapr PubSubBroker
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -79,12 +79,12 @@
 
 ## DaprSecretStoreProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string: Dapr SecretStore type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
@@ -97,12 +97,12 @@
 
 ## DaprStateStoreProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the Dapr StateStore
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.

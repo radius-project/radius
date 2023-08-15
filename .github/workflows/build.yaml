@@ -51,6 +51,9 @@ env:
   # Container registry url for GitHub container registry.
   CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/project-radius/dev' || 'ghcr.io/project-radius/radius' }}
 
+  # Local file path to the release binaries.
+  RELEASE_PATH: ./release
+
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -120,6 +123,22 @@ jobs:
           test_group_name: 'Unit Tests'
           artifact_name: 'unit_test_results'
           result_directory: 'dist/unit_test/'
+      - name: Copy cli binaries to release (unix-like)
+        if: matrix.target_os != 'windows'
+        run: |
+          mkdir ${{ env.RELEASE_PATH }}
+          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}
+      - name: Copy cli binaries to release (windows)
+        if: matrix.target_os == 'windows'
+        run: |
+          mkdir ${{ env.RELEASE_PATH }}
+          cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ${{ env.RELEASE_PATH }}/rad_${{ matrix.target_os}}_${{ matrix.target_arch}}.exe
+      - name: Upload Release binaries 
+        uses: actions/upload-artifact@v3
+        with:
+          name: rad_cli_release
+          path: ${{ env.RELEASE_PATH }}
+      # TOOD_LAUNCH: Remove this step when we opensource the repo - https://github.com/project-radius/radius/issues/5892
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:
@@ -363,7 +382,45 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz --force
-
+  publish_release:
+    name: Publish rad CLI binaries
+    needs: [ 'build' ]
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Download release artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_release
+          path: ${{ env.RELEASE_PATH }}
+      - name: generate checksum files
+        run: cd ${{ env.RELEASE_PATH }} && for i in *; do sha256sum -b $i > "$i.sha256"; done && cd -
+      - name: Create GitHub RC Release (pre-release and auto-generate release notes)
+        if: ${{ contains(env.REL_VERSION, 'rc') }}
+        run: |
+          gh release create v${{ env.REL_VERSION }} \
+            ${{ env.RELEASE_PATH }}/* \
+            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --generate-notes \
+            --verify-tags \
+            --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      - name: Create GitHub Official Release
+        if: ${{ !contains(env.REL_VERSION, 'rc') }}
+        run: |
+          gh release create v${{ env.REL_VERSION }} \
+            ${{ env.RELEASE_PATH }}/* \
+            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
+            --verify-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+  # TODO_LAUNCH: Remove this job once we opensource - https://github.com/project-radius/radius/issues/5892
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
@@ -449,8 +506,8 @@ jobs:
 
   delete_artifacts:
     name: Delete artifacts
-    if: ${{ success() }}
     needs: [ 'build', 'publish' ]
+    if: ${{ always() && !contains(needs.build.result, 'failure') }}
     runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - name: Delete release artifacts
@@ -461,4 +518,6 @@ jobs:
             rad_cli_linux_amd64
             rad_cli_darwin_amd64
             rad_cli_linux_arm
+            rad_cli_darwin_arm64
+            rad_cli_linux_arm64
           failOnError: false
