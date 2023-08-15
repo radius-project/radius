@@ -26,7 +26,7 @@ param username string = 'sa'
 param password string = newGuid()
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-sql'
+  name: 'dsrp-resources-sql'
   location: location
   properties: {
     environment: environment
@@ -34,7 +34,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-app-ctnr-old'
+  name: 'sql-app-ctnr'
   location: location
   properties: {
     application: app.id
@@ -57,8 +57,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'sql-db-old'
+resource db 'Applications.Datastores/sqlDatabases@2022-03-15-privatepreview' = {
+  name: 'sql-db'
   location: location
   properties: {
     application: app.id
@@ -75,7 +75,7 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'sql-rte-old'
+  name: 'sql-rte'
   location: location
   properties: {
     application: app.id
@@ -84,7 +84,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
 }
 
 resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-ctnr-old'
+  name: 'sql-ctnr'
   location: location
   properties: {
     application: app.id

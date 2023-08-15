@@ -19,8 +19,10 @@ package list
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clierrors"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -32,6 +34,7 @@ import (
 
 const (
 	deleteConfirmation = "Are you sure you want to delete application '%v' from '%v'?"
+	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius application. Specify the name of a valid application and try again"
 )
 
 // NewCommand creates an instance of the `rad app delete` command and runner.
@@ -118,6 +121,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.ApplicationName, err = cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
+	}
+
+	// Throw error if user specifies a Bicep filename or path instead of an application name
+	if strings.HasSuffix(r.ApplicationName, ".bicep") {
+		return clierrors.Message(bicepWarning, r.ApplicationName)
 	}
 
 	r.Confirm, err = cmd.Flags().GetBool("yes")

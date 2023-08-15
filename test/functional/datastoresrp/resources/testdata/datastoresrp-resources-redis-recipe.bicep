@@ -2,18 +2,18 @@ import radius as radius
 
 param scope string = resourceGroup().id
 
-param registry string
+param registry string 
 
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-default-recipe-env'
+  name: 'dsrp-resources-env-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-default-recipe-env'
+      namespace: 'dsrp-resources-env-recipe-env' 
     }
     providers: {
       azure: {
@@ -21,10 +21,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Link/redisCaches': {
-        default: {
+      'Applications.Datastores/redisCaches':{
+        rediscache: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/redis-recipe-value-backed:${version}'
+          templatePath: '${registry}/test/functional/shared/recipes/redis-recipe-value-backed:${version}' 
         }
       }
     }
@@ -32,24 +32,27 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-redis-default-recipe'
+  name: 'dsrp-resources-redis-recipe'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
-        kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-redis-default-recipe-app'
+          kind: 'kubernetesNamespace'
+          namespace: 'dsrp-resources-redis-recipe-app'
       }
     ]
   }
 }
 
-resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
-  name: 'rds-default-recipe-old'
+resource redis 'Applications.Datastores/redisCaches@2022-03-15-privatepreview' = {
+  name: 'rds-recipe'
   location: 'global'
   properties: {
     environment: env.id
     application: app.id
+    recipe: {
+      name: 'rediscache'
+    }
   }
 }

@@ -11,13 +11,13 @@ param version string
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-recipes-context-env'
+  name: 'corerp-resources-env-recipes-context-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-recipes-context-env'
+      namespace: 'corerp-resources-env-recipes-context-env'
     }
     providers: {
       azure: {
@@ -50,7 +50,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx-ctnr'
+  name: 'mdb-ctx-ctnr-old'
   location: 'global'
   properties: {
     application: app.id
@@ -74,7 +74,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mdb-ctx'
+  name: 'mdb-ctx-old'
   location: 'global'
   properties: {
     application: app.id
