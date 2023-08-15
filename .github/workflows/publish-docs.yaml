@@ -5,12 +5,12 @@ on:
   push:
     branches:
       - main
-      # - release/*
+      - release/*
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
-      # - release/*
+      - release/*
 
 jobs:
   cli-docs:
@@ -20,33 +20,40 @@ jobs:
       GOVER: '^1.17'
       GOPRIVATE: github.com/project-radius
     steps:
+      - name: Checkout radius repository
+        uses: actions/checkout@v3
+        with:
+          repository: project-radius/radius
+          path: radius
+      - name: Parse release version and set environment variables
+        run: python radius/.github/scripts/get_release_version.py
       - name: Checkout docs repository
         uses: actions/checkout@v3
         with:
           repository: project-radius/docs
-          ref: v0.23
+          path: docs
+          ref: v${{ env.REL_CHANNEL }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-      - name: Setup git credentials for private Go modules
-        run: git config --global url.https://${{ secrets.GH_RAD_CI_BOT_PAT }}@github.com/.insteadOf https://github.com/
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
+          cache-dependency-path: radius/go.sum
       - name: Generate CLI docs
         run: |
-            find docs/content/reference/cli -type f ! -name '_index.md' -delete
-            go run tools/cli-docsgen/main.go docs/content/reference/cli
+            find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
+            go run radius/cmd/docgen/main.go docs/docs/content/reference/cli
       - name: Upload CLI docs
         uses: actions/upload-artifact@v3
         with:
           name: cli-docs
-          path: docs/content/reference/cli
+          path: docs/docs/content/reference/cli
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5
-        # Temporarily commenting out the if condition while testing
-        # if: github.event_name != 'pull_request'
+        #if: github.event_name != 'pull_request'
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: docs
           add-paths: |
             *.md
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
