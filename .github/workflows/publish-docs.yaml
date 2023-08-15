@@ -28,18 +28,9 @@ jobs:
       - name: Setup git credentials for private Go modules
         run: git config --global url.https://${{ secrets.GH_RAD_CI_BOT_PAT }}@github.com/.insteadOf https://github.com/
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
-      - name: Restore Go Modules Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('radius/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Generate CLI docs
         run: |
             find docs/content/reference/cli -type f ! -name '_index.md' -delete
@@ -50,16 +41,16 @@ jobs:
           name: cli-docs
           path: docs/content/reference/cli
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v5
         # Temporarily commenting out the if condition while testing
         # if: github.event_name != 'pull_request'
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           add-paths: |
-            docs/content/reference/cli/*.md
+            *.md
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          branch: reference-cli/autogen
+          branch: reference-cli/patch-${{ github.sha }}
           delete-branch: true
           title: |
             Update rad CLI documentation
