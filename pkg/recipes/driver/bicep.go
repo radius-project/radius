@@ -38,7 +38,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/sync/errgroup"
@@ -173,10 +172,8 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 			for attempt := 1; attempt <= maxDeletionRetries; attempt++ {
 				err := d.ResourceClient.Delete(groupCtx, id, resourcemodel.APIVersionUnknown)
 				if err != nil {
-					ree, reeok := err.(*processors.ResourceError)
-					fmt.Println("REE", ree, reeok)
-					if resourceErr, ok := err.(*processors.ResourceError); ok && ucp_aws.IsAWSResourceNotFoundError(resourceErr.Unwrap()) {
-						// If the AWS resource is not found, then it is already deleted
+					if resourceErr, ok := err.(*processors.ResourceError); ok && strings.Contains(resourceErr.Unwrap().Error(), "Status Code: 404") {
+						// If the resource is not found, then it is already deleted
 						logger.Info(fmt.Sprintf("Output resource: %q is already deleted", id))
 						break
 					} else {
