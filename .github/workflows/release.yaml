@@ -162,7 +162,7 @@ jobs:
       - name: Determine desired release version
         id: get-version
         run: |
-          ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }}
+          ./radius/.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }}
       - name: Generate release summary
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
