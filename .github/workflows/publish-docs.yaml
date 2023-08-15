@@ -26,19 +26,20 @@ jobs:
           repository: project-radius/radius
           path: radius
       - name: Parse release version and set environment variables
+        run: python radius/.github/scripts/get_release_version.py
+      - name: Generate docs release branch name
         run: |
-          python radius/.github/scripts/get_release_version.py
-          if [ "${{ env.REL_CHANNEL }}" != "edge" ]; then
-            echo REL_VCHANNEL="v${{ env.REL_CHANNEL }}" >> $GITHUB_ENV
+          if [[ ${{ env.REL_CHANNEL }} != "edge" ]]; then
+            echo DOCS_BRANCH="v${{ env.REL_CHANNEL }}" >> $GITHUB_ENV
           else
-            echo REL_VCHANNEL="${{ env.REL_CHANNEL }}">> $GITHUB_ENV
+            echo DOCS_BRANCH=edge" >> $GITHUB_ENV
           fi
       - name: Checkout docs repository
         uses: actions/checkout@v3
         with:
           repository: project-radius/docs
           path: docs
-          ref: ${{ env.REL_VCHANNEL }}
+          ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       - name: Setup Go
         uses: actions/setup-go@v4
