@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 )
 
@@ -74,7 +73,7 @@ func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectRe
 // It uses Terraform's Get command to download the module using the Terraform executable available at execPath.
 // An error is returned if the module could not be downloaded.
 func downloadModule(ctx context.Context, workingDir, execPath string) error {
-	tf, err := tfexec.NewTerraform(workingDir, execPath)
+	tf, err := NewTerraform(ctx, workingDir, execPath)
 	if err != nil {
 		return err
 	}
