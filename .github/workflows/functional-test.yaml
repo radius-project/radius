@@ -59,8 +59,6 @@ env:
   AZURE_LOCATION: westus3
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
-  # The filename of the pod state log
-  POD_STATE_LOG_FILENAME: pod-states.log
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
@@ -527,11 +525,18 @@ jobs:
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-      - name: Log and upload pod states
+      - uses: azure/setup-kubectl@v3
         if: always()
-        uses: ./.github/actions/log-pod-states
         with:
-          pod_state_log_filename: ${{ matrix.name }}-tests-${{ env.POD_STATE_LOG_FILENAME }}
+          version: "v1.25.0"
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
