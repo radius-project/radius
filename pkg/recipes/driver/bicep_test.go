@@ -400,7 +400,10 @@ func Test_Driver_Delete_Success_AfterRetry(t *testing.T) {
 		{
 			LocalID: "RecipeResource0",
 			Identity: resourcemodel.ResourceIdentity{
-				Data: map[string]any{},
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     "AWS.RDS/DBInstance",
+					Provider: "aws",
+				},
 			},
 			ResourceType: resourcemodel.ResourceType{
 				Type:     "AWS.RDS/DBInstance",
@@ -433,7 +436,10 @@ func Test_Driver_Delete_Success_After404(t *testing.T) {
 		{
 			LocalID: "RecipeResource0",
 			Identity: resourcemodel.ResourceIdentity{
-				Data: map[string]any{},
+				ResourceType: &resourcemodel.ResourceType{
+					Type:     "AWS.RDS/DBInstance",
+					Provider: "aws",
+				},
 			},
 			ResourceType: resourcemodel.ResourceType{
 				Type:     "AWS.RDS/DBInstance",
@@ -443,8 +449,10 @@ func Test_Driver_Delete_Success_After404(t *testing.T) {
 		},
 	}
 
-	expectedErr := &types.ResourceNotFoundException{
-		Message: to.Ptr("Resource not found"),
+	expectedErr := &processors.ResourceError{
+		Inner: &types.ResourceNotFoundException{
+			Message: to.Ptr("Status Code: 404; Error Code: ResourceNotFoundException; Request ID: 00000000-0000-0000-0000-000000000000"),
+		},
 	}
 	client.EXPECT().
 		Delete(gomock.Any(), gomock.Any(), resourcemodel.APIVersionUnknown).
