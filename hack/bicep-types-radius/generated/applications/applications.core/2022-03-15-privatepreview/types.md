@@ -403,14 +403,14 @@
 * **application**: string (Required): Specifies the resource id of the application
 * **environment**: string: The resource id of the environment linked to the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **recipe**: [RecipeDef](#recipedef): The recipe used to automatically deploy underlying infrastructure for a portable resource.
+* **recipe**: [ResourceRecipe](#resourcerecipe): The recipe used to automatically deploy underlying infrastructure for a portable resource.
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **secrets**: [ExtenderSecrets](#extendersecrets): The secret values for the given Extender portable resource.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
 
-## RecipeDef
+## ResourceRecipe
 ### Properties
 * **name**: string (Required): The name of the recipe within the environment to use.
 * **parameters**: any: Any object

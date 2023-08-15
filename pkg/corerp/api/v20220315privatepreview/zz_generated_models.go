@@ -622,7 +622,7 @@ type ExtenderList struct {
 	NextLink *string
 
 	// List of Extender portable resources.
-	Value []*ExtenderResource `json:"value,omitempty"`
+	Value []*ExtenderResource
 }
 
 // ExtenderProperties - Extender portable resource properties.
@@ -637,16 +637,16 @@ type ExtenderProperties struct {
 	Environment *string
 
 	// The recipe used to automatically deploy underlying infrastructure for the Extender portable resource.
-	Recipe *RecipeDef `json:"recipe,omitempty"`
+	Recipe *ResourceRecipe
 
 	// Specifies how the underlying service/resource is provisioned and managed.
-	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	ResourceProvisioning *ResourceProvisioning
 
 	// The secret values for the given Extender portable resource.
-	Secrets map[string]interface{} `json:"secrets,omitempty"`
+	Secrets map[string]any
 
 	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus
@@ -658,7 +658,7 @@ type ExtenderResource struct {
 	Location *string
 
 	// REQUIRED; Extender portable resource properties.
-	Properties *ExtenderProperties `json:"properties,omitempty"`
+	Properties *ExtenderProperties
 
 	// Resource tags.
 	Tags map[string]*string
@@ -671,45 +671,6 @@ type ExtenderResource struct {
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string
-}
-
-// ExtenderResponseProperties - Extender link properties
-type ExtenderResponseProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string
-
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]any
-
-	// The resource id of the environment linked to the resource
-	Environment *string
-
-	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
-	ProvisioningState *ProvisioningState
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus
-}
-
-// ExtenderResponseResource - Extender link
-type ExtenderResponseResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string
-
-	// REQUIRED; Extender link properties
-	Properties *ExtenderResponseProperties
-
-	// Resource tags.
-	Tags map[string]*string
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string
-
-	// READ-ONLY; The name of the resource
-	Name *string
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
@@ -1070,7 +1031,7 @@ type Recipe struct {
 	LinkType *string
 
 	// Name of the recipe registered to the environment.
-	Name *string  `json:"name,omitempty"`
+	Name *string
 }
 
 // RecipeMetadataProperties - Properties of a Recipe linked to an Environment.
@@ -1089,24 +1050,6 @@ type RecipeMetadataProperties struct {
 	TemplateVersion *string
 }
 
-// RecipeDef - The recipe used to automatically deploy underlying infrastructure for a portable resource.
-type RecipeDef struct {
-	// REQUIRED; The name of the recipe within the environment to use.
-	Name *string `json:"name,omitempty"`
-
-	// Key/value parameters to pass into the recipe at deployment.
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
-}
-
-// RecipeDef - The recipe used to automatically deploy underlying infrastructure for a portable resource.
-type RecipeDef struct {
-	// REQUIRED; The name of the recipe within the environment to use.
-	Name *string `json:"name,omitempty"`
-
-	// Key/value parameters to pass into the recipe at deployment.
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
-}
-
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -1117,6 +1060,15 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceRecipe - The recipe used to automatically deploy underlying infrastructure for a portable resource.
+type ResourceRecipe struct {
+	// REQUIRED; The name of the recipe within the environment to use.
+	Name *string
+
+	// Key/value parameters to pass into the recipe at deployment.
+	Parameters map[string]any
 }
 
 // ResourceStatus - Status of a resource.

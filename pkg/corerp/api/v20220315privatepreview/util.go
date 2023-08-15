@@ -17,12 +17,10 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"fmt"
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_apiver "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -149,55 +147,4 @@ func isValidLinkType(link string) bool {
 
 func isValidTemplateKind(templateKind string) bool {
 	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
-}
-
-func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) (linkrp.ResourceProvisioning, error) {
-	if provisioning == nil {
-		return linkrp.ResourceProvisioningRecipe, nil
-	}
-	switch *provisioning {
-	case ResourceProvisioningManual:
-		return linkrp.ResourceProvisioningManual, nil
-	case ResourceProvisioningRecipe:
-		return linkrp.ResourceProvisioningRecipe, nil
-	default:
-		return "", &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
-	}
-}
-
-func fromRecipeDataModel(r linkrp.LinkRecipe) *RecipeDef {
-	return &RecipeDef{
-		Name:       to.Ptr(r.Name),
-		Parameters: r.Parameters,
-	}
-}
-
-func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning) *ResourceProvisioning {
-	var converted ResourceProvisioning
-	switch provisioning {
-	case linkrp.ResourceProvisioningManual:
-		converted = ResourceProvisioningManual
-	default:
-		converted = ResourceProvisioningRecipe
-	}
-
-	return &converted
-}
-
-func toRecipeDataModel(r *RecipeDef) linkrp.LinkRecipe {
-	if r == nil {
-		return linkrp.LinkRecipe{
-			Name: linkrp_apiver.DefaultRecipeName,
-		}
-	}
-	recipe := linkrp.LinkRecipe{}
-	if r.Name == nil {
-		recipe.Name = linkrp_apiver.DefaultRecipeName
-	} else {
-		recipe.Name = to.String(r.Name)
-	}
-	if r.Parameters != nil {
-		recipe.Parameters = r.Parameters
-	}
-	return recipe
 }

@@ -261,7 +261,7 @@
     }
   },
   "definitions": {
-    "RecipeDef": {
+    "ResourceRecipe": {
       "type": "object",
       "properties": {
         "name": {
@@ -361,7 +361,7 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         },
         "recipe": {
-          "$ref": "#/definitions/RecipeDef",
+          "$ref": "#/definitions/ResourceRecipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the Extender portable resource."
         }
       },

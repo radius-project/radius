@@ -102,12 +102,8 @@ type EnvironmentsClientUpdateResponse struct {
 
 // ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
 type ExtendersClientCreateOrUpdateResponse struct {
-<<<<<<< HEAD
-	// Extender link
-	ExtenderResponseResource
-=======
+	// Extender portable resource.
 	ExtenderResource
->>>>>>> 6a10e8c7e (initial commit)
 }
 
 // ExtendersClientDeleteResponse contains the response from method ExtendersClient.Delete.
@@ -117,29 +113,20 @@ type ExtendersClientDeleteResponse struct {
 
 // ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
 type ExtendersClientGetResponse struct {
-<<<<<<< HEAD
-	// Extender link
-	ExtenderResponseResource
-=======
+	// Extender portable resource.
 	ExtenderResource
->>>>>>> 6a10e8c7e (initial commit)
 }
 
 // ExtendersClientListByRootScopeResponse contains the response from method ExtendersClient.NewListByRootScopePager.
 type ExtendersClientListByRootScopeResponse struct {
-	// Object that includes an array of Extender and a possible link for next set
+	// Object that includes an array of Extender and a possible portable resource for next set.
 	ExtenderList
 }
 
 // ExtendersClientListSecretsResponse contains the response from method ExtendersClient.ListSecrets.
 type ExtendersClientListSecretsResponse struct {
-<<<<<<< HEAD
-	// The secret values for the given Extender resource
-	Value map[string]any
-=======
 	// The secret values for the given Extender portable resource.
-	Value map[string]interface{}
->>>>>>> 6a10e8c7e (initial commit)
+	Value map[string]any
 }
 
 // GatewaysClientCreateOrUpdateResponse contains the response from method GatewaysClient.CreateOrUpdate.

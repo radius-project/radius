@@ -73,7 +73,7 @@ func (extender *Extender) Recipe() *linkrp.LinkRecipe {
 	if extender.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		return nil
 	}
-	return &extender.Properties.RecipeDef
+	return &extender.Properties.ResourceRecipe
 }
 
 // ExtenderProperties represents the properties of Extender resource.
@@ -84,7 +84,7 @@ type ExtenderProperties struct {
 	// Secrets values provided for the resource
 	Secrets map[string]any `json:"secrets,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Extender
-	RecipeDef linkrp.LinkRecipe `json:"recipe,omitempty"`
+	ResourceRecipe linkrp.LinkRecipe `json:"recipe,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
