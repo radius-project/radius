@@ -4,7 +4,7 @@ param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
-  name: 'corerp-resources-redis-mp'
+  name: 'dsrp-resources-redis-manual'
   location: 'global'
   properties:{
     environment: environment
@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rds-app-ctnr-old'
+  name: 'rds-app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -36,7 +36,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'rds-ctnr-old'
+  name: 'rds-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -54,15 +54,15 @@ resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview'
 }
 
 resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'rds-rte-old'
+  name: 'rds-rte'
   location: 'global'
   properties: {
     application: app.id
   }
 }
 
-resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
-  name: 'rds-rds-old'
+resource redis 'Applications.Datastores/redisCaches@2022-03-15-privatepreview' = {
+  name: 'rds-rds'
   location: 'global'
   properties: {
     environment: environment
