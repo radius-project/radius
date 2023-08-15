@@ -172,31 +172,31 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 
 			for attempt := 1; attempt <= maxDeletionRetries; attempt++ {
 				err := d.ResourceClient.Delete(groupCtx, id, resourcemodel.APIVersionUnknown)
-				// figure out how to handle 404
-				// convert err to ResourceError
-
 				if err != nil {
+					ree, reeok := err.(*processors.ResourceError)
+					fmt.Println("REE", ree, reeok)
 					if resourceErr, ok := err.(*processors.ResourceError); ok && ucp_aws.IsAWSResourceNotFoundError(resourceErr.Unwrap()) {
 						// If the AWS resource is not found, then it is already deleted
+						logger.Info(fmt.Sprintf("Output resource: %q is already deleted", id))
 						break
 					} else {
 						if attempt == maxDeletionRetries {
-							deletionErr := fmt.Errorf("failed to delete output resource: %q with error %v", id, err)
+							deletionErr := fmt.Errorf("failed to delete output resource: %q with error: %v", id, err)
 							logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
 							return deletionErr
 						} else {
-							logger.Info(fmt.Sprintf("Failed to delete output resource: %q with error %v, retrying in %v\n", id, err, deletionRetryInterval))
+							logger.Info(fmt.Sprintf("Failed to delete output resource: %q with error: %v, retrying in %v\n", id, err, deletionRetryInterval))
 							time.Sleep(deletionRetryInterval)
 							continue
 						}
 					}
 				} else {
 					// If the err is nil, then the resource is deleted successfully
+					logger.Info(fmt.Sprintf("Deleted output resource: %q", id), id)
 					break
 				}
 			}
 
-			logger.Info(fmt.Sprintf("Deleted output resource: %q", id), id)
 			return nil
 		})
 	}
