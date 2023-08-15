@@ -128,7 +128,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		return nil, err
 	}
 
-	recipeResponse, err := prepareBicepRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareBicepRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the recipe output %q: %w", recipes.ResultPropertyName, err)
 	}
@@ -296,7 +296,7 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 
 // prepareBicepRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func prepareBicepRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareBicepRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//

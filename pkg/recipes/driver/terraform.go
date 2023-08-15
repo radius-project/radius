@@ -102,7 +102,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		return nil, err
 	}
 
-	recipeOutputs, err := prepareTFRecipeResponse(tfState)
+	recipeOutputs, err := d.prepareTFRecipeResponse(tfState)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.Out
 
 // prepareTFRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
-func prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -127,7 +127,7 @@ func prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, erro
 	// - Explicitly as part of the 'result' output.
 
 	if tfState == nil || (*tfState == tfjson.State{}) {
-		return &recipes.RecipeOutput{}, errors.New("terraform state is nil")
+		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
 	}
 
 	recipeResponse := &recipes.RecipeOutput{}
@@ -141,39 +141,5 @@ func prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, erro
 		}
 	}
 
-	// process the 'resources' created by the template
-	deployedResources := getDeployedOutputResources(tfState.Values.RootModule)
-	recipeResponse.Resources = append(recipeResponse.Resources, deployedResources...)
-
 	return recipeResponse, nil
-}
-
-// getDeployedOutputResources returns the list of IDs of the resources deployed by the Terraform module.
-// It traverses the module tree stored in the Terraform state and returns the list of resources that have
-// an 'id' attribute. Skips the resources created by the Kubernetes provider as the resource ID
-// is not in the format that Radius can parse.
-func getDeployedOutputResources(module *tfjson.StateModule) []string {
-	ids := []string{}
-
-	if module == nil {
-		return ids
-	}
-
-	for _, resource := range module.Resources {
-		// Kubernetes resource id is not in the format that Radius can parse, so we skip it until we add support for it.
-		if resource.ProviderName != "registry.terraform.io/hashicorp/kubernetes" {
-			if resource.AttributeValues != nil {
-				if id, ok := resource.AttributeValues["id"].(string); ok {
-					ids = append(ids, id)
-				}
-			}
-		}
-	}
-
-	for _, childModule := range module.ChildModules {
-		childIDs := getDeployedOutputResources(childModule)
-		ids = append(ids, childIDs...)
-	}
-
-	return ids
 }

@@ -259,6 +259,8 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 }
 
 func Test_RecipeResponseSuccess(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -293,12 +295,14 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareBicepRecipeResponse(response, resources)
+	actualResponse, err := d.prepareBicepRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_RecipeResponseWithoutSecret(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -324,12 +328,14 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareBicepRecipeResponse(response, resources)
+	actualResponse, err := d.prepareBicepRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
 func Test_RecipeResponseWithoutResult(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -340,7 +346,7 @@ func Test_RecipeResponseWithoutResult(t *testing.T) {
 		Resources: []string{"outputResourceId"},
 	}
 
-	actualResponse, err := prepareBicepRecipeResponse(response, resources)
+	actualResponse, err := d.prepareBicepRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }

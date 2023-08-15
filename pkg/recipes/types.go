@@ -101,8 +101,10 @@ func (e *ErrRecipeNotFound) Error() string {
 type RecipeOutput struct {
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
+
 	// Secrets represents the key/value pairs of secret values of the deployed resource.
 	Secrets map[string]any
+
 	// Values represents the key/value pairs of properties of the deployed resource.
 	Values map[string]any
 }

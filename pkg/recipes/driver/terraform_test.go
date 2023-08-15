@@ -30,7 +30,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 
-	// recipe_output "github.com/project-radius/radius/pkg/recipes/output"
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testcontext"
@@ -113,12 +112,10 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 		},
 	}
 
-	// tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.NoError(t, err)
-	// require.Equal(t, expectedTFState, recipeOutput)
 	require.Equal(t, expectedOutput, recipeOutput)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
@@ -147,6 +144,49 @@ func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
 	require.Equal(t, "Failed to deploy terraform module", err.Error())
+	// Verify directory cleanup
+	_, err = os.Stat(tfDir)
+	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+}
+
+func TestTerraformDriver_Execute_OutputsFailure(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	options := terraform.Options{
+		RootDir:        tfDir,
+		EnvConfig:      &envConfig,
+		ResourceRecipe: &recipeMetadata,
+		EnvRecipe:      &envRecipe,
+	}
+
+	expectedTFState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				recipes.ResultPropertyName: {
+					Value: map[string]interface{}{
+						"values": map[string]interface{}{
+							"host": "myrediscache.redis.cache.windows.net",
+							"port": json.Number("6379"),
+						},
+						"invalid": "invalid field",
+					},
+				},
+			},
+		},
+	}
+
+	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
+
+	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	require.Error(t, err)
+	require.Equal(t, "json: unknown field \"invalid\"", err.Error())
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
@@ -221,86 +261,14 @@ func TestTerraformDriver_Delete_Success(t *testing.T) {
 	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
 }
 
-func TestGetDeployedOutputResources(t *testing.T) {
-	tests := []struct {
-		desc        string
-		stateModule *tfjson.StateModule
-		expectedIDs []string
-	}{
-		{
-			desc: "valid module",
-			stateModule: &tfjson.StateModule{
-				ChildModules: []*tfjson.StateModule{
-					{
-						Resources: []*tfjson.StateResource{
-							{
-								AttributeValues: map[string]interface{}{
-									"id": "outputResourceId1",
-								},
-							},
-						},
-					},
-				},
-			},
-			expectedIDs: []string{"outputResourceId1"},
-		},
-		{
-			desc: "nested modules",
-			stateModule: &tfjson.StateModule{
-				Resources: []*tfjson.StateResource{
-					{
-						AttributeValues: map[string]interface{}{
-							"id": "outputResourceId1",
-						},
-					},
-					{
-						AttributeValues: map[string]interface{}{
-							"id": "outputResourceId2",
-						},
-					},
-				},
-				ChildModules: []*tfjson.StateModule{
-					{
-						Resources: []*tfjson.StateResource{
-							{
-								AttributeValues: map[string]interface{}{
-									"id": "outputResourceId3",
-								},
-							},
-						},
-					},
-				},
-			},
-			expectedIDs: []string{"outputResourceId1", "outputResourceId2", "outputResourceId3"},
-		},
-		{
-			desc:        "nil module",
-			stateModule: nil,
-			expectedIDs: []string{},
-		},
-		{
-			desc: "empty module",
-			stateModule: &tfjson.StateModule{
-				ChildModules: []*tfjson.StateModule{},
-			},
-			expectedIDs: []string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			ids := getDeployedOutputResources(tt.stateModule)
-			require.Equal(t, tt.expectedIDs, ids)
-		})
-	}
-}
-
-func TestPrepareTFRecipeResponse2(t *testing.T) {
+func TestPrepareTFRecipeResponse(t *testing.T) {
+	d := &terraformDriver{}
 	tests := []struct {
 		desc             string
 		state            *tfjson.State
 		expectedResponse *recipes.RecipeOutput
 		expectedErr      bool
+		expectedErrMsg   string
 	}{
 		{
 			desc: "valid state",
@@ -316,7 +284,7 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 								"secrets": map[string]interface{}{
 									"connectionString": "testConnectionString",
 								},
-								"resources": []any{"outputResourceId1", "outputResourceId2"},
+								"resources": []any{"outputResourceId1"},
 							},
 						},
 					},
@@ -324,11 +292,6 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 						ChildModules: []*tfjson.StateModule{
 							{
 								Resources: []*tfjson.StateResource{
-									{
-										AttributeValues: map[string]interface{}{
-											"id": "outputResourceId1",
-										},
-									},
 									{
 										AttributeValues: map[string]interface{}{
 											"id": "outputResourceId2",
@@ -348,92 +311,76 @@ func TestPrepareTFRecipeResponse2(t *testing.T) {
 				Secrets: map[string]any{
 					"connectionString": "testConnectionString",
 				},
-				Resources: []string{"outputResourceId1", "outputResourceId2", "outputResourceId1", "outputResourceId2"},
+				Resources: []string{"outputResourceId1"},
 			},
 			expectedErr: false,
+		},
+		{
+			desc: "invalid state",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]interface{}{
+								"values": map[string]interface{}{
+									"host": "testhost",
+									"port": json.Number("6379"),
+								},
+								"secrets": map[string]interface{}{
+									"connectionString": "testConnectionString",
+								},
+								"resources": []any{"outputResourceId1"},
+								"outputs":   "invalidField",
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										AttributeValues: map[string]interface{}{
+											"id": "outputResourceId2",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      true,
+			expectedErrMsg:   "json: unknown field \"outputs\"",
 		},
 		{
 			desc:             "nil state",
 			state:            nil,
 			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      true,
+			expectedErrMsg:   "terraform state is empty",
 		},
 		{
 			desc:             "empty state",
 			state:            &tfjson.State{},
 			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      true,
+			expectedErrMsg:   "terraform state is empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			if tt.expectedErr {
-				recipeResponse, err := prepareTFRecipeResponse(tt.state)
+				recipeResponse, err := d.prepareTFRecipeResponse(tt.state)
 				require.Error(t, err)
+				require.Equal(t, tt.expectedErrMsg, err.Error())
 				require.Equal(t, tt.expectedResponse, recipeResponse)
 			} else {
-				recipeResponse, err := prepareTFRecipeResponse(tt.state)
+				recipeResponse, err := d.prepareTFRecipeResponse(tt.state)
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedResponse, recipeResponse)
 			}
 		})
 	}
-}
-
-func TestPrepareTFRecipeResponse(t *testing.T) {
-	tfState := &tfjson.State{
-		Values: &tfjson.StateValues{
-			Outputs: map[string]*tfjson.StateOutput{
-				recipes.ResultPropertyName: {
-					Value: map[string]interface{}{
-						"values": map[string]interface{}{
-							"host": "testhost",
-							"port": float64(6379),
-						},
-						"secrets": map[string]interface{}{
-							"connectionString": "testConnectionString",
-						},
-						"resources": []any{"outputResourceId1", "outputResourceId2"},
-					},
-				},
-			},
-			RootModule: &tfjson.StateModule{
-				ChildModules: []*tfjson.StateModule{
-					{
-						Resources: []*tfjson.StateResource{
-							{
-								AttributeValues: map[string]interface{}{
-									"id": "outputResourceId1",
-								},
-							},
-							{
-								AttributeValues: map[string]interface{}{
-									"id": "outputResourceId2",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	recipeResponse, err := prepareTFRecipeResponse(tfState)
-	require.NoError(t, err)
-	require.Equal(t, map[string]interface{}{"host": "testhost", "port": float64(6379)}, recipeResponse.Values)
-	require.Equal(t, map[string]interface{}{"connectionString": "testConnectionString"}, recipeResponse.Secrets)
-	require.Equal(t, []string{"outputResourceId1", "outputResourceId2", "outputResourceId1", "outputResourceId2"}, recipeResponse.Resources)
-
-	// Test preparing the Terraform recipe response with a nil state.
-	tfState = nil
-	recipeResponse, err = prepareTFRecipeResponse(tfState)
-	require.Equal(t, &recipes.RecipeOutput{}, recipeResponse)
-	require.Error(t, err)
-
-	// Empty state
-	tfState = &tfjson.State{}
-	recipeResponse, err = prepareTFRecipeResponse(tfState)
-	require.Equal(t, &recipes.RecipeOutput{}, recipeResponse)
-	require.Error(t, err)
 }
