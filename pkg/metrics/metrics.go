@@ -22,12 +22,6 @@ var (
 
 	// DefaultRecipeEngineMetrics holds recipe engine metrics definitions.
 	DefaultRecipeEngineMetrics = newRecipeEngineMetrics()
-
-	// DefaultRecipeDriverMetrics holds recipe driver metrics definitions.
-	DefaultRecipeDriverMetrics = newRecipeDriverMetrics()
-
-	// DefaultTerraformDriverMetrics holds Terraform driver metrics definitions.
-	DefaultTerraformDriverMetrics = newTerraformDriverMetrics()
 )
 
 // # Function Explanation
@@ -39,14 +33,6 @@ func InitMetrics() error {
 	}
 
 	if err := DefaultRecipeEngineMetrics.Init(); err != nil {
-		return err
-	}
-
-	if err := DefaultRecipeDriverMetrics.Init(); err != nil {
-		return err
-	}
-
-	if err := DefaultTerraformDriverMetrics.Init(); err != nil {
 		return err
 	}
 

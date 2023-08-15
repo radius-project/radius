@@ -82,8 +82,8 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	if err != nil {
 		return nil, err
 	}
-	metrics.DefaultRecipeDriverMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Download, recipe.Name, &definition, metrics.SuccessfulOperationState))
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.SuccessfulOperationState))
 
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&recipe, &configuration)

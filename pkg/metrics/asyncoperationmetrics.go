@@ -95,8 +95,10 @@ func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) 
 	if a.counters[QueuedAsyncOperationCount] != nil {
 		serviceCtx := v1.ARMRequestContextFromContext(ctx)
 		a.counters[QueuedAsyncOperationCount].Add(ctx, 1,
-			metric.WithAttributes(attribute.String(ResourceTypeAttrKey, normalizeAttrValue(serviceCtx.ResourceID.Type())),
-				attribute.String(OperationTypeAttrKey, normalizeAttrValue(serviceCtx.OperationType.Method.HTTPMethod()))),
+			metric.WithAttributes(
+				resourceTypeAttrKey.String(normalizeAttrValue(serviceCtx.ResourceID.Type())),
+				operationTypeAttrKey.String(normalizeAttrValue(serviceCtx.OperationType.Method.HTTPMethod())),
+			),
 		)
 	}
 }
@@ -136,17 +138,17 @@ func newAsyncOperationCommonAttributes(req *ctrl.Request, res *ctrl.Result) []at
 
 	resourceID, err := resources.ParseResource(req.ResourceID)
 	if err == nil {
-		attrs = append(attrs, attribute.String(ResourceTypeAttrKey, normalizeAttrValue(resourceID.Type())))
+		attrs = append(attrs, resourceTypeAttrKey.String(normalizeAttrValue(resourceID.Type())))
 	}
 
 	opType, ok := v1.ParseOperationType(req.OperationType)
 	if ok {
-		attrs = append(attrs, attribute.String(OperationTypeAttrKey, normalizeAttrValue(opType.Method.HTTPMethod())))
+		attrs = append(attrs, operationTypeAttrKey.String(normalizeAttrValue(opType.Method.HTTPMethod())))
 	}
 
 	if res != nil && res.ProvisioningState() != "" {
-		attrs = append(attrs, attribute.String(OperationStateAttrKey, normalizeAttrValue(string(res.ProvisioningState()))))
-		attrs = append(attrs, attribute.String(OperationErrorCodeAttrKey, normalizeAttrValue(string(res.Error.Code))))
+		attrs = append(attrs, operationStateAttrKey.String(normalizeAttrValue(string(res.ProvisioningState()))))
+		attrs = append(attrs, operationErrorCodeAttrKey.String(normalizeAttrValue(string(res.Error.Code))))
 	}
 
 	return attrs

@@ -17,67 +17,37 @@ limitations under the License.
 package metrics
 
 import (
-	"strings"
-
-	"github.com/project-radius/radius/pkg/recipes"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
-	// ResourceTypeAttrKey is the attribute name for the resource type.
-	ResourceTypeAttrKey = "resource_type"
+	// resourceTypeAttrKey is the attribute name for the resource type.
+	resourceTypeAttrKey = attribute.Key("resource_type")
 
-	// OperationTypeAttrKey is the attribute name for the operation type.
-	OperationTypeAttrKey = "operation_type"
+	// operationTypeAttrKey is the attribute name for the operation type.
+	operationTypeAttrKey = attribute.Key("operation_type")
 
-	// OperationStateAttrKey is the attribute name for the operation state.
-	OperationStateAttrKey = "operation_state"
+	// operationStateAttrKey is the attribute name for the operation state.
+	operationStateAttrKey = attribute.Key("operation_state")
 
-	// OperationErrorCodeAttrKey is the attribute name for the operation error code.
-	OperationErrorCodeAttrKey = "operation_error_code"
+	// operationErrorCodeAttrKey is the attribute name for the operation error code.
+	operationErrorCodeAttrKey = attribute.Key("operation_error_code")
 
-	// RecipeNameAttrKey is the attribute name for the recipe name.
-	RecipeNameAttrKey = "recipe_name"
+	// recipeNameAttrKey is the attribute name for the recipe name.
+	recipeNameAttrKey = attribute.Key("recipe_name")
 
-	// RecipeDriverAttrKey is the attribute name for the recipe driver.
-	RecipeDriverAttrKey = "recipe_driver"
+	// recipeDriverAttrKey is the attribute name for the recipe driver.
+	recipeDriverAttrKey = attribute.Key("recipe_driver")
 
-	// RecipeTemplatePathAttrKey is the attribute name for the recipe template path.
-	RecipeTemplatePathAttrKey = "recipe_template_path"
+	// recipeTemplatePathAttrKey is the attribute name for the recipe template path.
+	recipeTemplatePathAttrKey = attribute.Key("recipe_template_path")
+
+	// TerraformVersionAttrKey is the attribute key for the Terraform version.
+	TerraformVersionAttrKey = attribute.Key("terraform_version")
 
 	// SuccessfulOperationState is the value for a successful operation state.
 	SuccessfulOperationState = "success"
+
+	// FailedOperationState is the value for a failed operation state.
+	FailedOperationState = "failed"
 )
-
-// GenerateStringAttribute generates a string attribute.
-func GenerateStringAttribute(key, value string) attribute.KeyValue {
-	return attribute.String(key, strings.ToLower(value))
-}
-
-// GenerateRecipeOperationCommonAttributes generates common attributes for recipe operations.
-func GenerateRecipeOperationCommonAttributes(operationType, recipeName string, definition *recipes.EnvironmentDefinition, opRes string) []attribute.KeyValue {
-	attrs := make([]attribute.KeyValue, 0)
-
-	if operationType != "" {
-		attrs = append(attrs, attribute.String(OperationTypeAttrKey, strings.ToLower(operationType)))
-	}
-
-	if recipeName != "" {
-		attrs = append(attrs, attribute.String(RecipeNameAttrKey, strings.ToLower(recipeName)))
-	}
-
-	if definition != nil && definition.Driver != "" {
-		attrs = append(attrs, attribute.String(RecipeDriverAttrKey, strings.ToLower(definition.Driver)))
-	}
-
-	if definition != nil && definition.TemplatePath != "" {
-		attrs = append(attrs, attribute.String(RecipeTemplatePathAttrKey, strings.ToLower(definition.TemplatePath)))
-
-	}
-
-	if opRes != "" {
-		attrs = append(attrs, attribute.String(OperationStateAttrKey, opRes))
-	}
-
-	return attrs
-}

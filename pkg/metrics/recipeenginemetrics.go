@@ -18,33 +18,36 @@ package metrics
 
 import (
 	"context"
+	"strings"
 	"time"
 
+	"github.com/project-radius/radius/pkg/recipes"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
 const (
-	// RecipeEngineOperationCount is the metric name for the recipe engine operation counter.
-	// Operations can be Execution, and Deletion.
-	RecipeEngineOperationCounter = "recipe_engine_operation_counter"
+	// recipeEngineOperationDuration is the metric name for the recipe engine operation duration.
+	recipeEngineOperationDuration = "recipe.operation.duration"
 
-	// RecipeEngineOperationDurationMilliseconds is the metric name for the recipe engine operation duration.
-	// Operations can be Execution, and Deletion.
-	RecipeEngineOperationDurationMilliseconds = "recipe_engine_operation_duration_milliseconds"
+	// recipeDownloadDuration is the metric name for the recipe download duration.
+	recipeDownloadDuration = "recipe.download.duration"
 
-	// RecipeOperation_Execute is the metric name for the recipe execution operation.
-	RecipeOperation_Execute = "execute"
+	// terraformInstallationDuration is the metric name for the Terraform installation duration.
+	terraformInstallationDuration = "recipe.tf.installation.duration"
 
-	// RecipeOperation_Delete is the metric name for the recipe deletion operation.
-	RecipeOperation_Delete = "delete"
+	// terraformInitializationDuration is the metric name for the Terraform initialization duration.
+	terraformInitializationDuration = "recipe.tf.init.duration"
 
-	// RecipeOperationResult_Success is the metric name for the successful recipe operation result.
-	RecipeOperationResult_Success = "success"
+	// RecipeEngineOperationExecute represents the Execute operation of the Recipe Engine.
+	RecipeEngineOperationExecute = "execute"
 
-	// RecipeOperationResult_Failed is the metric name for the failed recipe operation result.
-	RecipeOperationResult_Failed = "failed"
+	// RecipeEngineOperationDelete represents the Delete operation of the Recipe Engine.
+	RecipeEngineOperationDelete = "delete"
+
+	// RecipeEngineOperationDownloadRecipe represents the Download Recipe operation of the Recipe Engine.
+	RecipeEngineOperationDownloadRecipe = "download.recipe"
 )
 
 type recipeEngineMetrics struct {
@@ -64,12 +67,22 @@ func (m *recipeEngineMetrics) Init() error {
 	meter := otel.GetMeterProvider().Meter("recipe-engine-metrics")
 
 	var err error
-	m.counters[RecipeEngineOperationCounter], err = meter.Int64Counter(RecipeEngineOperationCounter)
+	m.valueRecorders[recipeEngineOperationDuration], err = meter.Float64Histogram(recipeEngineOperationDuration)
 	if err != nil {
 		return err
 	}
 
-	m.valueRecorders[RecipeEngineOperationDurationMilliseconds], err = meter.Float64Histogram(RecipeEngineOperationDurationMilliseconds)
+	m.valueRecorders[recipeDownloadDuration], err = meter.Float64Histogram(recipeDownloadDuration)
+	if err != nil {
+		return err
+	}
+
+	m.valueRecorders[terraformInstallationDuration], err = meter.Float64Histogram(terraformInstallationDuration)
+	if err != nil {
+		return err
+	}
+
+	m.valueRecorders[terraformInitializationDuration], err = meter.Float64Histogram(terraformInitializationDuration)
 	if err != nil {
 		return err
 	}
@@ -77,19 +90,63 @@ func (m *recipeEngineMetrics) Init() error {
 	return nil
 }
 
-// RecordRecipeOperation records the Recipe Engine operation with the given attributes.
-func (m *recipeEngineMetrics) RecordRecipeOperation(ctx context.Context, attrs []attribute.KeyValue) {
-	if m.counters[RecipeEngineOperationCounter] != nil {
-		m.counters[RecipeEngineOperationCounter].Add(ctx, 1,
+// RecordRecipeOperationDuration records the Recipe Engine operation duration with the given attributes.
+func (m *recipeEngineMetrics) RecordRecipeOperationDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
+	if m.valueRecorders[recipeEngineOperationDuration] != nil {
+		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
+		m.valueRecorders[recipeEngineOperationDuration].Record(ctx, elapsedTime,
 			metric.WithAttributes(attrs...))
 	}
 }
 
-// RecordRecipeOperationDuration records the Recipe Engine operation duration with the given attributes.
-func (m *recipeEngineMetrics) RecordRecipeOperationDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
-	if m.valueRecorders[RecipeEngineOperationDurationMilliseconds] != nil {
+// RecordRecipeDownloadDuration records the recipe download duration with the given attributes.
+func (m *recipeEngineMetrics) RecordRecipeDownloadDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
+	if m.valueRecorders[recipeDownloadDuration] != nil {
 		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
-		m.valueRecorders[RecipeEngineOperationDurationMilliseconds].Record(ctx, elapsedTime,
-			metric.WithAttributes(attrs...))
+		m.valueRecorders[recipeDownloadDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
 	}
+}
+
+// RecordTerraformInstallationDuration records the duration of the Terraform installation with the given attributes.
+func (m *recipeEngineMetrics) RecordTerraformInstallationDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
+	if m.valueRecorders[terraformInstallationDuration] != nil {
+		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
+		m.valueRecorders[terraformInstallationDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
+	}
+}
+
+// RecordTerraformInitializationDuration records the Terraform initialization duration with the given attributes.
+func (m *recipeEngineMetrics) RecordTerraformInitializationDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
+	if m.valueRecorders[terraformInitializationDuration] != nil {
+		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
+		m.valueRecorders[terraformInitializationDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
+	}
+}
+
+// NewRecipeAttributes generates common attributes for recipe operations.
+func NewRecipeAttributes(operationType, recipeName string, definition *recipes.EnvironmentDefinition, state string) []attribute.KeyValue {
+	attrs := make([]attribute.KeyValue, 0)
+
+	if operationType != "" {
+		attrs = append(attrs, operationTypeAttrKey.String(strings.ToLower(operationType)))
+	}
+
+	if recipeName != "" {
+		attrs = append(attrs, recipeNameAttrKey.String(strings.ToLower(recipeName)))
+	}
+
+	if definition != nil && definition.Driver != "" {
+		attrs = append(attrs, recipeDriverAttrKey.String(strings.ToLower(definition.Driver)))
+	}
+
+	if definition != nil && definition.TemplatePath != "" {
+		attrs = append(attrs, recipeTemplatePathAttrKey.String(strings.ToLower(definition.TemplatePath)))
+
+	}
+
+	if state != "" {
+		attrs = append(attrs, operationStateAttrKey.String(strings.ToLower(state)))
+	}
+
+	return attrs
 }

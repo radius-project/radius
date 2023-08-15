@@ -144,8 +144,9 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
-	metrics.DefaultRecipeDriverMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Download, options.EnvRecipe.Name, options.EnvRecipe, metrics.SuccessfulOperationState))
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
+			options.EnvRecipe, metrics.SuccessfulOperationState))
 
 	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
 	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
@@ -199,7 +200,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("terraform init failure: %w", err)
 	}
-	metrics.DefaultTerraformDriverMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")

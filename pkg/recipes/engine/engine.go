@@ -28,14 +28,6 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-const (
-	LoadRecipeError        = "LOAD_RECIPE_ERROR"
-	DriverNotFoundError    = "DRIVER_NOT_FOUND_ERROR"
-	LoadConfigurationError = "LOAD_CONFIGURATION_ERROR"
-	RecipeExecutionError   = "RECIPE_EXECUTION_ERROR"
-	RecipeDeletionError    = "RECIPE_DELETION_ERROR"
-)
-
 // # Function Explanation
 //
 // NewEngine creates a new Engine to deploy recipe.
@@ -62,24 +54,18 @@ type engine struct {
 // an error if one occurs.
 func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
 	executionStart := time.Now()
+	result := metrics.SuccessfulOperationState
 
 	recipeOutput, definition, err := e.executeCore(ctx, recipe)
 	if err != nil {
-		metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
-			metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Execute, recipe.Name, definition, metrics.RecipeOperationResult_Failed))
-
-		return recipeOutput, err
+		result = metrics.FailedOperationState
 	}
 
-	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
-		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Execute, recipe.Name,
-			definition, metrics.RecipeOperationResult_Success))
-
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, executionStart,
-		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Execute, recipe.Name,
-			definition, metrics.RecipeOperationResult_Success))
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationExecute, recipe.Name,
+			definition, result))
 
-	return recipeOutput, nil
+	return recipeOutput, err
 }
 
 // executeCore function is the core logic of the Execute function.
@@ -114,22 +100,18 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 // Delete calls the Delete method of the driver specified in the recipe definition to delete the output resources.
 func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error {
 	deletionStart := time.Now()
+	result := metrics.SuccessfulOperationState
 
 	definition, err := e.deleteCore(ctx, recipe, outputResources)
 	if err != nil {
-		metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
-			metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Delete, recipe.Name, definition, metrics.RecipeOperationResult_Failed))
-
-		return err
+		result = metrics.FailedOperationState
 	}
 
-	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperation(ctx,
-		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Delete, recipe.Name, definition, metrics.RecipeOperationResult_Success))
-
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, deletionStart,
-		metrics.GenerateRecipeOperationCommonAttributes(metrics.RecipeOperation_Delete, recipe.Name, definition, metrics.RecipeOperationResult_Success))
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDelete, recipe.Name,
+			definition, result))
 
-	return nil
+	return err
 }
 
 // deleteCore function is the core logic of the Delete function.

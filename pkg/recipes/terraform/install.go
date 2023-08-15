@@ -65,8 +65,9 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 		return "", fmt.Errorf("failed to install terraform: %w", err)
 	}
 
-	metrics.DefaultTerraformDriverMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
-		[]attribute.KeyValue{metrics.GenerateStringAttribute(metrics.TerraformVersionAttrKey, "latest")})
+	// TODO: Update the metric to record the TF version when we start using a versioned TF installation.
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
+		[]attribute.KeyValue{metrics.TerraformVersionAttrKey.String("latest")})
 
 	logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
 
