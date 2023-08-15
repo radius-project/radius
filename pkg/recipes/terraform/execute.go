@@ -162,7 +162,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 
 	// Add recipecontext to the generated Terraform config's module parameters.
 	// This should only be added if the recipe context variable is declared in the downloaded module.
-	if loadedModule.ContextExists {
+	if loadedModule.ContextVarExists {
 		logger.Info("Adding recipe context module result")
 
 		// Create the recipe context object to be passed to the recipe deployment
@@ -176,7 +176,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		}
 	}
 
-	// Add outputs to the generated Terraform config.
+	// Add outputs to the generated Terraform config, if module has the expected outputs.
 	if loadedModule.ResultOutputExists {
 		if err = tfConfig.AddOutputs(localModuleName, workingDir); err != nil {
 			return err

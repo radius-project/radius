@@ -161,7 +161,7 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 func (cfg *TerraformConfig) AddOutputs(localModuleName, workingDir string) error {
 	cfg.Output = map[string]any{
 		recipes.ResultPropertyName: map[string]any{
-			"value":     "${module." + localModuleName + ".result}",
+			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",
 			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
 		},
 	}

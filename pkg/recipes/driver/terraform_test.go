@@ -231,7 +231,6 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 		},
 	}
 
-	// tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)

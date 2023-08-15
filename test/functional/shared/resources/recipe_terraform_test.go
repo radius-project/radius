@@ -65,24 +65,10 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-resources-terraform-redis",
-						Type: validation.ExtendersResource,
-						App:  appName,
-						OutputResources: []validation.OutputResourceResponse{
-							// Azure storage account, container and blob.
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource1",
-							},
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource2",
-							},
-						},
+						Name:            "corerp-resources-terraform-redis",
+						Type:            validation.ExtendersResource,
+						App:             appName,
+						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
 					},
 				},
 			},
@@ -191,10 +177,16 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:            "corerp-resources-terraform-azstorage",
-						Type:            validation.ExtendersResource,
-						App:             appName,
-						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
+						Name: "corerp-resources-terraform-azstorage",
+						Type: validation.ExtendersResource,
+						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							// Azure storage account and container.
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  "RecipeResource0",
+							},
+						},
 					},
 				},
 			},

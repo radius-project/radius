@@ -119,12 +119,7 @@ func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.Out
 // prepareTFRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
 func (d *terraformDriver) prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set)
-	// and the resources created by the template.
-	//
-	// Note that there are two ways a resource can be returned:
-	// - Implicitly when it is created in the template (it will be in 'resources').
-	// - Explicitly as part of the 'result' output.
+	// We populate the recipe response from the 'result' output (if set).
 
 	if tfState == nil || (*tfState == tfjson.State{}) {
 		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
