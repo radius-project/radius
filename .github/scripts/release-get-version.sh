@@ -41,22 +41,22 @@ RELEASE_BRANCH_NAME=""
 
 for VERSION in $(echo $VERSIONS | sed "s/,/ /g")
 do
-    # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
-    VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
+  # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
+  VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
 
-    # BRANCH_NAME should be the major and minor version of the VERSION_NUMBER prefixed by 'release/' (e.g. release/0.1)
-    BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
+  # BRANCH_NAME should be the major and minor version of the VERSION_NUMBER prefixed by 'release/' (e.g. release/0.1)
+  BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
 
-    if does_tag_exist $VERSION; then
-        echo "Tag $VERSION already exists in the remote repository $REPOSITORY. Skipping..."
-        exit 0
-    else if [[ -z "$RELEASE_VERSION" ]]; then
-        RELEASE_VERSION=$VERSION
-        RELEASE_BRANCH_NAME=$BRANCH_NAME
-    else
-        echo "Error: Updating multiple versions at once is not supported."
-        exit 1
-    fi
+  if does_tag_exist $VERSION; then
+    echo "Tag $VERSION already exists in the remote repository $REPOSITORY. Skipping..."
+    exit 0
+  elif [[ -z "$RELEASE_VERSION" ]]; then
+    RELEASE_VERSION=$VERSION
+    RELEASE_BRANCH_NAME=$BRANCH_NAME
+  else
+    echo "Error: Updating multiple versions at once is not supported."
+    exit 1
+  fi
 done
 
 echo "Release version: ${RELEASE_VERSION}"
