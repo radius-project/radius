@@ -32,7 +32,7 @@ jobs:
           if [[ ${{ env.REL_CHANNEL }} != "edge" ]]; then
             echo DOCS_BRANCH="v${{ env.REL_CHANNEL }}" >> $GITHUB_ENV
           else
-            echo DOCS_BRANCH=edge" >> $GITHUB_ENV
+            echo DOCS_BRANCH="edge" >> $GITHUB_ENV
           fi
       - name: Checkout docs repository
         uses: actions/checkout@v3
