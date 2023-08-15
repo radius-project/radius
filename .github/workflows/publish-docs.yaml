@@ -58,7 +58,7 @@ jobs:
           path: docs/docs/content/reference/cli
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5
-        #if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: docs
