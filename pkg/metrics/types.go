@@ -63,7 +63,7 @@ func GenerateRecipeOperationCommonAttributes(operationType, recipeName string, d
 	}
 
 	if recipeName != "" {
-		attrs = append(attrs, attribute.String(RecipeNameAttrKey, strings.ToLower(operationType)))
+		attrs = append(attrs, attribute.String(RecipeNameAttrKey, strings.ToLower(recipeName)))
 	}
 
 	if definition != nil && definition.Driver != "" {
