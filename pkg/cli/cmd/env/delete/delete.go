@@ -49,16 +49,16 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `Delete environment. Deletes the user's default environment by default.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Delete current enviroment
+# Delete current environment
 rad env delete
 
-# Delete current enviroment and bypass confirmation prompt
+# Delete current environment and bypass confirmation prompt
 rad env delete --yes
 
-# Delete specified enviroment
+# Delete specified environment
 rad env delete my-env
 
-# Delete specified enviroment in a specified resource group
+# Delete specified environment in a specified resource group
 rad env delete my-env --group my-env
 `,
 		RunE: framework.RunCommand(runner),

@@ -51,7 +51,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
 to configure these settings.
 
-Radius will use the provided IAM credential for all interations with AWS. 
+Radius will use the provided IAM credential for all interactions with AWS. 
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for AWS with IAM authentication

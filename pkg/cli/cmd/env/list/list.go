@@ -44,7 +44,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `List environments using the current, or specified workspace.`,
 		Args:  cobra.NoArgs,
 		Example: `
-# List enviroments
+# List environments
 rad env list
 `,
 		RunE: framework.RunCommand(runner),

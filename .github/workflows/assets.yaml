@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Parse release version and set enviroment variables
+      - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       # The install scripts are not versioned. They go to tools/rad/install.{sh,ps1}
       - name: Upload install.sh
