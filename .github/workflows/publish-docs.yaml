@@ -49,7 +49,8 @@ jobs:
       - name: Generate CLI docs
         run: |
             find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
-            go run radius/cmd/docgen/main.go docs/docs/content/reference/cli
+            cd radius
+            go run cmd/docgen/main.go ../docs/docs/content/reference/cli
       - name: Upload CLI docs
         uses: actions/upload-artifact@v3
         with:
