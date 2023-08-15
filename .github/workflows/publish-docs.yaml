@@ -59,7 +59,7 @@ jobs:
             docs/content/reference/cli/*.md
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          branch: reference-cli/patch-${{ github.sha }}
+          branch: reference-cli/autogen
           delete-branch: true
           title: |
             Update rad CLI documentation
