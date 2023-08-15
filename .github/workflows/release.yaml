@@ -41,9 +41,16 @@ jobs:
     steps:
       - name: Checkout project-radius/radius
         uses: actions/checkout@v3
-      - name: Determine release version from versions.json
+      - name: Get supported versions from versions.yaml
+        id: get-supported-versions
+        uses: mikefarah/yq@v4.34.2
+        with:
+          # Get a comma-separated list of supported versions
+          cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
+      - name: Determine desired release version
+        id: get-version
         run: |
-          ./.github/scripts/release-get-version.sh "."
+          ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }}
       - name: Find the previous tag
         uses: actions/github-script@v6
         id: latest-release-tag
@@ -66,7 +73,7 @@ jobs:
             const { data } = await github.rest.repos.generateReleaseNotes({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: '${{ env.RELEASE_VERSION }}',
+              tag_name: '${{ steps.get-version.outputs.release-version }}',
               target_commitish: 'main',
               previous_tag_name: '${{ steps.latest-release-tag.outputs.result }}',
             })
@@ -80,7 +87,7 @@ jobs:
           message: |
             ## Release Information
             * Previous version: ${{ steps.latest-release-tag.outputs.result }}
-            * New version: ${{ env.RELEASE_VERSION }}
+            * New version: ${{ steps.get-version.outputs.release-version }}
 
             ## Change logs
             ```
@@ -89,12 +96,12 @@ jobs:
       - name: Find release note
         shell: bash
         run: |
-          if [ -f ./docs/release-notes/${{ env.RELEASE_VERSION }}.md ]; then
+          if [ -f ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md ]; then
             echo "RELNOTE_FOUND=true" >> $GITHUB_ENV
           fi
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
-        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
+        if: ${{ !contains(steps.get-version.outputs.release-version, '-rc') && env.RELNOTE_FOUND == 'false' }}
         with:
           header: relnote-${{ github.run_id }}
           number: ${{ github.event.pull_request.number }}
@@ -103,11 +110,11 @@ jobs:
             ## :warning: Missing release note :warning:
             
             This is the official Radius release. Create the release note by following instruction:            
-            1. Create ./docs/release-notes/${{ env.RELEASE_VERSION }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
+            1. Create ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
             2. Update the each section and add the above Change logs to the end of release note.
             3. Push release note changes to the PR branch.
       - name: Stop the workflow if release is the offical and its release note is not found.
-        if: ${{ !contains(env.RELEASE_VERSION, '-rc') && env.RELNOTE_FOUND == 'false' }}
+        if: ${{ !contains(steps.get-version.outputs.release-version, '-rc') && env.RELNOTE_FOUND == 'false' }}
         run: exit 1
   release:
     name: Create a new Radius release
@@ -147,30 +154,36 @@ jobs:
           git config --global user.name "Radius CI Bot"
           git config --global user.email "radiuscoreteam@service.microsoft.com"
       - name: Get supported versions from versions.yaml
-        id: getSupportedVersions
+        id: get-supported-versions
         uses: mikefarah/yq@v4.34.2
         with:
           # Get a comma-separated list of supported versions
           cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
+      - name: Determine desired release version
+        id: get-version
+        run: |
+          ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }}
       - name: Generate release summary
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
           echo "* Release driver: $GITHUB_ACTOR ">> $GITHUB_STEP_SUMMARY
-          echo "* Supported versions: ${{ steps.getSupportedVersions.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "* Supported versions: ${{ steps.get-supported-versions.outputs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "* Desired release tag: ${{ steps.get-version.outputs.release-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
-      - name: Release project-radius/radius versions ${{ steps.getSupportedVersions.outputs.result }}
+      - name: Release project-radius/radius version ${{ steps.get-version.outputs.release-version }}"
         run: |
-          ./radius/.github/scripts/release-create-tags-and-branches.sh radius ${{ steps.getSupportedVersions.outputs.result }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh radius ${{ steps.get-version.outputs.release-version }}" ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
-      - name: Release project-radius/bicep version ${{ steps.getSupportedVersions.outputs.result }}
+      - name: Release project-radius/bicep version ${{ steps.get-version.outputs.release-version }}"
         run: |
-          ./radius/.github/scripts/release-create-tags-and-branches.sh bicep ${{ steps.getSupportedVersions.outputs.result }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh bicep ${{ steps.get-version.outputs.release-version }}" ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
-      - name: Release project-radius/deployment-engine version ${{ steps.getSupportedVersions.outputs.result }}
+      - name: Release project-radius/deployment-engine version ${{ steps.get-version.outputs.release-version }}"
         run: |
-          ./radius/.github/scripts/release-create-tags-and-branches.sh deployment-engine ${{ steps.getSupportedVersions.outputs.result }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh deployment-engine ${{ steps.get-version.outputs.release-version }}" ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
-      - name: Release project-radius/recipes version ${{ steps.getSupportedVersions.outputs.result }}
+      - name: Release project-radius/recipes version ${{ steps.get-version.outputs.release-version }}"
         run: |
-          ./radius/.github/scripts/release-create-tags-and-branches.sh recipes ${{ steps.getSupportedVersions.outputs.result }}
+          ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }}" ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
