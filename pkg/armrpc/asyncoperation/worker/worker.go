@@ -46,7 +46,7 @@ const (
 	defaultMaxOperationConcurrency = 3
 
 	// defaultMaxOperationRetryCount is the default maximum retry count to process async operation.
-	defaultMaxOperationRetryCount = 3
+	defaultMaxOperationRetryCount = 5
 
 	// messageExtendMargin is the default margin duration before extending message lock.
 	defaultMessageExtendMargin = time.Duration(30) * time.Second
