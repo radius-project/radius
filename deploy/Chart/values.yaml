@@ -42,6 +42,8 @@ rp:
       # request memory is the average memory usage + 10% buffer.
       memory: "160Mi"
     limits:
-      memory: "300Mi"
+      # limit is higher for applications-rp because the Terraform execution
+      # can spike memory usage.
+      memory: "500Mi"
   terraform:
     path: "/terraform"
