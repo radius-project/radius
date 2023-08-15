@@ -56,6 +56,11 @@ func queueTestMessage(cli client.Client, num int) error {
 	return nil
 }
 
+// # Function Explanation
+// 
+// RunTest tests the client's Enqueue, FinishMessage, ExtendMessage, Dequeue methods by enqueuing and dequeuing messages, 
+// and checking for errors when nil messages are passed. It also tests the StartDequeuer method by dequeuing messages via a
+//  channel.
 func RunTest(t *testing.T, cli client.Client, clear func(t *testing.T)) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)

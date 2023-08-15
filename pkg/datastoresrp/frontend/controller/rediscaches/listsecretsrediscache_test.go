@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
@@ -53,17 +54,18 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-				return nil, &store.ErrNotFound{}
+				return nil, &store.ErrNotFound{ID: id}
 			})
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
 		ctl, err := NewListSecretsRedisCache(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 404, w.Result().StatusCode)
 	})
@@ -93,10 +95,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
@@ -131,10 +134,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
-
 		require.NoError(t, err)
+
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
+
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
@@ -162,10 +166,42 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
-
 		require.NoError(t, err)
+
 		_, err = ctl.Run(ctx, w, req)
 		require.Error(t, err)
+	})
+
+	t.Run("listSecrets error invalid api-version", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, nil)
+		require.NoError(t, err)
+		ctx := rpctest.NewARMRequestContext(req)
+		sCtx := v1.ARMRequestContextFromContext(ctx)
+		sCtx.APIVersion = "invalid-api-version"
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id},
+					Data:     redisDataModel,
+				}, nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewListSecretsRedisCache(opts)
+		require.NoError(t, err)
+
+		resp, err := ctl.Run(ctx, w, req)
+		require.Error(t, err)
+
+		_ = resp.Apply(ctx, w, req)
+		require.Equal(t, 400, w.Result().StatusCode)
 	})
 
 }

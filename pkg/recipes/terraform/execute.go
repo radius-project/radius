@@ -18,35 +18,52 @@ package terraform
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/sdk"
+	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// NewExecutor creates a new Executor to execute a Terraform recipe.
-func NewExecutor(ucpConn *sdk.Connection) *executor {
-	return &executor{ucpConn: ucpConn}
-}
-
 const (
-	executionSubDir = "deploy"
+	executionSubDir                = "deploy"
+	workingDirFileMode fs.FileMode = 0700
+)
+
+var (
+	// ErrRecipeNameEmpty is the error when the recipe name is empty.
+	ErrRecipeNameEmpty = errors.New("recipe name cannot be empty")
 )
 
 var _ TerraformExecutor = (*executor)(nil)
 
-type executor struct {
-	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
-	ucpConn *sdk.Connection
+// NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
+func NewExecutor(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) *executor {
+	return &executor{ucpConn: ucpConn, secretProvider: secretProvider}
 }
 
+type executor struct {
+	// ucpConn represents the configuration needed to connect to UCP, required to fetch cloud provider credentials.
+	ucpConn sdk.Connection
+
+	// secretProvider is the secret store provider used for managing credentials in UCP.
+	secretProvider *ucp_provider.SecretProvider
+}
+
+// # Function Explanation
+//
+// Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
+// apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -70,7 +87,8 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 		return nil, err
 	}
 
-	err = generateConfig(ctx, workingDir, execPath, options)
+	// Create Terraform config in the working directory
+	err = e.generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +107,7 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 
 	workingDir := filepath.Join(tfDir, executionSubDir)
 	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
-	if err := os.MkdirAll(workingDir, 0755); err != nil {
+	if err := os.MkdirAll(workingDir, workingDirFileMode); err != nil {
 		return "", fmt.Errorf("failed to create working directory for terraform execution: %w", err)
 	}
 
@@ -97,32 +115,64 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
-func generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+func (e *executor) generateConfig(ctx context.Context, workingDir, execPath string, options Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
-	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the configuration is used as subdirectory name under .terraform/modules directory.
+	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
+	// configuration is used as subdirectory name under .terraform/modules directory.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
 	localModuleName := options.EnvRecipe.Name
 	if localModuleName == "" {
-		return fmt.Errorf("recipe name cannot be empty")
+		return ErrRecipeNameEmpty
 	}
 
-	configFilePath, err := config.GenerateTFConfigFile(ctx, options.EnvRecipe, options.ResourceRecipe, workingDir, localModuleName)
-	if err != nil {
+	// Create a new Terraform JSON config with the given recipe parameters and working directory.
+	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+
+	// Before downloading module, Teraform configuration needs to be saved because downloading module
+	// requires the default config.
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}
 
-	// Get the required providers from the module
+	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
+	// Download module in the working directory.
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
-	requiredProviders, err := getRequiredProviders(workingDir, localModuleName)
+
+	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
+	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
+	result, err := inspectTFModuleConfig(workingDir, localModuleName)
 	if err != nil {
 		return err
 	}
 
-	// Add the required providers to the terraform configuration
-	if err := config.AddProviders(ctx, configFilePath, requiredProviders, providers.GetSupportedTerraformProviders(), options.EnvConfig); err != nil {
+	logger.Info(fmt.Sprintf("Inspected module result: %+v", result))
+	// Add the required providers to the terraform configuration.
+	if err := tfConfig.AddProviders(ctx, result.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+		options.EnvConfig); err != nil {
+		return err
+	}
+
+	// Populate recipecontext into TF JSON config only if the downloaded module has a context variable.
+	if result.ContextExists {
+		// create the context object to be passed to the recipe deployment
+		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+		if err != nil {
+			return err
+		}
+		if err = tfConfig.AddRecipeContext(ctx, localModuleName, recipectx); err != nil {
+			return err
+		}
+	}
+
+	// Add more configurations here.
+
+	// Ensure that we need to save the configuration after adding providers and recipecontext.
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}
 

@@ -61,6 +61,8 @@ When you're running locally with this configuration, the tests will use your loc
  ```sh
     make test-functional-shared
     make test-functional-msgrp
+    make test-functional-daprrp
+    make test-functional-datastoresrp
  ```
 
 You can also run/debug individual tests from VSCode.

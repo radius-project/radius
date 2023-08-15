@@ -76,7 +76,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
-			renderers.ConnectionStringValue: "connection://string",
+			renderers.URI: "connection://string",
 		}
 
 		mStorageClient.
@@ -105,7 +105,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &v20220315privatepreview.RabbitMQSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
-		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
+		require.Equal(t, expectedSecrets[renderers.URI], *actualOutput.URI)
 	})
 
 	t.Run("listSecrets error retrieving resource", func(t *testing.T) {

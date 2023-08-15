@@ -49,11 +49,17 @@ param azureMonitorWorkspaceLocation string = 'westus2'
 @description('Specifies the name of aks cluster. Default is {prefix}-aks.')
 param aksClusterName string = '${prefix}-aks'
 
+@description('Enables Azure Monitoring and Grafana Dashboard. Default is false.')
+param grafanaEnabled bool = false
+
 @description('Specifies the object id to assign Grafana administrator role. Can be the object id of AzureAD user or group.')
-param grafanaAdminObjectId string
+param grafanaAdminObjectId string = ''
 
 @description('Specifies the name of Grafana dashboard. Default is {prefix}-dashboard.')
 param grafanaDashboardName string = '${prefix}-dashboard'
+
+@description('Specifies whether to install the required tools for running Radius. Default is true.')
+param installKubernetesDependencies bool = true
 
 param defaultTags object = {
   radius: 'infra'
@@ -87,22 +93,37 @@ module aksCluster './modules/akscluster.bicep' = {
     kubernetesVersion: '1.26.3'
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
     systemAgentPoolName: 'agentpool'
-    systemAgentPoolVmSize: 'Standard_D4as_v5'
+    systemAgentPoolVmSize: 'Standard_DS2_v2'
     systemAgentPoolAvailabilityZones: []
     systemAgentPoolOsDiskType: 'Managed'
     userAgentPoolName: 'userpool'
-    userAgentPoolVmSize: 'Standard_D4as_v5'
+    userAgentPoolVmSize: 'Standard_DS2_v2'
     userAgentPoolAvailabilityZones: []
     userAgentPoolOsDiskType: 'Managed'
     daprEnabled: true
     daprHaEnabled: false
     oidcIssuerProfileEnabled: true
+    workloadIdentityEnabled: true
+    imageCleanerEnabled: true
+    imageCleanerIntervalHours: 24
+    tags: defaultTags
+  }
+}
+
+// Deploy data collection for log analytics.
+module logAnalyticsDataCollection './modules/loganalytics-datacollection.bicep' = if (grafanaEnabled) {
+  name: 'loganalytics-datacollection'
+  params:{
+    logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
+    logAnalyticsWorkspaceLocation: logAnalyticsWorkspace.outputs.location
+    clusterResourceId: aksCluster.outputs.id
+    clusterLocation: aksCluster.outputs.location
     tags: defaultTags
   }
 }
 
 // Deploy Grafana dashboard.
-module grafanaDashboard './modules/grafana.bicep' = {
+module grafanaDashboard './modules/grafana.bicep' = if (grafanaEnabled) {
   name: grafanaDashboardName
   params:{
     name: grafanaDashboardName
@@ -116,7 +137,7 @@ module grafanaDashboard './modules/grafana.bicep' = {
 }
 
 // Deploy data collection for metrics.
-module dataCollection './modules/datacollection.bicep' = {
+module dataCollection './modules/datacollection.bicep' = if (grafanaEnabled) {
   name: 'dataCollection'
   params:{
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
@@ -131,7 +152,7 @@ module dataCollection './modules/datacollection.bicep' = {
 }
 
 // Deploy alert rules using prometheus metrics.
-module alertManagement './modules/alert-management.bicep' = {
+module alertManagement './modules/alert-management.bicep' = if (grafanaEnabled) {
   name: 'alertManagement'
   params:{
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
@@ -150,7 +171,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-05-01' existing = 
 }
 
 // Deploy configmap for prometheus metrics.
-module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
+module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = if (grafanaEnabled) {
   name: 'metrics-configmap'
   params: {
     kubeConfig: aks.listClusterAdminCredential().kubeconfigs[0].value
@@ -161,10 +182,10 @@ module promConfigMap './modules/ama-metrics-setting-configmap.bicep' = {
 }
 
 // Run deployment script to bootstrap the cluster for Radius.
-module deploymentScript './modules/deployment-script.bicep' = {
+module deploymentScript './modules/deployment-script.bicep' = if (installKubernetesDependencies) {
   name: 'deploymentScript'
   params: {
-    name: 'radiusBootStrap'
+    name: 'installKubernetesDependencies'
     clusterName: aksCluster.outputs.name
     resourceGroupName: resourceGroup().name
     subscriptionId: subscription().subscriptionId
@@ -176,3 +197,6 @@ module deploymentScript './modules/deployment-script.bicep' = {
     aksCluster
   ]
 }
+
+output aksControlPlaneFQDN string = aksCluster.outputs.controlPlaneFQDN
+output grafanaDashboardFQDN string = grafanaEnabled ? grafanaDashboard.outputs.dashboardFQDN : ''

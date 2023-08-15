@@ -27,20 +27,13 @@ import (
 
 func Test_DaprComponentNameConflict(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
-	name := "corerp-resources-dapr-component-name-conflict"
+	name := "corerp-resources-dcnc-old"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-dapr-component-name-conflict",
-						Type: validation.ApplicationsResource,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{},
+			Executor:                               step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
+			SkipKubernetesOutputResourceValidation: true,
+			K8sObjects:                             &validation.K8sObjectSet{},
 		},
 	})
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}

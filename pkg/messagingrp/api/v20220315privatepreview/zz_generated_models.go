@@ -12,10 +12,10 @@ import "time"
 
 // BasicDaprResourceProperties - Basic properties of a Dapr component object.
 type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
@@ -28,10 +28,10 @@ type BasicDaprResourceProperties struct {
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Status of a resource.
@@ -128,17 +128,27 @@ type OperationsClientListOptions struct {
 
 // RabbitMQListSecretsResult - The secret values for the given RabbitMQQueue resource
 type RabbitMQListSecretsResult struct {
-	// The connection string used to connect to this RabbitMQ instance
-	ConnectionString *string `json:"connectionString,omitempty"`
+	// The password used to connect to the RabbitMQ instance
+	Password *string `json:"password,omitempty"`
+
+	// The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost.
+// Can be overridden with a custom value
+	URI *string `json:"uri,omitempty"`
 }
 
 // RabbitMQQueueProperties - RabbitMQQueue portable resource properties
 type RabbitMQQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The hostname of the RabbitMQ instance
+	Host *string `json:"host,omitempty"`
+
+	// The port of the RabbitMQ instance. Defaults to 5672
+	Port *int32 `json:"port,omitempty"`
 
 	// The name of the queue
 	Queue *string `json:"queue,omitempty"`
@@ -149,8 +159,20 @@ type RabbitMQQueueProperties struct {
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
+	// List of the resource IDs that support the rabbitMQ resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to use SSL when connecting to the RabbitMQ instance
+	TLS *bool `json:"tls,omitempty"`
+
+	// The username to use when connecting to the RabbitMQ instance
+	Username *string `json:"username,omitempty"`
+
+	// The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
+	VHost *string `json:"vHost,omitempty"`
 
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -194,8 +216,12 @@ type RabbitMQQueueResourceListResult struct {
 
 // RabbitMQSecrets - The secret values for the given RabbitMQQueue resource
 type RabbitMQSecrets struct {
-	// The connection string used to connect to this RabbitMQ instance
-	ConnectionString *string `json:"connectionString,omitempty"`
+	// The password used to connect to the RabbitMQ instance
+	Password *string `json:"password,omitempty"`
+
+	// The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost.
+// Can be overridden with a custom value
+	URI *string `json:"uri,omitempty"`
 }
 
 // RabbitMqQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitMqQueuesClient.CreateOrUpdate
@@ -225,7 +251,7 @@ type RabbitMqQueuesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
@@ -247,6 +273,12 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// ResourceReference - Describes a reference to an existing resource
+type ResourceReference struct {
+	// REQUIRED; Resource id of an existing resource
+	ID *string `json:"id,omitempty"`
 }
 
 // ResourceStatus - Status of a resource.

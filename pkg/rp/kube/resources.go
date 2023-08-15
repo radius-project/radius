@@ -29,7 +29,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// FindNamespaceByEnvID finds the environment-scope Kubernetes namespace.
+// # Function Explanation
+//
+// FindNamespaceByEnvID finds the environment-scope Kubernetes namespace. If the environment ID is invalid or the environment is not a Kubernetes
+// environment, an error is returned.
 func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvider, envID string) (namespace string, err error) {
 	id, err := resources.ParseResource(envID)
 	if err != nil {
@@ -68,7 +71,10 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 	return
 }
 
+// # Function Explanation
+//
 // FetchNamespaceFromEnvironmentResource finds the environment-scope Kubernetes namespace from EnvironmentResource.
+// If no namespace is found, an error is returned.
 func FetchNamespaceFromEnvironmentResource(environment *v20220315privatepreview.EnvironmentResource) (string, error) {
 	if environment.Properties.Compute != nil {
 		kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
@@ -81,7 +87,10 @@ func FetchNamespaceFromEnvironmentResource(environment *v20220315privatepreview.
 
 }
 
+// # Function Explanation
+//
 // FetchNamespaceFromApplicationResource finds the application-scope Kubernetes namespace from ApplicationResource.
+// If no namespace is found, an error is returned.
 func FetchNamespaceFromApplicationResource(application *v20220315privatepreview.ApplicationResource) (string, error) {
 	if application.Properties.Status != nil && application.Properties.Status.Compute != nil {
 		kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)

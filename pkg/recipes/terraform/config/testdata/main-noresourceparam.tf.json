@@ -1,0 +1,31 @@
+{
+  "module": {
+    "redis-azure": {
+      "context": {
+        "resource": {
+          "name": "mongo0",
+          "id": "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+          "type": "applications.link/mongodatabases"
+        },
+        "application": {
+          "name": "testApplication",
+          "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication"
+        },
+        "environment": {
+          "name": "env0",
+          "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0"
+        },
+        "runtime": {
+          "kubernetes": {
+            "namespace": "radius-test-app",
+            "environmentNamespace": "radius-test-env"
+          }
+        }
+      },
+      "resource_group_name": "test-rg",
+      "sku": "C",
+      "source": "Azure/redis/azurerm",
+      "version": "1.1.0"
+    }
+  }
+}

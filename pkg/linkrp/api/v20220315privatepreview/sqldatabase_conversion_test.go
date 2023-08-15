@@ -117,7 +117,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &SQLDatabaseResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -219,7 +219,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.SqlDatabase{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -257,7 +257,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &SQLDatabaseResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -277,7 +277,7 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -290,7 +290,7 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 
 func TestSqlDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/sqldatabase_secrets_datamodel.json")
+	rawPayload, err := LoadTestData("./testdata/sqldatabase_secrets_datamodel.json")
 	require.NoError(t, err)
 	secrets := &datamodel.SqlDatabaseSecrets{}
 	err = json.Unmarshal(rawPayload, secrets)
@@ -311,7 +311,7 @@ func TestSqlDatabaseSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

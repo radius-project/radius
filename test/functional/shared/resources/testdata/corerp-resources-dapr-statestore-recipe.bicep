@@ -5,12 +5,12 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-environment-recipes-env'
+  name: 'corerp-env-recipes-env-old'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-environment-recipes-env'
+      namespace: 'corerp-env-recipes-env-old'
     }
     recipes: {
       'Applications.Link/daprStateStores': {
@@ -24,20 +24,20 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-sts-recipe'
+  name: 'corerp-rs-dapr-sts-recipe-old'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-dapr-sts-recipe'
+        namespace: 'corerp-rs-dapr-sts-recipe-old'
       }
     ]
   }
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe-ctnr'
+  name: 'dapr-sts-recipe-ctnr-old'
   properties: {
     application: app.id
     connections: {
@@ -56,7 +56,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'dapr-sts-recipe-ctnr'
+        appId: 'dapr-sts-recipe-ctnr-old'
         appPort: 3000
       }
     ]
@@ -64,7 +64,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
-  name: 'dapr-sts-recipe'
+  name: 'dapr-sts-recipe-old'
   properties: {
     application: app.id
     environment: env.id

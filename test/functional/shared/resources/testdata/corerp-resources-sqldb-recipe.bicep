@@ -20,13 +20,13 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-sql-recipe-env'
+  name: 'corerp-resources-env-sql-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-sql-recipe-env'
+      namespace: 'corerp-resources-env-sql-recipe-env'
     }
     recipes: {
       'Applications.Link/sqlDatabases': {
@@ -58,7 +58,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'sql-recipe-app-ctnr'
+  name: 'sql-recipe-app-ctnr-old'
   location: location
   properties: {
     application: app.id
@@ -82,7 +82,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
-  name: 'sql-db-recipe'
+  name: 'sql-db-recipe-old'
   location: location
   properties: {
     application: app.id

@@ -40,8 +40,15 @@ type DeployExecutor struct {
 	// Application sets the `--application` command-line parameter. This is needed in cases where
 	// the application is not defined in bicep.
 	Application string
+
+	// Environment sets the `--environment` command-line parameter. This is needed in cases where
+	// the environment is not defined in bicep.
+	Environment string
 }
 
+// # Function Explanation
+//
+// NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
@@ -50,11 +57,23 @@ func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	}
 }
 
+// # Function Explanation
+//
+// WithApplication sets the application name for the DeployExecutor instance and returns the same instance.
 func (d *DeployExecutor) WithApplication(application string) *DeployExecutor {
 	d.Application = application
 	return d
 }
 
+// WithEnvironment sets the environment name for the DeployExecutor instance and returns the same instance.
+func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
+	d.Environment = environment
+	return d
+}
+
+// # Function Explanation
+//
+// GetDescription returns the Description field of the DeployExecutor instance.
 func (d *DeployExecutor) GetDescription() string {
 	return d.Description
 }
@@ -75,6 +94,9 @@ func unpackErrorAndMatch(err error, failWithAny []string) bool {
 	return false
 }
 
+// # Function Explanation
+//
+// Execute deploys an application from a template file using the provided parameters and logs the deployment process.
 func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -82,7 +104,7 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
+	err = cli.Deploy(ctx, templateFilePath, d.Environment, d.Application, d.Parameters...)
 	require.NoErrorf(t, err, "failed to deploy %s", d.Description)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }

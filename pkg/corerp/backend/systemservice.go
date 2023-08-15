@@ -32,17 +32,26 @@ type SystemService struct {
 	options hostoptions.HostOptions
 }
 
-// NewSystemService creates SystemService instance.
+// # Function Explanation
+//
+// NewSystemService creates a new SystemService instance with the given options.
 func NewSystemService(options hostoptions.HostOptions) *SystemService {
 	return &SystemService{
 		options: options,
 	}
 }
 
+// # Function Explanation
+//
+// Name returns the name of the system service.
 func (s *SystemService) Name() string {
 	return "system service"
 }
 
+// # Function Explanation
+//
+// Run sets up an HTTP server to handle requests on the given port and handles shutdown based on the
+// context. It returns an error if the server fails to start.
 func (s *SystemService) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

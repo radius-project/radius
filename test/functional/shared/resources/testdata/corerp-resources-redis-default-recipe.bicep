@@ -46,7 +46,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
-  name: 'rds-default-recipe'
+  name: 'rds-default-recipe-old'
   location: 'global'
   properties: {
     environment: env.id

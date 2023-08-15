@@ -18,7 +18,6 @@ package step
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -42,8 +41,15 @@ type DeployErrorExecutor struct {
 	// Application sets the `--application` command-line parameter. This is needed in cases where
 	// the application is not defined in bicep.
 	Application string
+
+	// Environment sets the `--environment` command-line parameter. This is needed in cases where
+	// the environment is not defined in bicep.
+	Environment string
 }
 
+// # Function Explanation
+//
+// NewDeployErrorExecutor creates a new DeployErrorExecutor instance with the given template, error code and parameters.
 func NewDeployErrorExecutor(template string, errCode string, innerError []string, parameters ...string) *DeployErrorExecutor {
 	return &DeployErrorExecutor{
 		Description:        fmt.Sprintf("deploy %s", template),
@@ -54,15 +60,30 @@ func NewDeployErrorExecutor(template string, errCode string, innerError []string
 	}
 }
 
+// # Function Explanation
+//
+// WithApplication sets the application name for the DeployErrorExecutor instance and returns the instance.
 func (d *DeployErrorExecutor) WithApplication(application string) *DeployErrorExecutor {
 	d.Application = application
 	return d
 }
 
+// WithEnvironment sets the environment name for the DeployExecutor instance and returns the same instance.
+func (d *DeployErrorExecutor) WithEnvironment(environment string) *DeployErrorExecutor {
+	d.Environment = environment
+	return d
+}
+
+// # Function Explanation
+//
+// GetDescription returns the Description field of the DeployErrorExecutor instance.
 func (d *DeployErrorExecutor) GetDescription() string {
 	return d.Description
 }
 
+// # Function Explanation
+//
+// Execute deploys an application from a template file and checks that the deployment fails with the expected error code.
 func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -70,12 +91,11 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	err = cli.Deploy(ctx, templateFilePath, d.Application, d.Parameters...)
+	err = cli.Deploy(ctx, templateFilePath, d.Environment, d.Application, d.Parameters...)
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError
-	ok := errors.As(err, &cliErr)
-	require.True(t, ok)
+	require.ErrorAs(t, err, &cliErr, "error should be a CLIError and it was not")
 	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 
 	if len(d.ExpectedInnerError) > 0 {

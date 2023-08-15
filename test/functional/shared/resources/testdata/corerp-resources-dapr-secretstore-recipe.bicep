@@ -7,12 +7,12 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-environment-secretstore-recipes-env'
+  name: 'corerp-resources-dssr-env-old'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-environment-secretstore-recipes-env'
+      namespace: 'corerp-resources-dssr-env-old'
     }
     recipes: {
       'Applications.Link/daprSecretStores': {
@@ -26,20 +26,20 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-dapr-secretstore-recipe'
+  name: 'corerp-resources-dssr-old'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: 'corerp-resources-dapr-secretstore-recipe'
+        namespace: 'corerp-resources-dssr-old'
       }
     ]
   }
 }
 
 resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'gnrc-scs-ctnr-recipe'
+  name: 'gnrc-scs-ctnr-recipe-old'
   location: location
   properties: {
     application: app.id
@@ -59,7 +59,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'gnrc-ss-ctnr-recipe'
+        appId: 'gnrc-ss-ctnr-recipe-old'
         appPort: 3000
       }
     ]
@@ -67,7 +67,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
-  name: 'gnrc-scs-recipe'
+  name: 'gnrc-scs-recipe-old'
   location: location
   properties: {
     environment: env.id

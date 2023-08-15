@@ -24,6 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
+// # Function Explanation
+//
 // ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model.
 func ApplicationDataModelToVersioned(model *datamodel.Application, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -37,6 +39,8 @@ func ApplicationDataModelToVersioned(model *datamodel.Application, version strin
 	}
 }
 
+// # Function Explanation
+//
 // ApplicationDataModelFromVersioned converts versioned application model to datamodel.
 func ApplicationDataModelFromVersioned(content []byte, version string) (*datamodel.Application, error) {
 	switch version {

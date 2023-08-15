@@ -35,7 +35,9 @@ type Renderer struct {
 	VolumeRenderers map[string]VolumeRenderer
 }
 
-// NewRenderer creates new renderer for volume resources.
+// # Function Explanation
+//
+// NewRenderer creates a new Renderer instance with the given ArmConfig, for volume resources.
 func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 	return &Renderer{
 		VolumeRenderers: map[string]VolumeRenderer{
@@ -44,12 +46,18 @@ func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 	}
 }
 
-// GetDependencyIDs fetches the dependent resources of the volume resource.
+// # Function Explanation
+//
+// GetDependencyIDs returns nil for the resourceIDs, radiusResourceIDs and an error.
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	return nil, nil, nil
 }
 
-// Render renders volume resources to the target platform resource.
+// # Function Explanation
+//
+// Render checks if the given DataModelInterface is a VolumeResource, and if so, checks if the VolumeRenderers map
+// contains a renderer for the VolumeResource's Kind. If so, it calls the renderer and returns the output, otherwise it
+// returns an error.
 func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.VolumeResource)
 	if !ok {

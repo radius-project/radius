@@ -495,7 +495,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appName, templateWithResources)
 
-		err = cli.Deploy(ctx, templateFilePathWithResources, appName, functional.GetMagpieImage())
+		err = cli.Deploy(ctx, templateFilePathWithResources, "", appName, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
@@ -514,7 +514,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appNameEmptyResources, templateEmptyResources)
 
-		err = cli.Deploy(ctx, templateFilePathEmptyResources, appNameEmptyResources)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", appNameEmptyResources)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
 		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
@@ -529,7 +529,7 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
 		t.Logf("deploying from file %s", templateWithResources)
 
-		err := cli.Deploy(ctx, templateFilePathWithResources, appName, functional.GetMagpieImage())
+		err := cli.Deploy(ctx, templateFilePathWithResources, "", appName, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
@@ -548,7 +548,7 @@ func Test_CLI_Delete(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete application %s", appName)
 
 		t.Logf("deploying from file %s", templateEmptyResources)
-		err = cli.Deploy(ctx, templateFilePathEmptyResources, appName)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", appName)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
 		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
@@ -699,6 +699,9 @@ func Test_RecipeCommands(t *testing.T) {
 	test.Test(t)
 }
 
+// # Function Explanation
+//
+// GetAvailablePort attempts to find an available port on the localhost and returns it, or returns an error if it fails.
 func GetAvailablePort() (int, error) {
 	address, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {
@@ -713,6 +716,10 @@ func GetAvailablePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
+// # Function Explanation
+//
+// DeleteAppWithoutDeletingResources creates a client to delete an application without deleting its resources and returns
+// an error if one occurs.
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options shared.RPTestOptions, applicationName string) error {
 	client := options.ManagementClient
 	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})

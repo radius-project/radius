@@ -41,6 +41,9 @@ type CLI struct {
 	WorkingDirectory string
 }
 
+// # Function Explanation
+//
+// NewCLI creates a new CLI instance with the given testing.T and config file path.
 func NewCLI(t *testing.T, configFilePath string) *CLI {
 	return &CLI{
 		T:              t,
@@ -52,10 +55,15 @@ type CLIError struct {
 	v1.ErrorResponse
 }
 
+// # Function Explanation
+//
+// CLIError.Error returns a string containing the error code and message of the error response.
 func (err *CLIError) Error() string {
 	return fmt.Sprintf("code %v: err %v", err.ErrorResponse.Error.Code, err.ErrorResponse.Error.Message)
 }
 
+// # Function Explanation
+//
 // GetFirstErrorCode function goes down the error chain to find and return the code of the first error in the chain.
 func (err *CLIError) GetFirstErrorCode() string {
 	var errorCode = err.ErrorResponse.Error.Code
@@ -79,8 +87,11 @@ func (err *CLIError) GetFirstErrorCode() string {
 	return errorCode
 }
 
-// Deploy runs the rad deploy command.
-func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, application string, parameters ...string) error {
+// # Function Explanation
+//
+// Deploy runs the rad deploy command. It checks if the template file path exists and runs the command with the
+// given parameters, returning an error if the command fails.
+func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, environment string, application string, parameters ...string) error {
 	// Check if the template file path exists
 	if _, err := os.Stat(templateFilePath); err != nil {
 		return fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
@@ -89,6 +100,10 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, application
 	args := []string{
 		"deploy",
 		templateFilePath,
+	}
+
+	if environment != "" {
+		args = append(args, "--environment", environment)
 	}
 
 	if application != "" {
@@ -121,6 +136,8 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, application
 	return cliErr
 }
 
+// # Function Explanation
+//
 // Run runs the rad run command. This returns the command output on success or an error.
 func (cli *CLI) Run(ctx context.Context, templateFilePath string, applicationName string, parameters ...string) (string, error) {
 	// Check if the template file path exists
@@ -159,6 +176,10 @@ func (cli *CLI) Run(ctx context.Context, templateFilePath string, applicationNam
 	return out, nil
 }
 
+// # Function Explanation
+//
+// ApplicationShow returns the output of running the "application show" command with the given application name as
+// an argument, or an error if the command fails.
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
 	command := "application"
 
@@ -170,6 +191,10 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// ApplicationList runs a command to list applications and returns the output as a string. It returns an
+// error if the command fails.
 func (cli *CLI) ApplicationList(ctx context.Context) (string, error) {
 	command := "application"
 
@@ -180,7 +205,9 @@ func (cli *CLI) ApplicationList(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
-// ApplicationDelete deletes the specified application deployed by Radius.
+// # Function Explanation
+//
+// ApplicationDelete deletes the specified application deployed by Radius and returns an error if one occurs.
 func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
 	command := "application"
 
@@ -194,6 +221,9 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 	return err
 }
 
+// # Function Explanation
+//
+// EnvStatus runs the "env status" command and returns the output as a string. It returns an error if the command fails.
 func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
 	args := []string{
 		"env",
@@ -202,6 +232,9 @@ func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// EnvShow runs the "env show" command and returns the output as a string, or an error if the command fails.
 func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
 	args := []string{
 		"env",
@@ -210,6 +243,9 @@ func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// EnvList runs the "env list" command and returns the output as a string, or an error if the command fails.
 func (cli *CLI) EnvList(ctx context.Context) (string, error) {
 	args := []string{
 		"env",
@@ -218,6 +254,9 @@ func (cli *CLI) EnvList(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// EnvDelete runs the command to delete an environment with the given name and returns an error if the command fails.
 func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 	args := []string{
 		"env",
@@ -229,6 +268,10 @@ func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 	return err
 }
 
+// # Function Explanation
+//
+// ResourceShow runs the rad resource show command with the given resource type and name and returns the output
+// string or an error if the command fails.
 func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
@@ -240,6 +283,10 @@ func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceN
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// ResourceList runs the "resource list containers" command with the given application name and returns the output as a
+// string, returning an error if the command fails.
 func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (string, error) {
 	args := []string{
 		"resource",
@@ -250,6 +297,9 @@ func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (strin
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// ResourceLogs runs the CLI command to get the logs of a resource in an application.
 func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
@@ -261,6 +311,9 @@ func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resour
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// ResourceExpose runs a command to expose a resource from an application on a given port.
 func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
 	args := []string{
 		"resource",
@@ -274,6 +327,10 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// RecipeList runs the "recipe list" command with the given environment name and returns the output as a string, returning
+// an error if the command fails.
 func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) {
 	args := []string{
 		"recipe",
@@ -283,6 +340,10 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and
+// link type, and returns the output string or an error.
 func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, linkType string) (string, error) {
 	args := []string{
 		"recipe",
@@ -296,6 +357,10 @@ func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templat
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// RecipeUnregister runs a command to unregister a recipe from an environment, given the recipe name and link type.
+// It returns a string and an error if the command fails.
 func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName, linkType string) (string, error) {
 	args := []string{
 		"recipe",
@@ -307,6 +372,10 @@ func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName, linkT
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// RecipeShow runs a command to show a recipe with the given environment name, recipe name and link type, and returns the
+// output string or an error.
 func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, linkType string) (string, error) {
 	args := []string{
 		"recipe",
@@ -318,6 +387,10 @@ func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, link
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// BicepPublish runs the bicep publish command with the given file and target, and returns the output string or an error if
+// the command fails.
 func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, error) {
 	args := []string{
 		"bicep",
@@ -330,6 +403,9 @@ func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, 
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// Version runs the version command and returns the output as a string, or an error if the command fails.
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{
 		"version",
@@ -337,6 +413,9 @@ func (cli *CLI) Version(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
+// CliVersion retrieves the version of the CLI by running the "version --cli" command.
 func (cli *CLI) CliVersion(ctx context.Context) (string, error) {
 	args := []string{
 		"version",
@@ -345,6 +424,8 @@ func (cli *CLI) CliVersion(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+// # Function Explanation
+//
 // CreateCommand creates an exec.Cmd that can be used to execute a `rad` CLI command. Most tests should use
 // RunCommand, only use CreateCommand if the test you are writing needs more control over the execution of the
 // command.
@@ -373,6 +454,8 @@ func (cli *CLI) CreateCommand(ctx context.Context, args []string) (*exec.Cmd, fu
 	return cmd, heartbeat, description
 }
 
+// # Function Explanation
+//
 // ReportCommandResult can be used in tests to report the result of a command to the test infrastructure. Most
 // test should use RunCommand. Only use ReportCommandResult if the test is using CreateCommand to control command
 // execution.
@@ -399,6 +482,8 @@ func (cli *CLI) ReportCommandResult(ctx context.Context, out string, description
 	return nil
 }
 
+// # Function Explanation
+//
 // RunCommand executes a command and returns the output (stdout + stderr) as well as an error if the command
 // fails. The output is *ALWAYS* returned even if the command fails.
 func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {

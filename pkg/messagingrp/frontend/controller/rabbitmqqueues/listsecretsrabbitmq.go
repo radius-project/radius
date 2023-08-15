@@ -67,8 +67,11 @@ func (ctrl *ListSecretsRabbitMQQueue) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	msgSecrets := msg_dm.RabbitMQSecrets{}
-	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
-		msgSecrets.ConnectionString = connectionString.Value
+	if uri, ok := resource.SecretValues[renderers.URI]; ok {
+		msgSecrets.URI = uri.Value
+	}
+	if password, ok := resource.SecretValues[renderers.PasswordStringHolder]; ok {
+		msgSecrets.Password = password.Value
 	}
 
 	versioned, _ := msg_conv.RabbitMQSecretsDataModelToVersioned(&msgSecrets, sCtx.APIVersion)

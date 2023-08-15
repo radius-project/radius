@@ -78,8 +78,8 @@ func Test_Validate(t *testing.T) {
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid Init Command",
-			Input:         []string{},
+			Name:          "Valid Init --full Command",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -108,8 +108,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Valid Init Command Without Radius installed",
-			Input:         []string{},
+			Name:          "Valid Init --full Command Without Radius installed",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -139,8 +139,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Initialize with existing environment, choose to create new",
-			Input:         []string{},
+			Name:          "Initialize --full with existing environment, choose to create new",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -174,8 +174,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Initialize with existing environment, choose existing",
-			Input:         []string{},
+			Name:          "Initialize --full with existing environment, choose existing",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -204,8 +204,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Initialize with existing environment, choose existing, with Cloud Providers",
-			Input:         []string{},
+			Name:          "Initialize --full with existing environment, choose existing, with Cloud Providers",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -244,8 +244,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Azure Cloud Provider",
-			Input:         []string{},
+			Name:          "Init --full Command With Azure Cloud Provider",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -279,8 +279,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With AWS Cloud Provider",
-			Input:         []string{},
+			Name:          "Init --full Command With AWS Cloud Provider",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -314,8 +314,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Initialize with existing environment create application - initial appname is invalid",
-			Input:         []string{},
+			Name:          "Initialize --full with existing environment create application - initial appname is invalid",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -346,8 +346,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad init --dev create new environment",
-			Input:         []string{"--dev"},
+			Name:          "rad init create new environment",
+			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -366,8 +366,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad init --dev without Radius installed",
-			Input:         []string{"--dev"},
+			Name:          "rad init without Radius installed",
+			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -383,8 +383,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad init --dev chooses existing environment without default",
-			Input:         []string{"--dev"},
+			Name:          "rad init chooses existing environment without default",
+			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -407,8 +407,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad init --dev chooses existing environment with default",
-			Input:         []string{"--dev"},
+			Name:          "rad init chooses existing environment with default",
+			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -430,8 +430,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "rad init --dev prompts for existing environment",
-			Input:         []string{"--dev"},
+			Name:          "rad init prompts for existing environment",
+			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -460,8 +460,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Error KubeContext Read",
-			Input:         []string{},
+			Name:          "Init --full Command With Error KubeContext Read",
+			Input:         []string{"--full"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -473,8 +473,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Error KubeContext Selection",
-			Input:         []string{},
+			Name:          "Init --full Command With Error KubeContext Selection",
+			Input:         []string{"--full"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -487,8 +487,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Error EnvName Read",
-			Input:         []string{},
+			Name:          "Init --full Command With Error EnvName Read",
+			Input:         []string{"--full"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -508,8 +508,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Error Namespace Read",
-			Input:         []string{},
+			Name:          "Init --full Command With Error Namespace Read",
+			Input:         []string{"--full"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -530,8 +530,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command Navigate back while configuring cloud provider",
-			Input:         []string{},
+			Name:          "Init --full Command Navigate back while configuring cloud provider",
+			Input:         []string{"--full"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -560,8 +560,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command exit console with interrupt signal",
-			Input:         []string{},
+			Name:          "Init --full Command exit console with interrupt signal",
+			Input:         []string{"--full"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -580,15 +580,15 @@ func Test_Validate(t *testing.T) {
 func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 	testCases := []struct {
 		name           string
-		dev            bool
+		full           bool
 		azureProvider  *azure.Provider
 		awsProvider    *aws.Provider
 		recipes        map[string]map[string]*corerp.EnvironmentRecipeProperties
 		expectedOutput []any
 	}{
 		{
-			name:          "`rad init --dev` with recipes",
-			dev:           true,
+			name:          "`rad init` with recipes",
+			full:          false,
 			azureProvider: nil,
 			awsProvider:   nil,
 			recipes: map[string]map[string]*corerp.EnvironmentRecipeProperties{
@@ -601,16 +601,16 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			},
 		},
 		{
-			name:           "`rad init --dev` w/o recipes",
-			dev:            true,
+			name:           "`rad init` w/o recipes",
+			full:           false,
 			azureProvider:  nil,
 			awsProvider:    nil,
 			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
 			expectedOutput: []any{},
 		},
 		{
-			name: "`rad init` with Azure Provider",
-			dev:  false,
+			name: "`rad init --full` with Azure Provider",
+			full: true,
 			azureProvider: &azure.Provider{
 				SubscriptionID: "test-subscription",
 				ResourceGroup:  "test-rg",
@@ -625,8 +625,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			expectedOutput: []any{},
 		},
 		{
-			name:          "`rad init --dev` with AWS Provider",
-			dev:           true,
+			name:          "`rad init` with AWS Provider",
+			full:          false,
 			azureProvider: nil,
 			awsProvider: &aws.Provider{
 				AccessKeyID:     "test-access-key",
@@ -638,8 +638,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			expectedOutput: []any{},
 		},
 		{
-			name:          "`rad init` with AWS Provider",
-			dev:           false,
+			name:          "`rad init --full` with AWS Provider",
+			full:          true,
 			azureProvider: nil,
 			awsProvider: &aws.Provider{
 				AccessKeyID:     "test-access-key",
@@ -651,16 +651,16 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			expectedOutput: []any{},
 		},
 		{
-			name:           "`rad init` with no providers",
-			dev:            false,
+			name:           "`rad init --full` with no providers",
+			full:           true,
 			azureProvider:  nil,
 			awsProvider:    nil,
 			recipes:        nil,
 			expectedOutput: []any{},
 		},
 		{
-			name:           "`rad init --dev` with no providers",
-			dev:            true,
+			name:           "`rad init` with no providers",
+			full:           false,
 			azureProvider:  nil,
 			awsProvider:    nil,
 			recipes:        map[string]map[string]*corerp.EnvironmentRecipeProperties{},
@@ -684,7 +684,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Times(1)
 
 			devRecipeClient := NewMockDevRecipeClient(ctrl)
-			if tc.dev {
+			if !tc.full {
 				devRecipeClient.EXPECT().
 					GetDevRecipes(context.Background()).
 					Return(tc.recipes, nil).
@@ -758,7 +758,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 					AWS:   tc.awsProvider,
 				},
 				Recipes: recipePackOptions{
-					DevRecipes: tc.dev,
+					DevRecipes: !tc.full,
 				},
 				Application: applicationOptions{
 					Scaffold: false,

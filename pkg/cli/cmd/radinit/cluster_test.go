@@ -33,7 +33,7 @@ func Test_enterClusterOptions(t *testing.T) {
 	prompter := prompt.NewMockInterface(ctrl)
 	k8s := kubernetes.NewMockInterface(ctrl)
 	helm := helm.NewMockInterface(ctrl)
-	runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm}
+	runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true}
 
 	initGetKubeContextSuccess(k8s)
 	initKubeContextWithKind(prompter)
@@ -50,7 +50,7 @@ func Test_selectCluster(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	prompter := prompt.NewMockInterface(ctrl)
 	k8s := kubernetes.NewMockInterface(ctrl)
-	runner := Runner{Prompter: prompter, KubernetesInterface: k8s}
+	runner := Runner{Prompter: prompter, KubernetesInterface: k8s, Full: true}
 
 	initGetKubeContextSuccess(k8s)
 	initKubeContextWithKind(prompter)
@@ -69,7 +69,7 @@ func Test_buildClusterList(t *testing.T) {
 			"c-test-cluster": {},
 		},
 	}
-	runner := Runner{}
+	runner := Runner{Full: true}
 
 	names := runner.buildClusterList(config)
 	require.Equal(t, []string{"c-test-cluster", "a-test-cluster", "b-test-cluster"}, names)

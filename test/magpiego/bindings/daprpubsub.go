@@ -9,6 +9,11 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 )
 
+// # Function Explanation
+//
+// DaprPubSubBinding checks if the environment parameter COMPONENTNAME is set and if so, creates a Dapr client and
+// publishes an event to a topic.
+//
 // Use this with a values like:
 // - CONNECTION_DAPRPUBSUB_COMPONENTNAME
 // - DAPR_GRPC_PORT

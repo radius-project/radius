@@ -1,38 +1,43 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
-    "name": "rabbitmq0",
-    "type": "Applications.Messaging/rabbitMQQueues",
-    "systemData": {
-        "createdBy": "fakeid@live.com",
-        "createdByType": "User",
-        "createdAt": "2021-09-24T19:09:54.2403864Z",
-        "lastModifiedBy": "fakeid@live.com",
-        "lastModifiedByType": "User",
-        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
-    },
-    "tags": {
-        "env": "dev"
-    },
-    "location": "global",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "rabbitmq",
-                "Provider": "rabbitmqProvider"
-              }
-            }]
-        },
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
-        "resourceProvisioning":"recipe",
-        "queue": "testQueue",
-        "recipe": {
-            "name": "rabbitmq",
-            "parameters":{
-              "foo":"bar"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
+  "name": "rabbitmq0",
+  "type": "Applications.Messaging/rabbitMQQueues",
+  "systemData": {
+      "createdBy": "fakeid@live.com",
+      "createdByType": "User",
+      "createdAt": "2021-09-24T19:09:54.2403864Z",
+      "lastModifiedBy": "fakeid@live.com",
+      "lastModifiedByType": "User",
+      "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+      "env": "dev"
+  },
+  "location": "global",
+  "properties": {
+      "status": {
+          "outputResources": [{
+            "LocalID": "Deployment",
+            "ResourceType": {
+              "Type": "rabbitmq",
+              "Provider": "rabbitmqProvider"
             }
-        }
-    }
+          }]
+      },
+      "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+      "resourceProvisioning":"recipe",
+      "queue": "testQueue",
+      "host": "test-host",
+      "port": 5672,
+      "vHost": "test-vhost",
+      "username": "test-user",
+      "tls":false,
+      "recipe": {
+          "name": "rabbitmq",
+          "parameters":{
+            "foo":"bar"
+          }
+      }
+  }
 }

@@ -28,6 +28,10 @@ import (
 	"github.com/project-radius/radius/pkg/daprrp/processors/pubsubbrokers"
 	"github.com/project-radius/radius/pkg/daprrp/processors/secretstores"
 	"github.com/project-radius/radius/pkg/daprrp/processors/statestores"
+	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	mongo_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/mongodatabases"
+	redis_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/rediscaches"
+	sql_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/sqldatabases"
 	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -54,6 +58,8 @@ import (
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
+
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
 type Service struct {
@@ -97,7 +103,8 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3)".
+	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
+	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
 	discoveryClient.UseLegacyDiscovery = true
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
@@ -117,9 +124,10 @@ func (s *Service) Run(ctx context.Context) error {
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
-				Path: s.Options.Config.Terraform.Path,
-			}),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: s.Options.Config.Terraform.Path,
+				}),
 		},
 	})
 
@@ -179,19 +187,18 @@ func (s *Service) Run(ctx context.Context) error {
 			processor := &pubsubbrokers.Processor{Client: runtimeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, client, configLoader, options)
 		}},
-		/*	  The following will be worked on and uncommented in upcoming PRs
 		{linkrp.N_MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &mongodatabases.Processor{}
+			processor := &mongo_prc.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &rediscaches.Processor{}
+			processor := &redis_prc.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.RedisCache, ds_dm.RedisCache](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_SqlDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &sqldatabases.Processor{}
+			processor := &sql_prc.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](processor, engine, client, configLoader, options)
-		}},*/
+		}},
 	}
 
 	opts := ctrl.Options{
