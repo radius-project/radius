@@ -127,11 +127,11 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return ErrRecipeNameEmpty
 	}
 
-	// Create a new Terraform JSON config with the given recipe parameters and working directory.
+	// Create Terraform configuration containing module information with the given recipe parameters.
 	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
 
-	// Before downloading module, Teraform configuration needs to be saved because downloading module
-	// requires the default config.
+	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
+	// Terraform Get command uses this config file to download module from the source specified in the config.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}
@@ -149,18 +149,19 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
 	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectTFModuleConfig(workingDir, localModuleName)
+	loadedModule, err := inspectTFModule(workingDir, localModuleName)
 	if err != nil {
 		return err
 	}
 
-	// Add the required providers to the terraform configuration.
-	if err := tfConfig.AddProviders(ctx, result.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
+	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
+	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {
 		return err
 	}
 
-	// Add recipecontext to the generated Terraform config's module parameters.
+	// Add recipe context parameter to the generated Terraform config's module parameters.
 	// This should only be added if the recipe context variable is declared in the downloaded module.
 	if loadedModule.ContextVarExists {
 		logger.Info("Adding recipe context module result")
@@ -185,7 +186,8 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 
 	// Add any future configurations here.
 
-	// Ensure that we need to save the configuration after adding providers and recipecontext.
+	// Persist the Terraform configuration on disk in the working directory after all required configurations are added.
+	// This is needed to run Terraform init and apply.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}

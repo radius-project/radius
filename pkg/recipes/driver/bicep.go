@@ -199,7 +199,7 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	if isCxtSet {
-		parameters["context"] = map[string]any{
+		parameters[recipecontext.RecipeContextParamKey] = map[string]any{
 			"value": *recipeContext,
 		}
 	}

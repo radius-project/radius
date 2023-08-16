@@ -38,7 +38,7 @@ const (
 var ErrModuleNotFound = errors.New("module not found in Terraform config")
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
-// from environment recipe and resource recipe metadata.
+// Parameters are populated from environment recipe and resource recipe metadata.
 func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
@@ -57,7 +57,7 @@ func getMainConfigFilePath(workingDir string) string {
 	return fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 }
 
-// Save writes the Terraform config to the main config file present at ConfigFilePath().
+// Save writes the Terraform config to main.tf.json file in the working directory.
 // This overwrites the existing file if it exists.
 func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
