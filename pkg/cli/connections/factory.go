@@ -39,7 +39,7 @@ import (
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
 var DefaultFactory = &impl{}
 
-// ConnectionFactory is a mockable abstraction for our client-server interations.
+// ConnectionFactory is a mockable abstraction for our client-server interactions.
 type Factory interface {
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
