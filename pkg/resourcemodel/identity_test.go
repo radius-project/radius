@@ -113,6 +113,19 @@ var values = []struct {
 			},
 		},
 	},
+	{
+		Description: "Radius",
+		ExpectedID:  "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/myapp",
+		Identity: ResourceIdentity{
+			ResourceType: &ResourceType{
+				Type:     "Applications.Core/applications",
+				Provider: ProviderRadius,
+			},
+			Data: UCPIdentity{
+				ID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/myapp",
+			},
+		},
+	},
 }
 
 // Test that all formats of ResourceIdentifier round-trip with BSON

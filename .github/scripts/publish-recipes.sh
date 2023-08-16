@@ -62,7 +62,7 @@ do
     
     # Skip files that start with _. These are not recipes, they are modules that are
     # used by the recipes.
-    if [[ $RECIPE = _* ]]; then
+    if [[ $(basename $RECIPE) =~ ^_.* ]]; then
         echo "Skipping $RECIPE"
         continue
     fi

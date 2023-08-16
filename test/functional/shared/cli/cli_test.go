@@ -561,42 +561,12 @@ func Test_CLI_Delete(t *testing.T) {
 	})
 }
 
-func createParametersFile(t *testing.T) (string, func()) {
-	paramFile, err := os.CreateTemp("./testdata", "tmp-*-parameters.json")
-	require.NoError(t, err)
-
-	registryVal, _ := functional.SetDefault()
-	paramFileBody := `
-{
-	"$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-	"contentVersion": "1.0.0.0",
-	"parameters": {
-		"registry": {
-			"value": "%s"
-		}
-	}
-}`
-	paramJSONBody := fmt.Sprintf(paramFileBody, registryVal)
-	t.Log(paramJSONBody)
-
-	err = os.WriteFile(paramFile.Name(), []byte(paramJSONBody), os.FileMode(0755))
-	require.NoError(t, err)
-
-	return paramFile.Name(), func() {
-		os.Remove(paramFile.Name())
-	}
-}
-
 func Test_CLI_DeploymentParameters(t *testing.T) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-
 	template := "testdata/corerp-kubernetes-cli-parameters.bicep"
 	name := "kubernetes-cli-params"
 
-	paramFile, cleanup := createParametersFile(t)
-	defer cleanup()
-	parameterFilePath := filepath.Join(cwd, paramFile)
+	registry, _ := functional.SetDefault()
+	parameterFilePath := functional.WriteBicepParameterFile(t, map[string]any{"registry": registry})
 
 	// corerp-kubernetes-cli-parameters.parameters.json uses radiusdev.azurecr.io as a registry parameter.
 	// Use the specified tag only if the test uses radiusdev.azurecr.io registry. Otherwise, use latest tag.
