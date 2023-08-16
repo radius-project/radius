@@ -39,6 +39,7 @@ fi
 RELEASE_VERSION=""
 RELEASE_BRANCH_NAME=""
 
+pushd radius
 for VERSION in $(echo $VERSIONS | sed "s/,/ /g")
 do
   # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
@@ -58,13 +59,19 @@ do
     exit 1
   fi
 done
+popd
 
 if [[ -z "$RELEASE_VERSION" ]]; then
   echo "Error: No release version found."
   exit 1
 fi
 
+if [[ -z "$RELEASE_BRANCH_NAME" ]]; then
+  echo "Error: No release branch name found."
+  exit 1
+fi
+
 echo "Release version: ${RELEASE_VERSION}"
 echo "Release branch name: ${RELEASE_BRANCH_NAME}"
-echo ::set-output name=release-version::"$RELEASE_VERSION"
-echo ::set-output name=release-branch-name::"$RELEASE_BRANCH_NAME"
+echo "release-version::$RELEASE_VERSION" >> $GITHUB_OUTPUT
+echo "release-branch-name::$RELEASE_BRANCH_NAME" >> $GITHUB_OUTPUT
