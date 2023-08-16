@@ -616,16 +616,16 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
-// ExtenderList - Object that includes an array of Extender and a possible link for next set
+// ExtenderList - Object that includes an array of Extender and a possible portable resource for next set.
 type ExtenderList struct {
 	// The link used to fetch the next page of Extender list.
 	NextLink *string
 
-	// List of Extender resources
-	Value []*ExtenderResponseResource
+	// List of Extender portable resources.
+	Value []*ExtenderResource
 }
 
-// ExtenderProperties - Extender link properties
+// ExtenderProperties - Extender portable resource properties.
 type ExtenderProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string
@@ -636,22 +636,28 @@ type ExtenderProperties struct {
 	// The resource id of the environment linked to the resource
 	Environment *string
 
-	// The secret values for the given Extender resource
+	// The recipe used to automatically deploy underlying infrastructure for the Extender portable resource.
+	Recipe *ResourceRecipe
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+	// The secret values for the given Extender portable resource.
 	Secrets map[string]any
 
-	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
+	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus
 }
 
-// ExtenderResource - Extender link
+// ExtenderResource - Extender portable resource.
 type ExtenderResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Extender link properties
+	// REQUIRED; Extender portable resource properties.
 	Properties *ExtenderProperties
 
 	// Resource tags.
@@ -665,45 +671,6 @@ type ExtenderResource struct {
 
 	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
 	SystemData *SystemData
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string
-}
-
-// ExtenderResponseProperties - Extender link properties
-type ExtenderResponseProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string
-
-	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
-	AdditionalProperties map[string]any
-
-	// The resource id of the environment linked to the resource
-	Environment *string
-
-	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
-	ProvisioningState *ProvisioningState
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus
-}
-
-// ExtenderResponseResource - Extender link
-type ExtenderResponseResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string
-
-	// REQUIRED; Extender link properties
-	Properties *ExtenderResponseProperties
-
-	// Resource tags.
-	Tags map[string]*string
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string
-
-	// READ-ONLY; The name of the resource
-	Name *string
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
@@ -1093,6 +1060,15 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceRecipe - The recipe used to automatically deploy underlying infrastructure for a portable resource.
+type ResourceRecipe struct {
+	// REQUIRED; The name of the recipe within the environment to use.
+	Name *string
+
+	// Key/value parameters to pass into the recipe at deployment.
+	Parameters map[string]any
 }
 
 // ResourceStatus - Status of a resource.

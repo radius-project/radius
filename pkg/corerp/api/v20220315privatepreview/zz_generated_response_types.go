@@ -102,8 +102,8 @@ type EnvironmentsClientUpdateResponse struct {
 
 // ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
 type ExtendersClientCreateOrUpdateResponse struct {
-	// Extender link
-	ExtenderResponseResource
+	// Extender portable resource.
+	ExtenderResource
 }
 
 // ExtendersClientDeleteResponse contains the response from method ExtendersClient.Delete.
@@ -113,19 +113,19 @@ type ExtendersClientDeleteResponse struct {
 
 // ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
 type ExtendersClientGetResponse struct {
-	// Extender link
-	ExtenderResponseResource
+	// Extender portable resource.
+	ExtenderResource
 }
 
 // ExtendersClientListByRootScopeResponse contains the response from method ExtendersClient.NewListByRootScopePager.
 type ExtendersClientListByRootScopeResponse struct {
-	// Object that includes an array of Extender and a possible link for next set
+	// Object that includes an array of Extender and a possible portable resource for next set.
 	ExtenderList
 }
 
 // ExtendersClientListSecretsResponse contains the response from method ExtendersClient.ListSecrets.
 type ExtendersClientListSecretsResponse struct {
-	// The secret values for the given Extender resource
+	// The secret values for the given Extender portable resource.
 	Value map[string]any
 }
 

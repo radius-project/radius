@@ -43,8 +43,8 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [ExtenderProperties](#extenderproperties) (Required): Extender link properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly, WriteOnly): Metadata pertaining to creation and last modification of the resource.
+* **properties**: [ExtenderProperties](#extenderproperties) (Required): Extender portable resource properties.
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/extenders' (ReadOnly, DeployTimeConstant): The resource type
 
@@ -403,10 +403,17 @@
 * **application**: string (Required): Specifies the resource id of the application
 * **environment**: string: The resource id of the environment linked to the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
+* **recipe**: [ResourceRecipe](#resourcerecipe): The recipe used to automatically deploy underlying infrastructure for a portable resource.
+* **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
+* **secrets**: [ExtenderSecrets](#extendersecrets): The secret values for the given Extender portable resource.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
+
+## ResourceRecipe
+### Properties
+* **name**: string (Required): The name of the recipe within the environment to use.
+* **parameters**: any: Any object
 
 ## ExtenderSecrets
 ### Properties

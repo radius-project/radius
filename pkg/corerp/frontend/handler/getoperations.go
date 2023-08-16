@@ -258,6 +258,46 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				},
 				IsDataAction: false,
 			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Get/List extenders",
+					Description: "Gets/Lists extender link(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Create/Update extenders",
+					Description: "Creates or updates a extender link.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Delete extender",
+					Description: "Deletes a extender link.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "List secrets",
+					Description: "Lists extender secrets.",
+				},
+				IsDataAction: false,
+			},
 		},
 	}
 }

@@ -42,12 +42,12 @@ func NewExtendersClient(rootScope string, credential azcore.TokenCredential, opt
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a Extender resource
+// CreateOrUpdate - Creates or updates a Extender portable resource.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the Extender link resource
-//   - extenderParameters - extender create parameters
+//   - extenderName - The name of the Extender portable resource.
+//   - extenderParameters - Extender create parameters.
 //   - options - ExtendersClientCreateOrUpdateOptions contains the optional parameters for the ExtendersClient.CreateOrUpdate
 //     method.
 func (client *ExtendersClient) CreateOrUpdate(ctx context.Context, extenderName string, extenderParameters ExtenderResource, options *ExtendersClientCreateOrUpdateOptions) (ExtendersClientCreateOrUpdateResponse, error) {
@@ -93,17 +93,17 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *ExtendersClient) createOrUpdateHandleResponse(resp *http.Response) (ExtendersClientCreateOrUpdateResponse, error) {
 	result := ExtendersClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResponseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
 		return ExtendersClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing extender resource
+// Delete - Deletes an existing Extender portable resource.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the Extender link resource
+//   - extenderName - The name of the Extender portable resource.
 //   - options - ExtendersClientDeleteOptions contains the optional parameters for the ExtendersClient.Delete method.
 func (client *ExtendersClient) Delete(ctx context.Context, extenderName string, options *ExtendersClientDeleteOptions) (ExtendersClientDeleteResponse, error) {
 	var err error
@@ -141,11 +141,11 @@ func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, extender
 	return req, nil
 }
 
-// Get - Retrieves information about a extender resource
+// Get - Retrieves information about a Extender portable resource.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the Extender link resource
+//   - extenderName - The name of the Extender portable resource.
 //   - options - ExtendersClientGetOptions contains the optional parameters for the ExtendersClient.Get method.
 func (client *ExtendersClient) Get(ctx context.Context, extenderName string, options *ExtendersClientGetOptions) (ExtendersClientGetResponse, error) {
 	var err error
@@ -187,13 +187,13 @@ func (client *ExtendersClient) getCreateRequest(ctx context.Context, extenderNam
 // getHandleResponse handles the Get response.
 func (client *ExtendersClient) getHandleResponse(resp *http.Response) (ExtendersClientGetResponse, error) {
 	result := ExtendersClientGetResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResponseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
 		return ExtendersClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all extender resources in the given root scope
+// NewListByRootScopePager - Lists information about all Extender portable resources in the given root scope.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - options - ExtendersClientListByRootScopeOptions contains the optional parameters for the ExtendersClient.NewListByRootScopePager
@@ -250,11 +250,11 @@ func (client *ExtendersClient) listByRootScopeHandleResponse(resp *http.Response
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified Extender resource
+// ListSecrets - Lists secrets values for the specified Extender portable resource.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the Extender link resource
+//   - extenderName - The name of the Extender portable resource.
 //   - options - ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
 func (client *ExtendersClient) ListSecrets(ctx context.Context, extenderName string, options *ExtendersClientListSecretsOptions) (ExtendersClientListSecretsResponse, error) {
 	var err error
