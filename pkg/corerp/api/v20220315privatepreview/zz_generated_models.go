@@ -616,6 +616,18 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
+// ExtenderBasicResourceProperties - Basic properties of an Extender resource.
+type ExtenderBasicResourceProperties struct {
+	// REQUIRED; The resource id of the environment linked to the resource
+	Environment *string
+
+	// Specifies the resource id of the application
+	Application *string
+
+	// READ-ONLY; Status of an Extender resource.
+	Status *ResourceStatus
+}
+
 // ExtenderList - Object that includes an array of Extender and a possible portable resource for next set.
 type ExtenderList struct {
 	// The link used to fetch the next page of Extender list.
@@ -627,14 +639,14 @@ type ExtenderList struct {
 
 // ExtenderProperties - Extender portable resource properties.
 type ExtenderProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string
+	// REQUIRED; The resource id of the environment linked to the resource
+	Environment *string
 
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// The resource id of the environment linked to the resource
-	Environment *string
+	// Specifies the resource id of the application
+	Application *string
 
 	// The recipe used to automatically deploy underlying infrastructure for the Extender portable resource.
 	Recipe *ResourceRecipe
@@ -648,7 +660,7 @@ type ExtenderProperties struct {
 	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of an Extender resource.
 	Status *ResourceStatus
 }
 
