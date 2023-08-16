@@ -80,5 +80,5 @@ fi
 
 echo "Release version: ${RELEASE_VERSION}"
 echo "Release branch name: ${RELEASE_BRANCH_NAME}"
-echo "release-version::$RELEASE_VERSION" >> $GITHUB_OUTPUT
-echo "release-branch-name::$RELEASE_BRANCH_NAME" >> $GITHUB_OUTPUT
+echo "release-version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+echo "release-branch-name=$RELEASE_BRANCH_NAME" >> $GITHUB_OUTPUT
