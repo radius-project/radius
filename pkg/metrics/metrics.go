@@ -24,8 +24,6 @@ var (
 	DefaultRecipeEngineMetrics = newRecipeEngineMetrics()
 )
 
-// # Function Explanation
-//
 // InitMetrics initializes metrics for Radius.
 func InitMetrics() error {
 	if err := DefaultAsyncOperationMetrics.Init(); err != nil {

@@ -46,15 +46,11 @@ type result[T any] struct {
 	Err   error
 }
 
-// # Function Explanation
-//
 // NewAsyncValue creates a new AsyncValue object with a condition variable and a mutex.
 func NewAsyncValue[T any]() *AsyncValue[T] {
 	return &AsyncValue[T]{Cond: &sync.Cond{L: &sync.Mutex{}}}
 }
 
-// # Function Explanation
-//
 // Get is a function that attempts to retrieve a value from a given context, and returns the value or an
 // error if the context is done or an error occurs.
 func (a *AsyncValue[T]) Get(ctx context.Context) (*T, error) {
@@ -93,8 +89,6 @@ func (a *AsyncValue[T]) Get(ctx context.Context) (*T, error) {
 	}
 }
 
-// # Function Explanation
-//
 // Put takes in a pointer to a value and sets it as the value of the AsyncValue, then broadcasts the change to
 // any waiting goroutines.
 func (a *AsyncValue[T]) Put(value *T) {
@@ -104,8 +98,6 @@ func (a *AsyncValue[T]) Put(value *T) {
 	a.Cond.Broadcast()
 }
 
-// # Function Explanation
-//
 // PutErr sets an error value on the AsyncValue struct and broadcasts the condition variable to notify any waiting goroutines.
 func (a *AsyncValue[T]) PutErr(err error) {
 	a.Cond.L.Lock()

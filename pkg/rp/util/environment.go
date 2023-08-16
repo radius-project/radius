@@ -25,8 +25,6 @@ import (
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// # Function Explanation
-//
 // FetchEnvironment fetches an environment resource using the provided environmentID and ClientOptions,
 // and returns the EnvironmentResource or an error.
 func FetchEnvironment(ctx context.Context, environmentID string, ucpOptions *arm.ClientOptions) (*v20220315privatepreview.EnvironmentResource, error) {

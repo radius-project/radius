@@ -22,8 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-// # Function Explanation
-//
 // FindResources searches for resources of a given type with a given filter key and value, and returns the query result.
 func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, storageClient store.StorageClient) (*store.ObjectQueryResult, error) {
 	query := store.Query{

@@ -46,8 +46,6 @@ type KubeNamespaceExtension struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// # Function Explanation
-//
 // FindExtension searches a slice of Extensions for one with a matching ExtensionKind.
 func FindExtension(exts []Extension, kind ExtensionKind) *Extension {
 	for _, ext := range exts {

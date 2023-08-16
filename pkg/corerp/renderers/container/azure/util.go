@@ -25,8 +25,6 @@ const (
 	Separator = "-"
 )
 
-// # Function Explanation
-//
 // MakeResourceName creates a normalized resource name by combining the prefix, name and separator.
 // For instance, when user uses keyvault persistent volume, RP will
 // auto-provision per-container managed identity in the resource group

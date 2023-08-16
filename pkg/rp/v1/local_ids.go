@@ -88,8 +88,6 @@ const (
 	LocalIDKeyVaultSecret               = "KeyVaultSecret"
 )
 
-// # Function Explanation
-//
 // GenerateLocalIDForRoleAssignment generates a unique string based on the input parameters id and roleName
 //
 //	using a stable hashing algorithm.

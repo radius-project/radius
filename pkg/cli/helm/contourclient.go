@@ -40,9 +40,7 @@ type ContourOptions struct {
 	HostNetwork  bool
 }
 
-// # Function Explanation
-// 
-// // ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given 
+// // ApplyContourHelmChart checks if a Contour Helm chart has been installed, and if not, installs it with the given
 // options. If an error occurs, it returns an error with the Helm output.
 func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	// For capturing output from helm.
@@ -91,10 +89,8 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 	return err
 }
 
-// # Function Explanation
-// 
-// // AddContourValues adds values to the helm chart to enable host networking for the Envoy pod, and sets the default 
-// LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It 
+// // AddContourValues adds values to the helm chart to enable host networking for the Envoy pod, and sets the default
+// LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It
 // returns an error if any of the nodes in the chart values are not found.
 func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 	if options.HostNetwork {
@@ -137,9 +133,7 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 	return nil
 }
 
-// # Function Explanation
-// 
-// RunContourHelmInstall creates a new helm install client with the given configuration and chart, sets the release name 
+// RunContourHelmInstall creates a new helm install client with the given configuration and chart, sets the release name
 // and namespace, and then runs the install. It returns an error if the install fails.
 func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart) error {
 	installClient := helm.NewInstall(helmConf)
@@ -150,9 +144,7 @@ func RunContourHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart)
 	return runInstall(installClient, helmChart)
 }
 
-// # Function Explanation
-// 
-// This function "RunContourHelmUninstall" uses the Helm configuration to uninstall Contour from the specified namespace, 
+// This function "RunContourHelmUninstall" uses the Helm configuration to uninstall Contour from the specified namespace,
 // and returns an error if the uninstall fails.
 func RunContourHelmUninstall(helmConf *helm.Configuration) error {
 	output.LogInfo("Uninstalling Contour from namespace: %s", RadiusSystemNamespace)

@@ -34,8 +34,6 @@ type ResourceTypeSchema struct {
 	WriteOnlyProperties             []string       `json:"writeOnlyProperties,omitempty"`
 }
 
-// # Function Explanation
-//
 // FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
 // For example:
 //
@@ -70,8 +68,6 @@ func FlattenProperties(state map[string]any) map[string]any {
 	return flattenedState
 }
 
-// # Function Explanation
-//
 // UnflattenProperties takes in a map of strings to any type and returns an object with the nested
 // properties unflattened.
 // For example:
@@ -120,8 +116,6 @@ func UnflattenProperties(state map[string]any) map[string]any {
 	return unflattenedState
 }
 
-// # Function Explanation
-//
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
 // current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
 func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
@@ -187,8 +181,6 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }
 
-// # Function Explanation
-//
 // ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>.
 // It returns an error if the property identifier is not in the expected format.
 func ParsePropertyName(propertyIdentifier string) (string, error) {

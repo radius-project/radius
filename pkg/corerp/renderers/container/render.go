@@ -65,8 +65,6 @@ const (
 	httpsPort                 = 443
 )
 
-// # Function Explanation
-//
 // GetSupportedKinds returns a list of supported volume kinds.
 func GetSupportedKinds() []string {
 	keys := []string{}
@@ -81,8 +79,6 @@ type Renderer struct {
 	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
 }
 
-// # Function Explanation
-//
 // GetDependencyIDs parses the connections, ports and volumes of a container resource to return the Radius and Azure
 // resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
@@ -158,8 +154,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-// # Function Explanation
-//
 // Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
 // RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {

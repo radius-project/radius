@@ -35,8 +35,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad recipe register` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner object to register a recipe to an environment, with parameters
 // specified using a JSON file or key-value-pairs.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -106,8 +105,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad recipe register` command.
 //
-// # Function Explanation
-//
+
 // Validate validates the command line args, sets the workspace, environment, template kind, template path, link type,
 // recipe name, and parameters, and returns an error if any of these fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -160,8 +158,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad recipe register` command.
 //
-// # Function Explanation
-//
+
 // Run function creates an ApplicationsManagementClient, gets the environment details, adds the recipe properties to the
 // environment recipes, and creates the environment with the updated recipes. It returns an error if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {

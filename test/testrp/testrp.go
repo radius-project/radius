@@ -11,8 +11,6 @@ func main() {
 	http.ListenAndServe(":5000", nil)
 }
 
-// # Function Explanation
-//
 // HelloServer responds to a request with a "Hello" message and adds a header to the response with a URL
 // from the request query parameters.
 func HelloServer(w http.ResponseWriter, r *http.Request) {

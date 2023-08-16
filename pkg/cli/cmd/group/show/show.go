@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad group show` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command for showing the details of a resource group, with flags for resource group,
 // workspace, and output. It returns the command and a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -84,8 +83,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad group show` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the command line arguments, workspace, output format, and resource group, and sets the
 // corresponding fields in the Runner struct. It returns an error if any of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -115,8 +113,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad group show` command.
 //
-// # Function Explanation
-//
+
 // Run creates an ApplicationsManagementClient, retrieves a resource group, and writes the resource group to an
 // output, returning an error if any of these steps fail.
 func (r *Runner) Run(ctx context.Context) error {

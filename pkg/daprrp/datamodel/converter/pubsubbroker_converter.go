@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
 )
 
-// # Function Explanation
-//
 // PubSubBrokerDataModelToVersioned converts a version-agnostic datamodel.DaprPubSubBroker to a versioned model based on the version
 // string, returning an error if the version is not supported.
 func PubSubBrokerDataModelToVersioned(model *datamodel.DaprPubSubBroker, version string) (v1.VersionedModelInterface, error) {
@@ -40,8 +38,6 @@ func PubSubBrokerDataModelToVersioned(model *datamodel.DaprPubSubBroker, version
 	}
 }
 
-// # Function Explanation
-//
 // PubSubBrokerDataModelFromVersioned unmarshals a JSON byte slice into a versioned PubSubBroker resource and converts it
 // to a version-agnostic datamodel PubSubBroker, returning an error if either operation fails.
 func PubSubBrokerDataModelFromVersioned(content []byte, version string) (*datamodel.DaprPubSubBroker, error) {

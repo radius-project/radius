@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
 )
 
-// # Function Explanation
-//
 // RabbitMQQueueDataModelToVersioned converts a version-agnostic datamodel.RabbitMQQueue to a versioned model interface
 // and returns an error if the version is unsupported.
 func RabbitMQQueueDataModelToVersioned(model *datamodel.RabbitMQQueue, version string) (v1.VersionedModelInterface, error) {
@@ -39,8 +37,6 @@ func RabbitMQQueueDataModelToVersioned(model *datamodel.RabbitMQQueue, version s
 	}
 }
 
-// # Function Explanation
-//
 // RabbitMQQueueDataModelFromVersioned takes in a byte slice and a version string and returns a version-agnostic
 // RabbitMQQueue datamodel and an error if the version is unsupported.
 func RabbitMQQueueDataModelFromVersioned(content []byte, version string) (*datamodel.RabbitMQQueue, error) {
@@ -58,8 +54,6 @@ func RabbitMQQueueDataModelFromVersioned(content []byte, version string) (*datam
 	}
 }
 
-// # Function Explanation
-//
 // RabbitMQSecretsDataModelToVersioned converts a version-agnostic datamodel.RabbitMQSecrets to a versioned model
 // based on the given version string, or returns an error if the version is not supported.
 func RabbitMQSecretsDataModelToVersioned(model *datamodel.RabbitMQSecrets, version string) (v1.VersionedModelInterface, error) {

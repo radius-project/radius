@@ -18,8 +18,6 @@ package middleware
 
 import "strings"
 
-// # Function Explanation
-//
 // GetRelativePath returns the relative path of the given path with respect to the pathBase.
 func GetRelativePath(pathBase string, path string) string {
 	trimmedPath := strings.TrimPrefix(path, pathBase)

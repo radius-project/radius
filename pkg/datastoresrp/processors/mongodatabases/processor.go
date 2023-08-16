@@ -29,8 +29,6 @@ import (
 type Processor struct {
 }
 
-// # Function Explanation
-//
 // Process implements the processors.Processor interface for Mongo database resources. It  validates Mongo database properties
 // and applies the values from the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDatabase, options processors.Options) error {

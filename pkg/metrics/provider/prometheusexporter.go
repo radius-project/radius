@@ -36,8 +36,6 @@ type PrometheusExporter struct {
 	Handler http.Handler
 }
 
-// # Function Explanation
-//
 // NewPrometheusExporter creates a PrometheusExporter instance with a MeterProvider and a Handler,
 // and returns it along with any errors.
 func NewPrometheusExporter(options *MetricsProviderOptions) (*PrometheusExporter, error) {

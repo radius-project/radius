@@ -81,8 +81,6 @@ type RPResourceSet struct {
 	Resources []RPResource
 }
 
-// # Function Explanation
-//
 // DeleteRPResource deletes an environment or application resource depending on the type of the resource passed in, and
 // returns an error if one occurs.
 func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
@@ -112,8 +110,6 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	return nil
 }
 
-// # Function Explanation
-//
 // ValidateRPResources checks if the expected resources exist in the response and validates the output resources if present.
 func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {

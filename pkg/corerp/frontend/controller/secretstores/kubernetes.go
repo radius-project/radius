@@ -75,8 +75,6 @@ func getOrDefaultEncoding(t datamodel.SecretType, e datamodel.SecretValueEncodin
 	return e, err
 }
 
-// # Function Explanation
-//
 // ValidateAndMutateRequest checks the type and encoding of the secret store, and ensures that the secret store data is
 // valid. If any of these checks fail, a BadRequestResponse is returned.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
@@ -179,8 +177,6 @@ func fromResourceID(id string) (ns string, name string, err error) {
 	return
 }
 
-// # Function Explanation
-//
 // UpsertSecret creates or updates a Kubernetes secret based on the incoming request and returns the secret's location in
 // the output resource.
 func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
@@ -289,8 +285,6 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	return nil, nil
 }
 
-// # Function Explanation
-//
 // DeleteRadiusSecret deletes the Kubernetes secret associated with the given secret store if it is a
 // Radius managed resource.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {

@@ -79,8 +79,6 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), strings.ToLower(id.ProviderNamespace()), aom.location, operationID)
 }
 
-// # Function Explanation
-//
 // QueueAsyncOperation creates and saves a new status resource with the given parameters in datastore, and queues
 // a request message. If an error occurs, the status is deleted using the storeClient.
 func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, options QueueOperationOptions) error {
@@ -132,8 +130,6 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 	return nil
 }
 
-// # Function Explanation
-//
 // Get gets a status object from the datastore or an error if the retrieval fails.
 func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error) {
 	obj, err := aom.storeClient.Get(ctx, aom.operationStatusResourceID(id, operationID))
@@ -149,8 +145,6 @@ func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID 
 	return aos, nil
 }
 
-// # Function Explanation
-//
 // Update retrieves an existing operation status resource from the store, updates its fields with the
 // given parameters, and saves it back to the store.
 func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
@@ -182,8 +176,6 @@ func (aom *statusManager) Update(ctx context.Context, id resources.ID, operation
 	return aom.storeClient.Save(ctx, obj, store.WithETag(obj.ETag))
 }
 
-// # Function Explanation
-//
 // Delete deletes the operation status resource associated with the given ID and
 // operationID, and returns an error if unsuccessful.
 func (aom *statusManager) Delete(ctx context.Context, id resources.ID, operationID uuid.UUID) error {

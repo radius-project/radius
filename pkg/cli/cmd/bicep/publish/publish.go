@@ -55,8 +55,7 @@ type destination struct {
 
 // NewCommand creates an instance of the command and runner for the `rad bicep publish` command.
 //
-// # Function Explanation
-//
+
 // "NewCommand" creates a new Cobra command and a Runner object, sets up the command's flags and usage information, and
 // returns the command and the Runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -112,8 +111,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad bicep publish` command.
 //
-// # Function Explanation
-//
+
 // Runner.Validate parses the command line flags and sets the File and Target fields of the Runner struct, returning an
 // error if the target flag is not in the expected format.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -138,8 +136,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad bicep publish` command.
 //
-// # Function Explanation
-//
+
 // The Run function prepares a Bicep template, extracts the destination, publishes the template to the target, and logs
 // a success message if no errors are encountered. An error is returned if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {

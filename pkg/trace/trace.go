@@ -26,8 +26,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
-// # Function Explanation
-//
 // InitTracer sets up a tracer provider with a sampler and resource attributes, and optionally registers a Zipkin exporter
 // and batcher. It returns a shutdown function and an error if one occurs.
 func InitTracer(opts Options) (func(context.Context) error, error) {

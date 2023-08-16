@@ -28,8 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-// # Function Explanation
-//
 // FetchScopeResource checks if the given scopeID is a valid resource ID for the given resource type, fetches the resource
 // from the storage client and returns an error if the resource does not exist.
 func FetchScopeResource(ctx context.Context, sp dataprovider.DataStorageProvider, scopeID string, resource v1.DataModelInterface) error {

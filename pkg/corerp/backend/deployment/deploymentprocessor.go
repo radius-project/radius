@@ -58,8 +58,6 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
-// # Function Explanation
-//
 // NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
 func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
@@ -86,8 +84,6 @@ type ResourceData struct {
 	RecipeData      linkrp.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
-// # Function Explanation
-//
 // Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
 // resource being deployed, and then renders the resource using the fetched data. It returns an error if any of the fetches
 // fail or if the output resource does not have a provider specified or if the provider is not configured.
@@ -231,8 +227,6 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return nil
 }
 
-// # Function Explanation
-//
 // Deploy deploys the given radius resource by ordering the output resources in deployment dependency order, deploying each
 // output resource, updating static values for connections, and transforming the radius resource with computed values. It
 // returns a DeploymentOutput and an error if one occurs.
@@ -303,8 +297,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}, nil
 }
 
-// # Function Explanation
-//
 // Delete deletes the output resources in reverse dependency order, starting with the resource deployed last.
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -347,8 +339,6 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 	return rendererDependencies, nil
 }
 
-// # Function Explanation
-//
 // FetchSecrets fetches the secret values from the given resource data and returns them as a map.
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]any, error) {
 	secretValues := map[string]any{}

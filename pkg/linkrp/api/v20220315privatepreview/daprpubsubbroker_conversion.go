@@ -28,8 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel, validating the input
 // and returning an error if any of the validation checks fail.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -114,8 +112,6 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
 // If the DataModelInterface is not of the correct type, an error is returned.
 func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) error {

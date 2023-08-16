@@ -45,8 +45,6 @@ type DeployExecutor struct {
 	Environment string
 }
 
-// # Function Explanation
-//
 // NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
@@ -56,8 +54,6 @@ func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	}
 }
 
-// # Function Explanation
-//
 // WithApplication sets the application name for the DeployExecutor instance and returns the same instance.
 func (d *DeployExecutor) WithApplication(application string) *DeployExecutor {
 	d.Application = application
@@ -70,15 +66,11 @@ func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
 	return d
 }
 
-// # Function Explanation
-//
 // GetDescription returns the Description field of the DeployExecutor instance.
 func (d *DeployExecutor) GetDescription() string {
 	return d.Description
 }
 
-// # Function Explanation
-//
 // Execute deploys an application from a template file using the provided parameters and logs the deployment process.
 func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()

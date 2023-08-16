@@ -10,8 +10,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 )
 
-// # Function Explanation
-//
 // ServiceBusBinding checks if the environment variables are set, creates a service bus connection, sends and receives a
 // message and returns a BindingStatus.
 func ServiceBusBinding(envParams map[string]string) BindingStatus {
@@ -72,8 +70,6 @@ func ServiceBusBinding(envParams map[string]string) BindingStatus {
 	return BindingStatus{true, "Message sent and received successfully"}
 }
 
-// # Function Explanation
-//
 // SendMessage creates a new sender, sends a message and returns an error if any of the operations fail.
 func SendMessage(ctx context.Context, message string, queueName string, client *azservicebus.Client) error {
 	sender, err := client.NewSender(queueName, nil)
@@ -95,8 +91,6 @@ func SendMessage(ctx context.Context, message string, queueName string, client *
 	return nil
 }
 
-// # Function Explanation
-//
 // // GetMessage creates a new receiver for a given queue, receives messages from the queue, logs the messages and returns
 // them as a slice of strings. It returns an error if any of the operations fail.
 func GetMessage(ctx context.Context, count int, queueName string, client *azservicebus.Client) ([]string, error) {

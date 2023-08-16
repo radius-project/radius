@@ -35,8 +35,6 @@ const (
 type Processor struct {
 }
 
-// # Function Explanation
-//
 // Process implements the processors.Processor interface for RabbitMQQueue resources. It validates the required and computed
 //  RabbitMQMessageQueue properties and applies the values from the RecipeOutput. It returns an error if validation fails.
 

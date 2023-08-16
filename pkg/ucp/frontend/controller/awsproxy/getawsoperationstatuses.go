@@ -40,8 +40,6 @@ type GetAWSOperationStatuses struct {
 	awsClients ucp_aws.Clients
 }
 
-// # Function Explanation
-//
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses controller which is used to get the statuses of AWS operations.
 func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{
@@ -50,8 +48,6 @@ func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucp_a
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() reads the region from the request, uses the region to get the resource request status
 // from AWS CloudControl, and returns the async operation status. If the resource is not found, it returns a
 // NotFoundResponse, and if there is an error, it returns an error response.

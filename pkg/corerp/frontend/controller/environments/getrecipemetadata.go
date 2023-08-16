@@ -39,8 +39,6 @@ type GetRecipeMetadata struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
 
-// # Function Explanation
-//
 // NewGetRecipeMetadata creates a new controller for retrieving recipe metadata from an environment.
 func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetRecipeMetadata{
@@ -53,8 +51,6 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run retrieves the recipe metadata from the registry for a given recipe name and template path, and returns
 // a response containing the recipe parameters.
 func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {

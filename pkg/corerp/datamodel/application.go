@@ -33,30 +33,22 @@ type Application struct {
 	Properties ApplicationProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type name of the Application instance.
 func (e *Application) ResourceTypeName() string {
 	return ApplicationResourceType
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the status of the application with the output resources from the deployment and returns no error.
 func (c *Application) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the Application instance.
 func (c *Application) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the Application instance.
 func (h *Application) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties

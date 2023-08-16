@@ -35,8 +35,6 @@ type ListSecretsRabbitMQQueue struct {
 	ctrl.Operation[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue]
 }
 
-// # Function Explanation
-//
 // NewListSecretsRabbitMQQueue creates a controller for listing RabbitMQQueue secrets.
 func NewListSecretsRabbitMQQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecretsRabbitMQQueue{
@@ -48,8 +46,6 @@ func NewListSecretsRabbitMQQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run returns secrets values for the specified RabbitMQQueue resource
 func (ctrl *ListSecretsRabbitMQQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)

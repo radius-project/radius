@@ -43,8 +43,6 @@ func NewDefaultSyncDelete[P interface {
 	return &DefaultSyncDelete[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }
 
-// # Function Explanation
-//
 // Run executes synchronous deletion operation. It retrieves the resource from the store, runs custom delete filters,
 // and then deletes the resource from the data store. If the resource is not found, a No Content response is returned.
 // If an error occurs during the delete, an error is returned.

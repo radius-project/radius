@@ -49,8 +49,6 @@ type BasicResourceProperties struct {
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
-// # Function Explanation
-//
 // Method EqualLinkedResource compares two BasicResourceProperties objects and returns true if their Application and
 // Environment fields are equal (i.e. resource belongs to the same env and app).
 func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
@@ -66,8 +64,6 @@ type ResourceStatus struct {
 	OutputResources []OutputResource `json:"outputResources,omitempty"`
 }
 
-// # Function Explanation
-//
 // DeepCopy copies the contents of the ResourceStatus struct from in to out.
 func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
 	in.Compute = out.Compute
@@ -121,8 +117,6 @@ type DeploymentDataModel interface {
 	OutputResources() []OutputResource
 }
 
-// # Function Explanation
-//
 // BuildExternalOutputResources builds a slice of maps containing the LocalID, Provider and Identity of each
 // OutputResource.
 func BuildExternalOutputResources(outputResources []OutputResource) []map[string]any {

@@ -8,9 +8,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
-// # Function Explanation
-// 
-// MicrosoftSqlBinding checks if the connection string is provided, creates a connection to the mssql database, pings the 
+// MicrosoftSqlBinding checks if the connection string is provided, creates a connection to the mssql database, pings the
 // database and checks if the database can be accessed. If any of these steps fail, an error is returned.
 func MicrosoftSqlBinding(envParams map[string]string) BindingStatus {
 	// From https://docs.microsoft.com/en-us/azure/azure-sql/database/connect-query-go

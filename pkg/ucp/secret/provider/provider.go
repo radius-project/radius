@@ -36,8 +36,6 @@ type SecretProvider struct {
 	once    sync.Once
 }
 
-// # Function Explanation
-//
 // NewSecretProvider creates a new SecretProvider instance with the given options.
 func NewSecretProvider(opts SecretProviderOptions) *SecretProvider {
 	return &SecretProvider{
@@ -46,15 +44,11 @@ func NewSecretProvider(opts SecretProviderOptions) *SecretProvider {
 	}
 }
 
-// # Function Explanation
-//
 // SetClient sets the secret client for the SecretProvider. This should be used by tests that need to mock the secret client.
 func (p *SecretProvider) SetClient(client secret.Client) {
 	p.client = client
 }
 
-// # Function Explanation
-//
 // GetClient checks if a secret client has already been created, and if not, creates one using the secretClientFactory
 // map. If the provider is not supported, an error is returned.
 func (p *SecretProvider) GetClient(ctx context.Context) (secret.Client, error) {

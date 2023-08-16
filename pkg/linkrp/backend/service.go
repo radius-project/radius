@@ -66,8 +66,6 @@ type Service struct {
 	worker.Service
 }
 
-// # Function Explanation
-//
 // NewService creates a new Service instance with the given options.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
@@ -78,15 +76,11 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns a string containing the namespace of the LinkProvider.
 func (s *Service) Name() string {
 	return fmt.Sprintf("%s async worker", handler.LinkProviderNamespace)
 }
 
-// # Function Explanation
-//
 // Run initializes the service and registers controllers for each resource type to handle create/update/delete operations.
 func (s *Service) Run(ctx context.Context) error {
 	if err := s.Init(ctx); err != nil {

@@ -72,8 +72,6 @@ type Options struct {
 
 const UCPProviderName = "ucp"
 
-// # Function Explanation
-//
 // NewServerOptionsFromEnvironment creates a new Options struct from environment variables and returns it along with any errors.
 func NewServerOptionsFromEnvironment() (Options, error) {
 	basePath, ok := os.LookupEnv("BASE_PATH")
@@ -150,8 +148,6 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	}, nil
 }
 
-// # Function Explanation
-//
 // NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
 // enabled) based on the given Options.
 func NewServer(options *Options) (*hosting.Host, error) {

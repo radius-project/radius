@@ -28,9 +28,8 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad group` command.
 //
-// # Function Explanation
-// 
-// NewCommand creates a new cobra command for managing resource groups, with subcommands for creating, deleting, listing, 
+
+// NewCommand creates a new cobra command for managing resource groups, with subcommands for creating, deleting, listing,
 // showing, and switching resource groups.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.

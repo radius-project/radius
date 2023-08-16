@@ -43,8 +43,6 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
-// # Function Explanation
-//
 // GetMagpieImage creates a string with the default Docker registry and image tag for MagpieGo.
 func GetMagpieImage() string {
 	defaultDockerReg, imageTag := SetDefault()
@@ -52,8 +50,6 @@ func GetMagpieImage() string {
 	return magpieImage
 }
 
-// # Function Explanation
-//
 // GetMagpieTag sets a default image tag and returns a string with the format "magpietag=<imageTag>"
 func GetMagpieTag() string {
 	_, imageTag := SetDefault()
@@ -61,8 +57,6 @@ func GetMagpieTag() string {
 	return magpietag
 }
 
-// # Function Explanation
-//
 // GetOIDCIssuer gets the OIDC Issuer URI from the environment variable FUNCTEST_OIDC_ISSUER or
 // a default value if the environment variable is empty.
 func GetOIDCIssuer() string {
@@ -73,8 +67,6 @@ func GetOIDCIssuer() string {
 	return "oidcIssuer=" + oidcIssuer
 }
 
-// # Function Explanation
-//
 // SetDefault sets the default Docker registry and image tag if they are not already set in the environment.
 func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
@@ -94,8 +86,6 @@ type ProxyMetadata struct {
 	Status   string
 }
 
-// # Function Explanation
-//
 // GetBicepRecipeRegistry returns the default recipe registry if one is not set in the environment.
 func GetBicepRecipeRegistry() string {
 	defaultRecipeRegistry := os.Getenv("BICEP_RECIPE_REGISTRY")
@@ -105,8 +95,6 @@ func GetBicepRecipeRegistry() string {
 	return "registry=" + defaultRecipeRegistry
 }
 
-// # Function Explanation
-//
 // GetBicepRecipeVersion returns the version of the Bicep recipe to be used, either from the environment variable or the
 // default value "latest".
 func GetBicepRecipeVersion() string {
@@ -117,8 +105,6 @@ func GetBicepRecipeVersion() string {
 	return "version=" + defaultVersion
 }
 
-// # Function Explanation
-//
 // GetTerraformRecipeModuleServerURL gets the terraform module server to use in tests from the environment variable
 // TF_RECIPE_MODULE_SERVER_URL. If the environment variable is not set, it uses the default value
 // for local testing (http://localhost:8999).
@@ -137,24 +123,18 @@ func GetTerraformRecipeModuleServerURL() string {
 	return "moduleServer=" + u
 }
 
-// # Function Explanation
-//
 // GetAWSAccountId retrieves the AWS Account ID from the environment and returns it as a string.
 func GetAWSAccountId() string {
 	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
 	return "awsAccountId=" + awsAccountId
 }
 
-// # Function Explanation
-//
 // GetAWSRegion returns the AWS region from the environment variable "AWS_REGION".
 func GetAWSRegion() string {
 	awsRegion := os.Getenv("AWS_REGION")
 	return "awsRegion=" + awsRegion
 }
 
-// # Function Explanation
-//
 // GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status
 // (e.g. "Valid", "Invalid"). It returns an error if the root proxy is not found.
 func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, namespace, application string) (*ProxyMetadata, error) {
@@ -176,8 +156,6 @@ func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, nam
 	return nil, fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-// # Function Explanation
-//
 // GetHTTPProxyList returns a list of HTTPProxies for the specified application. It returns an
 // error if the list cannot be retrieved.
 func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespace, application string) (*contourv1.HTTPProxyList, error) {
@@ -199,8 +177,6 @@ func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespa
 	return &httpproxies, nil
 }
 
-// # Function Explanation
-//
 // ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan. It exposes a pod
 // in the RadiusSystemNamespace with the selector "app.kubernetes.io/component=envoy" on the given remotePort
 // and returns the port number and an error if any.
@@ -209,8 +185,6 @@ func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, con
 	ExposePod(t, ctx, client, config, RadiusSystemNamespace, selector, remotePort, stopChan, portChan, errorChan)
 }
 
-// # Function Explanation
-//
 // ExposePod creates a port-forward session. It finds a pod matching the given selector, creates an API Server URL,
 // sets up a port-forwarder, and sends the assigned port to the portChan channel.
 func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, namespace string, selector string, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
@@ -269,8 +243,6 @@ func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config 
 	portChan <- int(ports[0].Local)
 }
 
-// # Function Explanation
-//
 // NewTestLogger creates a new logger that writes to the testing.T object.
 func NewTestLogger(t *testing.T) *log.Logger {
 	tw := TestWriter{t}
@@ -280,8 +252,6 @@ func NewTestLogger(t *testing.T) *log.Logger {
 	return &logger
 }
 
-// # Function Explanation
-//
 // IsMapSubSet returns true if the expectedMap is a subset of the actualMap
 func IsMapSubSet(expectedMap map[string]string, actualMap map[string]string) bool {
 	if len(expectedMap) > len(actualMap) {
@@ -299,8 +269,6 @@ func IsMapSubSet(expectedMap map[string]string, actualMap map[string]string) boo
 	return true
 }
 
-// # Function Explanation
-//
 // IsMapNonIntersecting returns true if the notExpectedMap and actualMap do not have any keys in common
 func IsMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string]string) bool {
 	for k1 := range notExpectedMap {
@@ -316,8 +284,6 @@ type TestWriter struct {
 	t *testing.T
 }
 
-// # Function Explanation
-//
 // TestWriter.Write writes the given byte slice to the test log.
 func (tw TestWriter) Write(p []byte) (n int, err error) {
 	tw.t.Log(string(p))

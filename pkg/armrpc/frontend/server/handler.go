@@ -99,8 +99,6 @@ func NewSubrouter(parent chi.Router, path string, middlewares ...func(http.Handl
 	return subrouter
 }
 
-// # Function Explanation
-//
 // HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a
 // http response from the returned rest.Response, and handles the error as a default internal error if this controller returns error.
 func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
@@ -187,8 +185,6 @@ func addRequestAttributes(ctx context.Context, req *http.Request) {
 	}
 }
 
-// # Function Explanation
-//
 // ConfigureDefaultHandlers registers handlers for the default operations such as getting operationStatuses and
 // operationResults, and updating a subscription lifecycle. It returns an error if any of the handler registrations fail.
 func ConfigureDefaultHandlers(

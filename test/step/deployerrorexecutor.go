@@ -63,8 +63,6 @@ type DeploymentErrorDetail struct {
 	Details []DeploymentErrorDetail
 }
 
-// # Function Explanation
-//
 // NewDeployErrorExecutor creates a new DeployErrorExecutor instance with the given template, error code and parameters.
 func NewDeployErrorExecutor(template string, validateError func(*testing.T, *radcli.CLIError), parameters ...string) *DeployErrorExecutor {
 	return &DeployErrorExecutor{
@@ -75,8 +73,6 @@ func NewDeployErrorExecutor(template string, validateError func(*testing.T, *rad
 	}
 }
 
-// # Function Explanation
-//
 // WithApplication sets the application name for the DeployErrorExecutor instance and returns the instance.
 func (d *DeployErrorExecutor) WithApplication(application string) *DeployErrorExecutor {
 	d.Application = application
@@ -89,15 +85,11 @@ func (d *DeployErrorExecutor) WithEnvironment(environment string) *DeployErrorEx
 	return d
 }
 
-// # Function Explanation
-//
 // GetDescription returns the Description field of the DeployErrorExecutor instance.
 func (d *DeployErrorExecutor) GetDescription() string {
 	return d.Description
 }
 
-// # Function Explanation
-//
 // Execute deploys an application from a template file and checks that the deployment fails with the expected error code.
 func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()

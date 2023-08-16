@@ -24,8 +24,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// # Function Explanation
-//
 // MakeAzureFileShareVolumeSpec creates a Volume and VolumeMount spec for an Azure File Share and returns them along with
 // an error if one occurs.
 // TODO: This is unused code now. We will enable file share later.

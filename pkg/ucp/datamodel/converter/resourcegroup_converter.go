@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
-// # Function Explanation
-//
 // ResourceGroupDataModelToVersioned converts version agnostic environment datamodel to versioned model.
 // It returns an error if the conversion fails.
 func ResourceGroupDataModelToVersioned(model *datamodel.ResourceGroup, version string) (v1.VersionedModelInterface, error) {
@@ -42,8 +40,6 @@ func ResourceGroupDataModelToVersioned(model *datamodel.ResourceGroup, version s
 	}
 }
 
-// # Function Explanation
-//
 // ResourceGroupDataModelFromVersioned converts versioned environment model to datamodel.
 // It returns an error if the conversion fails.
 func ResourceGroupDataModelFromVersioned(content []byte, version string) (*datamodel.ResourceGroup, error) {

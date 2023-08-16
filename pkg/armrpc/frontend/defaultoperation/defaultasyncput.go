@@ -41,8 +41,6 @@ func NewDefaultAsyncPut[P interface {
 	return &DefaultAsyncPut[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }
 
-// # Function Explanation
-//
 // Run executes asynchronous create or update operation by validating new resource metadata, ensuring if it is new resource
 // or updated resource, running custom update filters, and queuing async operation and returns an async response.
 func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
