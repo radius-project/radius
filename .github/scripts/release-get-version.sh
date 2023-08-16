@@ -31,6 +31,9 @@ function does_tag_exist() {
 # (e.g. v0.1.0,v0.2.0,v0.3.0)
 VERSIONS=$1
 
+# Remote repository
+REPOSITORY=$2
+
 if [[ -z "$VERSIONS" ]]; then
   echo "Error: VERSIONS is not set."
   exit 1

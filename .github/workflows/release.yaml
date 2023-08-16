@@ -50,7 +50,7 @@ jobs:
       - name: Determine desired release version
         id: get-version
         run: |
-          ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }}
+          ./.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} "."
       - name: Find the previous tag
         uses: actions/github-script@v6
         id: latest-release-tag
@@ -162,7 +162,7 @@ jobs:
       - name: Determine desired release version
         id: get-version
         run: |
-          ./radius/.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }}
+          ./radius/.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} radius
       - name: Generate release summary
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
