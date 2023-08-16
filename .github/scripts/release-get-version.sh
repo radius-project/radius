@@ -39,10 +39,15 @@ if [[ -z "$VERSIONS" ]]; then
   exit 1
 fi
 
+if [[ -z "$REPOSITORY" ]]; then
+  echo "Error: REPOSITORY is not set."
+  exit 1
+fi
+
 RELEASE_VERSION=""
 RELEASE_BRANCH_NAME=""
 
-pushd radius
+pushd $REPOSITORY
 for VERSION in $(echo $VERSIONS | sed "s/,/ /g")
 do
   # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
