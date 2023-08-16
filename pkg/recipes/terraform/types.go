@@ -18,7 +18,6 @@ package terraform
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -60,23 +59,19 @@ func NewTerraform(ctx context.Context, workingDir, execPath string) (*tfexec.Ter
 	return tf, err
 }
 
-// StreamingWriter is a writer that processes data in a streaming manner.
-type StreamingWriter struct {
-	logger logr.Logger
+// tfLogWrapper is a wrapper around the Terraform logger to stream the logs to the Radius logger.
+type tfLogWrapper struct {
+	logger   logr.Logger
+	isStdErr bool
 }
 
-// Write processes the data in a streaming manner.
-func (w *StreamingWriter) Write(p []byte) (n int, err error) {
-	w.logger.Info(string(p))
-	return len(p), nil
-}
-
-type StreamingErrorWriter struct {
-	logger logr.Logger
-}
-
-func (w *StreamingErrorWriter) Write(p []byte) (n int, err error) {
-	w.logger.Error(fmt.Errorf(string(p)), string(p))
+// Write implements the io.Writer interface to stream the Terraform logs to the Radius logger.
+func (w *tfLogWrapper) Write(p []byte) (n int, err error) {
+	if w.isStdErr {
+		w.logger.Error(nil, string(p))
+	} else {
+		w.logger.Info(string(p))
+	}
 	return len(p), nil
 }
 
@@ -90,13 +85,6 @@ func configureTerraformLogs(ctx context.Context, tf *tfexec.Terraform) {
 		return
 	}
 
-	streamingWriter := &StreamingWriter{
-		logger: logger,
-	}
-	tf.SetStdout(streamingWriter)
-
-	streamingErrorWriter := &StreamingErrorWriter{
-		logger: logger,
-	}
-	tf.SetStderr(streamingErrorWriter)
+	tf.SetStdout(&tfLogWrapper{logger: logger})
+	tf.SetStderr(&tfLogWrapper{logger: logger, isStdErr: true})
 }
