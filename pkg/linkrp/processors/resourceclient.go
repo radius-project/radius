@@ -173,6 +173,7 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID,
 	// For AWS resources, the server does not yet validate the API version.
 	//
 	// In the future we should change this to look up API versions dynamically like we do for ARM.
+	// Todo: configure retry policty
 	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		return err

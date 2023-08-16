@@ -95,6 +95,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	}
 
 	// Now we need to clean up any obsolete output resources.
+
+	// call delete function on engine instead of calling garbagecollect
 	diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
 	err = c.garbageCollectResources(ctx, req.ResourceID, diff)
 	if err != nil {
