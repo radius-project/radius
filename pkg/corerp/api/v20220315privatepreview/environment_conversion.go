@@ -72,32 +72,16 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
-					// Allowed format hard coded to Bicep in the error until Terraform support is officially implemented.
-					// This check shouldn't be needed once we define an enum for templateKind in the schema.
-					// https://dev.azure.com/azure-octo/Incubations/_workitems/edit/7940
-					if recipeDetails.TemplateKind == nil || !isValidTemplateKind(*recipeDetails.TemplateKind) {
+					if recipeDetails.GetEnvironmentRecipeProperties().TemplateKind == nil || !isValidTemplateKind(*recipeDetails.GetEnvironmentRecipeProperties().TemplateKind) {
 						formats := []string{}
 						for _, format := range types.SupportedTemplateKind {
 							formats = append(formats, fmt.Sprintf("%q", format))
 						}
 						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid template kind. Allowed formats: %s", strings.Join(formats, ", ")))
 					}
-					if *recipeDetails.TemplateKind == types.TemplateKindBicep && recipeDetails.TemplateVersion != nil && *recipeDetails.TemplateVersion != "" {
-						return &datamodel.Environment{}, v1.NewClientErrInvalidRequest("templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath.")
-					}
-
-					if *recipeDetails.TemplateKind == types.TemplateKindTerraform && recipeDetails.TemplatePath != nil {
-						// Check for local paths
-						if strings.HasPrefix(to.String(recipeDetails.TemplatePath), "/") || strings.HasPrefix(to.String(recipeDetails.TemplatePath), "./") || strings.HasPrefix(to.String(recipeDetails.TemplatePath), "../") {
-							return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(recipeDetails.TemplatePath)))
-						}
-					}
-
-					envRecipes[resourceType][recipeName] = datamodel.EnvironmentRecipeProperties{
-						TemplateKind:    *recipeDetails.TemplateKind,
-						TemplatePath:    to.String(recipeDetails.TemplatePath),
-						TemplateVersion: to.String(recipeDetails.TemplateVersion),
-						Parameters:      recipeDetails.Parameters,
+					envRecipes[resourceType][recipeName], err = toEnvironmentRecipeProperties(recipeDetails)
+					if err != nil {
+						return &datamodel.Environment{}, err
 					}
 				}
 			}
@@ -155,18 +139,11 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	if env.Properties.Recipes != nil {
-		recipes := make(map[string]map[string]*EnvironmentRecipeProperties)
+		recipes := make(map[string]map[string]EnvironmentRecipePropertiesClassification)
 		for resourceType, recipe := range env.Properties.Recipes {
-			recipes[resourceType] = map[string]*EnvironmentRecipeProperties{}
+			recipes[resourceType] = map[string]EnvironmentRecipePropertiesClassification{}
 			for recipeName, recipeDetails := range recipe {
-				recipes[resourceType][recipeName] = &EnvironmentRecipeProperties{
-					TemplateKind: to.Ptr(recipeDetails.TemplateKind),
-					TemplatePath: to.Ptr(recipeDetails.TemplatePath),
-					Parameters:   recipeDetails.Parameters,
-				}
-				if recipeDetails.TemplateKind == types.TemplateKindTerraform {
-					recipes[resourceType][recipeName].TemplateVersion = to.Ptr(recipeDetails.TemplateVersion)
-				}
+				recipes[resourceType][recipeName] = fromRecipePropertiesClassificationDatamodel(recipeDetails)
 			}
 		}
 		dst.Properties.Recipes = recipes
@@ -310,4 +287,48 @@ func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Ext
 	}
 
 	return datamodel.Extension{}
+}
+
+func toEnvironmentRecipeProperties(e EnvironmentRecipePropertiesClassification) (datamodel.EnvironmentRecipeProperties, error) {
+	switch c := e.(type) {
+	case *TerraformRecipeProperties:
+		if c.TemplatePath != nil {
+			// Check for local paths
+			if strings.HasPrefix(to.String(c.TemplatePath), "/") || strings.HasPrefix(to.String(c.TemplatePath), "./") || strings.HasPrefix(to.String(c.TemplatePath), "../") {
+				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))
+			}
+		}
+		return datamodel.EnvironmentRecipeProperties{
+			TemplateKind:    types.TemplateKindTerraform,
+			TemplateVersion: to.String(c.TemplateVersion),
+			TemplatePath:    to.String(c.TemplatePath),
+			Parameters:      c.Parameters,
+		}, nil
+	case *BicepRecipeProperties:
+		return datamodel.EnvironmentRecipeProperties{
+			TemplateKind: types.TemplateKindBicep,
+			TemplatePath: to.String(c.TemplatePath),
+			Parameters:   c.Parameters,
+		}, nil
+	}
+	return datamodel.EnvironmentRecipeProperties{}, nil
+}
+
+func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) EnvironmentRecipePropertiesClassification {
+	switch e.TemplateKind {
+	case types.TemplateKindTerraform:
+		return &TerraformRecipeProperties{
+			TemplateKind:    to.Ptr(e.TemplateKind),
+			TemplateVersion: to.Ptr(e.TemplateVersion),
+			TemplatePath:    to.Ptr(e.TemplatePath),
+			Parameters:      e.Parameters,
+		}
+	case types.TemplateKindBicep:
+		return &BicepRecipeProperties{
+			TemplateKind: to.Ptr(e.TemplateKind),
+			TemplatePath: to.Ptr(e.TemplatePath),
+			Parameters:   e.Parameters,
+		}
+	}
+	return nil
 }

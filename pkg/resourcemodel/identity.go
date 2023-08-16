@@ -37,6 +37,7 @@ import (
 const (
 	ProviderAzure      = "azure"
 	ProviderAWS        = "aws"
+	ProviderRadius     = "radius"
 	ProviderKubernetes = "kubernetes"
 
 	// APIVersionUnknown encodes an "unknown" API version. Including API version in resource identity is
@@ -169,6 +170,9 @@ func (r ResourceIdentity) GetID() string {
 	case ProviderAWS:
 		id, _ := r.RequireAWS()
 		return id
+	case ProviderRadius:
+		id, _ := r.RequireRadius()
+		return id
 	case ProviderKubernetes:
 		gvk, namespace, name, _ := r.RequireKubernetes()
 		group := gvk.Group
@@ -222,6 +226,22 @@ func (r ResourceIdentity) RequireAWS() (string, error) {
 	return "", fmt.Errorf("expected an %q provider, was %q", ProviderAWS, r.ResourceType.Provider)
 }
 
+// RequireRadius checks if the ResourceIdentity is an Radius ID and returns the ID or an error if not.
+func (r ResourceIdentity) RequireRadius() (string, error) {
+	if r.ResourceType.Provider == ProviderRadius {
+		data, ok := r.Data.(UCPIdentity)
+		if !ok {
+			data = UCPIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return "", err
+			}
+		}
+		return data.ID, nil
+	}
+
+	return "", fmt.Errorf("expected an %q provider, was %q", ProviderRadius, r.ResourceType.Provider)
+}
+
 // # Function Explanation
 //
 // RequireKubernetes checks if the ResourceType.Provider is Kubernetes and returns the GroupVersionKind, Namespace, Name
@@ -256,6 +276,11 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 		return a == b
 
 	case ProviderAWS:
+		a, _ := r.Data.(UCPIdentity)
+		b, _ := other.Data.(UCPIdentity)
+		return a == b
+
+	case ProviderRadius:
 		a, _ := r.Data.(UCPIdentity)
 		b, _ := other.Data.(UCPIdentity)
 		return a == b
@@ -298,6 +323,20 @@ func (r ResourceIdentity) AsLogValues() []any {
 		}
 
 	case ProviderAWS:
+		// We can't report an error here so this is best-effort.
+		data := r.Data.(UCPIdentity)
+		id, err := resources.ParseResource(data.ID)
+		if err != nil {
+			return []any{ucplog.LogFieldResourceID, data.ID}
+		}
+
+		return []any{
+			logging.LogFieldResourceID, data.ID,
+			logging.LogFieldResourceType, id.Type(),
+			logging.LogFieldResourceName, id.QualifiedName(),
+		}
+
+	case ProviderRadius:
 		// We can't report an error here so this is best-effort.
 		data := r.Data.(UCPIdentity)
 		id, err := resources.ParseResource(data.ID)
@@ -366,6 +405,15 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 		r.Data = identity
 		return nil
 
+	case ProviderRadius:
+		identity := UCPIdentity{}
+		err = json.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
@@ -426,6 +474,15 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		r.Data = identity
 		return nil
 
+	case ProviderRadius:
+		identity := UCPIdentity{}
+		err = bson.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
@@ -472,6 +529,11 @@ func FromUCPID(id resources.ID, preferredAPIVersion string) ResourceIdentity {
 	// case: /planes/aws/aws/accounts/.../regions/.../......
 	if strings.EqualFold("aws", firstScope) {
 		return NewUCPIdentity(&ResourceType{Type: id.Type(), Provider: ProviderAWS}, id.String())
+	}
+
+	// case: /planes/radius/local/...
+	if strings.EqualFold("radius", firstScope) {
+		return NewUCPIdentity(&ResourceType{Type: id.Type(), Provider: ProviderRadius}, id.String())
 	}
 
 	// case: /planes/kubernetes/local/namespaces/.../......

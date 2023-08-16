@@ -28,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -122,16 +123,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	var envRecipes []types.EnvironmentRecipe
 	for link, recipes := range envResource.Properties.Recipes {
 		for recipeName, recipeDetails := range recipes {
-			recipe := types.EnvironmentRecipe{
-				Name:         recipeName,
-				LinkType:     link,
-				TemplatePath: *recipeDetails.TemplatePath,
-				TemplateKind: *recipeDetails.TemplateKind,
+			recipe := types.EnvironmentRecipe{}
+			switch c := recipeDetails.(type) {
+			case *corerp.TerraformRecipeProperties:
+				recipe = types.EnvironmentRecipe{
+					Name:            recipeName,
+					LinkType:        link,
+					TemplatePath:    *c.TemplatePath,
+					TemplateKind:    *c.TemplateKind,
+					TemplateVersion: *c.TemplateVersion,
+				}
+			case *corerp.BicepRecipeProperties:
+				recipe = types.EnvironmentRecipe{
+					Name:         recipeName,
+					LinkType:     link,
+					TemplatePath: *c.TemplatePath,
+					TemplateKind: *c.TemplateKind,
+				}
 			}
-			if recipeDetails.TemplateVersion != nil {
-				recipe.TemplateVersion = *recipeDetails.TemplateVersion
-			}
-
 			envRecipes = append(envRecipes, recipe)
 		}
 	}

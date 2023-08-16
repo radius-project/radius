@@ -46,13 +46,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `Show environment details. Shows the user's default environment by default.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Show current enviroment
+# Show current environment
 rad env show
 
-# Show specified enviroment
+# Show specified environment
 rad env show my-env
 
-# Show specified enviroment in a specified resource group
+# Show specified environment in a specified resource group
 rad env show my-env --group my-env
 `,
 		RunE: framework.RunCommand(runner),

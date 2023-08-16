@@ -16,6 +16,14 @@ limitations under the License.
 
 package resource_test
 
+// This file contains tests for Terraform recipes functionality - covering general behaviors that should
+// be consistent across all resource types. These tests mostly use the extender resource type and mostly
+// avoid cloud resources to avoid unnecessary coupling and reliability issues.
+//
+// Tests in this file should only use cloud resources if absolutely necessary.
+//
+// Tests in this file should be kept *roughly* in sync with recipe_bicep_test and any other drivers.
+
 import (
 	"context"
 	"encoding/base64"

@@ -18,14 +18,18 @@ package functional
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
@@ -318,4 +322,32 @@ type TestWriter struct {
 func (tw TestWriter) Write(p []byte) (n int, err error) {
 	tw.t.Log(string(p))
 	return len(p), nil
+}
+
+// WriteBicepParameterFile writes a Bicep parameter file to a temporary file and returns the path to the file.
+// The temporary file will be removed when the test finishes.
+func WriteBicepParameterFile(t *testing.T, data map[string]any) string {
+	file := filepath.Join(t.TempDir(), uuid.New().String()+".json")
+
+	values := map[string]any{}
+	for key, value := range data {
+		values[key] = map[string]any{
+			"value": value,
+		}
+	}
+
+	params := map[string]any{
+		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+		"contentVersion": "1.0.0.0",
+		"parameters":     values,
+	}
+
+	text, err := json.MarshalIndent(params, "", "  ")
+	require.NoError(t, err)
+
+	t.Logf("Writing parameters file to: %s\n\n%s", file, text)
+
+	err = os.WriteFile(file, []byte(text), os.FileMode(0755))
+	require.NoError(t, err)
+	return file
 }

@@ -87,7 +87,9 @@ func (client *CustomActionClient) customActionCreateRequest(ctx context.Context,
 		return nil, errors.New("action cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(resourceID), url.PathEscape(action))
+	// resourceID contains slashes, and only allows characters allowed in a URL path, so
+	// it must not be escaped.
+	urlPath := runtime.JoinPaths(client.baseURI, resourceID, url.PathEscape(action))
 	req, err := runtime.NewRequest(ctx, http.MethodPost, urlPath)
 	if err != nil {
 		return nil, err
