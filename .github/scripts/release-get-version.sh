@@ -50,7 +50,6 @@ do
 
   if does_tag_exist $VERSION; then
     echo "Tag $VERSION already exists in the remote repository $REPOSITORY. Skipping..."
-    exit 0
   elif [[ -z "$RELEASE_VERSION" ]]; then
     RELEASE_VERSION=$VERSION
     RELEASE_BRANCH_NAME=$BRANCH_NAME
