@@ -59,6 +59,11 @@ do
   fi
 done
 
+if [[ -z "$RELEASE_VERSION" ]]; then
+  echo "Error: No release version found."
+  exit 1
+fi
+
 echo "Release version: ${RELEASE_VERSION}"
 echo "Release branch name: ${RELEASE_BRANCH_NAME}"
 echo ::set-output name=release-version::"$RELEASE_VERSION"
