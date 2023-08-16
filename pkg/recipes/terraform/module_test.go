@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInspectTFModuleConfig(t *testing.T) {
+func Test_InspectTFModuleConfig(t *testing.T) {
 	tests := []struct {
 		name       string
 		workingDir string
@@ -72,7 +72,7 @@ func TestInspectTFModuleConfig(t *testing.T) {
 	}
 }
 
-func TestDownloadModule_EmptyWorkingDirPath_Error(t *testing.T) {
+func Test_DownloadModule_EmptyWorkingDirPath_Error(t *testing.T) {
 	// Create a temporary test directory.
 	testDir := t.TempDir()
 	execPath := filepath.Join(testDir, "terraform")

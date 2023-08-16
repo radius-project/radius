@@ -73,7 +73,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	return envConfig, recipeMetadata, envRecipe
 }
 
-func TestTerraformDriver_Execute_Success(t *testing.T) {
+func Test_TerraformDriver_Execute_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -123,7 +123,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
+func Test_TerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -150,7 +150,7 @@ func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func TestTerraformDriver_Execute_OutputsFailure(t *testing.T) {
+func Test_TerraformDriver_Execute_OutputsFailure(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -193,7 +193,7 @@ func TestTerraformDriver_Execute_OutputsFailure(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
+func Test_TerraformDriver_Execute_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -203,7 +203,7 @@ func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
 	require.Equal(t, "path is a required option for Terraform driver", err.Error())
 }
 
-func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
+func Test_TerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
@@ -240,7 +240,7 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
-func TestTerraformDriver_Execute_InvalidARMRequestContext_Panics(t *testing.T) {
+func Test_TerraformDriver_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	ctx := testcontext.New(t)
 	// Do not add ARMRequestContext to the context
 
@@ -252,7 +252,7 @@ func TestTerraformDriver_Execute_InvalidARMRequestContext_Panics(t *testing.T) {
 	})
 }
 
-func TestTerraformDriver_Delete_Success(t *testing.T) {
+func Test_TerraformDriver_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 
 	_, driver := setup(t)
@@ -262,13 +262,13 @@ func TestTerraformDriver_Delete_Success(t *testing.T) {
 	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
 }
 
-func TestPrepareTFRecipeResponse(t *testing.T) {
+func Test_PrepareRecipeResponse(t *testing.T) {
 	d := &terraformDriver{}
 	tests := []struct {
 		desc             string
 		state            *tfjson.State
 		expectedResponse *recipes.RecipeOutput
-		expectedErrMsg   string
+		expectedErr      error
 	}{
 		{
 			desc: "valid state",
@@ -313,7 +313,6 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 				},
 				Resources: []string{"outputResourceId1"},
 			},
-			expectedErrMsg: "",
 		},
 		{
 			desc: "invalid state",
@@ -350,34 +349,27 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 				},
 			},
 			expectedResponse: &recipes.RecipeOutput{},
-			expectedErrMsg:   "json: unknown field \"outputs\"",
+			expectedErr:      errors.New("json: unknown field \"outputs\""),
 		},
 		{
 			desc:             "nil state",
 			state:            nil,
 			expectedResponse: &recipes.RecipeOutput{},
-			expectedErrMsg:   "terraform state is empty",
+			expectedErr:      errors.New("terraform state is empty"),
 		},
 		{
 			desc:             "empty state",
 			state:            &tfjson.State{},
 			expectedResponse: &recipes.RecipeOutput{},
-			expectedErrMsg:   "terraform state is empty",
+			expectedErr:      errors.New("terraform state is empty"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			if tt.expectedErrMsg != "" {
-				recipeResponse, err := d.prepareTFRecipeResponse(tt.state)
-				require.Error(t, err)
-				require.Equal(t, tt.expectedErrMsg, err.Error())
-				require.Equal(t, tt.expectedResponse, recipeResponse)
-			} else {
-				recipeResponse, err := d.prepareTFRecipeResponse(tt.state)
-				require.NoError(t, err)
-				require.Equal(t, tt.expectedResponse, recipeResponse)
-			}
+			recipeResponse, err := d.prepareRecipeResponse(tt.state)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
 	}
 }

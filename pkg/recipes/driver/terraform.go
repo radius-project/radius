@@ -102,7 +102,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		return nil, err
 	}
 
-	recipeOutputs, err := d.prepareTFRecipeResponse(tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
 		return nil, err
 	}
@@ -116,11 +116,9 @@ func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.Out
 	return errors.New("terraform delete support is not implemented yet")
 }
 
-// prepareTFRecipeResponse populates the recipe response from the module output named "result" and the
+// prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
-func (d *terraformDriver) prepareTFRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set).
-
+func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	if tfState == nil || (*tfState == tfjson.State{}) {
 		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
 	}
@@ -128,6 +126,7 @@ func (d *terraformDriver) prepareTFRecipeResponse(tfState *tfjson.State) (*recip
 	recipeResponse := &recipes.RecipeOutput{}
 	moduleOutputs := tfState.Values.Outputs
 	if moduleOutputs != nil {
+		// We populate the recipe response from the 'result' output (if set).
 		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
 			err := recipeResponse.PrepareRecipeResponse(result)
 			if err != nil {

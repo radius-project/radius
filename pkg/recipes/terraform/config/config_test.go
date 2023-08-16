@@ -105,7 +105,7 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	return envRecipe, resourceRecipe
 }
 
-func TestAddRecipeContext(t *testing.T) {
+func Test_AddRecipeContext(t *testing.T) {
 	configTests := []struct {
 		name               string
 		configPath         string
@@ -232,7 +232,7 @@ func TestAddRecipeContext(t *testing.T) {
 	}
 }
 
-func TestAddProviders(t *testing.T) {
+func Test_AddProviders(t *testing.T) {
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()
 
@@ -374,7 +374,7 @@ func TestAddProviders(t *testing.T) {
 	}
 }
 
-func TestAddOutputs(t *testing.T) {
+func Test_AddOutputs(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 
 	tests := []struct {
@@ -432,7 +432,7 @@ func TestAddOutputs(t *testing.T) {
 	}
 }
 
-func TestSave_overwrite(t *testing.T) {
+func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
@@ -445,7 +445,7 @@ func TestSave_overwrite(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSave_Failure(t *testing.T) {
+func Test_Save_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()

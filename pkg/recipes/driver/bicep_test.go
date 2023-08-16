@@ -295,7 +295,7 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareBicepRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -328,7 +328,7 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareBicepRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -346,7 +346,7 @@ func Test_RecipeResponseWithoutResult(t *testing.T) {
 		Resources: []string{"outputResourceId"},
 	}
 
-	actualResponse, err := d.prepareBicepRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
