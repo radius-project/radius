@@ -18,42 +18,31 @@
 
 set -xe
 
+# Repo to create tags and branches for (e.g. radius)
 REPOSITORY=$1
-VERSION=$2
-FINAL_RELEASE=$3
+
+# Tag name (e.g. v0.1.0)
+TAG_NAME=$2
+
+# Release branch name (e.g. release/0.1)
+RELEASE_BRANCH_NAME=$3
 
 if [[ -z "$REPOSITORY" ]]; then
   echo "Error: REPOSITORY is not set."
   exit 1
 fi
 
-if [[ -z "$VERSION" ]]; then
-  echo "Error: VERSION is not set."
+if [[ -z "$TAG_NAME" ]]; then
+  echo "Error: TAG_NAME is not set."
   exit 1
 fi
 
-if [[ -z "$FINAL_RELEASE" ]]; then
-  echo "Error: FINAL_RELEASE is not set."
+if [[ -z "$RELEASE_BRANCH_NAME" ]]; then
+  echo "Error: RELEASE_BRANCH_NAME is not set."
   exit 1
 fi
 
-# VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
-VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
-
-# RELEASE_BRANCH_NAME should be the major and minor version of the VERSION_NUMBER prefixed by 'release/' (e.g. release/0.1)
-RELEASE_BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
-
-# TAG_NAME should be the version (e.g. v0.1.0)
-TAG_NAME=$VERSION
-
-echo "Version: ${VERSION}"
-echo "Version number: ${VERSION_NUMBER}"
-echo "Release branch name: ${RELEASE_BRANCH_NAME}"
-echo "Tag name: ${TAG_NAME}"
-echo "Final release: ${FINAL_RELEASE}"
-
-echo "Creating release branches and tags for ${REPOSITORY}..."
-
+echo "Creating release branch and tags for ${REPOSITORY}..."
 pushd $REPOSITORY
 RELEASE_BRANCH_EXISTS=$(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH_NAME)
 if [ -z "$RELEASE_BRANCH_EXISTS" ]; then
@@ -65,6 +54,7 @@ else
   git fetch origin $RELEASE_BRANCH_NAME
   git checkout --track origin/$RELEASE_BRANCH_NAME
 fi
+echo "Creating tag ${TAG_NAME}..."
 git tag $TAG_NAME
 git push origin --tags
 popd

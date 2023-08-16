@@ -27,73 +27,58 @@ function does_tag_exist() {
   fi
 }
 
-REPOSITORY=$1
+# Comma-separated list of versions
+# (e.g. v0.1.0,v0.2.0,v0.3.0)
+VERSIONS=$1
+
+# Remote repository
+REPOSITORY=$2
+
+if [[ -z "$VERSIONS" ]]; then
+  echo "Error: VERSIONS is not set."
+  exit 1
+fi
 
 if [[ -z "$REPOSITORY" ]]; then
   echo "Error: REPOSITORY is not set."
   exit 1
 fi
 
-VERSION_FILE_PATH="./${REPOSITORY}/versions.json"
+RELEASE_VERSION=""
+RELEASE_BRANCH_NAME=""
 
-# Get the versions from the versions.json file
-echo "Getting versions from ${VERSION_FILE_PATH}..."
-
-STABLE_VERSION=$(cat ${VERSION_FILE_PATH} | jq -r '.stable.version')
-LATEST_VERSION=$(cat ${VERSION_FILE_PATH} | jq -r '.latest.version')
-
-if [[ -z "$STABLE_VERSION" ]]; then
-  echo "Error: stable version not found. Please check versions.json."
-  exit 1
-fi
-
-if [[ -z "$LATEST_VERSION" ]]; then
-  echo "Error: latest version not found. Please check versions.json."
-  exit 1
-fi
-
-echo "Stable version: ${STABLE_VERSION}"
-echo "Latest version: ${LATEST_VERSION}"
-
-# FINAL_RELEASE marks whether or not this is a final release
-FINAL_RELEASE="false"
-
-# VERSION is the new tag version to create
-# this will be populated with either the stable or latest version
-VERSION=""
-
-# Check the existing tags from GitHub to determine if stable or latest version changed
-# Note that we shouldn't be changing both at the same time. If we do, we'll use the stable version
-echo "Checking if ${LATEST_VERSION} tag exists..."
 pushd $REPOSITORY
-if does_tag_exist "${LATEST_VERSION}"; then
-  echo "Latest version tag ${LATEST_VERSION} already exists."
-else
-  echo "Latest version tag ${LATEST_VERSION} does not exist."
-  VERSION="${LATEST_VERSION}"
-  FINAL_RELEASE="false"
-fi
+for VERSION in $(echo $VERSIONS | sed "s/,/ /g")
+do
+  # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
+  VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
 
-echo "Checking if ${STABLE_VERSION} tag exists..."
-if does_tag_exist "${STABLE_VERSION}"; then
-  echo "Stable version tag ${STABLE_VERSION} already exists."
-else
-  echo "Latest version tag ${STABLE_VERSION} does not exist."
-  VERSION="${STABLE_VERSION}"
-  FINAL_RELEASE="true"
-fi
+  # BRANCH_NAME should be the major and minor version of the VERSION_NUMBER prefixed by 'release/' (e.g. release/0.1)
+  BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
+
+  if does_tag_exist $VERSION; then
+    echo "Tag $VERSION already exists in the remote repository $REPOSITORY. Skipping..."
+  elif [[ -z "$RELEASE_VERSION" ]]; then
+    RELEASE_VERSION=$VERSION
+    RELEASE_BRANCH_NAME=$BRANCH_NAME
+  else
+    echo "Error: Updating multiple versions at once is not supported."
+    exit 1
+  fi
+done
 popd
 
-# If the version is empty, then we have an error
-if [[ -z "$VERSION" ]]; then
-  echo "Error: new version not found. Please check versions.yaml."
+if [[ -z "$RELEASE_VERSION" ]]; then
+  echo "Error: No release version found."
   exit 1
 fi
 
-# Print the release information
-echo "Release Version: ${VERSION}"
-echo "Final Release: ${FINAL_RELEASE}"
+if [[ -z "$RELEASE_BRANCH_NAME" ]]; then
+  echo "Error: No release branch name found."
+  exit 1
+fi
 
-# Write the release information to GITHUB_ENV
-echo "RELEASE_VERSION=${VERSION}" >> $GITHUB_ENV
-echo "FINAL_RELEASE=${FINAL_RELEASE}" >> $GITHUB_ENV
+echo "Release version: ${RELEASE_VERSION}"
+echo "Release branch name: ${RELEASE_BRANCH_NAME}"
+echo "release-version::$RELEASE_VERSION" >> $GITHUB_OUTPUT
+echo "release-branch-name::$RELEASE_BRANCH_NAME" >> $GITHUB_OUTPUT
