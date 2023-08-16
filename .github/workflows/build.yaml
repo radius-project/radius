@@ -356,7 +356,7 @@ jobs:
       HELM_PACKAGE_DIR: helm
       HELM_CHARTS_DIR: deploy/Chart
       OCI_REGISTRY: ghcr.io
-      OCI_REPOSITORY: project-radius/radius-chart
+      OCI_REPOSITORY: project-radius/helm-chart
     steps:
       - name: Checkout
         uses: actions/checkout@v3
