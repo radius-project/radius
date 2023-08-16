@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 )
@@ -46,7 +45,7 @@ type moduleInspectResult struct {
 }
 
 // inspectTFModuleConfig inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
-// and returns the instpection result which includes the list of required providers and recipe context status.
+// and returns the instpection result which includes the list of required provider names, existence of recipe context variable and result output.
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.

@@ -79,7 +79,7 @@ const (
 	TemplateKindBicep     = "bicep"
 	TemplateKindTerraform = "terraform"
 
-	// Recipe outputs are expected to be wrapped under an object named
+	// Recipe outputs are expected to be wrapped under an object named "result"
 	ResultPropertyName = "result"
 )
 
@@ -131,6 +131,9 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	}
 	if ro.Values == nil {
 		ro.Values = map[string]any{}
+	}
+	if ro.Resources == nil {
+		ro.Resources = []string{}
 	}
 
 	return nil

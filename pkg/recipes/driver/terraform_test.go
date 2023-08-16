@@ -94,15 +94,16 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
 		},
-		Secrets: map[string]any{},
+		Secrets:   map[string]any{},
+		Resources: []string{},
 	}
 
 	expectedTFState := &tfjson.State{
 		Values: &tfjson.StateValues{
 			Outputs: map[string]*tfjson.StateOutput{
 				recipes.ResultPropertyName: {
-					Value: map[string]interface{}{
-						"values": map[string]interface{}{
+					Value: map[string]any{
+						"values": map[string]any{
 							"host": "myrediscache.redis.cache.windows.net",
 							"port": json.Number("6379"),
 						},
@@ -170,8 +171,8 @@ func TestTerraformDriver_Execute_OutputsFailure(t *testing.T) {
 		Values: &tfjson.StateValues{
 			Outputs: map[string]*tfjson.StateOutput{
 				recipes.ResultPropertyName: {
-					Value: map[string]interface{}{
-						"values": map[string]interface{}{
+					Value: map[string]any{
+						"values": map[string]any{
 							"host": "myrediscache.redis.cache.windows.net",
 							"port": json.Number("6379"),
 						},
@@ -213,15 +214,16 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
 		},
-		Secrets: map[string]any{},
+		Secrets:   map[string]any{},
+		Resources: []string{},
 	}
 
 	expectedTFState := &tfjson.State{
 		Values: &tfjson.StateValues{
 			Outputs: map[string]*tfjson.StateOutput{
 				recipes.ResultPropertyName: {
-					Value: map[string]interface{}{
-						"values": map[string]interface{}{
+					Value: map[string]any{
+						"values": map[string]any{
 							"host": "myrediscache.redis.cache.windows.net",
 							"port": json.Number("6379"),
 						},
@@ -266,7 +268,6 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 		desc             string
 		state            *tfjson.State
 		expectedResponse *recipes.RecipeOutput
-		expectedErr      bool
 		expectedErrMsg   string
 	}{
 		{
@@ -275,12 +276,12 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 				Values: &tfjson.StateValues{
 					Outputs: map[string]*tfjson.StateOutput{
 						recipes.ResultPropertyName: {
-							Value: map[string]interface{}{
-								"values": map[string]interface{}{
+							Value: map[string]any{
+								"values": map[string]any{
 									"host": "testhost",
 									"port": json.Number("6379"),
 								},
-								"secrets": map[string]interface{}{
+								"secrets": map[string]any{
 									"connectionString": "testConnectionString",
 								},
 								"resources": []any{"outputResourceId1"},
@@ -292,7 +293,7 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
-										AttributeValues: map[string]interface{}{
+										AttributeValues: map[string]any{
 											"id": "outputResourceId2",
 										},
 									},
@@ -312,7 +313,7 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 				},
 				Resources: []string{"outputResourceId1"},
 			},
-			expectedErr: false,
+			expectedErrMsg: "",
 		},
 		{
 			desc: "invalid state",
@@ -320,12 +321,12 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 				Values: &tfjson.StateValues{
 					Outputs: map[string]*tfjson.StateOutput{
 						recipes.ResultPropertyName: {
-							Value: map[string]interface{}{
-								"values": map[string]interface{}{
+							Value: map[string]any{
+								"values": map[string]any{
 									"host": "testhost",
 									"port": json.Number("6379"),
 								},
-								"secrets": map[string]interface{}{
+								"secrets": map[string]any{
 									"connectionString": "testConnectionString",
 								},
 								"resources": []any{"outputResourceId1"},
@@ -338,7 +339,7 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
-										AttributeValues: map[string]interface{}{
+										AttributeValues: map[string]any{
 											"id": "outputResourceId2",
 										},
 									},
@@ -349,28 +350,25 @@ func TestPrepareTFRecipeResponse(t *testing.T) {
 				},
 			},
 			expectedResponse: &recipes.RecipeOutput{},
-			expectedErr:      true,
 			expectedErrMsg:   "json: unknown field \"outputs\"",
 		},
 		{
 			desc:             "nil state",
 			state:            nil,
 			expectedResponse: &recipes.RecipeOutput{},
-			expectedErr:      true,
 			expectedErrMsg:   "terraform state is empty",
 		},
 		{
 			desc:             "empty state",
 			state:            &tfjson.State{},
 			expectedResponse: &recipes.RecipeOutput{},
-			expectedErr:      true,
 			expectedErrMsg:   "terraform state is empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			if tt.expectedErr {
+			if tt.expectedErrMsg != "" {
 				recipeResponse, err := d.prepareTFRecipeResponse(tt.state)
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErrMsg, err.Error())

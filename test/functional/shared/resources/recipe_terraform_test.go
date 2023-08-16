@@ -181,7 +181,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 						Type: validation.ExtendersResource,
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
-							// Azure storage account and container.
+							// Azure storage account.
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  "RecipeResource0",

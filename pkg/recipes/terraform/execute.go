@@ -178,7 +178,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 
 	// Add outputs to the generated Terraform config, if module has the expected outputs.
 	if loadedModule.ResultOutputExists {
-		if err = tfConfig.AddOutputs(localModuleName, workingDir); err != nil {
+		if err = tfConfig.AddOutputs(localModuleName); err != nil {
 			return err
 		}
 	}
@@ -217,7 +217,8 @@ func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.Sta
 		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
-	logger.Info("Fetching module outputs")
+	// Load Terraform state to retrieve the outputs
+	logger.Info("Fetching Terraform state")
 	tfState, err := tf.Show(ctx)
 	if err != nil {
 		return nil, err

@@ -240,60 +240,6 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 	return config
 }
 
-// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
-// resources created by the template.
-/*
-func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set)
-	// and the resources created by the template.
-	//
-	// Note that there are two ways a resource can be returned:
-	// - Implicitly when it is created in the template (it will be in 'resources').
-	// - Explicitly as part of the 'result' output.
-	//
-	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
-	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-	recipeResponse := recipes.RecipeOutput{}
-
-	out, ok := outputs.(map[string]any)
-	if ok {
-		recipeOutput, ok := out[resultPropertyName].(map[string]any)
-		if ok {
-			output, ok := recipeOutput["value"].(map[string]any)
-			if ok {
-				b, err := json.Marshal(&output)
-				if err != nil {
-					return recipes.RecipeOutput{}, err
-				}
-
-				// Using a decoder to block unknown fields.
-				decoder := json.NewDecoder(bytes.NewBuffer(b))
-				decoder.DisallowUnknownFields()
-				err = decoder.Decode(&recipeResponse)
-				if err != nil {
-					return recipes.RecipeOutput{}, err
-				}
-			}
-		}
-	}
-
-	// process the 'resources' created by the template
-	for _, id := range resources {
-		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
-	}
-
-	// Make sure our maps are non-nil (it's just friendly).
-	if recipeResponse.Secrets == nil {
-		recipeResponse.Secrets = map[string]any{}
-	}
-	if recipeResponse.Values == nil {
-		recipeResponse.Values = map[string]any{}
-	}
-
-	return recipeResponse, nil
-}
-*/
-
 // prepareBicepRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
 func (d *bicepDriver) prepareBicepRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {

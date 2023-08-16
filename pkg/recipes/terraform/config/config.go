@@ -157,8 +157,13 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 
 // Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
 // Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
+// https://developer.hashicorp.com/terraform/language/modules/syntax#accessing-module-output-values
 // This function only updates config in memory, Save() must be called to persist the updated config.
-func (cfg *TerraformConfig) AddOutputs(localModuleName, workingDir string) error {
+func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+
 	cfg.Output = map[string]any{
 		recipes.ResultPropertyName: map[string]any{
 			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",

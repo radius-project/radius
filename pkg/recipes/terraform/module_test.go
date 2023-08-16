@@ -25,7 +25,7 @@ import (
 )
 
 func TestInspectTFModuleConfig(t *testing.T) {
-	inspectTests := []struct {
+	tests := []struct {
 		name       string
 		workingDir string
 		moduleName string
@@ -37,26 +37,28 @@ func TestInspectTFModuleConfig(t *testing.T) {
 			workingDir: "testdata",
 			moduleName: "test-module-provideronly",
 			result: &moduleInspectResult{
-				ContextVarExists:  false,
-				RequiredProviders: []string{"aws"},
+				ContextVarExists:   false,
+				RequiredProviders:  []string{"aws"},
+				ResultOutputExists: false,
 			},
 		}, {
-			name:       "aws provider with recipecontext",
+			name:       "aws provider with recipe context variable and output",
 			workingDir: "testdata",
-			moduleName: "test-module-recipe-context",
+			moduleName: "test-module-recipe-context-outputs",
 			result: &moduleInspectResult{
-				ContextVarExists:  true,
-				RequiredProviders: []string{"aws"},
+				ContextVarExists:   true,
+				RequiredProviders:  []string{"aws"},
+				ResultOutputExists: true,
 			},
 		}, {
-			name:       "invalid module name",
+			name:       "invalid module name - non existent module directory",
 			workingDir: "testdata",
 			moduleName: "invalid-module",
 			err:        "error loading the module",
 		},
 	}
 
-	for _, tc := range inspectTests {
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := inspectTFModuleConfig(tc.workingDir, tc.moduleName)
 			if tc.err != "" {
