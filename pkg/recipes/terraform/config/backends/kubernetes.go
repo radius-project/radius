@@ -88,9 +88,7 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 	hash := hasher.Sum(nil)
 
 	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	suffix := fmt.Sprintf("%s.%x", prefix, hash)
-
-	return suffix, nil
+	return fmt.Sprintf("%s.%x", prefix, hash), nil
 }
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.
