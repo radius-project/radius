@@ -15,8 +15,14 @@
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
             "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
-            "mode": "resource"
+            "resources":[
+              {
+                "id":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+              }
+            ],
+            "database":"sql-database", 
+            "server":"test-server",
+            "resourceProvisioning": "manual"
           }
         }
       }

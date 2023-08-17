@@ -8,7 +8,7 @@
         "properties": {
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-          "mode": "values",
+          "resourceProvisioning": "manual",
           "host":"myrediscache.redis.cache.windows.net",
           "port":6380,
           "secrets": {
@@ -29,7 +29,7 @@
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
             "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "mode": "values",
+            "resourceProvisioning": "manual",
             "host":"myrediscache.redis.cache.windows.net",
             "port":6380,
             "username": "username"
@@ -46,7 +46,7 @@
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
             "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "mode": "values",
+            "resourceProvisioning": "manual",
             "host":"myrediscache.redis.cache.windows.net",
             "port":6380,
             "username": "username"
