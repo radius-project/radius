@@ -18,6 +18,7 @@ package backends
 
 import (
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -32,15 +33,15 @@ var _ Backend = (*kubernetesBackend)(nil)
 type kubernetesBackend struct{}
 
 const (
-	namespace = "radius-system"
+	RadiusNamespace   = "radius-system"
+	BackendKubernetes = "kubernetes"
 )
 
 func NewKubernetesBackend() Backend {
 	return &kubernetesBackend{}
 }
 
-// # Function Explanation
-// BuildKubernetesBackendConfig generates the Terraform backend configuration for Kubernetes backend.
+// BuildBackend generates the Terraform backend configuration for Kubernetes backend.
 // It returns an error if the in cluster config cannot be retrieved, and uses default kubeconfig file if
 // in-cluster config is not present.
 // https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
@@ -49,28 +50,29 @@ func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadat
 	if err != nil {
 		return nil, err
 	}
-	backend, err := generateKubernetesBackendConfig(resourceRecipe, secretSuffix)
-	if err != nil {
-		return nil, err
-	}
-	return backend, nil
+	return generateKubernetesBackendConfig(secretSuffix)
 }
 
-// generateSecretSuffix returns a unique string from the resourceID which is used as key for kubernetes secret in defining terraform backend.
+// generateSecretSuffix returns a unique string from the resourceID, environmentID, and applicationID
+// which is used as key for kubernetes secret in defining terraform backend.
 func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
 	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
 	if err != nil {
 		return "", err
 	}
+
 	parsedEnvID, err := resources.Parse(resourceRecipe.EnvironmentID)
 	if err != nil {
 		return "", err
 	}
+
 	parsedAppID, err := resources.Parse(resourceRecipe.ApplicationID)
 	if err != nil {
 		return "", err
 	}
+
 	prefix := fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.Name())
+
 	// Kubernetes enforces a character limit of 63 characters on the suffix for state file stored in kubernetes secret.
 	// 22 = 63 (max length of Kubernetes secret suffix) - 40 (hex hash length) - 1 (dot separator)
 	maxResourceNameLen := 22
@@ -79,9 +81,13 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 	}
 
 	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
+	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
+	if err != nil {
+		return "", err
+	}
 	hash := hasher.Sum(nil)
 
+	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
 	suffix := fmt.Sprintf("%s.%x", prefix, hash)
 
 	return suffix, nil
@@ -89,20 +95,31 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.
 // Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func generateKubernetesBackendConfig(resourceRecipe *recipes.ResourceMetadata, secretSuffix string) (map[string]interface{}, error) {
+func generateKubernetesBackendConfig(secretSuffix string) (map[string]interface{}, error) {
 	backend := map[string]interface{}{
-		"kubernetes": map[string]interface{}{
-			"config_path":   clientcmd.RecommendedHomeFile,
+		BackendKubernetes: map[string]interface{}{
 			"secret_suffix": secretSuffix,
-			"namespace":     namespace,
+			"namespace":     RadiusNamespace,
 		},
 	}
+
 	_, err := rest.InClusterConfig()
-	if err == nil {
-		if value, found := backend["kubernetes"]; found {
+	if err != nil {
+		// If in cluster config is not present, then use default kubeconfig file.
+		if errors.Is(err, rest.ErrNotInCluster) {
+			if value, found := backend[BackendKubernetes]; found {
+				backendValue := value.(map[string]interface{})
+				backendValue["config_path"] = clientcmd.RecommendedHomeFile
+			}
+		} else {
+			return nil, err
+		}
+	} else {
+		if value, found := backend[BackendKubernetes]; found {
 			backendValue := value.(map[string]interface{})
 			backendValue["in_cluster_config"] = true
 		}
 	}
+
 	return backend, nil
 }

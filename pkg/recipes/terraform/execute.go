@@ -44,8 +44,7 @@ const (
 	workingDirFileMode fs.FileMode = 0700
 	// Default prefix string added to secret suffix by terraform while creating kubernetes secret.
 	// Kubernetes secrets to store terraform state files are named in the format: tfstate-{workspace}-{secret_suffix}. And we always use "default" workspace for terraform operations.
-	terraformSecretPrefix = "tfstate-default-"
-	radiusNameSpace       = "radius-system"
+	terraformStateKubernetesPrefix = "tfstate-default-"
 )
 
 var (
@@ -114,9 +113,9 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet, secretSuffix)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("secret suffix is not found in kubernetes secrets : %w", err)
+			return nil, fmt.Errorf("expected kubernetes secret for terraform state is not found : %w", err)
 		}
-		return nil, err
+		return nil, fmt.Errorf("error retrieving Kubernetes secret for Terraform state : %w", err)
 	}
 
 	return nil, nil
@@ -134,7 +133,7 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	return workingDir, nil
 }
 
-// generateConfig generates Terraform configuration with required inputs for the module to be initialized and applied.
+// generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
 func (e *executor) generateConfig(ctx context.Context, workingDir, execPath string, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -177,14 +176,14 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return "", err
 	}
 
-	backendConfig, err := tfConfig.AddBackend(options.ResourceRecipe, backends.NewKubernetesBackend())
+	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend())
 	if err != nil {
 		return "", err
 	}
-	// Parsing the secret_suffix property from backend config to use it to verify secret creation during terraform init.
+	// Retrieving the secret_suffix property from backend config to use it to verify secret creation during terraform init.
 	// This is only used for the backend of type kubernetes and should be moved inside an if block when we add more backends.
 	var secretSuffix string
-	if backendDetails, ok := backendConfig["kubernetes"]; ok {
+	if backendDetails, ok := backendConfig[backends.BackendKubernetes]; ok {
 		backendMap := backendDetails.(map[string]any)
 		if secret, ok := backendMap["secret_suffix"]; ok {
 			secretSuffix = secret.(string)
@@ -238,9 +237,10 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 // verifyKubernetesSecret is used to verify if the secret is created as part of terraform backend initialization.
 // It takes secret_suffix created during AddBackend as input and looks for the secret in radius-system namespace
 func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface, secretSuffix string) error {
-	_, err := k8s.CoreV1().Secrets(radiusNameSpace).Get(ctx, terraformSecretPrefix+secretSuffix, metav1.GetOptions{})
+	_, err := k8s.CoreV1().Secrets(backends.RadiusNamespace).Get(ctx, terraformStateKubernetesPrefix+secretSuffix, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
+
 	return nil
 }

@@ -23,7 +23,7 @@ rules:
   - patch
   - update
   - watch
-# Adding coordination.k8s.io api group as terraform need to access leases resource for backend initialization.
+# Adding coordination.k8s.io api group as Terraform need to access leases resource for backend initialization for state locking: https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes.
 - apiGroups:
   - coordination.k8s.io
   resources:

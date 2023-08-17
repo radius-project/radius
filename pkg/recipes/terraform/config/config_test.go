@@ -110,7 +110,16 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	return envRecipe, resourceRecipe
 }
 
-func TestAddRecipeContext(t *testing.T) {
+func Test_AddRecipeContext(t *testing.T) {
+	_, _, mBackend := setup(t)
+	_, resourceRecipe := getTestInputs()
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
 	configTests := []struct {
 		name               string
 		configPath         string
@@ -119,6 +128,7 @@ func TestAddRecipeContext(t *testing.T) {
 		recipeContext      *recipecontext.Context
 		expectedConfigFile string
 		err                string
+		expectedBackend    map[string]any
 	}{
 		{
 			name: "recipe context, env, and resource metadata params are given",
@@ -219,7 +229,10 @@ func TestAddRecipeContext(t *testing.T) {
 				err := tfconfig.AddRecipeContext(ctx, testRecipeName, tc.recipeContext)
 				require.NoError(t, err)
 			}
-			err := tfconfig.Save(ctx, tc.configPath)
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err := tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, tc.configPath)
 			if tc.err != "" {
 				require.ErrorContains(t, err, tc.err)
 				return
@@ -237,10 +250,16 @@ func TestAddRecipeContext(t *testing.T) {
 	}
 }
 
-func TestAddProviders(t *testing.T) {
-	mProvider, supportedProviders, _ := setup(t)
+func Test_AddProviders(t *testing.T) {
+	mProvider, supportedProviders, mBackend := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()
-
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
 	configTests := []struct {
 		name               string
 		modProviders       []map[string]any
@@ -365,57 +384,8 @@ func TestAddProviders(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			err = tfconfig.Save(ctx, workingDir)
-			require.NoError(t, err)
-
-			// assert
-			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
-			require.NoError(t, err)
-			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
-			require.NoError(t, err)
-			require.Equal(t, string(expectedConfig), string(actualConfig))
-		})
-	}
-}
-
-func TestAddBackend(t *testing.T) {
-	_, _, mBackend := setup(t)
-	envRecipe, resourceRecipe := getTestInputs()
-	configTests := []struct {
-		name               string
-		envConfig          recipes.Configuration
-		expectedBackend    map[string]any
-		expectedConfigFile string
-	}{
-		{
-			name: "valid-backend-kubernetes",
-			envConfig: recipes.Configuration{
-				Providers: datamodel.Providers{
-					AWS: datamodel.ProvidersAWS{
-						Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
-					},
-					Azure: datamodel.ProvidersAzure{
-						Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
-					},
-				},
-			},
-			expectedBackend: map[string]any{
-				"kubernetes": map[string]any{
-					"config_path":   "/home/radius/.kube/config",
-					"secret_suffix": "test-secret-suffix",
-					"namespace":     "radius-system",
-				},
-			},
-			expectedConfigFile: "testdata/main-backend-kubernetes-valid.tf.json",
-		},
-	}
-	for _, tc := range configTests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
-			workingDir := t.TempDir()
-			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
-			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(tc.expectedBackend, nil)
-			_, err := tfconfig.AddBackend(&resourceRecipe, mBackend)
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
 			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)
@@ -430,7 +400,7 @@ func TestAddBackend(t *testing.T) {
 	}
 }
 
-func TestSave_overwrite(t *testing.T) {
+func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
@@ -443,7 +413,7 @@ func TestSave_overwrite(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSave_Failure(t *testing.T) {
+func Test_Save_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()

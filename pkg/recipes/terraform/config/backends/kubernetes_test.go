@@ -67,27 +67,29 @@ const (
 	testSecretSuffix = "test-secret-suffix"
 )
 
-func TestGenerateKubernetesBackendConfig(t *testing.T) {
-	_, resourceRecipe := getTestInputs()
-	actualConfig, err := generateKubernetesBackendConfig(&resourceRecipe, testSecretSuffix)
+func Test_GenerateKubernetesBackendConfig(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	actualConfig, err := generateKubernetesBackendConfig(testSecretSuffix)
 	require.NoError(t, err)
 	expectedConfig := map[string]interface{}{
 		"kubernetes": map[string]interface{}{
 			"config_path":   clientcmd.RecommendedHomeFile,
 			"secret_suffix": testSecretSuffix,
-			"namespace":     namespace,
+			"namespace":     RadiusNamespace,
 		},
 	}
 	require.Equal(t, expectedConfig, actualConfig)
 }
-func TestGenerateSecretSuffix_invalid_resourceid(t *testing.T) {
+
+func Test_GenerateSecretSuffix_invalid_resourceid(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	resourceRecipe.ResourceID = "invalid"
 	_, err := generateSecretSuffix(&resourceRecipe)
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
 
-func TestGenerateSecretSuffix_with_lengthy_resource_name(t *testing.T) {
+func Test_GenerateSecretSuffix_with_lengthy_resource_name(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	act, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
@@ -95,4 +97,13 @@ func TestGenerateSecretSuffix_with_lengthy_resource_name(t *testing.T) {
 	_, _ = hasher.Write([]byte(strings.ToLower("env-app-" + resourceRecipe.ResourceID)))
 	hash := hasher.Sum(nil)
 	require.Equal(t, act, "env-app-redis."+fmt.Sprintf("%x", hash))
+}
+
+func Test_GenerateKubernetesBackendConfig_Error(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "testvalue")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
+
+	backend, err := generateKubernetesBackendConfig("test-suffix")
+	require.Error(t, err)
+	require.Nil(t, backend)
 }
