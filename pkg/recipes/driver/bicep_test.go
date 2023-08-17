@@ -35,7 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_CreateRecipeParamters_NoContextParameter(t *testing.T) {
+func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {
 	devParams := map[string]any{}
 	operatorParams := map[string]any{}
 	expectedParams := map[string]any{}
