@@ -60,7 +60,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := inspectTFModule(tc.workingDir, tc.moduleName)
+			result, err := inspectModule(tc.workingDir, tc.moduleName)
 			if tc.err != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.err)

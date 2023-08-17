@@ -93,12 +93,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Run TF Init and Apply in the working directory
-	tfState, err := initAndApply(ctx, workingDir, execPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return tfState, nil
+	return initAndApply(ctx, workingDir, execPath)
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
@@ -149,7 +144,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
 	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectTFModule(workingDir, localModuleName)
+	loadedModule, err := inspectModule(workingDir, localModuleName)
 	if err != nil {
 		return err
 	}
@@ -188,11 +183,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 
 	// Persist the Terraform configuration on disk in the working directory after all required configurations are added.
 	// This is needed to run Terraform init and apply.
-	if err := tfConfig.Save(ctx, workingDir); err != nil {
-		return err
-	}
-
-	return nil
+	return tfConfig.Save(ctx, workingDir)
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
@@ -221,10 +212,5 @@ func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.Sta
 
 	// Load Terraform state to retrieve the outputs
 	logger.Info("Fetching Terraform state")
-	tfState, err := tf.Show(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return tfState, nil
+	return tf.Show(ctx)
 }

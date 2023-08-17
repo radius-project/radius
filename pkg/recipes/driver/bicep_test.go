@@ -35,7 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_NoContext(t *testing.T) {
+func Test_CreateRecipeParamters_NoContextParameter(t *testing.T) {
 	devParams := map[string]any{}
 	operatorParams := map[string]any{}
 	expectedParams := map[string]any{}
@@ -44,7 +44,7 @@ func Test_NoContext(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_ParameterConflict(t *testing.T) {
+func Test_CreateRecipeParameters_ParameterConflict(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -74,7 +74,7 @@ func Test_ParameterConflict(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_DevParameterWithContextParameter(t *testing.T) {
+func Test_CreateRecipeParameters_WithContextParameter(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -122,7 +122,7 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
+func Test_CreateRecipeParameters_EmptyResourceParameters(t *testing.T) {
 	operatorParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -170,7 +170,7 @@ func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_DevParameterWithOperatorParameter(t *testing.T) {
+func Test_CreateRecipeParameters_ResourceAndEnvParameters(t *testing.T) {
 	operatorParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -258,7 +258,7 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
-func Test_RecipeResponseSuccess(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 	d := &bicepDriver{}
 
 	resources := []*armresources.ResourceReference{
@@ -300,7 +300,7 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_RecipeResponseWithoutSecret(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 	d := &bicepDriver{}
 
 	resources := []*armresources.ResourceReference{
@@ -333,7 +333,7 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_RecipeResponseWithoutResult(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	d := &bicepDriver{}
 
 	resources := []*armresources.ResourceReference{
@@ -362,7 +362,7 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 	return driver, client
 }
 
-func Test_Driver_Delete_Success(t *testing.T) {
+func Test_Bicep_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
@@ -406,7 +406,7 @@ func Test_Driver_Delete_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_Driver_Delete_Error(t *testing.T) {
+func Test_Bicep_Delete_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{

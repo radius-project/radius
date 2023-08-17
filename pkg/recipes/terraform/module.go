@@ -44,12 +44,12 @@ type moduleInspectResult struct {
 	// Any other module information required in the future can be added here.
 }
 
-// inspectTFModule inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
+// inspectModule inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
 // and returns the inspection result which includes the list of required provider names, existence of recipe context variable and result output.
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
-func inspectTFModule(workingDir, localModuleName string) (*moduleInspectResult, error) {
+func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, error) {
 	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false}
 
 	// Modules are downloaded in a subdirectory in the working directory.

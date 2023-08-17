@@ -73,7 +73,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	return envConfig, recipeMetadata, envRecipe
 }
 
-func Test_TerraformDriver_Execute_Success(t *testing.T) {
+func Test_Terraform_Execute_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -123,7 +123,7 @@ func Test_TerraformDriver_Execute_Success(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func Test_TerraformDriver_Execute_DeploymentFailure(t *testing.T) {
+func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -150,7 +150,7 @@ func Test_TerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func Test_TerraformDriver_Execute_OutputsFailure(t *testing.T) {
+func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -193,7 +193,7 @@ func Test_TerraformDriver_Execute_OutputsFailure(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func Test_TerraformDriver_Execute_EmptyPath(t *testing.T) {
+func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -203,7 +203,7 @@ func Test_TerraformDriver_Execute_EmptyPath(t *testing.T) {
 	require.Equal(t, "path is a required option for Terraform driver", err.Error())
 }
 
-func Test_TerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
+func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
@@ -240,7 +240,7 @@ func Test_TerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
-func Test_TerraformDriver_Execute_MissingARMRequestContext_Panics(t *testing.T) {
+func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	ctx := testcontext.New(t)
 	// Do not add ARMRequestContext to the context
 
@@ -252,7 +252,7 @@ func Test_TerraformDriver_Execute_MissingARMRequestContext_Panics(t *testing.T) 
 	})
 }
 
-func Test_TerraformDriver_Delete_Success(t *testing.T) {
+func Test_Terraform_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 
 	_, driver := setup(t)
@@ -262,7 +262,7 @@ func Test_TerraformDriver_Delete_Success(t *testing.T) {
 	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
 }
 
-func Test_PrepareRecipeResponse(t *testing.T) {
+func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	d := &terraformDriver{}
 	tests := []struct {
 		desc             string
