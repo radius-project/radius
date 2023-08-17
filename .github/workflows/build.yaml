@@ -406,7 +406,7 @@ jobs:
             ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --generate-notes \
-            --verify-tags \
+            --verify-tag \
             --prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -417,7 +417,7 @@ jobs:
             ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
-            --verify-tags
+            --verify-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
   # TODO_LAUNCH: Remove this job once we opensource - https://github.com/project-radius/radius/issues/5892
