@@ -26,12 +26,15 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
+
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
+
+	tfjson "github.com/hashicorp/terraform-json"
 )
 
 var _ Driver = (*terraformDriver)(nil)
@@ -89,12 +92,17 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		}
 	}()
 
-	recipeOutputs, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
+	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
 		RootDir:        requestDirPath,
 		EnvConfig:      &configuration,
 		ResourceRecipe: &recipe,
 		EnvRecipe:      &definition,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
 		return nil, err
 	}
@@ -106,4 +114,26 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 func (d *terraformDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
 	// TODO: to be implemented in follow up PR
 	return errors.New("terraform delete support is not implemented yet")
+}
+
+// prepareRecipeResponse populates the recipe response from the module output named "result" and the
+// resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
+func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+	if tfState == nil || (*tfState == tfjson.State{}) {
+		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
+	}
+
+	recipeResponse := &recipes.RecipeOutput{}
+	moduleOutputs := tfState.Values.Outputs
+	if moduleOutputs != nil {
+		// We populate the recipe response from the 'result' output (if set).
+		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
+			err := recipeResponse.PrepareRecipeResponse(result)
+			if err != nil {
+				return &recipes.RecipeOutput{}, err
+			}
+		}
+	}
+
+	return recipeResponse, nil
 }
