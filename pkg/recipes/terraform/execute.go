@@ -61,8 +61,6 @@ type executor struct {
 	secretProvider *ucp_provider.SecretProvider
 }
 
-// # Function Explanation
-//
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
 func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {

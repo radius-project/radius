@@ -64,8 +64,6 @@ type Service struct {
 	worker.Service
 }
 
-// # Function Explanation
-//
 // NewService creates a new Service instance to run AsyncReqeustProcessWorker.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
@@ -76,15 +74,11 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns a string containing the service name.
 func (w *Service) Name() string {
 	return fmt.Sprintf("%s async worker", providerName)
 }
 
-// # Function Explanation
-//
 // Run initializes the application model, registers controllers for different resource types, and starts the worker with
 // the given options.
 func (w *Service) Run(ctx context.Context) error {

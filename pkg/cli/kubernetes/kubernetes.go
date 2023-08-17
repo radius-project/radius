@@ -51,8 +51,6 @@ func init() {
 	_ = contourv1.AddToScheme(Scheme)
 }
 
-// # Function Explanation
-//
 // NewDynamicClient creates a new dynamic client by context name, otherwise returns an error.
 func NewDynamicClient(context string) (dynamic.Interface, error) {
 	merged, err := NewCLIClientConfig(context)
@@ -68,8 +66,6 @@ func NewDynamicClient(context string) (dynamic.Interface, error) {
 	return client, err
 }
 
-// # Function Explanation
-//
 // NewClientset creates a new Kubernetes client and rest client config by context name.
 func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	merged, err := NewCLIClientConfig(context)
@@ -103,8 +99,7 @@ func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client
 
 // EnsureNamespace creates or get Kubernetes namespace.
 //
-// # Function Explanation
-//
+
 // EnsureNamespace checks if a namespace exists in a Kubernetes cluster and creates it if it doesn't, returning an error if it fails.
 func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
@@ -119,8 +114,7 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 
 // NewCLIClientConfig creates new Kubernetes client config loading from local home directory with CLI options.
 //
-// # Function Explanation
-//
+
 // NewCLIClientConfig creates a new Kubernetes client config from the local configuration file using the given context
 // name, with a default QPS and Burst. It returns a rest.Config and an error if one occurs.
 func NewCLIClientConfig(context string) (*rest.Config, error) {
@@ -133,8 +127,7 @@ func NewCLIClientConfig(context string) (*rest.Config, error) {
 
 // GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
 //
-// # Function Explanation
-//
+
 // GetContextFromConfigFileIfExists attempts to load a Kubernetes context from a config file, and returns an error if the
 // context is not found.
 func GetContextFromConfigFileIfExists(configFilePath, context string) (string, error) {
@@ -169,8 +162,7 @@ type Impl struct {
 
 // Fetches the kubecontext from the system
 //
-// # Function Explanation
-//
+
 // GetKubeContext loads the kube configuration file and returns a Config object and an error if the file cannot be loaded.
 func (i *Impl) GetKubeContext() (*api.Config, error) {
 	return kubeutil.LoadConfigFile("")

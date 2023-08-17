@@ -36,8 +36,6 @@ type CreateOrUpdateAzureCredential struct {
 	secretClient secret.Client
 }
 
-// # Function Explanation
-//
 // NewCreateOrUpdateAzureCredential creates a new CreateOrUpdateAzureCredential controller which is used to create or
 // update Azure credentials and returns it along with a nil error.
 func NewCreateOrUpdateAzureCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
@@ -52,8 +50,6 @@ func NewCreateOrUpdateAzureCredential(opts armrpc_controller.Options, secretClie
 	}, nil
 }
 
-// # Function Explanation
-//
 // CreateOrUpdateAzureCredential Run function saves an Azure credential secret in the secret store and updates the
 // metadata store with the new resource, setting the provisioning state to succeeded. If an invalid credential kind is
 // provided, a bad request response is returned. If an error occurs while saving the secret or the resource, an error is

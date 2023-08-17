@@ -35,8 +35,6 @@ type Client struct {
 	ETCDClient *etcdclient.Client
 }
 
-// # Function Explanation
-//
 // Save checks if the name and value of the secret are valid and saves the value in etcd, returning an error if unsuccessful.
 func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	if name == "" {
@@ -56,8 +54,6 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // Delete deletes a secret from the etcd store and returns an error if the secret is not found.
 func (c *Client) Delete(ctx context.Context, name string) error {
 	secretName := generateSecretResourceName(name)
@@ -71,8 +67,6 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // Get retrieves a secret from etcd given a name and returns it as a byte slice, or returns an error if the secret is
 // not found or an invalid argument is provided.
 func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {

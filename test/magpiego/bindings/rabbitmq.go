@@ -6,8 +6,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-// # Function Explanation
-//
 // RabbitMQBinding checks the environment parameters for a connection string and queue name, connects to RabbitMQ, declares
 // a queue, publishes a message and returns a BindingStatus indicating success or failure.
 func RabbitMQBinding(envParams map[string]string) BindingStatus {

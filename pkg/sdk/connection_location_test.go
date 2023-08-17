@@ -75,8 +75,6 @@ type MockTransport struct {
 	Response *http.Response
 }
 
-// # Function Explanation
-//
 // RoundTrip implements http.RoundTripper
 func (mt *MockTransport) RoundTrip(*http.Request) (*http.Response, error) {
 	return mt.Response, nil

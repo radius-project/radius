@@ -47,8 +47,6 @@ type Options struct {
 	ArmCertMgr        *authentication.ArmCertManager
 }
 
-// # Function Explanation
-//
 // New creates a frontend server that can listen on the provided address and serve requests - it creates an HTTP server with a router,
 // configures the router with the given options, adds the default middlewares for logging, authentication, and service context, and
 // then returns the server.

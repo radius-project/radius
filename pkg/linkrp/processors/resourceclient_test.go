@@ -418,8 +418,6 @@ type wrapper struct {
 	Client *http.Client
 }
 
-// # Function Explanation
-//
 // Do is a method that sends an HTTP request and returns an HTTP response and an error if one occurs.
 func (w *wrapper) Do(req *http.Request) (*http.Response, error) {
 	return w.Client.Do(req)
@@ -431,36 +429,26 @@ type discoveryClient struct {
 	APIGroup  []*metav1.APIGroup
 }
 
-// # Function Explanation
-//
 // ServerGroups returns a list of API groups supported by the server.
 func (d *discoveryClient) ServerGroups() (*metav1.APIGroupList, error) {
 	return d.Groups, nil
 }
 
-// # Function Explanation
-//
 // This function returns a slice of API resource lists.
 func (d *discoveryClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
 	return d.Resources, nil
 }
 
-// # Function Explanation
-//
 // This function returns a slice of API resource lists.
 func (d *discoveryClient) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
 	return d.Resources, nil
 }
 
-// # Function Explanation
-//
 // ServerGroupsAndResources returns a list of API groups and resources associated with the discovery client.
 func (d *discoveryClient) ServerGroupsAndResources() ([]*metav1.APIGroup, []*metav1.APIResourceList, error) {
 	return d.APIGroup, d.Resources, nil
 }
 
-// # Function Explanation
-//
 // ServerResourcesForGroupVersion returns nil for the API resource list.
 func (d *discoveryClient) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
 	return nil, nil

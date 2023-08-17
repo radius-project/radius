@@ -36,8 +36,6 @@ type RabbitMQMessageQueue struct {
 	LinkMetadata
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the output resources of the RabbitMQMessageQueue resource with
 // the DeployedOutputResources.
 func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -45,22 +43,16 @@ func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) e
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources of the RabbitMQMessageQueue resource.
 func (r *RabbitMQMessageQueue) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the RabbitMQMessageQueue resource.
 func (r *RabbitMQMessageQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type for RabbitMQMessageQueue resource.
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
@@ -87,15 +79,11 @@ type RabbitMQSecrets struct {
 	Password string `json:"password,omitempty"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type for RabbitMQMessageQueue resource.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
-// # Function Explanation
-//
 // Recipe returns the LinkRecipe associated with the RabbitMQMessageQueue resource, or nil if the
 // ResourceProvisioning is set to Manual.
 func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
@@ -105,8 +93,6 @@ func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 	return &r.Properties.Recipe
 }
 
-// # Function Explanation
-//
 // VerifyInputs checks if the required fields are present in the RabbitMQMessageQueue instance and returns an error if not.
 func (rabbitmq *RabbitMQMessageQueue) VerifyInputs() error {
 	properties := rabbitmq.Properties

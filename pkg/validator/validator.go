@@ -167,8 +167,6 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	return routeParams
 }
 
-// # Function Explanation
-//
 // ValidateRequest validates http.Request and returns []ValidationError if the request is invalid. It returns an
 // error if failed to parse the route.
 // Known limitation:

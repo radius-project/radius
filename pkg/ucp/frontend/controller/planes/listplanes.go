@@ -36,8 +36,6 @@ type ListPlanes struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// # Function Explanation
-//
 // NewListPlanes creates a new controller for listing for the Plane resource type.
 func NewListPlanes(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{
@@ -50,8 +48,6 @@ func NewListPlanes(opts armrpc_controller.Options) (armrpc_controller.Controller
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() queries the storage client for planes in a given scope, creates a response with the results, and
 // returns an OKResponse with the response. If an error occurs, it is returned.
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

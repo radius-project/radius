@@ -44,8 +44,6 @@ type deploymentWatcher struct {
 	podWatcher *podWatcher
 }
 
-// # Function Explanation
-//
 // NewDeploymentWatcher creates a new deploymentWatcher struct with the given parameters and returns a pointer to it.
 func NewDeploymentWatcher(options Options, matchLabels map[string]string, revision string, cancel func()) *deploymentWatcher {
 	return &deploymentWatcher{
@@ -59,8 +57,6 @@ func NewDeploymentWatcher(options Options, matchLabels map[string]string, revisi
 	}
 }
 
-// # Function Explanation
-//
 // Run watches for changes to Pods in the given namespace that match the given labels and updates the deploymentWatcher
 // accordingly. It returns an error if there is an issue creating the watcher.
 func (dw *deploymentWatcher) Run(ctx context.Context) error {
@@ -249,8 +245,6 @@ func (dw *deploymentWatcher) selectBestPod() *corev1.Pod {
 	return pods[0]
 }
 
-// # Function Explanation
-//
 // Wait() blocks until the done channel is closed, signaling that the deployment is complete.
 func (dw *deploymentWatcher) Wait() {
 	<-dw.done

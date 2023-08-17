@@ -62,8 +62,6 @@ const (
 	SectionSeparator = "|"
 )
 
-// # Function Explanation
-//
 // NewETCDClient creates a new ETCDClient instance with the given etcdclient.Client.
 func NewETCDClient(c *etcdclient.Client) *ETCDClient {
 	return &ETCDClient{client: c}
@@ -75,8 +73,6 @@ type ETCDClient struct {
 	client *etcdclient.Client
 }
 
-// # Function Explanation
-//
 // Query retrieves objects from the store that match the given query and filters, and returns them in a store.ObjectQueryResult.
 func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	if ctx == nil {
@@ -124,8 +120,6 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 	return &results, nil
 }
 
-// # Function Explanation
-//
 // Get checks if the provided context, id and options are valid, then retrieves the corresponding object from
 // the store and returns it, or an error if the object is not found or an error occurs.
 func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
@@ -164,8 +158,6 @@ func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOpt
 	return &value, nil
 }
 
-// # Function Explanation
-//
 // Delete checks if the given resource ID is valid, and if so, deletes it from the store, returning an error if the
 // resource does not exist or if an ETag is provided and does not match.
 func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.DeleteOptions) error {
@@ -227,8 +219,6 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 	return nil
 }
 
-// # Function Explanation
-//
 // Save checks the context and object parameters, parses the object ID, marshals the object into JSON, saves the object to
 // the store, and sets the object's ETag. If an ETag is provided, a transaction is executed to ensure concurrency.
 func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
@@ -289,8 +279,6 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	return nil
 }
 
-// # Function Explanation
-//
 // Client returns the etcdclient.Client instance stored in the ETCDClient struct.
 func (c *ETCDClient) Client() *etcdclient.Client {
 	return c.client

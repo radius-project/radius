@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad group switch` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command for switching the default resource group scope of a workspace, which takes in
 // a factory object and returns a cobra command and a runner object.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -77,8 +76,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad group switch` command.
 //
-// # Function Explanation
-//
+
 // Validate checks if the workspace is editable, requires a UCP resource group and sets the workspace and UCP
 // resource group name in the Runner struct. It returns an error if any of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -105,8 +103,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad group switch` command.
 //
-// # Function Explanation
-//
+
 // Run checks if the resource group specified in the request object exists, and if it does, adds the workspace to
 // the configuration file. If the resource group does not exist, an error is returned.
 func (r *Runner) Run(ctx context.Context) error {

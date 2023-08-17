@@ -37,8 +37,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command that can be used to run an application specified by a Bicep or ARM template,
 // port-forward container ports and stream container logs to a user's terminal, and accepts the same parameters as the 'rad
 //
@@ -99,8 +98,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad run` command.
 //
-// # Function Explanation
-//
+
 // The Validate function performs additional validations on the deployment and requires an application name, returning an
 // error if one is not specified.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -119,8 +117,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad run` command.
 //
-// # Function Explanation
-//
+
 // Run starts port-forwarding and log streaming for a given application in a given Kubernetes context, and
 // returns an error if any of the operations fail.
 func (r *Runner) Run(ctx context.Context) error {

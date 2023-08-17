@@ -26,8 +26,6 @@ const (
 	ResourceGroupsSegment = "/resourcegroups"
 )
 
-// # Function Explanation
-//
 // NormalizePath replaces any occurrences of "planes" and "resourcegroups" in the URL path with the correct case
 // and preserves the case for the rest of the URL.
 // For example, the user could specify the url as /Planes/radius/local/resourceGroups/abc and this

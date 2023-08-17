@@ -36,8 +36,6 @@ const (
 	installSubDir = "install"
 )
 
-// # Function Explanation
-//
 // Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
 // the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
 // if the directory creation or Terraform installation fails.

@@ -39,8 +39,6 @@ type GetAWSOperationResults struct {
 	awsClients ucp_aws.Clients
 }
 
-// # Function Explanation
-//
 // NewGetAWSOperationResults creates a new GetAWSOperationResults controller with the given options and AWS clients, and
 // returns it without an error.
 func NewGetAWSOperationResults(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
@@ -50,8 +48,6 @@ func NewGetAWSOperationResults(opts armrpc_controller.Options, awsClients ucp_aw
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run reads the region from the request, calls the AWS CloudControl API to get the resource request status, checks
 // if the status is terminal, and returns an AsyncOperationResultResponse if the status is not terminal, or a NoContentResponse
 // if the status is terminal. An error is returned if the AWS resource is not found or if there is an AWS error.

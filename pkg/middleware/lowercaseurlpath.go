@@ -23,8 +23,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
-// # Function Explanation
-//
 // LowercaseURLPath sets the Referer header to the original URL if it is not already set, and then lowercases the URL path
 // before passing it to the next handler.
 func LowercaseURLPath(next http.Handler) http.Handler {

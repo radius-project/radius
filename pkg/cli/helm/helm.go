@@ -40,9 +40,7 @@ const (
 	retries          = 5
 )
 
-// # Function Explanation
-// 
-// HelmConfig initializes a helm configuration object and sets the backend storage driver to use kubernetes secrets, 
+// HelmConfig initializes a helm configuration object and sets the backend storage driver to use kubernetes secrets,
 // returning the configuration object and an error if one occurs.
 func HelmConfig(builder *strings.Builder, flags *genericclioptions.ConfigFlags) (*helm.Configuration, error) {
 	hc := helm.Configuration{}

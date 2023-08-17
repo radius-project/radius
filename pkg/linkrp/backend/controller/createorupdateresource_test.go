@@ -57,8 +57,6 @@ type TestResource struct {
 	Properties TestResourceProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the status of the TestResource instance with the DeploymentOutput values.
 func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
@@ -68,22 +66,16 @@ func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the Status field of the Properties field of the TestResource instance.
 func (r *TestResource) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the TestResource instance.
 func (r *TestResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // Recipe returns a pointer to the LinkRecipe stored in the Properties field of the TestResource struct.
 func (t *TestResource) Recipe() *linkrp.LinkRecipe {
 	return &t.Properties.Recipe
@@ -98,8 +90,6 @@ type TestResourceProperties struct {
 type SuccessProcessor struct {
 }
 
-// # Function Explanation
-//
 // Process sets a computed value and adds an output resource to the TestResource object, and returns no error.
 func (p *SuccessProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	// Simulate setting a computed value and adding an output resource.
@@ -115,8 +105,6 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
-// # Function Explanation
-//
 // Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return processorErr

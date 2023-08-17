@@ -33,8 +33,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad env show` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner object to show environment details, with flags for workspace,
 // resource group, environment name and output.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -88,8 +87,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad env show` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the request object for a workspace, scope, environment name, and output format, and sets the
 // corresponding fields in the Runner struct if they are found. If any of these fields are not found, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -123,8 +121,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env run` command.
 //
-// # Function Explanation
-//
+
 // Run attempts to retrieve environment details from an ApplicationsManagementClient and write the details to an
 // output in a specified format, returning an error if any of these operations fail.
 func (r *Runner) Run(ctx context.Context) error {

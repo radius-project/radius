@@ -33,7 +33,6 @@ var _ Provider = (*kubernetesProvider)(nil)
 
 type kubernetesProvider struct{}
 
-// # Function Explanation
 // BuildKubernetesProviderConfig generates the Terraform provider configuration for Kubernetes provider.
 // It returns an error if the in cluster config cannot be retrieved, and uses default kubeconfig file if
 // in-cluster config is not present.

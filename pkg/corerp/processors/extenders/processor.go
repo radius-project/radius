@@ -13,8 +13,6 @@ import (
 type Processor struct {
 }
 
-// # Function Explanation
-//
 // Process implements the processors.Processor interface for Extender resources. It validates and merges output values from
 // the recipe output with the existing values in the resource. It returns an error if the secret values are not of type string
 // or if any of the other validations fail.

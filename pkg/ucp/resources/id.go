@@ -93,15 +93,11 @@ type KnownType struct {
 	Types []TypeSegment
 }
 
-// # Function Explanation
-//
 // IsEmpty checks if the ID is empty.
 func (ri ID) IsEmpty() bool {
 	return ri.id == ""
 }
 
-// # Function Explanation
-//
 // IsScope returns true if the ID represents a named scope (not a collection or custom action).
 //
 // Example:
@@ -113,8 +109,6 @@ func (ri ID) IsScope() bool {
 		(len(ri.scopeSegments) == 0 || len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) > 0) // No scope segments or last one is named
 }
 
-// # Function Explanation
-//
 // IsResource returns true if the ID represents a named resource (not a collection or custom action).
 //
 // Example:
@@ -125,8 +119,6 @@ func (ri ID) IsResource() bool {
 		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) > 0 // Has type segments and last one is named
 }
 
-// # Function Explanation
-//
 // IsScopeCollection returns true if the ID represents a collection or custom action on a scope.
 //
 // Example:
@@ -138,8 +130,6 @@ func (ri ID) IsScopeCollection() bool {
 		len(ri.scopeSegments) > 0 && len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) == 0 // Has scope segments and last one is un-named
 }
 
-// # Function Explanation
-//
 // IsResourceCollection returns true if the ID represents a collection or custom action on a resource.
 //
 // Example:
@@ -150,36 +140,26 @@ func (ri ID) IsResourceCollection() bool {
 		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) == 0 // Has type segments and last one is un-named
 }
 
-// # Function Explanation
-//
 // IsUCPQualfied checks if the ID has a prefix of SegmentSeparator and PlanesSegment.
 func (ri ID) IsUCPQualfied() bool {
 	return strings.HasPrefix(ri.id, SegmentSeparator+PlanesSegment)
 }
 
-// # Function Explanation
-//
 // ScopeSegments gets the slice of root-scope segments.
 func (ri ID) ScopeSegments() []ScopeSegment {
 	return ri.scopeSegments
 }
 
-// # Function Explanation
-//
 // TypeSegments gets the slice of type segments.
 func (ri ID) TypeSegments() []TypeSegment {
 	return ri.typeSegments
 }
 
-// # Function Explanation
-//
 // This function returns the "id" field of the given ID instance.
 func (ri ID) String() string {
 	return ri.id
 }
 
-// # Function Explanation
-//
 // Method FindScope searches through the scopeSegments of the ID instance and returns the Name of the scopeType if found.
 func (ri ID) FindScope(scopeType string) string {
 	for _, t := range ri.scopeSegments {
@@ -213,8 +193,6 @@ func (ri ID) RootScope() string {
 	return SegmentSeparator + joined
 }
 
-// # Function Explanation
-//
 // PlaneScope returns plane or subscription scope without resourceGroup
 //
 // Examples:
@@ -241,8 +219,6 @@ func (ri ID) PlaneScope() string {
 	return SegmentSeparator + joined
 }
 
-// # Function Explanation
-//
 // ProviderNamespace returns the providers part of the ID
 // Examples:
 //
@@ -255,15 +231,11 @@ func (ri ID) ProviderNamespace() string {
 	return segments[0]
 }
 
-// # Function Explanation
-//
 // IsRadiusRPResource checks if the given ID is a supported Radius resource.
 func (ri ID) IsRadiusRPResource() bool {
 	return slices.Contains(supportedNamespaces, ri.ProviderNamespace())
 }
 
-// # Function Explanation
-//
 // PlaneNamespace returns the plane part of the UCP ID, or an empty string if the ID is not UCP qualified.
 //
 // Note: This function does NOT handle invalid IDs. If an invalid ID calls this function then there is
@@ -285,8 +257,6 @@ func (ri ID) PlaneNamespace() string {
 	return strings.Join(keys, "/")
 }
 
-// # Function Explanation
-//
 // RoutingScope returns the routing-scope (the part after 'providers') - it is composed of the type and name segments of the ID instance.
 //
 // Examples:
@@ -304,8 +274,6 @@ func (ri ID) RoutingScope() string {
 	return strings.Join(segments, SegmentSeparator)
 }
 
-// # Function Explanation
-//
 // Type returns the fully-qualified resource type of a ResourceID, or an empty string if the type cannot be determined.
 func (ri ID) Type() string {
 	if len(ri.typeSegments) > 0 {
@@ -327,8 +295,6 @@ func (ri ID) Type() string {
 	return ""
 }
 
-// # Function Explanation
-//
 // QualifiedName gets the fully-qualified resource name (eg. `radiusv3/myapp/mycontainer`) by joining the type segments with the SegmentSeparator.
 func (ri ID) QualifiedName() string {
 	names := make([]string, len(ri.typeSegments))
@@ -338,8 +304,6 @@ func (ri ID) QualifiedName() string {
 	return strings.Join(names, SegmentSeparator)
 }
 
-// # Function Explanation
-//
 // Name gets the resource or scope name.
 func (ri ID) Name() string {
 	if len(ri.typeSegments) == 0 && len(ri.scopeSegments) == 0 {
@@ -353,8 +317,6 @@ func (ri ID) Name() string {
 	return ri.typeSegments[len(ri.typeSegments)-1].Name
 }
 
-// # Function Explanation
-//
 // ValidateResourceType validates that the resource ID type segment matches the expected type.
 func (ri ID) ValidateResourceType(t KnownType) error {
 	if len(ri.typeSegments) != len(t.Types) {
@@ -385,8 +347,6 @@ func invalidType(id string) error {
 	return fmt.Errorf("resource '%v' does not match the expected resource type", id)
 }
 
-// # Function Explanation
-//
 // Append appends a resource type segment to the ID and returns the resulting ID. If the ID is UCP qualified, it will
 // return a UCP qualified ID, otherwise it will return a relative ID.
 func (ri ID) Append(resourceType TypeSegment) ID {
@@ -409,8 +369,6 @@ func (ri ID) Append(resourceType TypeSegment) ID {
 	}
 }
 
-// # Function Explanation
-//
 // Truncate removes the last type/name pair for a resource id or scope id. Calling truncate on a top level resource or scope has no effect.
 func (ri ID) Truncate() ID {
 	if len(ri.typeSegments) == 0 && len(ri.scopeSegments) == 0 {
@@ -458,8 +416,6 @@ func (ri ID) Truncate() ID {
 	}
 }
 
-// # Function Explanation
-//
 // ParseByMethod is a helper function to extract the custom actions from the id.
 // If there is a custom action in the request, then the method will be POST. To be able
 // to get the proper type, we need to remove the custom action from the id.
@@ -476,8 +432,6 @@ func ParseByMethod(id string, method string) (ID, error) {
 	return parsedID, nil
 }
 
-// # Function Explanation
-//
 // ParseScope returns a parsed resource ID if the ID represents a named scope (not a collection or custom action).
 //
 // Example:
@@ -496,8 +450,6 @@ func ParseScope(id string) (ID, error) {
 	return parsed, err
 }
 
-// # Function Explanation
-//
 // ParseResource returns a parsed resource ID if the ID represents a named resource (not a collection or custom action).
 //
 // Example:
@@ -516,8 +468,6 @@ func ParseResource(id string) (ID, error) {
 	return parsed, err
 }
 
-// # Function Explanation
-//
 // Parse parses a resource ID. Parse will parse ALL valid resource IDs in the most permissive way.
 // Most code should use a more specific function like ParseResource to parse the specific kind of ID
 // they want to handle.
@@ -682,8 +632,6 @@ func invalid(id string) error {
 	return fmt.Errorf("'%s' is not a valid resource id", id)
 }
 
-// # Function Explanation
-//
 // MakeUCPID creates a fully-qualified UCP resource ID, from the given scopes and resource types.
 func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 	segments := []string{
@@ -710,8 +658,6 @@ func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 	return SegmentSeparator + strings.Join(segments, SegmentSeparator)
 }
 
-// # Function Explanation
-//
 // MakeRelativeID makes a plane-relative resource ID (ARM style) from a slice of ScopeSegment and a variadic of TypeSegment..
 func MakeRelativeID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 	segments := []string{}
