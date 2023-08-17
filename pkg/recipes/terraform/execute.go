@@ -23,8 +23,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	install "github.com/hashicorp/hc-install"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
@@ -138,9 +140,13 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 
 	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
 	// Download module in the working directory.
+	downloadStartTime := time.Now()
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
 	}
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
+			options.EnvRecipe, metrics.SuccessfulOperationState))
 
 	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
 	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
@@ -189,9 +195,12 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
+
+	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
 		return fmt.Errorf("terraform init failure: %w", err)
 	}
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
