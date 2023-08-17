@@ -17,28 +17,8 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"os"
 	"time"
 )
-
-// FakeResource is a fake resource type.
-type FakeResource struct{}
-
-// Always returns "FakeResource" as the name.
-func (f *FakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
-// LoadTestData reads the contents of a file and returns it as a byte slice.
-// It takes a single argument, testfile, which is the path to the file to be read.
-// If the file cannot be read, an error is returned.
-func LoadTestData(testfile string) ([]byte, error) {
-	d, err := os.ReadFile(testfile)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
-}
 
 // UnmarshalTimeString unmarshals a string representation of a time in RFC3339 format into a time.Time object.
 func UnmarshalTimeString(ts string) *time.Time {

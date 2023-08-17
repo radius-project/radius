@@ -32,11 +32,11 @@ import (
 	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -98,7 +98,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := newProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), configuration.Providers)
+	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), configuration.Providers)
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -151,20 +151,18 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 	// Loop over each output resource and delete in reverse dependency order
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
-		id := outputResource.Identity.GetID()
-		if err != nil {
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
-		}
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+
+		resourceType := outputResource.GetResourceType()
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID.String(), outputResource.LocalID, resourceType.Type))
 		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
 			continue
 		}
 
-		err = d.ResourceClient.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		err = d.ResourceClient.Delete(ctx, outputResource.ID.String())
 		if err != nil {
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", outputResource.ID.String()), ucplog.LogFieldTargetResourceID, outputResource.ID.String())
 
 	}
 
@@ -214,7 +212,7 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 		return resources.ID{}, err
 	}
 
-	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
+	resourceGroup := parsed.FindScope(resources_radius.ScopeResourceGroups)
 	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 

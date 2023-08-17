@@ -17,40 +17,25 @@ limitations under the License.
 package resources
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 const (
-	SegmentSeparator      = "/"
-	PlanesSegment         = "planes"
-	ProvidersSegment      = "providers"
-	ResourceGroupsSegment = "resourcegroups"
-	SubscriptionsSegment  = "subscriptions"
-	LocationsSegment      = "locations"
-	AccountsSegment       = "accounts"
-	RegionsSegment        = "regions"
+	// SegmentSeparator is the separator between segments in a resource ID.
+	SegmentSeparator = "/"
 
-	CoreRPNamespace       = "Applications.Core"
-	LinkRPNamespace       = "Applications.Link"
-	DatastoresRPNamespace = "Applications.Datastores"
-	DaprRPNamespace       = "Applications.Dapr"
-	MessagingRPNamespace  = "Applications.Messaging"
+	// ProvidersSegment is the segment that separates the scope from the resource type.
+	ProvidersSegment = "providers"
+
+	// PlanesSegment is the segment the planes delimiter that distinguishes between UCP and ARM resource IDs.
+	PlanesSegment = "planes"
 
 	PlaneTypePrefix   = "System.Planes"
 	ResourceGroupType = "System.Resources/resourceGroups"
 )
-
-var supportedNamespaces = []string{
-	CoreRPNamespace,
-	LinkRPNamespace,
-	DatastoresRPNamespace,
-	DaprRPNamespace,
-	MessagingRPNamespace,
-}
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
 // to create IDs and use String() to convert back to strings.
@@ -90,8 +75,16 @@ type TypeSegment struct {
 	Name string
 }
 
+// KnownType represents a known resource type. Since resource types can have child types, this
+// includes multiple segments.
 type KnownType struct {
+	// Types is the set of TypeSegments that make up the type.
 	Types []TypeSegment
+}
+
+// IDEquals compares two IDs for equality.
+func IDEquals(x ID, y ID) bool {
+	return strings.EqualFold(x.String(), y.String())
 }
 
 // IsEmpty checks if the ID is empty.
@@ -252,7 +245,7 @@ func (ri ID) RootScope() string {
 func (ri ID) PlaneScope() string {
 	segments := []string{}
 	for _, t := range ri.scopeSegments {
-		if !strings.EqualFold(t.Type, ResourceGroupsSegment) {
+		if !strings.EqualFold(t.Type, "resourcegroups") {
 			segments = append(segments, t.Type)
 			if t.Name != "" {
 				segments = append(segments, t.Name)
@@ -287,11 +280,6 @@ func (ri ID) ProviderNamespace() string {
 	}
 
 	return ""
-}
-
-// IsRadiusRPResource checks if the given ID is a supported Radius resource.
-func (ri ID) IsRadiusRPResource() bool {
-	return slices.Contains(supportedNamespaces, ri.ProviderNamespace())
 }
 
 // PlaneNamespace returns the plane part of the UCP ID, or an empty string if the ID is not UCP qualified.
@@ -528,6 +516,46 @@ func (ri ID) Truncate() ID {
 
 		return result
 	}
+}
+
+// MarshalText implements text marshalling support for Resource IDs.
+func (id ID) MarshalText() ([]byte, error) {
+	return []byte(id.String()), nil
+}
+
+// UnmarshalText implements text unmarshalling support for Resource IDs.
+func (id *ID) UnmarshalText(data []byte) error {
+	parsed, err := Parse(string(data))
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal text, value was not a valid resource ID: %w", err)
+	}
+
+	// Assign fields into self.
+	*id = parsed
+	return nil
+}
+
+// MarshalJSON implements JSON marshalling support for Resource IDs.
+func (id ID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(id.String())
+}
+
+// UnmarshalJSON implements JSON unmarshalling support for Resource IDs.
+func (id *ID) UnmarshalJSON(data []byte) error {
+	str := ""
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON, value was not a string: %w", err)
+	}
+
+	parsed, err := Parse(str)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON, value was not a valid resource ID: %w", err)
+	}
+
+	// Assign fields into self.
+	*id = parsed
+	return nil
 }
 
 // ParseByMethod is a helper function to extract the custom actions from the id.
@@ -802,6 +830,16 @@ func Parse(id string) (ID, error) {
 
 func invalid(id string) error {
 	return fmt.Errorf("'%s' is not a valid resource id", id)
+}
+
+// MustParse parses a resource ID. MustParse will panic if the ID is not valid. This should only
+// be used in tests and other circumstances where the ID is known to be valid.
+func MustParse(id string) ID {
+	parsed, err := Parse(id)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
 }
 
 // MakeUCPID creates a fully-qualified UCP resource ID, from the given scopes and resource types.

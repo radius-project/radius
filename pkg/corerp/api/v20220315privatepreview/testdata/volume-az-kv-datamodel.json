@@ -1,70 +1,68 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/volumes/azkeyvault0",
-    "name": "azkeyvault0",
-    "type": "Applications.Core/volumes",
-    "location": "global",
-    "systemData": {
-        "createdBy": "fakeid@live.com",
-        "createdByType": "User",
-        "createdAt": "2021-09-24T19:09:54.2403864Z",
-        "lastModifiedBy": "fakeid@live.com",
-        "lastModifiedByType": "User",
-        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
-    },
-    "tags": {
-        "env": "dev"
-    },
-    "provisioningState": "Succeeded",
-    "properties": {
-        "status": {
-            "outputResources": [{
-                "LocalID": "Deployment",
-                "ResourceType": {
-                    "Type": "Volume",
-                    "Provider": "kubernetes"
-                }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "kind": "azure.com.keyvault",
-        "azureKeyVault": {
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
-            "secrets": {
-                "mysecret-1": {
-                    "name": "mysecret-1",
-                    "alias": "aliassecret-1",
-                    "version": "1",
-                    "encoding": "utf-8"
-                },
-                "mysecret-2": {
-                    "name": "mysecret-2",
-                    "encoding": "base64"
-                }
-            },
-            "keys": {
-                "mykey-1": {
-                    "name": "key1",
-                    "alias": "aliaskey1-1",
-                    "version": "1"
-                },
-                "mykey-2": {
-                    "name": "key2"
-                }
-            },
-            "certificates": {
-                "mycert-1": {
-                    "name": "cert1",
-                    "alias": "aliascert1-1",
-                    "certType": "certificate",
-                    "encoding": "utf-8"
-                },
-                "mycert-2": {
-                    "name": "cert2",
-                    "certType": "privatekey",
-                    "format": "pfx",
-                    "encoding": "hex"
-                }
-            }
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/volumes/azkeyvault0",
+  "name": "azkeyvault0",
+  "type": "Applications.Core/volumes",
+  "location": "global",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "provisioningState": "Succeeded",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "kind": "azure.com.keyvault",
+    "azureKeyVault": {
+      "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
+      "secrets": {
+        "mysecret-1": {
+          "name": "mysecret-1",
+          "alias": "aliassecret-1",
+          "version": "1",
+          "encoding": "utf-8"
+        },
+        "mysecret-2": {
+          "name": "mysecret-2",
+          "encoding": "base64"
+        }
+      },
+      "keys": {
+        "mykey-1": {
+          "name": "key1",
+          "alias": "aliaskey1-1",
+          "version": "1"
+        },
+        "mykey-2": {
+          "name": "key2"
+        }
+      },
+      "certificates": {
+        "mycert-1": {
+          "name": "cert1",
+          "alias": "aliascert1-1",
+          "certType": "certificate",
+          "encoding": "utf-8"
+        },
+        "mycert-2": {
+          "name": "cert2",
+          "certType": "privatekey",
+          "format": "pfx",
+          "encoding": "hex"
+        }
+      }
     }
+  }
 }

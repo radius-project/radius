@@ -77,6 +77,7 @@ func Test_compute(t *testing.T) {
 						node: node{
 							Name: "demo",
 							Type: "apps/Deployment",
+							ID:   "/planes/kubernetes/local/namespaces/default-demo/providers/apps/Deployment/demo",
 						},
 						Provider: "kubernetes",
 					},
@@ -147,6 +148,7 @@ func Test_compute(t *testing.T) {
 							node: node{
 								Name: "demo",
 								Type: "apps/Deployment",
+								ID:   "/planes/kubernetes/local/namespaces/default-demo/providers/apps/Deployment/demo",
 							},
 							Provider: "kubernetes",
 						},
@@ -240,11 +242,11 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 				node:     nodeFromID(azureRedisCacheResourceID),
 				Provider: "azure",
 			},
-			// Kubernetes resources don't currently a resource ID.
 			{
 				node: node{
 					Name: "demo",
 					Type: "apps/Deployment",
+					ID:   "/planes/kubernetes/local/namespaces/default-demo/providers/apps/Deployment/demo",
 				},
 				Provider: "kubernetes",
 			},
@@ -258,7 +260,7 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 		// An invalid output resource doesn't prevent other output resources from being parsed.
 		outputResources := []any{
 			redisAWSOutputResource,
-			makeAzureOutputResource("asdf-invalid-YO"),
+			makeOutputResource("asdf-invalid-YO"),
 			containerDeploymentOutputResource,
 		}
 		resource := generated.GenericResource{
@@ -269,18 +271,19 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 		// Output is always sorted.
 		expected := []outputResourceEntry{
 			{
+				node: node{
+					Error: "failed to unmarshal JSON, value was not a valid resource ID: 'asdf-invalid-YO' is not a valid resource id",
+				},
+			},
+			{
 				node:     nodeFromID(awsMemoryDBResourceID),
 				Provider: "aws",
 			},
 			{
-				node:     nodeFromID("asdf-invalid-YO"),
-				Provider: "azure",
-			},
-			// Kubernetes resources don't currently a resource ID.
-			{
 				node: node{
 					Name: "demo",
 					Type: "apps/Deployment",
+					ID:   "/planes/kubernetes/local/namespaces/default-demo/providers/apps/Deployment/demo",
 				},
 				Provider: "kubernetes",
 			},
@@ -288,32 +291,6 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 
 		actual := outputResourcesFromAPIData(resource)
 		require.Equal(t, expected, actual)
-		require.Equal(t, "'asdf-invalid-YO' is not a valid resource id", actual[1].Error)
-	})
-
-	t.Run("parse invalid output resource provider", func(t *testing.T) {
-		outputResources := []any{
-			map[string]any{
-				"provider": "no idea",
-			},
-		}
-		resource := generated.GenericResource{
-			ID:         to.Ptr(containerResourceID),
-			Properties: makeResourceProperties(nil, outputResources),
-		}
-
-		// Output is always sorted.
-		expected := []outputResourceEntry{
-			{
-				node: node{
-					Error: "unknown provider 'no idea'",
-				},
-			},
-		}
-
-		actual := outputResourcesFromAPIData(resource)
-		require.Equal(t, expected, actual)
-		require.Equal(t, "unknown provider 'no idea'", actual[0].Error)
 	})
 
 	t.Run("no status", func(t *testing.T) {

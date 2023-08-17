@@ -62,7 +62,7 @@ type ResourceClient interface {
 	// Delete deletes a resource by id.
 	//
 	// If the API version is omitted, then an attempt will be made to look up the API version.
-	Delete(ctx context.Context, id string, apiVersion string) error
+	Delete(ctx context.Context, id string) error
 }
 
 // ResourceError represents an error that occured while processing a resource.

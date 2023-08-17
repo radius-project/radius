@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -165,16 +164,6 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 						Name: "mdb-recipe-param-db-old",
 						Type: validation.O_MongoDatabasesResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},
@@ -230,16 +219,6 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						Name: "mdb-ctx-old",
 						Type: validation.O_MongoDatabasesResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},

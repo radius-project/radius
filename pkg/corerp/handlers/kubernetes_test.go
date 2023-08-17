@@ -26,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -119,17 +120,20 @@ func TestPut(t *testing.T) {
 			name: "secret resource",
 			in: &PutOptions{
 				Resource: &rpv1.OutputResource{
-					ResourceType: resourcemodel.ResourceType{
-						Provider: resourcemodel.ProviderKubernetes,
-					},
-					Resource: &corev1.Secret{
-						TypeMeta: metav1.TypeMeta{
-							Kind:       "Secret",
-							APIVersion: "core/v1",
+					CreateResource: &rpv1.Resource{
+						ResourceType: resourcemodel.ResourceType{
+							Provider: resourcemodel.ProviderKubernetes,
+							Type:     "core/Secret",
 						},
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-secret",
-							Namespace: "test-namespace",
+						Data: &corev1.Secret{
+							TypeMeta: metav1.TypeMeta{
+								Kind:       "Secret",
+								APIVersion: "core/v1",
+							},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "test-secret",
+								Namespace: "test-namespace",
+							},
 						},
 					},
 				},
@@ -145,10 +149,13 @@ func TestPut(t *testing.T) {
 			name: "deploment resource",
 			in: &PutOptions{
 				Resource: &rpv1.OutputResource{
-					ResourceType: resourcemodel.ResourceType{
-						Provider: resourcemodel.ProviderKubernetes,
+					CreateResource: &rpv1.Resource{
+						ResourceType: resourcemodel.ResourceType{
+							Provider: resourcemodel.ProviderKubernetes,
+							Type:     "apps/Deployment",
+						},
+						Data: testDeployment,
 					},
-					Resource: testDeployment,
 				},
 			},
 			out: map[string]string{
@@ -171,11 +178,11 @@ func TestPut(t *testing.T) {
 				cacheResyncInterval: time.Duration(1) * time.Second,
 			}
 
-			clientSet := fake.NewSimpleClientset(tc.in.Resource.Resource.(runtime.Object))
+			clientSet := fake.NewSimpleClientset(tc.in.Resource.CreateResource.Data.(runtime.Object))
 			handler.clientSet = clientSet
 
 			// If the resource is a deployment, we need to add a replica set to it
-			if tc.in.Resource.Resource.(runtime.Object).GetObjectKind().GroupVersionKind().Kind == "Deployment" {
+			if tc.in.Resource.CreateResource.Data.(runtime.Object).GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 				// The deployment is not marked as ready till we find a replica set. Therefore, we need to create one.
 				addReplicaSetToDeployment(t, ctx, clientSet, testDeployment)
 			}
@@ -202,8 +209,24 @@ func TestDelete(t *testing.T) {
 		},
 	}
 
+	dc := &k8sutil.DiscoveryClient{
+		Resources: []*metav1.APIResourceList{
+			{
+				GroupVersion: "apps/v1",
+				APIResources: []metav1.APIResource{
+					{
+						Name:    "deployments",
+						Version: "v1",
+						Kind:    "Deployment",
+					},
+				},
+			},
+		},
+	}
+
 	handler := kubernetesHandler{
 		client:              k8sutil.NewFakeKubeClient(nil),
+		k8sDiscoveryClient:  dc,
 		deploymentTimeOut:   time.Duration(1) * time.Second,
 		cacheResyncInterval: time.Duration(10) * time.Second,
 	}
@@ -214,35 +237,12 @@ func TestDelete(t *testing.T) {
 	t.Run("existing resource", func(t *testing.T) {
 		err := handler.Delete(ctx, &DeleteOptions{
 			Resource: &rpv1.OutputResource{
-				Identity: resourcemodel.ResourceIdentity{
-					Data: map[string]any{
-						"apiVersion": "apps/v1",
-						"kind":       "Deployment",
-						"metadata": map[string]any{
-							"name":      "test-deployment",
-							"namespace": "test-namespace",
-						},
-					},
-				},
-			},
-		})
-
-		require.NoError(t, err)
-	})
-
-	t.Run("existing resource", func(t *testing.T) {
-		err := handler.Delete(ctx, &DeleteOptions{
-			Resource: &rpv1.OutputResource{
-				Identity: resourcemodel.ResourceIdentity{
-					Data: map[string]any{
-						"apiVersion": "apps/v1",
-						"kind":       "Deployment",
-						"metadata": map[string]any{
-							"name":      "test-deployment1",
-							"namespace": "test-namespace",
-						},
-					},
-				},
+				ID: resources_kubernetes.IDFromParts(
+					resources_kubernetes.PlaneNameTODO,
+					"apps",
+					"Deployment",
+					"test-namespace",
+					"test-deployment"),
 			},
 		})
 
@@ -260,13 +260,16 @@ func TestConvertToUnstructured(t *testing.T) {
 		{
 			name: "valid resource",
 			in: rpv1.OutputResource{
-				ResourceType: resourcemodel.ResourceType{
-					Provider: resourcemodel.ProviderKubernetes,
-				},
-				Resource: &v1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-deployment",
-						Namespace: "test-namespace",
+				CreateResource: &rpv1.Resource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderKubernetes,
+						Type:     "apps/Deployment",
+					},
+					Data: &v1.Deployment{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-deployment",
+							Namespace: "test-namespace",
+						},
 					},
 				},
 			},
@@ -296,13 +299,16 @@ func TestConvertToUnstructured(t *testing.T) {
 		{
 			name: "invalid provider",
 			in: rpv1.OutputResource{
-				ResourceType: resourcemodel.ResourceType{
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Resource: &v1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-deployment",
-						Namespace: "test-namespace",
+				CreateResource: &rpv1.Resource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderAzure,
+						Type:     "apps/Deployment",
+					},
+					Data: &v1.Deployment{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-deployment",
+							Namespace: "test-namespace",
+						},
 					},
 				},
 			},
@@ -311,10 +317,13 @@ func TestConvertToUnstructured(t *testing.T) {
 		{
 			name: "invalid resource",
 			in: rpv1.OutputResource{
-				ResourceType: resourcemodel.ResourceType{
-					Provider: resourcemodel.ProviderKubernetes,
+				CreateResource: &rpv1.Resource{
+					ResourceType: resourcemodel.ResourceType{
+						Provider: resourcemodel.ProviderAzure,
+						Type:     "apps/Deployment",
+					},
+					Data: map[string]any{"invalid": "type"},
 				},
-				Resource: map[string]any{"invalid": "type"},
 			},
 			err: errors.New("inner type was not a runtime.Object"),
 		},

@@ -30,7 +30,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/processors/extenders"
-	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	linkrp_backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
@@ -41,7 +40,6 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"k8s.io/client-go/discovery"
 )
 
 const (
@@ -86,7 +84,7 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet)
+	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet, w.KubeDiscoveryClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
@@ -115,22 +113,7 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
-	// Setup to run backend controller for extenders.
-	runtimeClient, err := kubeutil.NewRuntimeClient(w.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(w.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
-	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
-	discoveryClient.UseLegacyDiscovery = true
-
-	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, runtimeClient, discoveryClient)
+	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, w.KubeClient, w.KubeDiscoveryClient)
 	clientOptions := sdk.NewClientOptions(w.Options.UCPConnection)
 
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{

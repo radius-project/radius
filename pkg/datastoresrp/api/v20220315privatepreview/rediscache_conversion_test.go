@@ -23,10 +23,11 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -132,10 +133,9 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testset {
 		// arrange
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			versionedResource := &RedisCacheResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -171,15 +171,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					Username:             to.Ptr(""),
 					TLS:                  to.Ptr(false),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "azure",
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -204,15 +196,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					Username:             to.Ptr(""),
 					TLS:                  to.Ptr(false),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "azure",
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -237,15 +221,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 					Recipe:               &Recipe{Name: to.Ptr("redis-test"), Parameters: map[string]any{"port": float64(6081)}},
 					Username:             to.Ptr(""),
 					TLS:                  to.Ptr(false),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "azure",
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -290,10 +266,9 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset1 {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			resource := &datamodel.RedisCache{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &RedisCacheResource{}
@@ -312,10 +287,9 @@ func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 	testset := []string{"rediscacheresource-invalid.json", "rediscacheresource-invalid2.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + payload)
-		require.NoError(t, err)
+		rawPayload := testutil.ReadFixture(payload)
 		versionedResource := &RedisCacheResource{}
-		err = json.Unmarshal(rawPayload, versionedResource)
+		err := json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 		if payload == "rediscacheresource-invalid.json" {
 			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
@@ -335,7 +309,7 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -348,10 +322,9 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/rediscachesecrets.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("/rediscachesecrets.json")
 	versioned := &RedisCacheSecrets{}
-	err = json.Unmarshal(rawPayload, versioned)
+	err := json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
 	// act
@@ -367,10 +340,9 @@ func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/rediscachesecretsdatamodel.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("rediscachesecretsdatamodel.json")
 	secrets := &datamodel.RedisCacheSecrets{}
-	err = json.Unmarshal(rawPayload, secrets)
+	err := json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act
@@ -389,7 +361,7 @@ func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

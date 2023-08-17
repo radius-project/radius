@@ -27,10 +27,11 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/trace"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +63,7 @@ func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, k8sCli
 }
 
 // Delete attempts to delete a resource, either through UCP, Azure, or Kubernetes, depending on the resource type.
-func (c *resourceClient) Delete(ctx context.Context, id string, apiVersion string) error {
+func (c *resourceClient) Delete(ctx context.Context, id string) error {
 	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return err
@@ -79,11 +80,11 @@ func (c *resourceClient) Delete(ctx context.Context, id string, apiVersion strin
 	ns := strings.ToLower(parsed.PlaneNamespace())
 
 	if !parsed.IsUCPQualfied() || strings.HasPrefix(ns, "azure/") {
-		return c.wrapError(parsed, c.deleteAzureResource(ctx, parsed, apiVersion))
+		return c.wrapError(parsed, c.deleteAzureResource(ctx, parsed))
 	} else if strings.HasPrefix(ns, "kubernetes/") {
-		return c.wrapError(parsed, c.deleteKubernetesResource(ctx, parsed, apiVersion))
+		return c.wrapError(parsed, c.deleteKubernetesResource(ctx, parsed))
 	} else {
-		return c.wrapError(parsed, c.deleteUCPResource(ctx, parsed, apiVersion))
+		return c.wrapError(parsed, c.deleteUCPResource(ctx, parsed))
 	}
 }
 
@@ -95,7 +96,7 @@ func (c *resourceClient) wrapError(id resources.ID, err error) error {
 	return nil
 }
 
-func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.ID, apiVersion string) error {
+func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.ID) error {
 	var err error
 	if id.IsUCPQualfied() {
 		id, err = resources.ParseResource(resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments()))
@@ -104,14 +105,12 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 		}
 	}
 
-	if apiVersion == "" || apiVersion == resourcemodel.APIVersionUnknown {
-		apiVersion, err = c.lookupARMAPIVersion(ctx, id)
-		if err != nil {
-			return err
-		}
+	apiVersion, err := c.lookupARMAPIVersion(ctx, id)
+	if err != nil {
+		return err
 	}
 
-	client, err := clientv2.NewGenericResourceClient(id.FindScope(resources.SubscriptionsSegment), &c.arm.ClientOptions, c.armClientOptions)
+	client, err := clientv2.NewGenericResourceClient(id.FindScope(resources_azure.ScopeSubscriptions), &c.arm.ClientOptions, c.armClientOptions)
 	if err != nil {
 		return err
 	}
@@ -130,7 +129,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 }
 
 func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.ID) (string, error) {
-	client, err := clientv2.NewProvidersClient(id.FindScope(resources.SubscriptionsSegment), &c.arm.ClientOptions, c.armClientOptions)
+	client, err := clientv2.NewProvidersClient(id.FindScope(resources_azure.ScopeSubscriptions), &c.arm.ClientOptions, c.armClientOptions)
 	if err != nil {
 		return "", err
 	}
@@ -161,7 +160,7 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
 }
 
-func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID, apiVersion string) error {
+func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {
 	// NOTE: the API version passed in here is ignored.
 	//
 	// We're using a generated client that understands Radius' currently supported API version.
@@ -187,33 +186,29 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID,
 	return nil
 }
 
-func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resources.ID, apiVersion string) error {
-	if apiVersion == "" || apiVersion == resourcemodel.APIVersionUnknown {
-		var err error
-		apiVersion, err = c.lookupKubernetesAPIVersion(ctx, id)
-		if err != nil {
-			return err
-		}
+func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resources.ID) error {
+	apiVersion, err := c.lookupKubernetesAPIVersion(ctx, id)
+	if err != nil {
+		return err
 	}
 
-	identity := resourcemodel.FromUCPID(id, apiVersion)
-	gvk, ns, name, err := identity.RequireKubernetes()
-	if err != nil {
-		// We don't expect this to fail, but just in case....
-		return fmt.Errorf("could not understand kubernetes resource id %q: %w", id.String(), err)
-	}
+	group, kind, namespace, name := resources_kubernetes.ToParts(id)
 
 	metadata := map[string]any{
 		"name": name,
 	}
-	if ns != "" {
-		metadata["namespace"] = ns
+	if namespace != "" {
+		metadata["namespace"] = namespace
+	}
+
+	if group != "" {
+		apiVersion = fmt.Sprintf("%s/%s", group, apiVersion)
 	}
 
 	obj := unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": gvk.GroupVersion().String(),
-			"kind":       gvk.Kind,
+			"apiVersion": apiVersion,
+			"kind":       kind,
 			"metadata":   metadata,
 		},
 	}
@@ -227,14 +222,9 @@ func (c *resourceClient) deleteKubernetesResource(ctx context.Context, id resour
 }
 
 func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id resources.ID) (string, error) {
-	identity := resourcemodel.FromUCPID(id, resourcemodel.APIVersionUnknown)
-	gvk, namespace, _, err := identity.RequireKubernetes()
-	if err != nil {
-		// We don't expect this to fail, but just in case....
-		return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
-	}
-
+	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
 	var resourceLists []*v1.APIResourceList
+	var err error
 	if namespace == "" {
 		resourceLists, err = c.k8sDiscoveryClient.ServerPreferredResources()
 		if err != nil {
@@ -254,12 +244,12 @@ func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id reso
 			return "", err
 		}
 
-		if gvk.Group != gv.Group {
+		if group != gv.Group {
 			continue
 		}
 
 		for _, resource := range resourceList.APIResources {
-			if resource.Kind == gvk.Kind {
+			if resource.Kind == kind {
 				return gv.Version, nil
 			}
 		}
