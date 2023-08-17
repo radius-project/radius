@@ -99,15 +99,16 @@ type ConnectionProperties struct {
 
 // Container - Definition of a container.
 type Container struct {
-	Image          string                      `json:"image,omitempty"`
-	Env            map[string]string           `json:"env,omitempty"`
-	LivenessProbe  HealthProbeProperties       `json:"livenessProbe,omitempty"`
-	Ports          map[string]ContainerPort    `json:"ports,omitempty"`
-	ReadinessProbe HealthProbeProperties       `json:"readinessProbe,omitempty"`
-	Volumes        map[string]VolumeProperties `json:"volumes,omitempty"`
-	Command        []string                    `json:"command,omitempty"`
-	Args           []string                    `json:"args,omitempty"`
-	WorkingDir     string                      `json:"workingDir,omitempty"`
+	Image           string                      `json:"image,omitempty"`
+	ImagePullPolicy string                      `json:"imagePullPolicy,omitempty"`
+	Env             map[string]string           `json:"env,omitempty"`
+	LivenessProbe   HealthProbeProperties       `json:"livenessProbe,omitempty"`
+	Ports           map[string]ContainerPort    `json:"ports,omitempty"`
+	ReadinessProbe  HealthProbeProperties       `json:"readinessProbe,omitempty"`
+	Volumes         map[string]VolumeProperties `json:"volumes,omitempty"`
+	Command         []string                    `json:"command,omitempty"`
+	Args            []string                    `json:"args,omitempty"`
+	WorkingDir      string                      `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container

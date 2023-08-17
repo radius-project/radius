@@ -2790,6 +2790,10 @@
           "type": "string",
           "description": "The registry and image to download and run in your container"
         },
+        "imagePullPolicy": {
+          "$ref": "#/definitions/ImagePullPolicy",
+          "description": "The pull policy for the container image"
+        },
         "env": {
           "type": "object",
           "description": "environment",
@@ -3062,6 +3066,10 @@
         "image": {
           "type": "string",
           "description": "The registry and image to download and run in your container"
+        },
+        "imagePullPolicy": {
+          "$ref": "#/definitions/ImagePullPolicy",
+          "description": "The pull policy for the container image"
         },
         "env": {
           "type": "object",
@@ -4040,6 +4048,36 @@
           "type": "string",
           "description": "The resource ID of the provisioned identity"
         }
+      }
+    },
+    "ImagePullPolicy": {
+      "type": "string",
+      "description": "The image pull policy for the container",
+      "enum": [
+        "Always",
+        "IfNotPresent",
+        "Never"
+      ],
+      "x-ms-enum": {
+        "name": "ImagePullPolicy",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Always",
+            "value": "Always",
+            "description": "Always"
+          },
+          {
+            "name": "IfNotPresent",
+            "value": "IfNotPresent",
+            "description": "IfNotPresent"
+          },
+          {
+            "name": "Never",
+            "value": "Never",
+            "description": "Never"
+          }
+        ]
       }
     },
     "KeyObjectProperties": {

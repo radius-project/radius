@@ -120,15 +120,16 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			Connections: connections,
 			Container: datamodel.Container{
-				Image:          to.String(src.Properties.Container.Image),
-				Env:            to.StringMap(src.Properties.Container.Env),
-				LivenessProbe:  livenessProbe,
-				Ports:          ports,
-				ReadinessProbe: readinessProbe,
-				Volumes:        volumes,
-				Command:        stringSlice(src.Properties.Container.Command),
-				Args:           stringSlice(src.Properties.Container.Args),
-				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
+				Image:           to.String(src.Properties.Container.Image),
+				ImagePullPolicy: toImagePullPolicyDataModel(src.Properties.Container.ImagePullPolicy),
+				Env:             to.StringMap(src.Properties.Container.Env),
+				LivenessProbe:   livenessProbe,
+				Ports:           ports,
+				ReadinessProbe:  readinessProbe,
+				Volumes:         volumes,
+				Command:         stringSlice(src.Properties.Container.Command),
+				Args:            stringSlice(src.Properties.Container.Args),
+				WorkingDir:      to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
 			Runtimes:   toRuntimeProperties(src.Properties.Runtimes),
@@ -244,15 +245,16 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		Application:       to.Ptr(c.Properties.Application),
 		Connections:       connections,
 		Container: &Container{
-			Image:          to.Ptr(c.Properties.Container.Image),
-			Env:            *to.StringMapPtr(c.Properties.Container.Env),
-			LivenessProbe:  livenessProbe,
-			Ports:          ports,
-			ReadinessProbe: readinessProbe,
-			Volumes:        volumes,
-			Command:        to.SliceOfPtrs(c.Properties.Container.Command...),
-			Args:           to.SliceOfPtrs(c.Properties.Container.Args...),
-			WorkingDir:     to.Ptr(c.Properties.Container.WorkingDir),
+			Image:           to.Ptr(c.Properties.Container.Image),
+			ImagePullPolicy: fromImagePullPolicyDataModel(c.Properties.Container.ImagePullPolicy),
+			Env:             *to.StringMapPtr(c.Properties.Container.Env),
+			LivenessProbe:   livenessProbe,
+			Ports:           ports,
+			ReadinessProbe:  readinessProbe,
+			Volumes:         volumes,
+			Command:         to.SliceOfPtrs(c.Properties.Container.Command...),
+			Args:            to.SliceOfPtrs(c.Properties.Container.Args...),
+			WorkingDir:      to.Ptr(c.Properties.Container.WorkingDir),
 		},
 		Extensions: extensions,
 		Identity:   identity,
@@ -260,6 +262,36 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	return nil
+}
+
+func toImagePullPolicyDataModel(pullPolicy *ImagePullPolicy) string {
+	if pullPolicy == nil {
+		return ""
+	}
+
+	switch *pullPolicy {
+	case ImagePullPolicyAlways:
+		return "Always"
+	case ImagePullPolicyIfNotPresent:
+		return "IfNotPresent"
+	case ImagePullPolicyNever:
+		return "Never"
+	default:
+		return ""
+	}
+}
+
+func fromImagePullPolicyDataModel(pullPolicy string) *ImagePullPolicy {
+	switch pullPolicy {
+	case "Always":
+		return to.Ptr(ImagePullPolicyAlways)
+	case "IfNotPresent":
+		return to.Ptr(ImagePullPolicyIfNotPresent)
+	case "Never":
+		return to.Ptr(ImagePullPolicyNever)
+	default:
+		return nil
+	}
 }
 
 func toHealthProbePropertiesDataModel(h HealthProbePropertiesClassification) datamodel.HealthProbeProperties {
