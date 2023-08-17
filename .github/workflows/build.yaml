@@ -356,7 +356,7 @@ jobs:
       HELM_PACKAGE_DIR: helm
       HELM_CHARTS_DIR: deploy/Chart
       OCI_REGISTRY: ghcr.io
-      OCI_REPOSITORY: project-radius/helm-chart
+      OCI_REPOSITORY: ${{ startsWith(github.ref, 'refs/tags/v') && 'project-radius/helm-chart' || 'project-radius/dev/helm-chart' }} 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
