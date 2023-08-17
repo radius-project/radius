@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad group list` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command that can be used to list resource groups within the current or specified workspace, and returns
 // a Runner object that can be used to execute the command. It also adds workspace and output flags to the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -82,8 +81,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad group list` command.
 //
-// # Function Explanation
-//
+
 // Validate makes sure the default workspace or the one specified using command flags is valid, and sets the workspace to this value.
 // It also sets the output format to table by default or to the one specified using command flags.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -107,8 +105,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad group list` command.
 //
-// # Function Explanation
-//
+
 // Run creates an ApplicationsManagementClient, retrieves a list of radius resource groups, and writes the results to
 // an output in a formatted way, returning an error if one occurs.
 func (r *Runner) Run(ctx context.Context) error {

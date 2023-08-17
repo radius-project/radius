@@ -257,6 +257,8 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []outputReso
 		switch data.Provider {
 		case resourcemodel.ProviderAzure:
 			fallthrough
+		case resourcemodel.ProviderRadius:
+			fallthrough
 		case resourcemodel.ProviderAWS:
 			entry = outputResourceEntryFromID(data.Identity["id"])
 			entry.Provider = data.Provider

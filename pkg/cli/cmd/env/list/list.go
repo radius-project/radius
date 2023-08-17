@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad env list` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner to list environments using the current or specified workspace,
 // with optional flags for resource group and output.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -44,7 +43,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `List environments using the current, or specified workspace.`,
 		Args:  cobra.NoArgs,
 		Example: `
-# List enviroments
+# List environments
 rad env list
 `,
 		RunE: framework.RunCommand(runner),
@@ -78,8 +77,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad env list` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the workspace, scope, and output format of the command and sets them in the Runner struct,
 // returning an error if any of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -108,8 +106,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env list` command.
 //
-// # Function Explanation
-//
+
 // Run creates an ApplicationsManagementClient using the provided context and workspace, then lists the environments in the
 // resource group and writes the formatted output to the Output. If any of these steps fail, an error is returned.
 func (r *Runner) Run(ctx context.Context) error {

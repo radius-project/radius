@@ -54,8 +54,6 @@ type Validator struct {
 	OutputResources *[]rpv1.OutputResource
 }
 
-// # Function Explanation
-//
 // NewValidator initializes and returns a new Validator instance with empty data structures for connection values,
 // connection secrets and output resources. Use the parameters to pass in pointers to the corresponding fields on
 // the resource data model.
@@ -72,66 +70,48 @@ func NewValidator(connectionValues *map[string]any, connectionSecrets *map[strin
 	}
 }
 
-// # Function Explanation
-//
 // AddResourceField registers a field containing a resource ID with the validator.
 func (v *Validator) AddResourcesField(ref *[]*linkrp.ResourceReference) {
 	v.resourcesField = ref
 }
 
-// # Function Explanation
-//
 // AddRequiredInt32Field registers a field containing a required int32 connection value. The zero value will be treated as an "unset" value.
 func (v *Validator) AddRequiredInt32Field(name string, ref *int32) {
 	v.fields = append(v.fields, bind(v, name, ref, true, false, "int32", convertToInt32, nil))
 }
 
-// # Function Explanation
-//
 // AddOptionalInt32Field registers a field containing an optional int32 connection value. The zero value will be treated as an "unset" value.
 func (v *Validator) AddOptionalInt32Field(name string, ref *int32) {
 	v.fields = append(v.fields, bind(v, name, ref, false, false, "int32", convertToInt32, nil))
 }
 
-// # Function Explanation
-//
 // AddRequiredStringField registers a field containing a required string connection value. The empty string will be treated as an "unset" value.
 func (v *Validator) AddRequiredStringField(name string, ref *string) {
 	v.fields = append(v.fields, bind(v, name, ref, true, false, "string", convertToString, nil))
 }
 
-// # Function Explanation
-//
 // AddOptionalStringField registers a field containing an optional string connection value. The empty string will be treated as an "unset" value.
 func (v *Validator) AddOptionalStringField(name string, ref *string) {
 	v.fields = append(v.fields, bind(v, name, ref, false, false, "string", convertToString, nil))
 }
 
-// # Function Explanation
-//
 // AddRequiredSecretField registers a field containing a required string connection secret. The empty string will be treated as an "unset" value.
 func (v *Validator) AddRequiredSecretField(name string, ref *string) {
 	// Note: secrets are always strings
 	v.fields = append(v.fields, bind(v, name, ref, true, true, "string", convertToString, nil))
 }
 
-// # Function Explanation
-//
 // AddRequiredSecretField registers a field containing an optional string connection secret. The empty string will be treated as an "unset" value.
 func (v *Validator) AddOptionalSecretField(name string, ref *string) {
 	// Note: secrets are always strings
 	v.fields = append(v.fields, bind(v, name, ref, false, true, "string", convertToString, nil))
 }
 
-// # Function Explanation
-//
 // AddOptionalAnyField registers a field containing any property value. The empty property will be treated as an "unset" value.
 func (v *Validator) AddOptionalAnyField(name string, ref any) {
 	v.recordValue(name, ref, false)
 }
 
-// # Function Explanation
-//
 // AddComputedStringField registers a field containing a computed string connection value. The empty string will be treated as an "unset" value.
 //
 // The compute function will be called if the value is not already set or provided by the recipe. Inside the compute function
@@ -143,8 +123,6 @@ func (v *Validator) AddComputedStringField(name string, ref *string, compute fun
 	v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "string", convertToString, compute))
 }
 
-// # Function Explanation
-//
 // AddComputedBoolField registers a field containing a computed boolean connection value. The false value will be treated as an "unset" value.
 //
 // The compute function will be called if the value is not already set or provided by the recipe. Inside the compute function
@@ -156,8 +134,6 @@ func (v *Validator) AddComputedBoolField(name string, ref *bool, compute func() 
 	v.computedFields = append(v.computedFields, bind(v, name, ref, false, false, "bool", convertToBool, compute))
 }
 
-// # Function Explanation
-//
 // AddComputedSecretField registers a field containing a computed string connection secret. The empty string will be treated as an "unset" value.
 //
 // The compute function will be called if the secret is not already set or provided by the recipe. Inside the compute function
@@ -169,8 +145,6 @@ func (v *Validator) AddComputedSecretField(name string, ref *string, compute fun
 	v.computedFields = append(v.computedFields, bind(v, name, ref, false, true, "string", convertToString, compute))
 }
 
-// # Function Explanation
-//
 // SetAndValidate will bind fields from the recipe output, populate output resources, and populate connection values/secrets.
 //
 // This function returns *ValidationError for validation failures.

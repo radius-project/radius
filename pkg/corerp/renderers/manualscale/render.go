@@ -34,16 +34,12 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-// # Function Explanation
-//
 // GetDependencyIDs gets the IDs of the dependencies of the given resource.
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	// Let the inner renderer do its work
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }
 
-// # Function Explanation
-//
 // Render checks if the DataModelInterface is a ContainerResource and if so, checks for ManualScaling
 // extensions and sets the replicas accordingly.
 func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {

@@ -93,7 +93,6 @@ const (
 	RabbitMQMessageQueuesResourceType = "Applications.Link/rabbitMQMessageQueues"
 	RedisCachesResourceType           = "Applications.Link/redisCaches"
 	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
-
 	/* The following are new temporary resource type names. These values will replace the above resource type names after
 	testing for the new namespaces is completed. (https://github.com/project-radius/radius/issues/3499)
 	*/
@@ -104,6 +103,7 @@ const (
 	N_MongoDatabasesResourceType    = "Applications.Datastores/mongoDatabases"
 	N_RedisCachesResourceType       = "Applications.Datastores/redisCaches"
 	N_SqlDatabasesResourceType      = "Applications.Datastores/sqlDatabases"
+	N_ExtendersResourceType         = "Applications.Core/extenders"
 )
 
 // ResourceProvisioning specifies how the resource should be managed

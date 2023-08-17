@@ -38,8 +38,6 @@ type ResourceDeploymentOperationsClient struct {
 	baseURI  string
 }
 
-// # Function Explanation
-//
 // NewResourceDeploymentOperationsClient creates a new ResourceDeploymentOperationsClient with the provided options and
 // returns it, or returns an error if the client creation fails.
 func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymentOperationsClient, error) {
@@ -65,8 +63,6 @@ func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymen
 	}, nil
 }
 
-// # Function Explanation
-//
 // List retrieves a list of deployment operations for a given resource ID and API version. It returns an error if the list retrieval fails.
 // Parameters:
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
@@ -93,8 +89,6 @@ func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, reso
 	return result, nil
 }
 
-// # Function Explanation
-//
 // NewListPager creates a pager to iterate over the list of deployment operations for a given resource.
 func (client *ResourceDeploymentOperationsClient) NewListPager(resourceID string, apiVersion string, options *armresources.DeploymentOperationsClientListOptions) *runtime.Pager[armresources.DeploymentOperationsClientListResponse] {
 	return runtime.NewPager(runtime.PagingHandler[armresources.DeploymentOperationsClientListResponse]{

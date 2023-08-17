@@ -53,8 +53,6 @@ var escapedStorageKeys = []string{
 	"p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", ":7B", ":7C", ":7D", ":7E", ":7F",
 }
 
-// # Function Explanation
-//
 // NormalizeLetterOrDigitToUpper takes in a string and returns a new string with all letters and digits converted to uppercase.
 func NormalizeLetterOrDigitToUpper(s string) string {
 	if s == "" {
@@ -71,15 +69,11 @@ func NormalizeLetterOrDigitToUpper(s string) string {
 	return strings.ToUpper(sb.String())
 }
 
-// # Function Explanation
-//
 // NormalizeSubscriptionID normalizes subscription id.
 func NormalizeSubscriptionID(subscriptionID string) string {
 	return NormalizeLetterOrDigitToUpper(subscriptionID)
 }
 
-// # Function Explanation
-//
 // EscapedStorageKey escapes a string so that it can be used as a storage key.
 func EscapedStorageKey(key string) string {
 	sb := strings.Builder{}
@@ -100,8 +94,6 @@ func EscapedStorageKey(key string) string {
 	return sb.String()
 }
 
-// # Function Explanation
-//
 // CombineStorageKeys combines multiple storage keys into one, returning an error if any of the keys contain the key delimiter.
 func CombineStorageKeys(keys ...string) (string, error) {
 	for _, key := range keys {
@@ -113,8 +105,6 @@ func CombineStorageKeys(keys ...string) (string, error) {
 	return strings.Join(keys, keyDelimiter), nil
 }
 
-// # Function Explanation
-//
 // TrimStorageKey checks if the storage key is too short, contains invalid characters, or exceeds the maximum length, and
 // returns a trimmed version of the key or an error if any of these conditions are met.
 func TrimStorageKey(storageKey string, maxLength int) (string, error) {
@@ -131,8 +121,6 @@ func TrimStorageKey(storageKey string, maxLength int) (string, error) {
 	return storageKey, nil
 }
 
-// # Function Explanation
-//
 // NormalizeStorageKey takes a storage key string and a maximum length and returns a normalized string with
 // the maximum length, or an error if the maximum length is exceeded.
 func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
@@ -140,8 +128,6 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 	return TrimStorageKey(EscapedStorageKey(upper), maxLength)
 }
 
-// # Function Explanation
-//
 // GenerateCosmosDBKey takes in an ID object and returns a string and an error if the resource group or resource type and
 // name fail to normalize.
 func GenerateCosmosDBKey(id resources.ID) (string, error) {

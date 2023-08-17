@@ -37,8 +37,6 @@ type ListResourceGroups struct {
 	armrpc_controller.Operation[*datamodel.ResourceGroup, datamodel.ResourceGroup]
 }
 
-// # Function Explanation
-//
 // NewListResourceGroups creates a new controller for listing resource groups.
 func NewListResourceGroups(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{
@@ -51,8 +49,6 @@ func NewListResourceGroups(opts armrpc_controller.Options) (armrpc_controller.Co
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() function extracts the plane type and name from the request URL, queries the storage client for resource groups in the
 // scope of the plane, creates a response with the list of resource groups and returns an OK response with the list of resource groups.
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

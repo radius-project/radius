@@ -33,8 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
-// # Function Explanation
-//
 // StartEnvironment creates k8s client and test environment. It returns an error if it
 // fails to initialize the environment or create the client.
 func StartEnvironment(crdPaths []string) (runtimeclient.Client, *envtest.Environment, error) {
@@ -89,8 +87,6 @@ func getKubeAssetsDir() (string, error) {
 	}
 }
 
-// # Function Explanation
-//
 // //EnsureNamespace creates a namespace if it doesn't already exist. It returns an error if the namespace cannot be
 // created.
 func EnsureNamespace(ctx context.Context, client runtimeclient.Client, namespace string) error {

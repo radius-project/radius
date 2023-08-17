@@ -24,10 +24,24 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	backend_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
+	"github.com/project-radius/radius/pkg/corerp/processors/extenders"
+	"github.com/project-radius/radius/pkg/kubeutil"
+	"github.com/project-radius/radius/pkg/linkrp"
+	linkrp_backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
+	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/configloader"
+	"github.com/project-radius/radius/pkg/recipes/driver"
+	"github.com/project-radius/radius/pkg/recipes/engine"
+	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/project-radius/radius/pkg/sdk/clients"
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"k8s.io/client-go/discovery"
 )
 
 const (
@@ -50,8 +64,6 @@ type Service struct {
 	worker.Service
 }
 
-// # Function Explanation
-//
 // NewService creates a new Service instance to run AsyncReqeustProcessWorker.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
@@ -62,15 +74,11 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns a string containing the service name.
 func (w *Service) Name() string {
 	return fmt.Sprintf("%s async worker", providerName)
 }
 
-// # Function Explanation
-//
 // Run initializes the application model, registers controllers for different resource types, and starts the worker with
 // the given options.
 func (w *Service) Run(ctx context.Context) error {
@@ -105,6 +113,68 @@ func (w *Service) Run(ctx context.Context) error {
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	// Setup to run backend controller for extenders.
+	runtimeClient, err := kubeutil.NewRuntimeClient(w.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(w.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
+	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
+	discoveryClient.UseLegacyDiscovery = true
+
+	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, runtimeClient, discoveryClient)
+	clientOptions := sdk.NewClientOptions(w.Options.UCPConnection)
+
+	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
+		Cred:             &aztoken.AnonymousCredential{},
+		BaseURI:          w.Options.UCPConnection.Endpoint(),
+		ARMClientOptions: sdk.NewClientOptions(w.Options.UCPConnection),
+	})
+	if err != nil {
+		return err
+	}
+
+	configLoader := configloader.NewEnvironmentLoader(clientOptions)
+	engine := engine.NewEngine(engine.Options{
+		ConfigurationLoader: configLoader,
+		Drivers: map[string]driver.Driver{
+			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(w.Options.UCPConnection, provider.NewSecretProvider(w.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: w.Options.Config.Terraform.Path,
+				}),
+		},
+	})
+
+	opts.GetDeploymentProcessor = nil
+	extenderCreateOrUpdateController := func(options ctrl.Options) (ctrl.Controller, error) {
+		processor := &extenders.Processor{}
+		return linkrp_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
+	}
+
+	// Register controllers to run backend processing for extenders.
+	err = w.Controllers.Register(ctx, linkrp.N_ExtendersResourceType, v1.OperationPut, extenderCreateOrUpdateController, opts)
+	if err != nil {
+		return err
+	}
+	err = w.Controllers.Register(
+		ctx,
+		linkrp.N_ExtendersResourceType,
+		v1.OperationDelete,
+		func(options ctrl.Options) (ctrl.Controller, error) {
+			return linkrp_backend_ctrl.NewDeleteResource(options, engine)
+		},
+		opts)
+	if err != nil {
+		return err
 	}
 
 	workerOpts := worker.Options{}

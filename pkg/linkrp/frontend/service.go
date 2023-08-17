@@ -32,8 +32,6 @@ type Service struct {
 	server.Service
 }
 
-// # Function Explanation
-//
 // NewService creates a new Service instance with the given options.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
@@ -44,15 +42,11 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns the namespace of the link provider.
 func (s *Service) Name() string {
 	return handler.LinkProviderNamespace
 }
 
-// # Function Explanation
-//
 // Run sets up the server and starts it, returning an error if any.
 func (s *Service) Run(ctx context.Context) error {
 	if err := s.Init(ctx); err != nil {

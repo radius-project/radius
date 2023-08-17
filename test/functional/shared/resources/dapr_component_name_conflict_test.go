@@ -29,11 +29,29 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
 	name := "corerp-resources-dcnc-old"
 
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            v1.CodeInternal,
+				MessageContains: "the Dapr component name '\"dapr-component-old\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again",
+			},
+		},
+	})
+
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, v1.CodeInternal, nil),
+			Executor: step.NewDeployErrorExecutor(template, validate),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "corerp-resources-dapr-component-name-conflict",
+						Type: validation.ApplicationsResource,
+					},
+				},
+			},
+			SkipObjectValidation:                   true,
 			SkipKubernetesOutputResourceValidation: true,
-			K8sObjects:                             &validation.K8sObjectSet{},
 		},
 	})
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}

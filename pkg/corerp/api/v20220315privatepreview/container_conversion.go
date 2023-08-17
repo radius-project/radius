@@ -23,8 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
 func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -147,8 +145,6 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
 func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	c, ok := src.(*datamodel.ContainerResource)

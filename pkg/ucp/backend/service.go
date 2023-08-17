@@ -43,15 +43,11 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns a string containing the UCPProviderName and the text "async worker".
 func (w *Service) Name() string {
 	return fmt.Sprintf("%s async worker", UCPProviderName)
 }
 
-// # Function Explanation
-//
 // Run starts the service and worker. It initializes the service and sets the worker options based on the configuration,
 // then starts the service with the given worker options. It returns an error if the initialization fails.
 func (w *Service) Run(ctx context.Context) error {

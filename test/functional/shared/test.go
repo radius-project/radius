@@ -24,18 +24,19 @@ import (
 	"github.com/stretchr/testify/require"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/testcontext"
 )
 
-// # Function Explanation
-// 
-// NewRPTestOptions sets up the test environment by loading configs, creating a test context, creating an 
+// NewRPTestOptions sets up the test environment by loading configs, creating a test context, creating an
 // ApplicationsManagementClient, creating an AWSCloudControlClient, and returning an RPTestOptions struct.
 func NewRPTestOptions(t *testing.T) RPTestOptions {
 	registry, tag := functional.SetDefault()
@@ -58,11 +59,21 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 	workspace, err := cli.GetWorkspace(config, "")
 	require.NoError(t, err, "failed to read default workspace")
+	require.NotNil(t, workspace, "default workspace is not set")
 
 	t.Logf("Loaded workspace: %s (%s)", workspace.Name, workspace.FmtConnection())
 
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *workspace)
 	require.NoError(t, err, "failed to create ApplicationsManagementClient")
+
+	connection, err := workspace.Connect()
+	require.NoError(t, err, "failed to connect to workspace")
+
+	customAction, err := clientv2.NewCustomActionClient("", &clientv2.Options{
+		BaseURI: strings.TrimRight(connection.Endpoint(), "/"),
+		Cred:    &aztoken.AnonymousCredential{},
+	}, sdk.NewClientOptions(connection))
+	require.NoError(t, err, "failed to create CustomActionClient")
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
@@ -70,6 +81,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 	return RPTestOptions{
 		TestOptions:      test.NewTestOptions(t),
+		CustomAction:     customAction,
 		ManagementClient: client,
 		AWSClient:        awsClient,
 	}
@@ -77,6 +89,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 type RPTestOptions struct {
 	test.TestOptions
+	CustomAction     *clientv2.CustomActionClient
 	ManagementClient clients.ApplicationsManagementClient
 	AWSClient        aws.AWSCloudControlClient
 }

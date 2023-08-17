@@ -45,8 +45,7 @@ type DeleteAWSResourceWithPost struct {
 
 // NewDeleteAWSResourceWithPost creates a new DeleteAWSResourceWithPost.
 //
-// # Function Explanation
-//
+
 // NewDeleteAWSResourceWithPost creates a new DeleteAWSResourceWithPost controller which is used to delete an AWS resource
 // using a POST request.
 func NewDeleteAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
@@ -56,8 +55,6 @@ func NewDeleteAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucp
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() reads the region from the request, reads properties from the body, gets the primary
 // identifier from the properties, logs the resource to be deleted, deletes the resource, and returns an async operation
 // response. If the resource is not found, it returns a no content response. If an error occurs, it returns an error response.

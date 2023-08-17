@@ -207,8 +207,6 @@ func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, eta
 	return rest.NewOKResponseWithHeaders(versioned, headers), nil
 }
 
-// # Function Explanation
-//
 // ConstructAsyncResponse creates an asynchronous response for a given resource, method and etag. It converts the resource
 // to the appropriate version and sets the response code to either Accepted or Created depending on the method. It also sets
 // the RetryAfter value if it is specified in the resourceOptions. If an error occurs, it is returned to the caller.

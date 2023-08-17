@@ -1,8 +1,8 @@
 #! /bin/bash
-BICEP_EXECUTABLE_CORERP="rad-bicep-corerp"
-if [[ ! -z $BICEP_PATH ]]
+if [[ -z $BICEP_PATH ]]
 then
-    BICEP_EXECUTABLE_CORERP="$BICEP_PATH/$BICEP_EXECUTABLE_CORERP"
+    echo "usage: BICEP_PATH=path/to/bicep ./build/validate-bicep.sh"
+    exit 1
 fi
 
 FILES=$(find . -type f -name "*.bicep")
@@ -23,7 +23,8 @@ do
     if grep -q "import radius as radius" $F
     then
         exec 3>&1
-        STDERR=$($BICEP_EXECUTABLE_CORERP build $F --stdout 2>&1 1>/dev/null)
+        echo "running: $BICEP_PATH build $F"
+        STDERR=$($BICEP_PATH build $F --stdout 2>&1 1>/dev/null)
         EXITCODE=$?
         exec 3>&-
     fi

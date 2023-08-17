@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Applications.Core Management APIs",
-    "description": "REST APIs for Applications.Core/extenders",
+    "description": "REST APIs for Applications.Core/extenders.",
     "version": "2022-03-15-privatepreview"
   },
   "host": "management.azure.com",
@@ -36,7 +36,7 @@
   "paths": {
     "/{rootScope}/providers/Applications.Core/extenders": {
       "get": {
-        "description": "Lists information about all extender resources in the given root scope",
+        "description": "Lists information about all Extender portable resources in the given root scope.",
         "operationId": "Extenders_ListByRootScope",
         "produces": [
           "application/json"
@@ -59,13 +59,13 @@
         ],
         "responses": {
           "200": {
-            "description": "List of Extender resources",
+            "description": "List of Extender portable resources.",
             "schema": {
               "$ref": "#/definitions/ExtenderList"
             }
           },
           "default": {
-            "description": "Error response describing the reason for operation failure",
+            "description": "Error response describing the reason for operation failure.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
             }
@@ -79,7 +79,7 @@
     },
     "/{rootScope}/providers/Applications.Core/extenders/{extenderName}": {
       "get": {
-        "description": "Retrieves information about a extender resource",
+        "description": "Retrieves information about a Extender portable resource.",
         "operationId": "Extenders_Get",
         "produces": [
           "application/json"
@@ -103,15 +103,15 @@
             "$ref": "#/parameters/ExtenderNameParameter"
           }
         ],
-        "responses": {
+        "responses": { 
           "200": {
-            "description": "Extender resource",
+            "description": "Extender portable resource.",
             "schema": {
-              "$ref": "#/definitions/ExtenderResponseResource"
+              "$ref": "#/definitions/ExtenderResource"
             }
           },
           "default": {
-            "description": "Error response describing the reason for operation failure",
+            "description": "Error response describing the reason for operation failure.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
             }
@@ -119,7 +119,7 @@
         }
       },
       "put": {
-        "description": "Creates or updates a Extender resource",
+        "description": "Creates or updates a Extender portable resource.",
         "operationId": "Extenders_CreateOrUpdate",
         "produces": [
           "application/json"
@@ -144,7 +144,7 @@
           },
           {
             "name": "ExtenderParameters",
-            "description": "extender create parameters",
+            "description": "Extender create parameters.",
             "in": "body",
             "required": true,
             "schema": {
@@ -154,19 +154,19 @@
         ],
         "responses": {
           "200": {
-            "description": "The request was successful; response contains the extender resource",
+            "description": "The request was successful; response contains the Extender portable resource.",
             "schema": {
-              "$ref": "#/definitions/ExtenderResponseResource"
+              "$ref": "#/definitions/ExtenderResource"
             }
           },
           "201": {
-            "description": "The request was successful, resource will be updated asynchronously",
+            "description": "The request was successful, resource will be updated asynchronously.",
             "schema": {
-              "$ref": "#/definitions/ExtenderResponseResource"
+              "$ref": "#/definitions/ExtenderResource"
             }
           },
           "default": {
-            "description": "Error response describing the reason for operation failure",
+            "description": "Error response describing the reason for operation failure.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
             }
@@ -174,7 +174,7 @@
         }
       },
       "delete": {
-        "description": "Deletes an existing extender resource",
+        "description": "Deletes an existing Extender portable resource.",
         "operationId": "Extenders_Delete",
         "produces": [
           "application/json"
@@ -200,16 +200,16 @@
         ],
         "responses": {
           "200": {
-            "description": "The Extender link was successfully deleted."
+            "description": "The Extender portable resource was successfully deleted."
           },
           "202": {
-            "description": "The Extender link will be deleted asynchronously."
+            "description": "The Extender portable resource will be deleted asynchronously."
           },
           "204": {
-            "description": "The Extender link does not exist."
+            "description": "The Extender portable resource does not exist."
           },
           "default": {
-            "description": "Error response describing the reason for operation failure",
+            "description": "Error response describing the reason for operation failure.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
             }
@@ -219,7 +219,7 @@
     },
     "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets": {
       "post": {
-        "description": "Lists secrets values for the specified Extender resource",
+        "description": "Lists secrets values for the specified Extender portable resource.",
         "operationId": "Extenders_listSecrets",
         "produces": [
           "application/json"
@@ -245,13 +245,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Extender secrets",
+            "description": "Extender secrets.",
             "schema": {
               "$ref": "#/definitions/ExtenderListSecretsResult"
             }
           },
           "default": {
-            "description": "Error response describing the reason for operation failure",
+            "description": "Error response describing the reason for operation failure.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
             }
@@ -261,15 +261,44 @@
     }
   },
   "definitions": {
+    "ResourceRecipe": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use."
+        },
+        "parameters": {
+          "$ref": "global.json#/definitions/Parameters",
+          "description": "Key/value parameters to pass into the recipe at deployment."
+        }
+      },
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource.",
+      "required": [
+        "name"
+      ]
+    },
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true
+      }
+    },
     "ExtenderList": {
-      "description": "Object that includes an array of Extender and a possible link for next set",
+      "description": "Object that includes an array of Extender and a possible portable resource for next set.",
       "type": "object",
       "properties": {
         "value": {
-          "description": "List of Extender resources",
+          "description": "List of Extender portable resources.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ExtenderResponseResource"
+            "$ref": "#/definitions/ExtenderResource"
           }
         },
         "nextLink": {
@@ -279,7 +308,7 @@
       }
     },
     "ExtenderResource": {
-      "description": "Extender link",
+      "description": "Extender portable resource.",
       "type": "object",
       "allOf": [
         {
@@ -299,35 +328,17 @@
         }
       }
     },
-    "ExtenderResponseResource": {
-      "description": "Extender link",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
-        }
-      ],
-      "required": [
-        "properties"
-      ],
-      "properties": {
-        "properties": {
-          "x-ms-client-flatten": true,
-          "$ref": "#/definitions/ExtenderResponseProperties"
-        }
-      }
-    },
     "ExtenderListSecretsResult": {
-      "description": "The secret values for the given Extender resource",
+      "description": "The secret values for the given Extender portable resource.",
       "$ref": "#/definitions/ExtenderSecrets"
     },
     "ExtenderSecrets": {
-      "description": "The secret values for the given Extender resource",
+      "description": "The secret values for the given Extender portable resource.",
       "additionalProperties": true,
       "properties": {}
     },
-    "ExtenderResponseProperties": {
-      "description": "Extender link properties",
+    "ExtenderProperties": {
+      "description": "Extender portable resource properties.",
       "type": "object",
       "allOf": [
         {
@@ -339,32 +350,29 @@
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the extender link at the time the operation was called"
+          "description": "Provisioning state of the Extender portable resource at the time the operation was called."
+        },
+        "secrets": {
+          "additionalProperties": true,
+          "$ref": "#/definitions/ExtenderSecrets"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "recipe": {
+          "$ref": "#/definitions/ResourceRecipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Extender portable resource."
         }
       },
       "required": [
         "environment"
       ]
-    },
-    "ExtenderProperties": {
-      "description": "Extender link properties",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ExtenderResponseProperties"
-        }
-      ],
-      "properties": {
-        "secrets": {
-          "additionalProperties": true,
-          "$ref": "#/definitions/ExtenderSecrets"
-        }
-      }
     }
   },
   "parameters": {
     "ExtenderNameParameter": {
-      "description": "The name of the Extender link resource",
+      "description": "The name of the Extender portable resource.",
       "name": "extenderName",
       "in": "path",
       "required": true,

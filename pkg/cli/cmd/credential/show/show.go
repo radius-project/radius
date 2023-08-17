@@ -33,8 +33,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad credential show` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command that can be used to show details of a configured cloud provider credential, with
 // optional flags for output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -82,8 +81,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad credential show` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the workspace, output format, and cloud provider name from the command line arguments and returns
 // an error if any of them are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -110,8 +108,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad credential show` command.
 //
-// # Function Explanation
-//
+
 // Run attempts to retrieve the credentials for a given cloud provider and prints them in a formatted table. It
 // returns an error if the cloud provider cannot be found or if there is an issue with writing the formatted table.
 func (r *Runner) Run(ctx context.Context) error {

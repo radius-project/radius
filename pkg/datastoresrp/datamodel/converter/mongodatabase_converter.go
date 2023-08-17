@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 )
 
-// # Function Explanation
-//
 // MongoDatabaseDataModelToVersioned converts a Mongo database data model to a versioned model interface based on the
 // specified version, and returns an error if the version is not supported.
 func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (v1.VersionedModelInterface, error) {
@@ -39,8 +37,6 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 	}
 }
 
-// # Function Explanation
-//
 // MongoDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a Mongo database instance and
 // an error if the version is unsupported.
 func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.MongoDatabase, error) {
@@ -63,8 +59,7 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 
 // MongoDatabaseSecretsDataModelFromVersioned converts version agnostic MongoDatabaseSecrets datamodel to versioned model.
 //
-// # Function Explanation
-//
+
 // MongoDatabaseSecretsDataModelToVersioned converts a MongoDatabaseSecrets data model to a versioned model interface and
 // returns an error if the version is not supported.
 func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {

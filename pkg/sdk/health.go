@@ -30,16 +30,12 @@ import (
 type ErrRadiusNotInstalled struct {
 }
 
-// # Function Explanation
-//
 // Is checks if the given error is an instance of ErrRadiusNotInstalled.
 func (*ErrRadiusNotInstalled) Is(other error) bool {
 	_, ok := other.(*ErrRadiusNotInstalled)
 	return ok
 }
 
-// # Function Explanation
-//
 // ErrRadiusNotInstalled returns an error message when a Radius installation cannot be found.
 func (*ErrRadiusNotInstalled) Error() string {
 	return "a Radius installation could not be found. Use 'rad install kubernetes' to install"

@@ -48,8 +48,6 @@ var (
 	ErrResourceAlreadyExists = errors.New("resource already exists")
 )
 
-// # Function Explanation
-//
 // ReadJSONBody extracts the content from request - it reads the body of the request if the content type
 // is "application/json". It returns the body as a byte array or an error if the content type is not supported
 // or an error occurs while reading the body.
@@ -71,8 +69,6 @@ func ReadJSONBody(r *http.Request) ([]byte, error) {
 	return data, nil
 }
 
-// # Function Explanation
-//
 // ValidateETag checks the If-Match and If-None-Match headers of the ARMRequestContext against the provided etag,
 // and returns an error if the etag does not match either header.
 func ValidateETag(armRequestContext v1.ARMRequestContext, etag string) error {

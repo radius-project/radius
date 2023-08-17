@@ -36,8 +36,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad credential register aws` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command for registering AWS cloud provider credentials with IAM authentication, and
 // returns a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -51,7 +50,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
 to configure these settings.
 
-Radius will use the provided IAM credential for all interations with AWS. 
+Radius will use the provided IAM credential for all interactions with AWS. 
 ` + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for AWS with IAM authentication
@@ -97,8 +96,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad credential register aws` command.
 //
-// # Function Explanation
-//
+
 // Validate() checks if the required workspace, output format, access key ID and secret access key are present, and if not, returns an error.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -141,8 +139,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad credential register aws` command.
 //
-// # Function Explanation
-//
+
 // Run() registers an AWS credential with the given context and workspace, and returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {
 

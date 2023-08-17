@@ -27,8 +27,6 @@ type HostOptions struct {
 	Config *provider.MetricsProviderOptions
 }
 
-// # Function Explanation
-//
 // NewHostOptionsFromEnvironment creates a new HostOptions object from a ProviderConfig object.
 func NewHostOptionsFromEnvironment(options hostoptions.ProviderConfig) HostOptions {
 	return HostOptions{

@@ -33,8 +33,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad recipe unregister` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command for unregistering a recipe from an environment, which takes in a factory and returns a cobra command
 // and a runner. It also sets up flags for output, workspace, resource group, environment name and link type, with link type being a required flag.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -80,8 +79,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad recipe unregister` command.
 //
-// # Function Explanation
-//
+
 // // Runner.Validate checks the command line arguments for a workspace, environment, recipe name, and link type, and
 // returns an error if any of these are not present.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -115,8 +113,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad recipe unregister` command.
 //
-// # Function Explanation
-//
+
 // Run checks if a recipe exists in an environment, deletes the recipe from the environment's properties, and then
 // creates the environment with the updated properties. It returns an error if any of these steps fail.
 func (r *Runner) Run(ctx context.Context) error {

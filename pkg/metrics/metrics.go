@@ -19,13 +19,18 @@ package metrics
 var (
 	// DefaultAsyncOperationMetrics holds async operation metrics definitions.
 	DefaultAsyncOperationMetrics = newAsyncOperationMetrics()
+
+	// DefaultRecipeEngineMetrics holds recipe engine metrics definitions.
+	DefaultRecipeEngineMetrics = newRecipeEngineMetrics()
 )
 
-// # Function Explanation
-//
 // InitMetrics initializes metrics for Radius.
 func InitMetrics() error {
 	if err := DefaultAsyncOperationMetrics.Init(); err != nil {
+		return err
+	}
+
+	if err := DefaultRecipeEngineMetrics.Init(); err != nil {
 		return err
 	}
 

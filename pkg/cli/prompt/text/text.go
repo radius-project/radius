@@ -62,8 +62,7 @@ type Model struct {
 
 // NewTextModel returns a new text model with prompt message.
 //
-// # Function Explanation
-//
+
 // NewTextModel creates a new Model struct with a textinput field, a prompt string, and options for the textinput field
 // such as placeholder and echo mode, and sets the default style and error style for the Model.
 func NewTextModel(prompt string, options TextModelOptions) Model {
@@ -95,10 +94,9 @@ func (m Model) Init() tea.Cmd {
 
 // Update updates model with input form user.
 //
-// # Function Explanation
-//
-//	Update handles user input and errors, and returns a Model and a Cmd. It handles KeyEnter, KeyCtrlC, and KeyEsc,
-//	and sets the valueEntered and Quitting flags accordingly. It also handles errors by setting the err field in the Model.
+
+// Update handles user input and errors, and returns a Model and a Cmd. It handles KeyEnter, KeyCtrlC, and KeyEsc,
+// and sets the valueEntered and Quitting flags accordingly. It also handles errors by setting the err field in the Model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 

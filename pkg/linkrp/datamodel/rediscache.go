@@ -39,8 +39,6 @@ type RedisCache struct {
 	LinkMetadata
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
 // RedisCache instance based on the DeploymentOutput object.
 func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -74,29 +72,21 @@ func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources of the RedisCache resource.
 func (r *RedisCache) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the RedisCache resource.
 func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type of RedisCache resource.
 func (redis *RedisCache) ResourceTypeName() string {
 	return linkrp.RedisCachesResourceType
 }
 
-// # Function Explanation
-//
 // Recipe returns the LinkRecipe from the RedisCache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
 func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
@@ -106,15 +96,11 @@ func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
 	return &redis.Properties.Recipe
 }
 
-// # Function Explanation
-//
 // IsEmpty checks if the RedisCacheSecrets instance is empty or not.
 func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }
 
-// # Function Explanation
-//
 // VerifyInputs checks if the required fields are set when the resourceProvisioning is set to manual
 // and returns an error if not.
 func (redisCache *RedisCache) VerifyInputs() error {
@@ -177,8 +163,6 @@ type RedisCacheSecrets struct {
 	URL              string `json:"url"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type of RedisCache resource.
 func (redis RedisCacheSecrets) ResourceTypeName() string {
 	return linkrp.RedisCachesResourceType

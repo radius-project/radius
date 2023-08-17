@@ -33,15 +33,11 @@ type ErrModelConversion struct {
 	ValidValue   string
 }
 
-// # Function Explanation
-//
 // Error returns an error string describing the property name and valid value.
 func (e *ErrModelConversion) Error() string {
 	return fmt.Sprintf("%s must be %s.", e.PropertyName, e.ValidValue)
 }
 
-// # Function Explanation
-//
 // Is checks if the target error is of type ErrModelConversion.
 func (e *ErrModelConversion) Is(target error) bool {
 	_, ok := target.(*ErrModelConversion)
@@ -53,23 +49,17 @@ type ErrClientRP struct {
 	Message string
 }
 
-// # Function Explanation
-//
 // Error returns an error string describing the error code and message.
 func (r *ErrClientRP) Error() string {
 	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
 }
 
-// # Function Explanation
-//
 // Is checks if the target error is the type of ErrClientRP and returns true if it is the same error type.
 func (e *ErrClientRP) Is(target error) bool {
 	_, ok := target.(*ErrClientRP)
 	return ok
 }
 
-// # Function Explanation
-//
 // NewClientErrInvalidRequest creates a new ErrClientRP error with a given message and sets the code to CodeInvalid.
 func NewClientErrInvalidRequest(message string) *ErrClientRP {
 	err := new(ErrClientRP)

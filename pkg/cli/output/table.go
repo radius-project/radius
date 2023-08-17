@@ -38,8 +38,6 @@ const (
 type TableFormatter struct {
 }
 
-// # Function Explanation
-//
 // Format() takes in an object, a writer and formatting options and writes a table to the writer using the
 // formatting options. If no columns are defined, an error is returned.
 func (f *TableFormatter) Format(obj any, writer io.Writer, options FormatterOptions) error {

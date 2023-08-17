@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad workspace list` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command for listing local workspaces and returns a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
@@ -68,8 +67,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad workspace list` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the output format of the command and sets the format in the Runner struct, returning
 // an error if the output format is invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -85,8 +83,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad workspace list` command.
 //
-// # Function Explanation
-//
+
 // Run reads the workspace section from the config, puts the workspace names in alphabetical order, creates a slice of workspaces,
 // and then writes the formatted workspaces to the output. It returns an error if any of these steps fail.
 func (r *Runner) Run(ctx context.Context) error {

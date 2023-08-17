@@ -35,6 +35,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_NoContext(t *testing.T) {
+	devParams := map[string]any{}
+	operatorParams := map[string]any{}
+	expectedParams := map[string]any{}
+
+	actualParams := createRecipeParameters(devParams, operatorParams, false, nil)
+	require.Equal(t, expectedParams, actualParams)
+}
+
 func Test_ParameterConflict(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,

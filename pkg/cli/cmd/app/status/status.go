@@ -84,8 +84,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad app status` command.
 //
-// # Function Explanation
-//
+
 // Runner.Validate checks the workspace, scope, application name and output format from the command line arguments and
 // request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -119,8 +118,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad app status` command.
 //
-// # Function Explanation
-//
+
 // Run() retrieves the application status and its associated gateways from the given workspace and returns it in the specified format.
 // It returns an error if the application is not found or if there is an error while retrieving the application status.
 func (r *Runner) Run(ctx context.Context) error {
