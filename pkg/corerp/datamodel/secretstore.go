@@ -57,15 +57,11 @@ type SecretStore struct {
 	Properties *SecretStoreProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type name of the SecretStore instance.
 func (s *SecretStore) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the status of the SecretStore instance with the output resources from the DeploymentOutput
 // object and returns no error.
 func (s *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -73,15 +69,11 @@ func (s *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the SecretStore's Properties.
 func (s *SecretStore) OutputResources() []rpv1.OutputResource {
 	return s.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the SecretStore instance.
 func (s *SecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &s.Properties.BasicResourceProperties
@@ -128,29 +120,21 @@ type SecretStoreListSecrets struct {
 	Data map[string]*SecretStoreDataValue `json:"data,omitempty"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type name of the SecretStoreListSecrets struct.
 func (s *SecretStoreListSecrets) ResourceTypeName() string {
 	return "Applications.Core/secretStores"
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput applies the deployment output to the SecretStoreListSecrets instance and returns no error.
 func (s *SecretStoreListSecrets) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns nil for SecretStoreListSecrets.
 func (s *SecretStoreListSecrets) OutputResources() []rpv1.OutputResource {
 	return nil
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns nil for SecretStoreListSecrets.
 func (s *SecretStoreListSecrets) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return nil

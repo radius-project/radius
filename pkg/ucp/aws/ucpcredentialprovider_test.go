@@ -31,8 +31,6 @@ type mockProvider struct {
 	fakeCredential *sdk_cred.AWSCredential
 }
 
-// # Function Explanation
-//
 // Fetch gets the AWS credentials from secret storage. It takes in a context, planeName and name and returns
 // an AWSCredential or an error if the fakeCredential is nil.
 func (p *mockProvider) Fetch(ctx context.Context, planeName, name string) (*sdk_cred.AWSCredential, error) {

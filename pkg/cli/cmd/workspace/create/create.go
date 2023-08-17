@@ -36,8 +36,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad workspace create` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner to handle the command's logic, and adds flags to the command for
 // workspace, resource group, environment name, force and context.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -97,8 +96,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad workspace create` command.
 //
-// # Function Explanation
-//
+
 // Validate checks if the given workspace name is valid, if the given Kubernetes context is valid, if the Radius
 // control plane is installed on the target platform, if the workspace already exists, if the user has specified the
 // --force flag, if the given resource group and environment exist, and returns an error if any of these checks fail.
@@ -206,8 +204,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad workspace create` command.
 //
-// # Function Explanation
-//
+
 // Run creates a workspace and sets it as the current workspace, returning an error if any occurs during the process."
 func (r *Runner) Run(ctx context.Context) error {
 

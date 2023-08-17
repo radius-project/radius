@@ -25,9 +25,11 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	tfjson "github.com/hashicorp/terraform-json"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
+
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testcontext"
@@ -71,7 +73,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	return envConfig, recipeMetadata, envRecipe
 }
 
-func TestTerraformDriver_Execute_Success(t *testing.T) {
+func Test_Terraform_Execute_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -90,11 +92,28 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
-			"port": json.Number("6379"),
+			"port": float64(6379),
+		},
+		Secrets:   map[string]any{},
+		Resources: []string{},
+	}
+
+	expectedTFState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				recipes.ResultPropertyName: {
+					Value: map[string]any{
+						"values": map[string]any{
+							"host": "myrediscache.redis.cache.windows.net",
+							"port": json.Number("6379"),
+						},
+					},
+				},
+			},
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.NoError(t, err)
@@ -104,7 +123,7 @@ func TestTerraformDriver_Execute_Success(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
+func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
@@ -131,7 +150,50 @@ func TestTerraformDriver_Execute_DeploymentFailure(t *testing.T) {
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
-func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
+func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	options := terraform.Options{
+		RootDir:        tfDir,
+		EnvConfig:      &envConfig,
+		ResourceRecipe: &recipeMetadata,
+		EnvRecipe:      &envRecipe,
+	}
+
+	expectedTFState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				recipes.ResultPropertyName: {
+					Value: map[string]any{
+						"values": map[string]any{
+							"host": "myrediscache.redis.cache.windows.net",
+							"port": json.Number("6379"),
+						},
+						"invalid": "invalid field",
+					},
+				},
+			},
+		},
+	}
+
+	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
+
+	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	require.Error(t, err)
+	require.Equal(t, "json: unknown field \"invalid\"", err.Error())
+	// Verify directory cleanup
+	_, err = os.Stat(tfDir)
+	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+}
+
+func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -141,7 +203,7 @@ func TestTerraformDriver_Execute_EmptyPath(t *testing.T) {
 	require.Equal(t, "path is a required option for Terraform driver", err.Error())
 }
 
-func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
+func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
@@ -150,19 +212,37 @@ func TestTerraformDriver_Execute_EmptyOperationID_Success(t *testing.T) {
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
-			"port": json.Number("6379"),
+			"port": float64(6379),
+		},
+		Secrets:   map[string]any{},
+		Resources: []string{},
+	}
+
+	expectedTFState := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				recipes.ResultPropertyName: {
+					Value: map[string]any{
+						"values": map[string]any{
+							"host": "myrediscache.redis.cache.windows.net",
+							"port": json.Number("6379"),
+						},
+					},
+				},
+			},
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
-func TestTerraformDriver_Execute_InvalidContextPanics(t *testing.T) {
+func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	ctx := testcontext.New(t)
+	// Do not add ARMRequestContext to the context
 
 	_, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
@@ -172,7 +252,7 @@ func TestTerraformDriver_Execute_InvalidContextPanics(t *testing.T) {
 	})
 }
 
-func TestTerraformDriver_Delete_Success(t *testing.T) {
+func Test_Terraform_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 
 	_, driver := setup(t)
@@ -180,4 +260,116 @@ func TestTerraformDriver_Delete_Success(t *testing.T) {
 	err := driver.Delete(ctx, []rpv1.OutputResource{})
 	require.Error(t, err)
 	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
+}
+
+func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
+	d := &terraformDriver{}
+	tests := []struct {
+		desc             string
+		state            *tfjson.State
+		expectedResponse *recipes.RecipeOutput
+		expectedErr      error
+	}{
+		{
+			desc: "valid state",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"values": map[string]any{
+									"host": "testhost",
+									"port": json.Number("6379"),
+								},
+								"secrets": map[string]any{
+									"connectionString": "testConnectionString",
+								},
+								"resources": []any{"outputResourceId1"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										AttributeValues: map[string]any{
+											"id": "outputResourceId2",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values: map[string]any{
+					"host": "testhost",
+					"port": float64(6379),
+				},
+				Secrets: map[string]any{
+					"connectionString": "testConnectionString",
+				},
+				Resources: []string{"outputResourceId1"},
+			},
+		},
+		{
+			desc: "invalid state",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"values": map[string]any{
+									"host": "testhost",
+									"port": json.Number("6379"),
+								},
+								"secrets": map[string]any{
+									"connectionString": "testConnectionString",
+								},
+								"resources": []any{"outputResourceId1"},
+								"outputs":   "invalidField",
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										AttributeValues: map[string]any{
+											"id": "outputResourceId2",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("json: unknown field \"outputs\""),
+		},
+		{
+			desc:             "nil state",
+			state:            nil,
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("terraform state is empty"),
+		},
+		{
+			desc:             "empty state",
+			state:            &tfjson.State{},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("terraform state is empty"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			recipeResponse, err := d.prepareRecipeResponse(tt.state)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expectedResponse, recipeResponse)
+		})
+	}
 }

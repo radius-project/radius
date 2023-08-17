@@ -49,8 +49,6 @@ type awsProvider struct {
 	secretProvider *ucp_provider.SecretProvider
 }
 
-// # Function Explanation
-//
 // NewAWSProvider creates a new AWSProvider instance.
 func NewAWSProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
 	return &awsProvider{ucpConn: ucpConn, secretProvider: secretProvider}

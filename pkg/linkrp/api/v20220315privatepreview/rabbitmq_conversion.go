@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel
 // and returns an error if the inputs are invalid.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -80,8 +78,6 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQMessageQueue resource,
 // and returns an error if the source is not a valid datamodel.RabbitMQMessageQueue.
 func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) error {
@@ -118,8 +114,6 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance
 // and returns an error if the conversion fails.
 func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
@@ -133,8 +127,6 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned RabbitMQSecrets instance to version-agnostic datamodel.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{

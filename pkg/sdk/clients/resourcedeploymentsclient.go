@@ -100,8 +100,6 @@ type ResourceDeploymentsClient struct {
 	baseURI  string
 }
 
-// # Function Explanation
-//
 // NewResourceDeploymentsClient creates a new ResourceDeploymentsClient with the provided options and returns an error if
 // the options are invalid.
 func NewResourceDeploymentsClient(options *Options) (*ResourceDeploymentsClient, error) {
@@ -132,8 +130,6 @@ type ClientCreateOrUpdateResponse struct {
 	armresources.DeploymentExtended
 }
 
-// # Function Explanation
-//
 // CreateOrUpdate creates a request to create or update a deployment and returns a poller to
 // track the progress of the operation.
 func (client *ResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {

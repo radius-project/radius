@@ -35,8 +35,7 @@ const (
 
 // IsBicepInstalled returns true if our local copy of bicep is installed
 //
-// # Function Explanation
-//
+
 // IsBicepInstalled checks if the Bicep binary is installed on the local machine and returns a boolean and an error if one occurs.
 func IsBicepInstalled() (bool, error) {
 	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
@@ -71,8 +70,7 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 //
-// # Function Explanation
-//
+
 // DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
 // the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {

@@ -46,8 +46,6 @@ type ServiceError struct {
 	AdditionalInfo []map[string]any         `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
 }
 
-// # Function Explanation
-//
 // UnfoldServiceError unfolds the Details field in the given azure.ServiceError,
 // and convert messages which are raw JSON of an radclient.ErrorResponse into
 // structured radclient.ErrorDetails fields.
@@ -90,8 +88,6 @@ func UnfoldServiceError(in *generated.ErrorDetail) *ServiceError {
 	return out
 }
 
-// # Function Explanation
-//
 // UnfoldErrorDetails extract the Message field of a given *radclient.ErrorDetail
 // into its correspoding Details field, which is structured.
 func UnfoldErrorDetails(d *generated.ErrorDetail) generated.ErrorDetail {
@@ -131,15 +127,11 @@ type WrappedErrorResponse struct {
 	ErrorResponse generated.ErrorResponse
 }
 
-// # Function Explanation
-//
 // Error returns the error message from the ErrorResponse struct.
 func (w WrappedErrorResponse) Error() string {
 	return *w.ErrorResponse.Error.Message
 }
 
-// # Function Explanation
-//
 // TryUnfoldErrorResponse takes an error that wrapped a radclient.ErrorResponse
 // and unfold nested JSON messages into structured radclient.ErrorDetail field.
 //
@@ -175,8 +167,6 @@ func extractString(o any) *string {
 	return to.Ptr(fmt.Sprintf("%v", o))
 }
 
-// # Function Explanation
-//
 // TryUnfoldResponseError attempts to convert a ResponseError into an ErrorDetails object.
 func TryUnfoldResponseError(err error) *v1.ErrorDetails {
 	respErr, ok := err.(*azcore.ResponseError)

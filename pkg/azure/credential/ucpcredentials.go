@@ -63,8 +63,6 @@ type UCPCredential struct {
 	nextExpiry atomic.Int64
 }
 
-// # Function Explanation
-//
 // NewUCPCredential creates a new UCPCredential with the given options and returns it, or returns an error if the
 // provider is not defined. If Duration is 0, it is set to DefaultDuration. Pass nil to accept default options.
 func NewUCPCredential(options UCPCredentialOptions) (*UCPCredential, error) {
@@ -137,8 +135,6 @@ func (c *UCPCredential) refreshCredentials(ctx context.Context) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // GetToken attempts to refresh the Azure service principal credential if it is expired and then returns an
 // access token if the credential is ready. This method is called automatically by Azure SDK clients.
 func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {

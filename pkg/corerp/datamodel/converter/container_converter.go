@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // ContainerDataModelToVersioned converts version agnostic Container datamodel to versioned model.
 func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -39,8 +37,6 @@ func ContainerDataModelToVersioned(model *datamodel.ContainerResource, version s
 	}
 }
 
-// # Function Explanation
-//
 // ContainerDataModelFromVersioned converts versioned Container model to datamodel.
 func ContainerDataModelFromVersioned(content []byte, version string) (*datamodel.ContainerResource, error) {
 	switch version {

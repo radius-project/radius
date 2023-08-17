@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // ValidateAndMutateRequest checks if the newResource has a user-defined identity and if so, returns a bad request
 // response, otherwise it sets the identity of the newResource to the identity of the oldResource if it exists.
 func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *datamodel.ContainerResource, options *controller.Options) (rest.Response, error) {

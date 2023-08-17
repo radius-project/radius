@@ -60,8 +60,7 @@ type AWSCredentialManagementClientInterface interface {
 
 // Put registers credentials with the provided credential config
 //
-// # Function Explanation
-//
+
 // "Put" checks if the credential type is "AWSCredential" and if so, creates or updates the credential in the AWS plane,
 // otherwise it returns an error.
 func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AWSCredentialResource) error {
@@ -74,8 +73,7 @@ func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential uc
 
 // Get, gets the credential from the provided ucp provider plane
 //
-// # Function Explanation
-//
+
 // "Get" retrieves the credentials for the specified cloud provider from the backend and returns a ProviderCredentialConfiguration
 // object containing the credentials or an error if the credentials could not be retrieved.
 func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialName string) (ProviderCredentialConfiguration, error) {
@@ -105,8 +103,7 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 
 // List, lists the AWS credentials registered
 //
-// # Function Explanation
-//
+
 // List retrieves a list of AWS credentials and returns a slice of CloudProviderStatus objects containing the name and
 // enabled status of each credential. If an error occurs, an error is returned.
 func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
@@ -135,8 +132,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 
 // Delete, deletes the credentials from the given ucp provider plane
 //
-// # Function Explanation
-//
+
 // Delete checks if a credential for the provider plane is registered and if so, deletes it; if not, it returns true
 // without an error. If an error occurs, it returns false and the error.
 func (cpm *AWSCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {

@@ -28,8 +28,7 @@ import (
 
 // NewCommand creates an instance of the command for the `rad credential` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new command that allows users to manage cloud provider credentials for a Radius installation,
 // such as registering, unregistering, listing, and showing credentials.
 func NewCommand(factory framework.Factory) *cobra.Command {

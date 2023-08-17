@@ -44,8 +44,6 @@ const (
 	LinkTypeFlag = "link-type"
 )
 
-// # Function Explanation
-//
 // RequireEnvironmentNameArgs checks if an environment name is provided as an argument or if a default environment is set
 // in the workspace, and returns an error if neither is the case. It also handles any errors that may occur while parsing
 // the environment resource.
@@ -73,8 +71,6 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace wor
 	return environmentName, err
 }
 
-// # Function Explanation
-//
 // RequireEnvironmentName checks if an environment name is provided as a flag or as a default environment in the workspace,
 // and returns an error if neither is present. It also handles any errors that occur while parsing the resource.
 func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
@@ -106,8 +102,7 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 
 // RequireKubeContext is used by commands that need a kubernetes context name to be specified using -c flag or has a default kubecontext
 //
-// # Function Explanation
-//
+
 // RequireKubeContext checks if a kubecontext is provided as a flag, and if not, uses the current context. If neither is
 // provided, it returns an error.
 func RequireKubeContext(cmd *cobra.Command, currentContext string) (string, error) {
@@ -125,8 +120,6 @@ func RequireKubeContext(cmd *cobra.Command, currentContext string) (string, erro
 	return kubecontext, nil
 }
 
-// # Function Explanation
-//
 // ReadEnvironmentNameArgs reads the environment name from either the command line arguments or the "-e" flag, and returns
 // an error if both are specified.
 func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
@@ -153,8 +146,7 @@ func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) 
 // - workspace default application
 // - directory config application
 //
-// # Function Explanation
-//
+
 // RequireApplicationArgs checks if an application name is provided as an argument, and if not, checks if a default
 // application is set in the workspace. If no application name is provided, it returns an error.
 func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
@@ -186,8 +178,7 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 // - workspace default application
 // - directory config application
 //
-// # Function Explanation
-//
+
 // ReadApplicationName reads the application name from the command line flag and, if not provided, from the workspace
 // configuration. It returns an error if the flag is not set correctly.
 func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
@@ -213,8 +204,7 @@ func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (st
 // - '--application' flag
 // - first positional arg
 //
-// # Function Explanation
-//
+
 // ReadApplicationNameArgs reads the application name from either the command line arguments or the "-a" flag, and returns
 // an error if both are specified.
 func ReadApplicationNameArgs(cmd *cobra.Command, args []string) (string, error) {
@@ -240,16 +230,13 @@ func ReadApplicationNameArgs(cmd *cobra.Command, args []string) (string, error) 
 // - workspace default application
 // - directory config application
 //
-// # Function Explanation
-//
+
 // RequireApplication requires the user to provide an application name as an argument and returns it as a string. If the
 // user does not provide an application name, an error is returned.
 func RequireApplication(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
 	return RequireApplicationArgs(cmd, []string{}, workspace)
 }
 
-// # Function Explanation
-//
 // RequireResource parses the given command and arguments to extract two required values, a resource type and a resource
 // name, and returns them. If either of the values is missing, an error is returned.
 func RequireResource(cmd *cobra.Command, args []string) (resourceType string, resourceName string, err error) {
@@ -260,8 +247,6 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 	return results[0], results[1], nil
 }
 
-// # Function Explanation
-//
 // RequireResourceTypeAndName checks if the provided arguments contain a resource type and name, and returns them if they
 // are present. If either is missing, an error is returned.
 func RequireResourceTypeAndName(args []string) (string, string, error) {
@@ -278,8 +263,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 
 // example of resource Type: Applications.Core/httpRoutes, Applications.Link/redisCaches
 //
-// # Function Explanation
-//
+
 // RequireResourceType checks if the first argument provided is a valid resource type and returns it if it is. If the
 // argument is not valid, an error is returned with a list of valid resource types.
 func RequireResourceType(args []string) (string, error) {
@@ -299,8 +283,6 @@ func RequireResourceType(args []string) (string, error) {
 		resourceTypeName, strings.Join(supportedTypes, "\n"))
 }
 
-// # Function Explanation
-//
 // "RequireAzureResource" takes in a command and a slice of strings and returns an AzureResource object and an error. It
 // uses the "requiredMultiple" function to get the values of the required parameters and then creates an AzureResource
 // object with those values. If any of the required parameters are missing, it returns an error.
@@ -339,8 +321,7 @@ func RequireOutput(cmd *cobra.Command) (string, error) {
 // RequireWorkspace is used by commands that require an existing workspace either set as the default,
 // or specified using the 'workspace' flag.
 //
-// # Function Explanation
-//
+
 // RequireWorkspace reads the workspace name from the command flags, retrieves the workspace from the configuration, and
 // returns it, or a fallback workspace if none is found. It also handles any errors that may occur during the process.
 func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.DirectoryConfig) (*workspaces.Workspace, error) {
@@ -374,8 +355,7 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.Direct
 
 // RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
 //
-// # Function Explanation
-//
+
 // RequireUCPResourceGroup reads the resource group name from the command line arguments and returns an error if the name
 // is not provided or is empty. It also handles any errors that may occur while reading the resource group name.
 func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
@@ -392,8 +372,7 @@ func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) 
 
 // ReadResourceGroupNameArgs is used to get the resource group name that is supplied as either the first argument for group commands or using a -g flag
 //
-// # Function Explanation
-//
+
 // ReadResourceGroupNameArgs reads a resource group name from either a command flag or an argument, and returns an error if
 //
 //	both are specified.
@@ -416,8 +395,7 @@ func ReadResourceGroupNameArgs(cmd *cobra.Command, args []string) (string, error
 // RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,
 // or specified as a positional arg, or specified using the 'workspace' flag.
 //
-// # Function Explanation
-//
+
 // RequireWorkspaceArgs reads the workspace name from the command line arguments, retrieves the workspace from the
 // configuration, and returns it. If the workspace is not found, it returns a fallback workspace. If any errors occur, it
 // returns an error.
@@ -448,8 +426,7 @@ func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string
 
 // ReadWorkspaceNameArgs is used to get the workspace name that is supplied as either the first argument or using a -w flag
 //
-// # Function Explanation
-//
+
 // ReadWorkspaceNameArgs reads a workspace name from either a command flag or an argument, and returns an error if both are
 //
 //	specified.
@@ -471,8 +448,7 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 
 // ReadWorkspaceName is used to get the workspace name that is supplied using a -w flag or as second arg.
 //
-// # Function Explanation
-//
+
 // ReadWorkspaceNameSecondArg checks if a workspace name is provided via a flag or as the second argument in the command,
 // and returns an error if both are specified.
 func ReadWorkspaceNameSecondArg(cmd *cobra.Command, args []string) (string, error) {
@@ -491,8 +467,6 @@ func ReadWorkspaceNameSecondArg(cmd *cobra.Command, args []string) (string, erro
 	return name, err
 }
 
-// # Function Explanation
-//
 // RequireRadYAML checks if a radfile flag is provided and if not, returns the default rad.yaml file in the current
 // directory. If an error occurs, it is returned to the caller.
 func RequireRadYAML(cmd *cobra.Command) (string, error) {
@@ -537,8 +511,7 @@ func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]str
 // - --group flag
 // - workspace scope
 //
-// # Function Explanation
-//
+
 // RequireScope checks if a resource group is passed in as a flag and returns the scope of the resource group if it is,
 // otherwise it returns the scope of the workspace if it is set, otherwise it returns an error.
 func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
@@ -556,8 +529,6 @@ func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, e
 	}
 }
 
-// # Function Explanation
-//
 // RequireRecipeNameArgs checks if the provided arguments contain at least one string, and if not, returns an error. If the
 //
 //	arguments contain a string, it is returned.
@@ -568,8 +539,6 @@ func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	return args[0], nil
 }
 
-// # Function Explanation
-//
 // RequireLinkType retrieves the link type flag from the given command and returns it, or an error if the flag is not set.
 func RequireLinkType(cmd *cobra.Command) (string, error) {
 	linkType, err := cmd.Flags().GetString(LinkTypeFlag)

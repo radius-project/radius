@@ -34,30 +34,22 @@ type DaprSecretStore struct {
 	linkrp_dm.LinkMetadata
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the status of the secret store with the output resources from a deployment.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources array from Properties of the Dapr SecretStore resource.
 func (r *DaprSecretStore) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the DaprSecretStore resource i.e. application resources metadata.
 func (r *DaprSecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type of the DaprSecretStore resource.
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
 	return linkrp.N_DaprSecretStoresResourceType
@@ -74,8 +66,6 @@ type DaprSecretStoreProperties struct {
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
-// # Function Explanation
-//
 // Recipe returns the Recipe from the DaprSecretStore Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
 func (daprSecretStore *DaprSecretStore) Recipe() *linkrp.LinkRecipe {

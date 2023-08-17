@@ -72,8 +72,6 @@ type CosmosDBStorageClient struct {
 	options *ConnectionOptions
 }
 
-// # Function Explanation
-//
 // NewCosmosDBStorageClient creates a new CosmosDBStorageClient instance using the provided ConnectionOptions and returns
 // it, or an error if the ConnectionOptions are invalid.
 func NewCosmosDBStorageClient(options *ConnectionOptions) (*CosmosDBStorageClient, error) {
@@ -94,8 +92,6 @@ func NewCosmosDBStorageClient(options *ConnectionOptions) (*CosmosDBStorageClien
 	}, nil
 }
 
-// # Function Explanation
-//
 // Init checks if the database and collection exist, and if not, creates them. It returns an error if
 // either of the checks or creations fail.
 func (c *CosmosDBStorageClient) Init(ctx context.Context) error {
@@ -233,8 +229,6 @@ func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
 	return &cosmosapi.Query{Query: queryString + whereParam, Params: queryParams}, nil
 }
 
-// # Function Explanation
-//
 // Query builds and executes a CosmosDB query based on the provided store.Query and returns the results.
 func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, opts ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 	if ctx == nil {
@@ -310,8 +304,6 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 	}, nil
 }
 
-// # Function Explanation
-//
 // Get retrieves an object using CosmosDBStorageClient using the provided ID and optional GetOptions. It returns an error
 // if the object is not found or if an error occurs while retrieving the object.
 func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...store.GetOptions) (*store.Object, error) {
@@ -352,8 +344,6 @@ func (c *CosmosDBStorageClient) Get(ctx context.Context, id string, opts ...stor
 	return obj, err
 }
 
-// # Function Explanation
-//
 // Delete parses the given ID, gets the partition key, generates the CosmosDB key, and deletes the document from the
 // CosmosDB collection. It returns an error if the document is not found.
 func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...store.DeleteOptions) error {
@@ -384,8 +374,6 @@ func (c *CosmosDBStorageClient) Delete(ctx context.Context, id string, opts ...s
 	return err
 }
 
-// # Function Explanation
-//
 // Save saves an object to the CosmosDB storage, returning an error if one occurs. If an ETag is provided, an error is
 // returned if the ETag does not match the existing ETag.
 func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -455,8 +443,6 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 	return nil
 }
 
-// # Function Explanation
-//
 // GetPartitionKey returns a partition key based on the given ID, normalizing the subscription ID and normalizing the
 // plane namespace if the ID is UCP-qualified.
 // Examples:

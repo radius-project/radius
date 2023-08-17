@@ -56,15 +56,11 @@ type resourceClient struct {
 	k8sDiscoveryClient discovery.ServerResourcesInterface
 }
 
-// # Function Explanation
-//
 // NewResourceClient creates a new resourceClient instance with the given parameters.
 func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, k8sClient runtime_client.Client, k8sDiscoveryClient discovery.ServerResourcesInterface) *resourceClient {
 	return &resourceClient{arm: arm, connection: connection, k8sClient: k8sClient, k8sDiscoveryClient: k8sDiscoveryClient}
 }
 
-// # Function Explanation
-//
 // Delete attempts to delete a resource, either through UCP, Azure, or Kubernetes, depending on the resource type.
 func (c *resourceClient) Delete(ctx context.Context, id string, apiVersion string) error {
 	parsed, err := resources.ParseResource(id)

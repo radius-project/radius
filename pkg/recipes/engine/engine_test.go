@@ -98,6 +98,46 @@ func Test_Engine_Execute_Success(t *testing.T) {
 	require.Equal(t, result, recipeResult)
 }
 
+func Test_Engine_Execute_Failure(t *testing.T) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		ResourceType: "Applications.Link/mongoDatabases",
+	}
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
+	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to execute recipe"))
+
+	result, err := engine.Execute(ctx, recipeMetadata)
+	require.Nil(t, result)
+	require.Error(t, err)
+	require.Equal(t, err.Error(), "failed to execute recipe")
+}
+
 func Test_Engine_Terraform_Success(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

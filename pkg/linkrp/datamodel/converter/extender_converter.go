@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
-// # Function Explanation
-//
 // ExtenderDataModelToVersioned converts a datamodel.Extender to a versioned model interface based on the given version
 // string, returning an error if the conversion fails.
 func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1.VersionedModelInterface, error) {
@@ -44,8 +42,6 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1
 	}
 }
 
-// # Function Explanation
-//
 // ExtenderDataModelFromVersioned unmarshals a JSON byte slice into a version-specific ExtenderResource struct, then
 // converts it to a datamodel.Extender struct and returns it, or returns an error if the unmarshal or conversion fails.
 func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.Extender, error) {

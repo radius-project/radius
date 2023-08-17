@@ -172,8 +172,6 @@ type ApplicationsManagementClient interface {
 	ShowRecipe(ctx context.Context, environmentName string, recipe corerp.Recipe) (corerp.RecipeMetadataProperties, error)
 }
 
-// # Function Explanation
-//
 // ShallowCopy creates a shallow copy of the DeploymentParameters object by iterating through the original object and
 // copying each key-value pair into a new object.
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

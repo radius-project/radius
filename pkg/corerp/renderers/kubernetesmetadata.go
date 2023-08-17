@@ -23,8 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp/kube"
 )
 
-// # Function Explanation
-//
 // GetLabels merges cumulative label values from Environment, Application, Container and InputExt kubernetes metadata and
 // returns a map of labels.
 func GetLabels(ctx context.Context, options RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
@@ -51,8 +49,6 @@ func GetLabels(ctx context.Context, options RenderOptions, applicationName strin
 	return nil
 }
 
-// # Function Explanation
-//
 // GetAnnotations returns the merged annotations from Environment and Application KubernetesMetadata.
 func GetAnnotations(ctx context.Context, options RenderOptions) map[string]string {
 	// Create KubernetesMetadata struct to merge annotations

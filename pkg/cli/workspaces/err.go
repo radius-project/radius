@@ -25,8 +25,6 @@ var ErrNamedWorkspaceRequired error = &NamedWorkspaceRequiredError{}
 type NamedWorkspaceRequiredError struct {
 }
 
-// # Function Explanation
-//
 // Error() returns a string describing NamedWorkspaceRequiredError.
 func (*NamedWorkspaceRequiredError) Error() string {
 	return "This operation requires a named workspace. Specify a named workspace using the `--workspace` command line flag."
@@ -41,8 +39,6 @@ var ErrEditableWorkspaceRequired error = &EditableWorkspaceRequiredError{}
 type EditableWorkspaceRequiredError struct {
 }
 
-// # Function Explanation
-//
 // Error() returns an message describing EditableWorkspaceRequiredError.
 func (*EditableWorkspaceRequiredError) Error() string {
 	return "This operation requires a workspace. Use `rad init` to scaffold a workspace in the local directory, or specify a named workspace using the `--workspace` command line flag."

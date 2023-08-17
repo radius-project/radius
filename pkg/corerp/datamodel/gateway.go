@@ -33,15 +33,11 @@ type Gateway struct {
 	Properties GatewayProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type of the Gateway instance.
 func (g *Gateway) ResourceTypeName() string {
 	return GatewayResourceType
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues and URL properties of the Gateway struct
 // based on the DeploymentOutput object.
 func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -54,15 +50,11 @@ func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the Status of the Gateway Properties.
 func (g *Gateway) OutputResources() []rpv1.OutputResource {
 	return g.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the Gateway instance.
 func (h *Gateway) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
@@ -98,8 +90,6 @@ type GatewayPropertiesTLS struct {
 	CertificateFrom        string                    `json:"certificateFrom,omitempty"`
 }
 
-// # Function Explanation
-//
 // IsValid checks if the given MinimumTLSProtocolVersion is valid.
 func (m MinimumTLSProtocolVersion) IsValid() bool {
 	s := ValidMinimumTLSProtocolVersions()
@@ -111,8 +101,6 @@ func (m MinimumTLSProtocolVersion) IsValid() bool {
 	return false
 }
 
-// # Function Explanation
-//
 // IsEqualTo compares two MinimumTLSProtocolVersion objects and returns true if they are equal.
 func (m MinimumTLSProtocolVersion) IsEqualTo(minumumTLSProtocolVersion MinimumTLSProtocolVersion) bool {
 	return m == minumumTLSProtocolVersion
@@ -130,8 +118,6 @@ const (
 	DefaultTLSMinVersion MinimumTLSProtocolVersion = TLSMinVersion12
 )
 
-// # Function Explanation
-//
 // // ValidMinimumTLSProtocolVersions returns a slice of valid MinimumTLSProtocolVersions.
 func ValidMinimumTLSProtocolVersions() []MinimumTLSProtocolVersion {
 	return []MinimumTLSProtocolVersion{

@@ -25,8 +25,6 @@ import (
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// # Function Explanation
-//
 // FetchApplication fetches an application resource from the Azure Resource Manager using the given application ID and
 // client options, and returns the application resource or an error if one occurs.
 func FetchApplication(ctx context.Context, application string, ucpOptions *arm.ClientOptions) (*v20220315privatepreview.ApplicationResource, error) {
