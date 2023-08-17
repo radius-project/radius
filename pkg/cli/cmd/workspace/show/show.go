@@ -30,8 +30,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad workspace show` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner object, which is used to execute the command, and configures the
 // command with flags and arguments.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -74,8 +73,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad workspace show` command.
 //
-// # Function Explanation
-//
+
 // Runner.Validate checks if the workspace and output format arguments are valid and sets the workspace and format
 // fields of the Runner struct accordingly, returning an error if either argument is invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {

@@ -33,16 +33,12 @@ type OpenAPIv3Doc struct {
 	armrpc_controller.BaseController
 }
 
-// # Function Explanation
-//
 // NewOpenAPIv3Doc creates a new OpenAPIv3Doc controller with the given options and returns it, or returns an error if the
 // controller cannot be created.
 func NewOpenAPIv3Doc(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
 	return &OpenAPIv3Doc{armrpc_controller.NewBaseController(opts)}, nil
 }
 
-// # Function Explanation
-//
 // Run() responds to a request to /apis/api.ucp.dev/v1alpha3/openapi/v3 with a 200 OK response and a swagger
 // (openapi v3) doc.
 func (e *OpenAPIv3Doc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

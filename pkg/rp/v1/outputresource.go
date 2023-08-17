@@ -57,15 +57,11 @@ type OutputResourceStatus struct {
 	ProvisioningErrorDetails string `json:"provisioningErrorDetails"`
 }
 
-// # Function Explanation
-//
 // Key localID of the output resource is used as the key in DependencyItem for output resources.
 func (resource OutputResource) Key() string {
 	return resource.LocalID
 }
 
-// # Function Explanation
-//
 // GetDependencies returns a slice of strings containing the LocalIDs of the OutputResource's dependencies, or an error if
 // any of the dependencies are missing a LocalID.
 func (resource OutputResource) GetDependencies() ([]string, error) {
@@ -79,8 +75,6 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 	return dependencies, nil
 }
 
-// # Function Explanation
-//
 // IsRadiusManaged checks if the RadiusManaged field of the OutputResource struct is set and returns its value.
 func (resource OutputResource) IsRadiusManaged() bool {
 	if resource.RadiusManaged == nil {
@@ -90,8 +84,6 @@ func (resource OutputResource) IsRadiusManaged() bool {
 	return *resource.RadiusManaged
 }
 
-// # Function Explanation
-//
 // OrderOutputResources orders the given OutputResources based on their dependencies (i.e. deployment order)
 // and returns the ordered OutputResources or an error.
 func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, error) {
@@ -118,8 +110,6 @@ func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, e
 	return orderedOutput, nil
 }
 
-// # Function Explanation
-//
 // NewKubernetesOutputResource creates an OutputResource object with the given resourceType, localID, obj and objectMeta.
 func NewKubernetesOutputResource(resourceType string, localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
 	rt := resourcemodel.ResourceType{
@@ -136,8 +126,6 @@ func NewKubernetesOutputResource(resourceType string, localID string, obj runtim
 	}
 }
 
-// # Function Explanation
-//
 // GetGCOutputResources [GC stands for Garbage Collection] compares two slices of OutputResource and
 // returns a slice of OutputResource that contains the elements that are in the "before" slice but not in the "after".
 func GetGCOutputResources(after []OutputResource, before []OutputResource) []OutputResource {

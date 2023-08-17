@@ -22,6 +22,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	types "github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ import (
 
 func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
-		r := &EnvironmentRecipeProperties{}
+		r := &RecipeMetadataProperties{}
 		// act
 		_, err := r.ConvertTo()
 
@@ -38,22 +39,28 @@ func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
-	filename := "environmentrecipepropertiesdatamodel.json"
-	t.Run(filename, func(t *testing.T) {
-		rawPayload := testutil.ReadFixture(filename)
-		r := &datamodel.EnvironmentRecipeProperties{}
-		err := json.Unmarshal(rawPayload, r)
-		require.NoError(t, err)
 
-		// act
-		versioned := &EnvironmentRecipeProperties{}
-		err = versioned.ConvertFrom(r)
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
-		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
-		require.Equal(t, r.Parameters, versioned.Parameters)
-	})
+	files := []string{"environmentrecipepropertiesdatamodel.json", "environmentrecipepropertiesdatamodel-terraform.json"}
+	for _, filename := range files {
+		t.Run(filename, func(t *testing.T) {
+			rawPayload := testutil.ReadFixture(filename)
+			r := &datamodel.EnvironmentRecipeProperties{}
+			err := json.Unmarshal(rawPayload, r)
+			require.NoError(t, err)
+
+			// act
+			versioned := &RecipeMetadataProperties{}
+			err = versioned.ConvertFrom(r)
+			// assert
+			require.NoError(t, err)
+			require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
+			require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+			if r.TemplateKind == types.TemplateKindTerraform {
+				require.Equal(t, r.TemplateVersion, string(*versioned.TemplateVersion))
+			}
+			require.Equal(t, r.Parameters, versioned.Parameters)
+		})
+	}
 }
 
 func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKind(t *testing.T) {
@@ -65,12 +72,15 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKin
 		require.NoError(t, err)
 
 		// act
-		versioned := &EnvironmentRecipeProperties{}
+		versioned := &RecipeMetadataProperties{}
 		err = versioned.ConvertFrom(r)
 		// assert
 		require.NoError(t, err)
 		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
 		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+		if r.TemplateKind == types.TemplateKindTerraform {
+			require.Equal(t, r.TemplateVersion, string(*versioned.TemplateVersion))
+		}
 		require.Equal(t, r.Parameters, versioned.Parameters)
 	})
 }

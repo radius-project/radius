@@ -38,15 +38,11 @@ type Plane struct {
 	Properties PlaneProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the type of the Plane as a string.
 func (p Plane) ResourceTypeName() string {
 	return p.Type
 }
 
-// # Function Explanation
-//
 // LookupResourceProvider checks if the input provider is in the list of configured providers.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string

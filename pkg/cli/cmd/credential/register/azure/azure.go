@@ -38,8 +38,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad credential create azure` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command for registering an Azure cloud provider credential for a Radius installation,
 // which requires a service principal with the Contributor or Owner role assigned to the provided resource group.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -53,7 +52,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 This command is intended for scripting or advanced use-cases. See 'rad init' for a user-friendly way
 to configure these settings.
 
-Radius will use the provided service principal for all interations with Azure, including Bicep deployment, 
+Radius will use the provided service principal for all interactions with Azure, including Bicep deployment, 
 Radius environments, and Radius links. 
 
 Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
@@ -109,8 +108,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad credential register azure` command.
 //
-// # Function Explanation
-//
+
 // Validate checks for the presence of a workspace, output format, client ID, client secret and tenant ID, and
 // sets them in the Runner struct if they are present. If any of these are not present, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -154,8 +152,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad credential register azure` command.
 //
-// # Function Explanation
-//
+
 // Run registers a credential for the Azure cloud provider in the Radius installation, updates the server-side
 // to add/change credentials. It returns an error if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {

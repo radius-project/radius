@@ -33,15 +33,11 @@ type HTTPRoute struct {
 	Properties *HTTPRouteProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the type of the resource.
 func (h *HTTPRoute) ResourceTypeName() string {
 	return HTTPRouteResourceType
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput sets the Properties, ComputedValues, and SecretValues fields of the HTTPRoute struct
 // based on the DeploymentOutput parameter and returns nil.
 func (h *HTTPRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -67,15 +63,11 @@ func (h *HTTPRoute) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the Properties.
 func (h *HTTPRoute) OutputResources() []rpv1.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the HTTPRoute instance.
 func (h *HTTPRoute) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties

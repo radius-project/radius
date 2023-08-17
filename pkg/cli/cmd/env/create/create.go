@@ -39,8 +39,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad env create` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner object to handle the command's logic, and adds flags to the command
 // for environment name, workspace, resource group, and namespace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -93,8 +92,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad env create` command.
 //
-// # Function Explanation
-//
+
 // Validate checks if the workspace, environment name, scope, namespace, resource group name, and namespace
 // interface are valid and returns an error if any of them are not.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -152,8 +150,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env create` command.
 //
-// # Function Explanation
-//
+
 // Run creates an environment in the specified resource group using the provided environment name and namespace, and
 // returns an error if unsuccessful.
 func (r *Runner) Run(ctx context.Context) error {

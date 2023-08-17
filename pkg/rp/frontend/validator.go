@@ -25,8 +25,6 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// # Function Explanation
-//
 // PrepareRadiusResource validates the Radius resource and prepare new resource data.
 func PrepareRadiusResource[P interface {
 	*T

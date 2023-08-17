@@ -37,6 +37,7 @@ import (
 const (
 	ProviderAzure      = "azure"
 	ProviderAWS        = "aws"
+	ProviderRadius     = "radius"
 	ProviderKubernetes = "kubernetes"
 
 	// APIVersionUnknown encodes an "unknown" API version. Including API version in resource identity is
@@ -51,8 +52,6 @@ type ResourceType struct {
 	Provider string `json:"provider"`
 }
 
-// # Function Explanation
-//
 // String returns a string representation of the ResourceType instance.
 func (r ResourceType) String() string {
 	return fmt.Sprintf("Provider: %s, Type: %s", r.Provider, r.Type)
@@ -105,8 +104,6 @@ type AzureFederatedIdentity struct {
 	Subject string `json:"subject"`
 }
 
-// # Function Explanation
-//
 // NewARMIdentity creates a new ResourceIdentity object from a ResourceType, an ID and an API version.
 func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) ResourceIdentity {
 	return ResourceIdentity{
@@ -121,8 +118,6 @@ func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) Re
 	}
 }
 
-// # Function Explanation
-//
 // NewUCPIdentity creates a new ResourceIdentity with the given ResourceType and ID.
 func NewUCPIdentity(resourceType *ResourceType, id string) ResourceIdentity {
 	return ResourceIdentity{
@@ -136,8 +131,6 @@ func NewUCPIdentity(resourceType *ResourceType, id string) ResourceIdentity {
 	}
 }
 
-// # Function Explanation
-//
 // NewKubernetesIdentity creates a ResourceIdentity object from a ResourceType, runtime.Object and metav1.ObjectMeta.
 func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objectMeta metav1.ObjectMeta) ResourceIdentity {
 	return ResourceIdentity{
@@ -154,8 +147,6 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 	}
 }
 
-// # Function Explanation
-//
 // GetID constructs a UCP resource ID from the ResourceIdentity.
 func (r ResourceIdentity) GetID() string {
 	if r.ResourceType == nil {
@@ -168,6 +159,9 @@ func (r ResourceIdentity) GetID() string {
 		return id
 	case ProviderAWS:
 		id, _ := r.RequireAWS()
+		return id
+	case ProviderRadius:
+		id, _ := r.RequireRadius()
 		return id
 	case ProviderKubernetes:
 		gvk, namespace, name, _ := r.RequireKubernetes()
@@ -185,8 +179,6 @@ func (r ResourceIdentity) GetID() string {
 	}
 }
 
-// # Function Explanation
-//
 // RequireARM checks if the ResourceType provider is Azure and returns the ID and API version of the ARMIdentity, or an
 // error if the provider is not Azure.
 func (r ResourceIdentity) RequireARM() (string, string, error) {
@@ -204,9 +196,7 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 	return "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
 }
 
-// # Function Explanation
-//
-//	RequireAWS checks if the ResourceIdentity is an AWS provider and returns the ID or an error if not.
+// RequireAWS checks if the ResourceIdentity is an AWS provider and returns the ID or an error if not.
 func (r ResourceIdentity) RequireAWS() (string, error) {
 	if r.ResourceType.Provider == ProviderAWS {
 		data, ok := r.Data.(UCPIdentity)
@@ -222,8 +212,22 @@ func (r ResourceIdentity) RequireAWS() (string, error) {
 	return "", fmt.Errorf("expected an %q provider, was %q", ProviderAWS, r.ResourceType.Provider)
 }
 
-// # Function Explanation
-//
+// RequireRadius checks if the ResourceIdentity is an Radius ID and returns the ID or an error if not.
+func (r ResourceIdentity) RequireRadius() (string, error) {
+	if r.ResourceType.Provider == ProviderRadius {
+		data, ok := r.Data.(UCPIdentity)
+		if !ok {
+			data = UCPIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return "", err
+			}
+		}
+		return data.ID, nil
+	}
+
+	return "", fmt.Errorf("expected an %q provider, was %q", ProviderRadius, r.ResourceType.Provider)
+}
+
 // RequireKubernetes checks if the ResourceType.Provider is Kubernetes and returns the GroupVersionKind, Namespace, Name
 // and an error if the Provider is not Kubernetes.
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
@@ -241,8 +245,6 @@ func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, 
 	return schema.GroupVersionKind{}, "", "", fmt.Errorf("expected an %q provider, was %q", ProviderKubernetes, r.ResourceType.Provider)
 }
 
-// # Function Explanation
-//
 // IsSameResource compares two ResourceIdentity objects and returns a boolean indicating whether they are the same resource or not.
 func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	if r.ResourceType.Provider != other.ResourceType.Provider {
@@ -260,6 +262,11 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 		b, _ := other.Data.(UCPIdentity)
 		return a == b
 
+	case ProviderRadius:
+		a, _ := r.Data.(UCPIdentity)
+		b, _ := other.Data.(UCPIdentity)
+		return a == b
+
 	case ProviderKubernetes:
 		a, _ := r.Data.(KubernetesIdentity)
 		b, _ := other.Data.(KubernetesIdentity)
@@ -270,8 +277,6 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	return false
 }
 
-// # Function Explanation
-//
 // AsLogValues returns a slice of any type based on the provider type of the ResourceIdentity struct. If the provider is
 // Azure, it returns the ResourceID, SubscriptionID, ResourceGroup, ResourceType and ResourceName. If the provider is AWS,
 // it returns the ResourceID, ResourceType and ResourceName. If the provider is Kubernetes, it returns the ResourceName,
@@ -311,6 +316,20 @@ func (r ResourceIdentity) AsLogValues() []any {
 			logging.LogFieldResourceName, id.QualifiedName(),
 		}
 
+	case ProviderRadius:
+		// We can't report an error here so this is best-effort.
+		data := r.Data.(UCPIdentity)
+		id, err := resources.ParseResource(data.ID)
+		if err != nil {
+			return []any{ucplog.LogFieldResourceID, data.ID}
+		}
+
+		return []any{
+			logging.LogFieldResourceID, data.ID,
+			logging.LogFieldResourceType, id.Type(),
+			logging.LogFieldResourceName, id.QualifiedName(),
+		}
+
 	case ProviderKubernetes:
 		data := r.Data.(KubernetesIdentity)
 		return []any{
@@ -325,8 +344,6 @@ func (r ResourceIdentity) AsLogValues() []any {
 	}
 }
 
-// # Function Explanation
-//
 // UnmarshalJSON unmarshals a JSON byte slice into a ResourceIdentity struct based on the provider type.
 func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 	type intermediate struct {
@@ -366,6 +383,15 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 		r.Data = identity
 		return nil
 
+	case ProviderRadius:
+		identity := UCPIdentity{}
+		err = json.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
@@ -384,8 +410,6 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // UnmarshalBSON unmarshals a BSON byte slice into a ResourceIdentity, depending on the provider type. It returns an error
 // if the provider type is unknown or if the BSON unmarshalling fails.
 func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
@@ -426,6 +450,15 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		r.Data = identity
 		return nil
 
+	case ProviderRadius:
+		identity := UCPIdentity{}
+		err = bson.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
@@ -440,8 +473,6 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	}
 }
 
-// # Function Explanation
-//
 // FromUCPID translates a UCP resource ID into a ResourceIdentity.
 //
 // TODO: This is transitional while we're refactoring to get rid of ResourceIdentity. UCP resource IDs are a more
@@ -472,6 +503,11 @@ func FromUCPID(id resources.ID, preferredAPIVersion string) ResourceIdentity {
 	// case: /planes/aws/aws/accounts/.../regions/.../......
 	if strings.EqualFold("aws", firstScope) {
 		return NewUCPIdentity(&ResourceType{Type: id.Type(), Provider: ProviderAWS}, id.String())
+	}
+
+	// case: /planes/radius/local/...
+	if strings.EqualFold("radius", firstScope) {
+		return NewUCPIdentity(&ResourceType{Type: id.Type(), Provider: ProviderRadius}, id.String())
 	}
 
 	// case: /planes/kubernetes/local/namespaces/.../......

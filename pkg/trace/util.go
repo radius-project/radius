@@ -36,8 +36,6 @@ const (
 	traceparentHeaderKey string = "traceparent"
 )
 
-// # Function Explanation
-//
 // StartProducerSpan creates a new span with SpanKindProducer for enqueuing async operations. It creates the span
 // with the given spanName and tracerName, and adds the given attributes.
 func StartProducerSpan(ctx context.Context, spanName string, tracerName string) (context.Context, trace.Span) {
@@ -48,8 +46,6 @@ func StartProducerSpan(ctx context.Context, spanName string, tracerName string) 
 	return StartCustomSpan(ctx, spanName, tracerName, attr, trace.WithSpanKind(trace.SpanKindProducer))
 }
 
-// # Function Explanation
-//
 // StartConsumerSpan creates a new span with SpanKindConsumer for dequeing async operations. It creates the span
 // with the given spanName and tracerName, and adds the given attributes.
 func StartConsumerSpan(ctx context.Context, spanName string, tracerName string) (context.Context, trace.Span) {
@@ -60,8 +56,6 @@ func StartConsumerSpan(ctx context.Context, spanName string, tracerName string) 
 	return StartCustomSpan(ctx, spanName, tracerName, attr, trace.WithSpanKind(trace.SpanKindConsumer))
 }
 
-// # Function Explanation
-//
 // StartCustomSpan creates a new span with the given name, tracer name and attributes and returns a context and the span.
 func StartCustomSpan(ctx context.Context, spanName string, tracerName string, attrs []attribute.KeyValue, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	tr := otel.GetTracerProvider().Tracer(tracerName)
@@ -72,8 +66,6 @@ func StartCustomSpan(ctx context.Context, spanName string, tracerName string, at
 	return ctx, span
 }
 
-// # Function Explanation
-//
 // SetAsyncResultStatus sets the status of the span based on the result and adds an exception event if the result contains
 // an error.
 func SetAsyncResultStatus(result ctrl.Result, span trace.Span) {
@@ -92,8 +84,6 @@ func SetAsyncResultStatus(result ctrl.Result, span trace.Span) {
 	}
 }
 
-// # Function Explanation
-//
 // ExtractTraceparent extracts the traceparent header from the context.
 // Retrieve the current span context from context and serialize it to its w3c string representation using propagator.
 // ref: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
@@ -103,8 +93,6 @@ func ExtractTraceparent(ctx context.Context) string {
 	return carrier[traceparentHeaderKey]
 }
 
-// # Function Explanation
-//
 // WithTraceparent creates a new context with the given traceparent string.
 func WithTraceparent(ctx context.Context, traceparent string) context.Context {
 	return otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier{traceparentHeaderKey: traceparent})

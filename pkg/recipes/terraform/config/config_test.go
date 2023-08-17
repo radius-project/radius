@@ -185,7 +185,7 @@ func Test_AddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      nil,
-			expectedConfigFile: "testdata/main-nocontext.tf.json",
+			expectedConfigFile: "testdata/main-module.tf.json",
 		},
 		{
 			name: "without template version",
@@ -391,6 +391,74 @@ func Test_AddProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			// assert
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func Test_AddOutputs(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+	_, _, mBackend := setup(t)
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
+	tests := []struct {
+		desc                 string
+		moduleName           string
+		expectedOutputConfig map[string]any
+		expectedConfigFile   string
+		expectedErr          bool
+	}{
+		{
+			desc:       "valid output",
+			moduleName: testRecipeName,
+			expectedOutputConfig: map[string]any{
+				"result": map[string]any{
+					"value":     "${module.redis-azure.result}",
+					"sensitive": true,
+				},
+			},
+			expectedConfigFile: "testdata/main-outputs.tf.json",
+			expectedErr:        false,
+		},
+		{
+			desc:               "empty module name",
+			moduleName:         "",
+			expectedConfigFile: "testdata/main-module.tf.json",
+			expectedErr:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+
+			err := tfconfig.AddOutputs(tc.moduleName)
+			if tc.expectedErr {
+				require.Error(t, err)
+				require.Nil(t, tfconfig.Output)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedOutputConfig, tfconfig.Output)
+			}
+
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// Assert generated config file matches expected config in JSON format.
 			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
 			require.NoError(t, err)
 			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)

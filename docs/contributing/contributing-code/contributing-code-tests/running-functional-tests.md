@@ -1,6 +1,6 @@
 # Running Radius functional tests
 
-You can find the functional tests under `./test/functional`. A functional test (in our terminology) is a test that interacts with real hosting enviroments (Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
+You can find the functional tests under `./test/functional`. A functional test (in our terminology) is a test that interacts with real hosting environments (Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
 
 These tests verify whether:
 
@@ -62,6 +62,7 @@ When you're running locally with this configuration, the tests will use your loc
     make test-functional-shared
     make test-functional-msgrp
     make test-functional-daprrp
+    make test-functional-datastoresrp
  ```
 
 You can also run/debug individual tests from VSCode.

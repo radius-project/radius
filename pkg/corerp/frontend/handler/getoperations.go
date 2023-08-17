@@ -33,15 +33,11 @@ type GetOperations struct {
 	ctrl.BaseController
 }
 
-// # Function Explanation
-//
 // NewGetOperations creates a new GetOperations controller with the given options.
 func NewGetOperations(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetOperations{ctrl.NewBaseController(opts)}, nil
 }
 
-// # Function Explanation
-//
 // Run checks the API version of the request and returns the available operations for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 func (opctrl *GetOperations) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
@@ -255,6 +251,46 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "containers",
 					Operation:   "Delete container",
 					Description: "Delete a container.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/read",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Get/List extenders",
+					Description: "Gets/Lists extender link(s).",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/write",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Create/Update extenders",
+					Description: "Creates or updates a extender link.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/delete",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "Delete extender",
+					Description: "Deletes a extender link.",
+				},
+				IsDataAction: false,
+			},
+			&v1.Operation{
+				Name: "Applications.Core/extenders/listsecrets/action",
+				Display: &v1.OperationDisplayProperties{
+					Provider:    ProviderNamespaceName,
+					Resource:    "extenders",
+					Operation:   "List secrets",
+					Description: "Lists extender secrets.",
 				},
 				IsDataAction: false,
 			},

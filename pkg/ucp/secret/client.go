@@ -37,8 +37,6 @@ type Client interface {
 	Get(ctx context.Context, name string) ([]byte, error)
 }
 
-// # Function Explanation
-//
 // SaveSecret saves a secret value using secret client, marshalling it to JSON first.
 func SaveSecret[T any](ctx context.Context, client Client, name string, value T) error {
 	secretData, err := json.Marshal(value)
@@ -48,8 +46,6 @@ func SaveSecret[T any](ctx context.Context, client Client, name string, value T)
 	return client.Save(ctx, name, secretData)
 }
 
-// # Function Explanation
-//
 // GetSecret retrieves a secret using secret client and returns it as a generic type, returning an error if the retrieval or
 // unmarshalling fails.
 func GetSecret[T any](ctx context.Context, client Client, name string) (T, error) {
@@ -71,15 +67,11 @@ var _ error = (*ErrNotFound)(nil)
 type ErrNotFound struct {
 }
 
-// # Function Explanation
-//
 // Error returns the error message.
 func (e *ErrNotFound) Error() string {
 	return "the resource was not found"
 }
 
-// # Function Explanation
-//
 // Is checks if the error is of type ErrNotFound.
 func (e *ErrNotFound) Is(target error) bool {
 	_, ok := target.(*ErrNotFound)
@@ -93,15 +85,11 @@ type ErrInvalid struct {
 	Message string
 }
 
-// # Function Explanation
-//
 // Error returns a string representation of the error.
 func (e *ErrInvalid) Error() string {
 	return e.Message
 }
 
-// # Function Explanation
-//
 // Is checks if the target error is of type ErrInvalid and if the message of the target error is equal to the
 // message of the current error or if the message of the target error is empty.
 func (e *ErrInvalid) Is(target error) bool {

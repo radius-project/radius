@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // ValidateAndMutateRequest checks if the TLS configuration is valid and sets the TLS protocol version to 1.2 if it is not
 // specified. It returns a BadRequestResponse error if SSL Passthrough and TLS termination are both configured or if TLS
 // protocol version is set but certificateFrom is not.

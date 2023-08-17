@@ -27,8 +27,6 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// # Function Explanation
-//
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
 // if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
 // the data fails to be unmarshalled.

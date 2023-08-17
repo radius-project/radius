@@ -42,3 +42,4 @@ export AZURE_COSMOS_MONGODB_ACCOUNT_ID=$( jq -r '.properties.outputs.cosmosMongo
 make test-functional-shared
 make test-functional-msgrp
 make test-functional-daprrp
+make test-functional-datastoresrp

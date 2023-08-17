@@ -31,8 +31,7 @@ const KindKubernetes string = "kubernetes"
 // MakeFallbackWorkspace creates an un-named workspace that will use the current KubeContext.
 // This is is used in fallback cases where the user has no config.
 //
-// # Function Explanation
-//
+
 // MakeFallbackWorkspace() creates a Workspace struct with a SourceFallback source and a Kubernetes connection with an
 // empty context. It returns a pointer to the Workspace struct.
 func MakeFallbackWorkspace() *Workspace {
@@ -61,8 +60,6 @@ func (ws Workspace) FmtConnection() string {
 	return c.String()
 }
 
-// # Function Explanation
-//
 // ConnectionConfig() checks the "kind" field of the workspace's Connection object and returns a
 // ConnectionConfig object based on the kind, or an error if the kind is unsupported.
 func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
@@ -95,8 +92,6 @@ func (ws Workspace) ConnectionConfig() (ConnectionConfig, error) {
 	}
 }
 
-// # Function Explanation
-//
 // Connect attempts to create a connection to the workspace using the connection configuration and returns the
 // connection and an error if one occurs.
 func (ws Workspace) Connect() (sdk.Connection, error) {
@@ -108,8 +103,6 @@ func (ws Workspace) Connect() (sdk.Connection, error) {
 	return connectionConfig.Connect()
 }
 
-// # Function Explanation
-//
 // ConnectionConfigEquals() checks if the given ConnectionConfig is of type Kubernetes and if the Kubernetes
 // context is the same as the one stored in the Workspace, and returns a boolean value accordingly.
 func (ws Workspace) ConnectionConfigEquals(other ConnectionConfig) bool {
@@ -126,8 +119,6 @@ func (ws Workspace) ConnectionConfigEquals(other ConnectionConfig) bool {
 	}
 }
 
-// # Function Explanation
-//
 // KubernetesContext checks if the workspace connection is of type Kubernetes and returns the context string if it exists,
 // otherwise it returns an empty string and false.
 func (ws Workspace) KubernetesContext() (string, bool) {
@@ -148,8 +139,6 @@ func (ws Workspace) KubernetesContext() (string, bool) {
 	return str, true
 }
 
-// # Function Explanation
-//
 // IsSameKubernetesContext checks if the "context" field of the "Connection" map of the "Workspace" struct is equal to
 // the given "kubeContext" string and returns a boolean value accordingly.
 func (ws Workspace) IsSameKubernetesContext(kubeContext string) bool {
@@ -175,8 +164,6 @@ type KubernetesConnectionOverrides struct {
 	UCP string `json:"ucp" mapstructure:"ucp" yaml:"ucp"`
 }
 
-// # Function Explanation
-//
 // String() returns a string that describes the Kubernetes connection configuration.
 func (c *KubernetesConnectionConfig) String() string {
 	if c.Overrides.UCP == "" {
@@ -186,15 +173,11 @@ func (c *KubernetesConnectionConfig) String() string {
 	return fmt.Sprintf("Kubernetes (context=%s, ucp=%s)", c.Context, c.Overrides.UCP)
 }
 
-// # Function Explanation
-//
 // GetKind() returns the string "KindKubernetes" for a KubernetesConnectionConfig object.
 func (c *KubernetesConnectionConfig) GetKind() string {
 	return KindKubernetes
 }
 
-// # Function Explanation
-//
 // Connect() checks if a URL is provided in the Overrides field, and if so, creates a direct connection to the URL. If no URL
 // is provided, it creates a connection to Kubernetes using the provided context. If an error occurs, an error is returned.
 func (c *KubernetesConnectionConfig) Connect() (sdk.Connection, error) {

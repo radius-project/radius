@@ -24,16 +24,12 @@ import (
 	"fmt"
 )
 
-// # Function Explanation
-// 
 // New generates a unique string based on the SHA1 hash of the input data.
 func New(data []byte) string {
 	hash := sha1.Sum(data)
 	return fmt.Sprintf("%d-%x", int(len(hash)), hash)
 }
 
-// # Function Explanation
-// 
 // NewFromRevision takes in an int64 and returns a hexadecimal string representation of it.
 func NewFromRevision(revision int64) string {
 	b := make([]byte, 8)
@@ -41,8 +37,6 @@ func NewFromRevision(revision int64) string {
 	return hex.EncodeToString(b)
 }
 
-// # Function Explanation
-// 
 // ParseRevision decodes a hexadecimal string into an int64 value and returns it, or an error if the string is invalid.
 func ParseRevision(etag string) (int64, error) {
 	b, err := hex.DecodeString(etag)

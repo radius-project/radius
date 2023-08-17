@@ -45,15 +45,11 @@ type Loader struct {
 	specFiles         fs.FS
 }
 
-// # Function Explanation
-//
 // Name returns the name of loader.
 func (l *Loader) Name() string {
 	return l.providerName
 }
 
-// # Function Explanation
-//
 // // SupportedVersions returns a list of supported versions for the given resource type, or an empty list if the resource
 // type is not supported.
 func (l *Loader) SupportedVersions(resourceType string) []string {
@@ -68,8 +64,6 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 	return []string{}
 }
 
-// # Function Explanation
-//
 // GetValidator returns the cached validator.
 func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	// ARM types are compared case-insensitively
@@ -86,8 +80,6 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	return nil, false
 }
 
-// # Function Explanation
-//
 // LoadSpec loads OpenAPI spec documents from the given FS and returns a Loader instance. If no spec documents are
 // found, an error is returned.
 func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePrefixes []string, rootScopeParam string) (*Loader, error) {
@@ -115,7 +107,7 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 		// Check if specification file pathname is valid and skip global.json.
 		parsed := parseSpecFilePath(path)
 		if parsed == nil {
-			log.V(ucplog.Warn).Info(fmt.Sprintf("failed to parse %s", path))
+			log.Error(nil, fmt.Sprintf("failed to parse OpenAPI spec %s", path))
 			return nil
 		}
 

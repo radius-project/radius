@@ -11,10 +11,9 @@ import (
 // FROM https://www.digitalocean.com/community/tutorials/how-to-use-go-with-mongodb-using-the-mongodb-go-driver
 var ctx = context.TODO()
 
-// # Function Explanation
-// 
 // MongoBinding checks if the CONNECTIONSTRING environment parameter is present and if so, attempts to connect to a MongoDB
-//  instance using the provided URI, returning a BindingStatus indicating success or failure.
+//
+//	instance using the provided URI, returning a BindingStatus indicating success or failure.
 func MongoBinding(envParams map[string]string) BindingStatus {
 	uri := envParams["CONNECTIONSTRING"]
 	if uri == "" {

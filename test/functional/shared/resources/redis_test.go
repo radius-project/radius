@@ -27,8 +27,8 @@ import (
 
 func Test_RedisManualProvisioning(t *testing.T) {
 	template := "testdata/corerp-resources-redis-manualprovisioning.bicep"
-	name := "corerp-resources-redis-manualprovisioning"
-	appNamespace := "default-corerp-resources-redis-manualprovisioning"
+	name := "corerp-resources-redis-mp"
+	appNamespace := "default-corerp-resources-redis-mp"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -40,23 +40,23 @@ func Test_RedisManualProvisioning(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-app-ctnr",
+						Name: "rds-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rds-ctnr",
+						Name: "rds-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "rds-rte",
+						Name: "rds-rte-old",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "rds-rds",
-						Type: validation.RedisCachesResource,
+						Name: "rds-rds-old",
+						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
 				},
@@ -64,9 +64,9 @@ func Test_RedisManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rds-app-ctnr"),
-						validation.NewK8sPodForResource(name, "rds-ctnr"),
-						validation.NewK8sServiceForResource(name, "rds-rte"),
+						validation.NewK8sPodForResource(name, "rds-app-ctnr-old"),
+						validation.NewK8sPodForResource(name, "rds-ctnr-old"),
+						validation.NewK8sServiceForResource(name, "rds-rte-old"),
 					},
 				},
 			},
@@ -94,8 +94,8 @@ func Test_RedisRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-recipe",
-						Type: validation.RedisCachesResource,
+						Name: "rds-recipe-old",
+						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
 				},
@@ -125,8 +125,8 @@ func Test_RedisDefaultRecipe(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "rds-default-recipe",
-						Type: validation.RedisCachesResource,
+						Name: "rds-default-recipe-old",
+						Type: validation.O_RedisCachesResource,
 						App:  name,
 					},
 				},

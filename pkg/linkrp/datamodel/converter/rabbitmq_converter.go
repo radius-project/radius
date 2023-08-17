@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
-// # Function Explanation
-//
 // RabbitMQMessageQueueDataModelToVersioned converts a datamodel.RabbitMQMessageQueue to a versioned model interface based
 // on the given version, and returns an error if the version is not supported.
 func RabbitMQMessageQueueDataModelToVersioned(model *datamodel.RabbitMQMessageQueue, version string) (v1.VersionedModelInterface, error) {
@@ -39,8 +37,6 @@ func RabbitMQMessageQueueDataModelToVersioned(model *datamodel.RabbitMQMessageQu
 	}
 }
 
-// # Function Explanation
-//
 // RabbitMQMessageQueueDataModelFromVersioned unmarshals a JSON byte slice into a versioned RabbitMQMessageQueueResource
 // struct, then converts it to a datamodel.RabbitMQMessageQueue struct and returns it, or returns an error if the version
 // is unsupported.
@@ -62,8 +58,6 @@ func RabbitMQMessageQueueDataModelFromVersioned(content []byte, version string) 
 	}
 }
 
-// # Function Explanation
-//
 // RabbitMQSecretsDataModelToVersioned converts a datamodel.RabbitMQSecrets to a versioned model based on the given
 // version string, or returns an error if the version is not supported.
 func RabbitMQSecretsDataModelToVersioned(model *datamodel.RabbitMQSecrets, version string) (v1.VersionedModelInterface, error) {

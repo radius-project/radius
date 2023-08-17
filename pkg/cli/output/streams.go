@@ -27,8 +27,7 @@ import (
 
 // NewStreamGroup creates a new StreamGroup for the given writer. All functionality of StreamGroup can be used concurrently.
 //
-// # Function Explanation
-//
+
 // NewStreamGroup creates a new StreamGroup object with an output writer and a mutex, and returns a pointer to the newly
 // created StreamGroup.
 func NewStreamGroup(out io.Writer) *StreamGroup {
@@ -45,8 +44,6 @@ type StreamGroup struct {
 	mutex *sync.Mutex
 }
 
-// # Function Explanation
-//
 // NewStream() creates a new Stream object with a given name, assigns it a primary and secondary color, and returns it.
 func (sg *StreamGroup) NewStream(name string) *Stream {
 	sg.mutex.Lock()
@@ -86,8 +83,6 @@ type Stream struct {
 	mutex *sync.Mutex
 }
 
-// # Function Explanation
-//
 // Print takes a string and prints it to the output stream with a prefix of the stream's name in a secondary color.
 func (s *Stream) Print(text string) {
 	s.mutex.Lock()
@@ -98,8 +93,6 @@ func (s *Stream) Print(text string) {
 	fmt.Fprintf(s.out, "%s %s", s.secondary.Sprintf("[%s] ", s.name), s.primary.Sprint(text))
 }
 
-// # Function Explanation
-//
 // Writer() returns an io.WriteCloser which is a StreamWriter struct that contains a pointer to the Stream struct.
 func (s *Stream) Writer() io.WriteCloser {
 	return &StreamWriter{stream: s}
@@ -119,8 +112,6 @@ type StreamWriter struct {
 
 var _ io.WriteCloser = (*StreamWriter)(nil)
 
-// # Function Explanation
-//
 // Write buffers all bytes written to it and outputs complete lines to the colorized stream as it sees them,
 // and returns an error if it fails to flush the buffer.
 func (w *StreamWriter) Write(p []byte) (int, error) {
@@ -141,8 +132,6 @@ func (w *StreamWriter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-// # Function Explanation
-//
 // Close flushes the stream and returns an error if the flush fails.
 func (w *StreamWriter) Close() error {
 	err := w.flush(true)

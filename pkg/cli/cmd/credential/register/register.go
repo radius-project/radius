@@ -26,8 +26,7 @@ import (
 
 // NewCommand creates an instance of the command for the `rad credential create` command.
 //
-// # Function Explanation
-//
+
 // NewCommand() creates a new command for registering cloud provider credentials and adds subcommands for Azure and AWS.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.

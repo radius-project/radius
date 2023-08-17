@@ -11,7 +11,8 @@
           "secrets": {
               "accountSid": "sid",
               "authToken:": "token"
-          }
+          },
+          "resourceProvisioning": "manual"
         }
       }
     },
@@ -30,7 +31,8 @@
             "secrets": {
                 "accountSid": "sid",
                 "authToken:": "token"
-            }
+            },
+            "resourceProvisioning": "manual"
           }
         }
       },
@@ -48,7 +50,8 @@
             "secrets": {
                 "accountSid": "sid",
                 "authToken:": "token"
-            }
+            },
+            "resourceProvisioning": "manual"
           }
         }
       }

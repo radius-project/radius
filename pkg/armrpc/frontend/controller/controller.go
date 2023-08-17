@@ -142,8 +142,6 @@ func (b *BaseController) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
 
-// # Function Explanation
-//
 // GetResource gets a resource from data store for id, set the retrieved resource to out argument and returns
 // the ETag of the resource and an error if one occurs.
 func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
@@ -158,8 +156,6 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 	return
 }
 
-// # Function Explanation
-//
 // SaveResource saves a resource to the data store with an ETag and returns a store object or an error if the save fails.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
 	nr := &store.Object{
@@ -175,8 +171,6 @@ func (c *BaseController) SaveResource(ctx context.Context, id string, in any, et
 	return nr, nil
 }
 
-// # Function Explanation
-//
 // UpdateSystemData updates the system data fields in the old object with the new object's fields, backfilling the created
 // fields if necessary.
 func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
@@ -204,8 +198,6 @@ func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 	return newSystemData
 }
 
-// # Function Explanation
-//
 // BuildTrackedResource takes in a context and returns a v1.TrackedResource object with the ID, Name, Type and Location
 // fields populated from the context.
 func BuildTrackedResource(ctx context.Context) v1.TrackedResource {

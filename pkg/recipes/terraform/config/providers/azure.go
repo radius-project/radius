@@ -51,8 +51,6 @@ type azureProvider struct {
 	secretProvider *ucp_provider.SecretProvider
 }
 
-// # Function Explanation
-//
 // NewAzureProvider creates a new AzureProvider instance.
 func NewAzureProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
 	return &azureProvider{ucpConn: ucpConn, secretProvider: secretProvider}

@@ -27,8 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// # Function Explanation
-//
 // GetOutputResourcesFromResourcesField parses a slice of resource references and converts each resource into an OutputResource.
 // It returns a slice of output resources and an error if any of the resource references are invalid. This should be used for
 // processing the '.properties.resources' field of a resource.
@@ -41,6 +39,10 @@ func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]
 		}
 
 		identity := resourcemodel.FromUCPID(id, "")
+		if (identity == resourcemodel.ResourceIdentity{}) {
+			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q is invalid", resource)}
+		}
+
 		result := rpv1.OutputResource{
 			LocalID:       fmt.Sprintf("Resource%d", i), // The dependency sorting code requires unique LocalIDs
 			Identity:      identity,
@@ -53,8 +55,6 @@ func GetOutputResourcesFromResourcesField(field []*linkrp.ResourceReference) ([]
 	return results, nil
 }
 
-// # Function Explanation
-//
 // GetOutputResourcesFromRecipe parses the output resources from a recipe and returns a slice of OutputResource objects,
 // returning an error if any of the resources are invalid.
 func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputResource, error) {
@@ -66,6 +66,10 @@ func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputRe
 		}
 
 		identity := resourcemodel.FromUCPID(id, "")
+		if (identity == resourcemodel.ResourceIdentity{}) {
+			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q returned by recipe is invalid", resource)}
+		}
+
 		result := rpv1.OutputResource{
 			LocalID:       fmt.Sprintf("RecipeResource%d", i), // The dependency sorting code requires unique LocalIDs
 			Identity:      identity,

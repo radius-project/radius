@@ -39,8 +39,6 @@ type DeleteAWSResource struct {
 	awsClients ucp_aws.Clients
 }
 
-// # Function Explanation
-//
 // NewDeleteAWSResource creates a new DeleteAWSResource controller which is used to delete AWS resources and returns it
 // along with a nil error.
 func NewDeleteAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
@@ -50,8 +48,6 @@ func NewDeleteAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Cli
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() parses the request to get the region, then calls the CloudControl API to delete the resource, and
 // returns an AsyncOperationResponse with the operation ID if successful, or an error if not.
 func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

@@ -39,7 +39,7 @@ const (
 var ErrModuleNotFound = errors.New("module not found in Terraform config")
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
-// from environment recipe and resource recipe metadata.
+// Parameters are populated from environment recipe and resource recipe metadata.
 func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
@@ -59,7 +59,7 @@ func getMainConfigFilePath(workingDir string) string {
 	return fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 }
 
-// Save writes the Terraform config to the main config file present at ConfigFilePath().
+// Save writes the Terraform config to main.tf.json file in the working directory.
 // This overwrites the existing file if it exists.
 func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -168,5 +168,25 @@ func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.Resource
 	cfg.Terraform = &TerraformDefinition{
 		Backend: backendConfig,
 	}
+
 	return backendConfig, nil
+}
+
+// Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
+// Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
+// https://developer.hashicorp.com/terraform/language/modules/syntax#accessing-module-output-values
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+
+	cfg.Output = map[string]any{
+		recipes.ResultPropertyName: map[string]any{
+			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",
+			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
+		},
+	}
+
+	return nil
 }

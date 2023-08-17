@@ -8,9 +8,7 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 )
 
-// # Function Explanation
-// 
-// DaprSecretStoreBinding checks if the required environment parameters are present and if so, creates a Dapr client and 
+// DaprSecretStoreBinding checks if the required environment parameters are present and if so, creates a Dapr client and
 // attempts to get the secret from the Dapr secret store.
 func DaprSecretStoreBinding(envParams map[string]string) BindingStatus {
 	secretName := envParams["COMPONENTNAME"]

@@ -65,8 +65,7 @@ var (
 
 // ListAllResourcesByType lists the all the resources within a scope
 //
-// # Function Explanation
-//
+
 // ListAllResourcesByType retrieves a list of all resources of a given type from the root
 // scope, and returns them in a slice of GenericResource objects, or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
@@ -94,8 +93,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesByType(ctx context.C
 
 // ListAllResourceOfTypeInApplication lists the resources of a particular type in an application
 //
-// # Function Explanation
-//
+
 // ListAllResourcesOfTypeInApplication takes in a context, an application name and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
@@ -115,8 +113,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInApplication(
 
 // ListAllResourcesByApplication lists the resources of a particular application
 //
-// # Function Explanation
-//
+
 // ListAllResourcesByApplication takes in a context and an application name and returns
 // a slice of GenericResources and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
@@ -134,8 +131,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 
 // ListAllResourcesByEnvironment lists the all the resources of a particular environment
 //
-// # Function Explanation
-//
+
 // ListAllResourcesByEnvironment iterates through a list of resource types and calls ListAllResourcesOfTypeInEnvironment
 // for each one, appending the results to a slice of GenericResources and returning it. If an error is encountered, it is returned.
 func (amc *UCPApplicationsManagementClient) ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error) {
@@ -153,8 +149,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesByEnvironment(ctx co
 
 // ListAllResourcesByTypeInEnvironment lists the all the resources of a particular type in an environment
 //
-// # Function Explanation
-//
+
 // ListAllResourcesOfTypeInEnvironment takes in a context, an environment name and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error) {
@@ -172,8 +167,6 @@ func (amc *UCPApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(
 	return results, nil
 }
 
-// # Function Explanation
-//
 // ShowResource creates a new client for a given resource type and attempts to retrieve the resource with the given name,
 // returning the resource or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error) {
@@ -190,8 +183,6 @@ func (amc *UCPApplicationsManagementClient) ShowResource(ctx context.Context, re
 	return getResponse.GenericResource, nil
 }
 
-// # Function Explanation
-//
 // DeleteResource creates a new client, sends a delete request to the resource, polls until the request is completed,
 // and returns a boolean indicating whether the resource was successfully deleted or not, and an error if one occurred.
 func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error) {
@@ -216,8 +207,6 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	return respFromCtx.StatusCode != 204, nil
 }
 
-// # Function Explanation
-//
 // ListApplications() retrieves a list of ApplicationResource objects from the Azure API
 // and returns them in a slice, or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerpv20220315.ApplicationResource, error) {
@@ -243,8 +232,6 @@ func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context
 	return results, nil
 }
 
-// # Function Explanation
-//
 // ListApplicationsByEnv takes in a context and an environment name and returns a slice of ApplicationResource objects
 // and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]corerpv20220315.ApplicationResource, error) {
@@ -262,8 +249,6 @@ func (amc *UCPApplicationsManagementClient) ListApplicationsByEnv(ctx context.Co
 	return results, nil
 }
 
-// # Function Explanation
-//
 // ShowApplication creates a new ApplicationsClient, attempts to get an application
 // resource from the Azure Cognitive Search service, and returns the resource or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (corerpv20220315.ApplicationResource, error) {
@@ -281,8 +266,6 @@ func (amc *UCPApplicationsManagementClient) ShowApplication(ctx context.Context,
 	return result, nil
 }
 
-// # Function Explanation
-//
 // DeleteApplication deletes an application and all its associated resources, and returns an error if any of the operations fail.
 func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (bool, error) {
 	// This handles the case where the application doesn't exist.
@@ -326,8 +309,7 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 
 // CreateOrUpdateApplication creates or updates an application.
 //
-// # Function Explanation
-//
+
 // CreateOrUpdateApplication creates or updates an application resource in Azure using the
 // given application name and resource. It returns an error if the creation or update fails.
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerpv20220315.ApplicationResource) error {
@@ -346,8 +328,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx contex
 
 // CreateApplicationIfNotFound creates an application if it does not exist.
 //
-// # Function Explanation
-//
+
 // CreateApplicationIfNotFound checks if an application exists and creates it if it does
 // not exist, returning an error if any occurs.
 func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerpv20220315.ApplicationResource) error {
@@ -376,8 +357,7 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 
 // Creates a radius environment resource
 //
-// # Function Explanation
-//
+
 // CreateEnvironment creates or updates an environment with the given name, location and
 // properties, and returns an error if one occurs.
 func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20220315.EnvironmentProperties) error {
@@ -443,8 +423,6 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-// # Function Explanation
-//
 // ListEnvironmentsInResourceGroup creates a list of environment resources by paging through the list of environments in
 // the resource group and appending each environment to the list. It returns the list of environment resources or an error
 // if one occurs.
@@ -471,8 +449,6 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx 
 	return envResourceList, nil
 }
 
-// # Function Explanation
-//
 // ListEnvironmentsAll queries the scope for all environment resources and returns a slice of environment resources or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]corerpv20220315.EnvironmentResource, error) {
 	scope, err := resources.ParseScope("/" + amc.RootScope)
@@ -509,8 +485,6 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 	return environments, nil
 }
 
-// # Function Explanation
-//
 // GetEnvDetails attempts to retrieve an environment resource from an environment client, and returns the environment
 // resource or an error if unsuccessful.
 func (amc *UCPApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerpv20220315.EnvironmentResource, error) {
@@ -528,8 +502,6 @@ func (amc *UCPApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 
 }
 
-// # Function Explanation
-//
 // DeleteEnv function checks if there are any applications associated with the given environment, deletes them if found,
 // and then deletes the environment itself. It returns a boolean and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (bool, error) {
@@ -561,8 +533,6 @@ func (amc *UCPApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 	return respFromCtx.StatusCode != 204, nil
 }
 
-// # Function Explanation
-//
 // CreateUCPGroup creates a new resource group in the specified plane type and plane name using the provided resource
 // group resource and returns an error if one occurs.
 func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20220901.ResourceGroupResource) error {
@@ -580,8 +550,6 @@ func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 	return nil
 }
 
-// # Function Explanation
-//
 // DeleteUCPGroup attempts to delete a UCP resource group using the provided plane type, plane name and resource group
 // name, and returns a boolean indicating success or failure and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
@@ -603,8 +571,6 @@ func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 
 }
 
-// # Function Explanation
-//
 // ShowUCPGroup is a function that retrieves a resource group from the Azure Resource Manager using the given plane type,
 // plane name and resource group name, and returns the resource group resource or an error if one occurs.
 func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucpv20220901.ResourceGroupResource, error) {
@@ -622,8 +588,6 @@ func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 	return resp.ResourceGroupResource, nil
 }
 
-// # Function Explanation
-//
 // ListUCPGroup is a function that retrieves a list of resource groups from the UCP API and returns them as a slice of
 // ResourceGroupResource objects. It may return an error if there is an issue with the API request.
 func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220901.ResourceGroupResource, error) {
@@ -652,20 +616,18 @@ func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 	return resourceGroupResources, nil
 }
 
-// # Function Explanation
-//
 // ShowRecipe creates a new EnvironmentsClient, gets the recipe metadata from the
 // environment, and returns the EnvironmentRecipeProperties or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.EnvironmentRecipeProperties, error) {
+func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.RecipeMetadataProperties, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.EnvironmentRecipeProperties{}, err
+		return corerpv20220315.RecipeMetadataProperties{}, err
 	}
 
 	resp, err := client.GetRecipeMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetRecipeMetadataOptions{})
 	if err != nil {
-		return corerpv20220315.EnvironmentRecipeProperties{}, err
+		return corerpv20220315.RecipeMetadataProperties{}, err
 	}
 
-	return corerpv20220315.EnvironmentRecipeProperties(resp.EnvironmentRecipeProperties), nil
+	return corerpv20220315.RecipeMetadataProperties(resp.RecipeMetadataProperties), nil
 }

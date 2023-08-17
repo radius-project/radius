@@ -79,43 +79,31 @@ type Impl struct {
 	AzureClient azure.Client
 }
 
-// # Function Explanation
-//
 // GetBicep() returns the Bicep interface stored in the Impl struct.
 func (i *Impl) GetBicep() bicep.Interface {
 	return i.Bicep
 }
 
-// # Function Explanation
-//
 // GetConnectionFactory returns the ConnectionFactory stored in the Impl struct.
 func (i *Impl) GetConnectionFactory() connections.Factory {
 	return i.ConnectionFactory
 }
 
-// # Function Explanation
-//
 // GetConfigHolder() returns a pointer to the ConfigHolder struct stored in the Impl struct.
 func (i *Impl) GetConfigHolder() *ConfigHolder {
 	return i.ConfigHolder
 }
 
-// # Function Explanation
-//
 // GetDeploy() returns the Deploy interface stored in the Impl struct.
 func (i *Impl) GetDeploy() deploy.Interface {
 	return i.Deploy
 }
 
-// # Function Explanation
-//
 // GetLogstream returns the logstream.Interface stored in the Impl struct.
 func (i *Impl) GetLogstream() logstream.Interface {
 	return i.Logstream
 }
 
-// # Function Explanation
-//
 // GetOutput() returns the Output interface stored in the Impl struct.
 func (i *Impl) GetOutput() output.Interface {
 	return i.Output
@@ -123,8 +111,7 @@ func (i *Impl) GetOutput() output.Interface {
 
 // GetPortforward fetches the portforward interface.
 //
-// # Function Explanation
-//
+
 // GetPortforward() returns the portforward.Interface stored in the Impl struct.
 func (i *Impl) GetPortforward() portforward.Interface {
 	return i.Portforward
@@ -132,8 +119,7 @@ func (i *Impl) GetPortforward() portforward.Interface {
 
 // GetPrompter fetches the interface to bubble tea prompt
 //
-// # Function Explanation
-//
+
 // GetPrompter() returns the Prompter field of the Impl struct, which is of type prompt.Interface.
 func (i *Impl) GetPrompter() prompt.Interface {
 	return i.Prompter
@@ -141,8 +127,7 @@ func (i *Impl) GetPrompter() prompt.Interface {
 
 // GetConfigFileInterface fetches the interface to interace with radius config file
 //
-// # Function Explanation
-//
+
 // GetConfigFileInterface returns the ConfigFileInterface stored in the Impl struct.
 func (i *Impl) GetConfigFileInterface() ConfigFileInterface {
 	return i.ConfigFileInterface
@@ -150,8 +135,7 @@ func (i *Impl) GetConfigFileInterface() ConfigFileInterface {
 
 // GetKubernetesInterface fetches the interface to get info related to the kubernetes cluster
 //
-// # Function Explanation
-//
+
 // GetKubernetesInterface returns the KubernetesInterface stored in the Impl struct.
 func (i *Impl) GetKubernetesInterface() kubernetes.Interface {
 	return i.KubernetesInterface
@@ -159,8 +143,7 @@ func (i *Impl) GetKubernetesInterface() kubernetes.Interface {
 
 // GetHelmInterface fetches the interface for operations related to radius installation
 //
-// # Function Explanation
-//
+
 // GetHelmInterface returns the helm.Interface stored in the Impl struct.
 func (i *Impl) GetHelmInterface() helm.Interface {
 	return i.HelmInterface
@@ -168,8 +151,7 @@ func (i *Impl) GetHelmInterface() helm.Interface {
 
 // GetNamespaceInterface fetches the interface for operations related to radius installation
 //
-// # Function Explanation
-//
+
 // GetNamespaceInterface returns the namespace interface stored in the Impl struct.
 func (i *Impl) GetNamespaceInterface() namespace.Interface {
 	return i.NamespaceInterface
@@ -177,8 +159,7 @@ func (i *Impl) GetNamespaceInterface() namespace.Interface {
 
 // GetAWSClient returns the AWS Client.
 //
-// # Function Explanation
-//
+
 // GetAWSClient returns the AWSClient stored in the Impl struct.
 func (i *Impl) GetAWSClient() aws.Client {
 	return i.AWSClient
@@ -186,8 +167,7 @@ func (i *Impl) GetAWSClient() aws.Client {
 
 // GetAzureClient returns the Azure Client.
 //
-// # Function Explanation
-//
+
 // GetAzureClient returns an azure.Client from the Impl struct.
 func (i *Impl) GetAzureClient() azure.Client {
 	return i.AzureClient
@@ -198,8 +178,6 @@ type Runner interface {
 	Run(ctx context.Context) error
 }
 
-// # Function Explanation
-//
 // RunCommand is a function that takes in a Runner interface and returns a function that takes in a cobra command and a
 // slice of strings, and returns an error if one occurs during validation or running.
 func RunCommand(runner Runner) func(cmd *cobra.Command, args []string) error {

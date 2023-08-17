@@ -30,8 +30,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad workspace switch` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner to switch the current workspace, taking in a Factory as a
 // parameter and setting the command's usage, short description, long description, example, arguments, and RunE.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -71,8 +70,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad workspace switch` command.
 //
-// # Function Explanation
-//
+
 // Validate reads the workspace name from the command line arguments, checks if it is empty, and if not, checks
 // if the workspace exists. If the workspace does not exist, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -103,8 +101,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad workspace switch` command.
 //
-// # Function Explanation
-//
+
 // Run checks if the default workspace is already set to the given workspace name, and if not, switches the default
 // workspace to the given workspace name. It returns an error if the workspace name is invalid or if there is an issue
 // setting the default workspace.

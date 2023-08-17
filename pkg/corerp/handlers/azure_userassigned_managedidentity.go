@@ -42,8 +42,6 @@ const (
 	UserAssignedIdentityResourceGroup  = "userassignedidentityresourcegroup"
 )
 
-// # Function Explanation
-//
 // NewAzureUserAssignedManagedIdentityHandler creates a new ResourceHandler for Azure User Assigned Managed Identity.
 func NewAzureUserAssignedManagedIdentityHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &azureUserAssignedManagedIdentityHandler{arm: arm}
@@ -53,8 +51,6 @@ type azureUserAssignedManagedIdentityHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// # Function Explanation
-//
 // Put creates or updates a user assigned managed identity in the specified resource group and returns the identity's
 // properties. It returns an error if the region does not support federated identity or if the creation or update fails.
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -115,8 +111,6 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	return properties, nil
 }
 
-// # Function Explanation
-//
 // Delete deletes a user assigned managed identity from Azure using the provided DeleteOptions.
 func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	msiResourceID, _, err := options.Resource.Identity.RequireARM()

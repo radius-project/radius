@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 )
 
@@ -32,22 +32,25 @@ const (
 
 // moduleInspectResult contains the result of inspecting a Terraform module config.
 type moduleInspectResult struct {
-	// ContextExists is true if the module contains a recipe context.
-	ContextExists bool
+	// ContextVarExists is true if the module has a variable defined for recipe context.
+	ContextVarExists bool
 
 	// RequiredProviders is a list of names of required providers for the module.
 	RequiredProviders []string
 
-	// We can add more inspection results here in the future.
+	// ResultOutputExists is true if the module contains an output named "result".
+	ResultOutputExists bool
+
+	// Any other module information required in the future can be added here.
 }
 
-// inspectTFModuleConfig inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
-// and returns the instpection result which includes the list of required providers and recipe context status.
+// inspectModule inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
+// and returns the inspection result which includes the list of required provider names, existence of recipe context variable and result output.
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
-func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectResult, error) {
-	result := &moduleInspectResult{ContextExists: false, RequiredProviders: []string{}}
+func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, error) {
+	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
@@ -57,14 +60,19 @@ func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectRe
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
 
-	// Ensure that the module has a recipe context.
+	// Check that the module has a recipe context variable.
 	if _, ok := mod.Variables[recipecontext.RecipeContextParamKey]; ok {
-		result.ContextExists = true
+		result.ContextVarExists = true
 	}
 
 	// Extract the list of required providers.
 	for providerName := range mod.RequiredProviders {
 		result.RequiredProviders = append(result.RequiredProviders, providerName)
+	}
+
+	// Check if an output named "result" is defined in the module.
+	if _, ok := mod.Outputs[recipes.ResultPropertyName]; ok {
+		result.ResultOutputExists = true
 	}
 
 	return result, nil
@@ -74,7 +82,7 @@ func inspectTFModuleConfig(workingDir, localModuleName string) (*moduleInspectRe
 // It uses Terraform's Get command to download the module using the Terraform executable available at execPath.
 // An error is returned if the module could not be downloaded.
 func downloadModule(ctx context.Context, workingDir, execPath string) error {
-	tf, err := tfexec.NewTerraform(workingDir, execPath)
+	tf, err := NewTerraform(ctx, workingDir, execPath)
 	if err != nil {
 		return err
 	}
