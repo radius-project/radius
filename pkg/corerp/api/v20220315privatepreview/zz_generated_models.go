@@ -238,6 +238,9 @@ type Container struct {
 	// Dictionary of
 	Env map[string]*string
 
+	// Pull policy for the container image
+	ImagePullPolicy *string
+
 	// Properties for readiness/liveness probe
 	LivenessProbe HealthProbePropertiesClassification
 

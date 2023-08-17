@@ -209,6 +209,7 @@
 * **command**: string[]: Entrypoint array. Overrides the container image's ENTRYPOINT
 * **env**: [ContainerEnv](#containerenv): Dictionary of <string>
 * **image**: string (Required): The registry and image to download and run in your container
+* **imagePullPolicy**: string: Pull policy for the container image
 * **livenessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
 * **ports**: [ContainerPorts](#containerports): Dictionary of <ContainerPort>
 * **readinessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe

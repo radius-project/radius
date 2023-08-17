@@ -181,6 +181,8 @@ model Container {
   @doc("The registry and image to download and run in your container")
   image: string;
 
+  imagePullPolicy: string;
+
   @doc("environment")
   env?: Map<string, string>;
 

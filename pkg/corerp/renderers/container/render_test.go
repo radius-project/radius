@@ -1586,6 +1586,43 @@ func Test_DNS_Service_Generation(t *testing.T) {
 	})
 }
 
+func Test_Render_ImagePullPolicySpecified(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image:           "someimage:latest",
+			ImagePullPolicy: "Never",
+			Env: map[string]string{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	ctx := testcontext.New(t)
+	renderer := Renderer{}
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+		require.Equal(t, properties.Container.Image, container.Image)
+		require.Equal(t, properties.Container.ImagePullPolicy, string(container.ImagePullPolicy))
+	})
+}
+
 func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
 	dependencies := map[string]renderers.RendererDependency{}
 	option := renderers.RenderOptions{Dependencies: dependencies}

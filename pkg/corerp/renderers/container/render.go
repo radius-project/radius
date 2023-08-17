@@ -364,6 +364,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		WorkingDir:   properties.Container.WorkingDir,
 	}
 
+	// If the user has specified an image pull policy, use it. Else, we will use Kubernetes default.
+	if properties.Container.ImagePullPolicy != "" {
+		container.ImagePullPolicy = corev1.PullPolicy(properties.Container.ImagePullPolicy)
+	}
+
 	var err error
 	if !properties.Container.ReadinessProbe.IsEmpty() {
 		container.ReadinessProbe, err = r.makeHealthProbe(properties.Container.ReadinessProbe)

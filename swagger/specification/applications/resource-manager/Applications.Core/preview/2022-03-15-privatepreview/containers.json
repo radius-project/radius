@@ -594,6 +594,15 @@
           "description": "The registry and image to download and run in your container",
           "type": "string"
         },
+        "imagePullPolicy": {
+          "description": "Pull policy for the container image",
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
         "env": {
           "type": "object",
           "additionalProperties": {
