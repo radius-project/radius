@@ -113,7 +113,7 @@ func TestGeneratedConfig(t *testing.T) {
 			}
 			execPath := filepath.Join(tc.workingDir, "terraform")
 			e := executor{}
-			err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
+			_, err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})

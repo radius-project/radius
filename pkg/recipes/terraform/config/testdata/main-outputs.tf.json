@@ -1,4 +1,13 @@
 {
+  "terraform": {
+    "backend": {
+      "kubernetes": {
+        "config_path": "/home/radius/.kube/config",
+        "namespace": "radius-system",
+        "secret_suffix": "test-secret-suffix"
+      }
+    }
+  },
   "module": {
     "redis-azure": {
       "redis_cache_name": "redis-test",
