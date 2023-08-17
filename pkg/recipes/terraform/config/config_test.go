@@ -105,7 +105,7 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	return envRecipe, resourceRecipe
 }
 
-func TestAddRecipeContext(t *testing.T) {
+func Test_AddRecipeContext(t *testing.T) {
 	configTests := []struct {
 		name               string
 		configPath         string
@@ -170,7 +170,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      nil,
-			expectedConfigFile: "testdata/main-nocontext.tf.json",
+			expectedConfigFile: "testdata/main-module.tf.json",
 		},
 		{
 			name: "without template version",
@@ -232,7 +232,7 @@ func TestAddRecipeContext(t *testing.T) {
 	}
 }
 
-func TestAddProviders(t *testing.T) {
+func Test_AddProviders(t *testing.T) {
 	mProvider, supportedProviders := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()
 
@@ -359,7 +359,6 @@ func TestAddProviders(t *testing.T) {
 				require.ErrorContains(t, err, tc.modProviderErr.Error())
 				return
 			}
-
 			require.NoError(t, err)
 
 			err = tfconfig.Save(ctx, workingDir)
@@ -375,7 +374,65 @@ func TestAddProviders(t *testing.T) {
 	}
 }
 
-func TestSave_overwrite(t *testing.T) {
+func Test_AddOutputs(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+
+	tests := []struct {
+		desc                 string
+		moduleName           string
+		expectedOutputConfig map[string]any
+		expectedConfigFile   string
+		expectedErr          bool
+	}{
+		{
+			desc:       "valid output",
+			moduleName: testRecipeName,
+			expectedOutputConfig: map[string]any{
+				"result": map[string]any{
+					"value":     "${module.redis-azure.result}",
+					"sensitive": true,
+				},
+			},
+			expectedConfigFile: "testdata/main-outputs.tf.json",
+			expectedErr:        false,
+		},
+		{
+			desc:               "empty module name",
+			moduleName:         "",
+			expectedConfigFile: "testdata/main-module.tf.json",
+			expectedErr:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+
+			err := tfconfig.AddOutputs(tc.moduleName)
+			if tc.expectedErr {
+				require.Error(t, err)
+				require.Nil(t, tfconfig.Output)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedOutputConfig, tfconfig.Output)
+			}
+
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+			err = tfconfig.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// Assert generated config file matches expected config in JSON format.
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
@@ -388,7 +445,7 @@ func TestSave_overwrite(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSave_Failure(t *testing.T) {
+func Test_Save_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()

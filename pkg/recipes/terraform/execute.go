@@ -26,8 +26,8 @@ import (
 	"time"
 
 	install "github.com/hashicorp/hc-install"
+	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
@@ -63,7 +63,7 @@ type executor struct {
 
 // Deploy installs Terraform, creates a working directory, generates a config, and runs Terraform init and
 // apply in the working directory, returning an error if any of these steps fail.
-func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error) {
+func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Install Terraform
@@ -93,12 +93,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*recipes.Recipe
 	}
 
 	// Run TF Init and Apply in the working directory
-	err = initAndApply(ctx, workingDir, execPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return initAndApply(ctx, workingDir, execPath)
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
@@ -127,17 +122,17 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return ErrRecipeNameEmpty
 	}
 
-	// Create a new Terraform JSON config with the given recipe parameters and working directory.
+	// Create Terraform configuration containing module information with the given recipe parameters.
 	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
 
-	// Before downloading module, Teraform configuration needs to be saved because downloading module
-	// requires the default config.
+	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
+	// Terraform Get command uses this config file to download module from the source specified in the config.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
-	// Download module in the working directory.
+	// Download the Terraform module to the working directory.
+	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		return err
@@ -146,49 +141,58 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 			options.EnvRecipe, metrics.SuccessfulOperationState))
 
-	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
-	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
-	result, err := inspectTFModuleConfig(workingDir, localModuleName)
+	// Load the downloaded module to retrieve providers and variables required by the module.
+	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
+	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
+	loadedModule, err := inspectModule(workingDir, localModuleName)
 	if err != nil {
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Inspected module result: %+v", result))
-	// Add the required providers to the terraform configuration.
-	if err := tfConfig.AddProviders(ctx, result.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
+	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
+	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
+	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetSupportedTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig); err != nil {
 		return err
 	}
 
-	// Populate recipecontext into TF JSON config only if the downloaded module has a context variable.
-	if result.ContextExists {
-		// create the context object to be passed to the recipe deployment
+	// Add recipe context parameter to the generated Terraform config's module parameters.
+	// This should only be added if the recipe context variable is declared in the downloaded module.
+	if loadedModule.ContextVarExists {
+		logger.Info("Adding recipe context module result")
+
+		// Create the recipe context object to be passed to the recipe deployment
 		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
 		if err != nil {
 			return err
 		}
+
 		if err = tfConfig.AddRecipeContext(ctx, localModuleName, recipectx); err != nil {
 			return err
 		}
 	}
 
-	// Add more configurations here.
-
-	// Ensure that we need to save the configuration after adding providers and recipecontext.
-	if err := tfConfig.Save(ctx, workingDir); err != nil {
-		return err
+	// Add outputs to the generated Terraform config, if module has the expected outputs.
+	if loadedModule.ResultOutputExists {
+		if err = tfConfig.AddOutputs(localModuleName); err != nil {
+			return err
+		}
 	}
 
-	return nil
+	// Add any future configurations here.
+
+	// Persist the Terraform configuration on disk in the working directory after all required configurations are added.
+	// This is needed to run Terraform init and apply.
+	return tfConfig.Save(ctx, workingDir)
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, workingDir, execPath string) error {
+func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	tf, err := NewTerraform(ctx, workingDir, execPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Initialize Terraform
@@ -196,15 +200,17 @@ func initAndApply(ctx context.Context, workingDir, execPath string) error {
 
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
-		return fmt.Errorf("terraform init failure: %w", err)
+		return nil, fmt.Errorf("terraform init failure: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")
 	if err := tf.Apply(ctx); err != nil {
-		return fmt.Errorf("terraform apply failure: %w", err)
+		return nil, fmt.Errorf("terraform apply failure: %w", err)
 	}
 
-	return nil
+	// Load Terraform state to retrieve the outputs
+	logger.Info("Fetching Terraform state")
+	return tf.Show(ctx)
 }
