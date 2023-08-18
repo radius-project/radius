@@ -342,7 +342,7 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "global.json#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/PortableResourceBasicProperties"
         }
       ],
       "additionalProperties": true,
@@ -365,6 +365,27 @@
           "description": "The recipe used to automatically deploy underlying infrastructure for the Extender portable resource."
         }
       },
+      "required": [
+        "environment"
+      ]
+    },
+    "PortableResourceBasicProperties": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "global.json#/definitions/ResourceStatus",
+          "description": "Status of a Portable resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "The resource id of the environment linked to the resource"
+        },
+        "application": {
+          "$ref": "global.json#/definitions/Application"
+        }
+      },
+      "description": "Basic properties of a Portable resource.",
       "required": [
         "environment"
       ]
