@@ -49,7 +49,7 @@ const (
 	summaryApplicationScaffoldFile                = summaryIndent + "Create %s\n"
 	summaryConfigurationHeadingIcon               = "📋 "
 	summaryConfigurationUpdateHeading             = "Update local configuration\n"
-	progressHeading                               = "Initializing Radius...\n\n"
+	progressHeading                               = "Initializing Radius. This may take a minute or two...\n\n"
 	progressCompleteFooter                        = "\nInitialization complete! Have a RAD time 😎\n\n"
 	progressStepCompleteIcon                      = "✅ "
 	progressStepWaitingIcon                       = "⏳ "
@@ -226,7 +226,7 @@ func (m *summaryModel) View() string {
 		}
 
 		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("dev")))
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
@@ -352,7 +352,7 @@ func (m *progressModel) View() string {
 		}
 
 		if options.Recipes.DevRecipes {
-			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("dev")))
+			message.WriteString(fmt.Sprintf(summaryEnvironmentCreateRecipePackyFmt, highlight("local-dev")))
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(summaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
