@@ -14,7 +14,7 @@ In order to fork a repo, go to the main radius repo page in github and select th
 
 ```
 git remote add origin <url of the forked repo>
-git remote add radius <url of the radius main repo>
+git remote add upstream <url of the radius main repo>
 ```
 
 ### Verify new remote
