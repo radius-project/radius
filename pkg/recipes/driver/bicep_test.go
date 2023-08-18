@@ -391,7 +391,9 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	}
 	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
-	err := driver.Delete(ctx, outputResources)
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
 	require.NoError(t, err)
 }
 
@@ -420,7 +422,9 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
 		Times(1)
 
-	err := driver.Delete(ctx, outputResources)
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
 }
