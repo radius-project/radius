@@ -1,6 +1,6 @@
 # Your first commit: Creating a forked repo
 
-In order to limit the branches on the main repo, Radius will enforce code contributions via forked repos.
+In order to limit the branches on the main repo, Radius enforces code contributions via forked repos.
 
 ## Creating a forked repo
 
