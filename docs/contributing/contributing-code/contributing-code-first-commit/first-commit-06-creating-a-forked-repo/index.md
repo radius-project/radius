@@ -4,7 +4,7 @@ In order to limit the branches on the main repo, Radius enforces code contributi
 
 ## Creating a forked repo
 
-In order to fork a repo, go to the main radius repo page in github and select the "fork" option as shown.
+In order to fork a repo, go to the main radius repo page in GitHub and select the "fork" option:
 
 <img width="800px" src="fork.png" alt="Creating a fork of the main repo">
 
