@@ -33,6 +33,7 @@ import (
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/ucp/util"
+	"k8s.io/client-go/kubernetes"
 
 	tfjson "github.com/hashicorp/terraform-json"
 )
@@ -40,8 +41,8 @@ import (
 var _ Driver = (*terraformDriver)(nil)
 
 // NewTerraformDriver creates a new instance of driver to execute a Terraform recipe.
-func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions) Driver {
-	return &terraformDriver{terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider), options: options}
+func NewTerraformDriver(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider, options TerraformOptions, k8sClientSet kubernetes.Interface) Driver {
+	return &terraformDriver{terraformExecutor: terraform.NewExecutor(ucpConn, secretProvider, k8sClientSet), options: options}
 }
 
 // Options represents the options required for execution of Terraform driver.

@@ -150,7 +150,7 @@ func (w *Service) Run(ctx context.Context) error {
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(w.Options.UCPConnection, provider.NewSecretProvider(w.Options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: w.Options.Config.Terraform.Path,
-				}),
+				}, w.KubeClientSet),
 		},
 	})
 
