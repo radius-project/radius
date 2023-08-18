@@ -24,7 +24,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	linkrp "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	linkrp_util "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +52,7 @@ func TestDaprSecretStoreDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := linkrp.LoadTestData(tc.dataModelFile)
+			c, err := linkrp_util.LoadTestData(tc.dataModelFile)
 			require.NoError(t, err)
 			dm := &datamodel.DaprSecretStore{}
 			_ = json.Unmarshal(c, dm)
@@ -97,7 +97,7 @@ func TestDaprSecretStoreDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := linkrp.LoadTestData(tc.versionedModelFile)
+			c, err := linkrp_util.LoadTestData(tc.versionedModelFile)
 			require.NoError(t, err)
 			dm, err := SecretStoreDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {

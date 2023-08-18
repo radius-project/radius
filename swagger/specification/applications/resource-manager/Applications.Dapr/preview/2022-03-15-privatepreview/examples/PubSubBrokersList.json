@@ -64,7 +64,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers?api-version=2022-01-25-privatepreview&$skipToken=X'12345'"
       }
     }
   }

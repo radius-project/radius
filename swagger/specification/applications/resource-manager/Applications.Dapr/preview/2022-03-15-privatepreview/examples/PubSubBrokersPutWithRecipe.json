@@ -20,8 +20,8 @@
   "responses": {
     "200": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprPubSub0",
-        "name": "daprPubSub0",
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprpubsub0",
+        "name": "daprpubsub0",
         "type": "Applications.Dapr/pubSubBrokers",
         "location": "West US",
         "properties": {
@@ -41,12 +41,12 @@
     },
     "201": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprPubSub1",
-        "name": "daprPubSub1",
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprpubsub0",
+        "name": "daprpubsub0",
         "type": "Applications.Dapr/pubSubBrokers",
         "location": "West US",
         "properties": {
-          "provisioningState": "Succeeded",
+          "provisioningState": "Accepted",
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
           "resourceProvisioning": "recipe",

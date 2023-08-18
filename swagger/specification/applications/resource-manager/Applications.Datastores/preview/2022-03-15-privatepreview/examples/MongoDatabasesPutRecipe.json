@@ -10,8 +10,8 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
         "recipe": {
           "name": "cosmosdb",
-          "parameters":{
-            "foo":"bar"
+          "parameters": {
+            "foo": "bar"
           }
         }
       }
@@ -30,8 +30,8 @@
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
           "recipe": {
             "name": "cosmosdb",
-            "parameters":{
-              "foo":"bar"
+            "parameters": {
+              "foo": "bar"
             }
           }
         }
@@ -39,18 +39,18 @@
     },
     "201": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo1",
-        "name": "mongo1",
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+        "name": "mongo0",
         "type": "Applications.Datastores/mongoDatabases",
         "location": "global",
         "properties": {
-          "provisioningState": "Succeeded",
+          "provisioningState": "Accepted",
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
           "recipe": {
             "name": "cosmosdb",
-            "parameters":{
-              "foo":"bar"
+            "parameters": {
+              "foo": "bar"
             }
           }
         }

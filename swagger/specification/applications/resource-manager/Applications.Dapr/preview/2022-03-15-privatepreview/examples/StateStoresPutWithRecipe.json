@@ -9,7 +9,7 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
         "recipe": {
-            "name": "recipe-test"
+          "name": "recipe-test"
         }
       }
     }
@@ -17,8 +17,8 @@
   "responses": {
     "200": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore0",
-        "name": "daprStateStore0",
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprstatestore0",
+        "name": "daprstatestore0",
         "type": "Applications.Dapr/stateStores",
         "location": "West US",
         "properties": {
@@ -27,24 +27,24 @@
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
           "kind": "state.sqlserver",
           "recipe": {
-              "name": "recipe-test"
+            "name": "recipe-test"
           }
         }
       }
     },
     "201": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore1",
-        "name": "daprStateStore1",
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprstatestore0",
+        "name": "daprstatestore0",
         "type": "Applications.Dapr/stateStores",
         "location": "West US",
         "properties": {
-          "provisioningState": "Succeeded",
+          "provisioningState": "Accepted",
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
           "resourceProvisioning": "manual",
           "recipe": {
-              "name": "recipe-test"
+            "name": "recipe-test"
           }
         }
       }

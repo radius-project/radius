@@ -19,7 +19,9 @@
               "host": "testAccount1.mongo.cosmos.azure.com",
               "port": 10255,
               "resources": [
-                {"id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+                }
               ],
               "database": "mongo0"
             }
@@ -37,8 +39,8 @@
               "host": "testAccount1.mongo.cosmos.azure.com",
               "port": 10255,
               "database": "mongo0",
+              "username": "testUser",
               "secrets": {
-                "username": "testUser",
                 "password": "testPassword",
                 "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
               }
@@ -55,14 +57,14 @@
               "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
               "recipe": {
                 "name": "cosmosdb",
-                "parameters":{
-                  "foo":"bar"
+                "parameters": {
+                  "foo": "bar"
                 }
               }
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases?api-version=2022-01-25-privatepreview&$skipToken=X'12345'"
       }
     }
   }
