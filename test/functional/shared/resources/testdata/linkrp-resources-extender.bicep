@@ -4,15 +4,15 @@ param magpieimage string
 param environment string 
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-extender'
+  name: 'linkrp-resources-extender'
   location: 'global'
   properties: {
     environment: environment
   }
 }
 
-resource twilio 'Applications.Core/extenders@2022-03-15-privatepreview' = {
-  name: 'extr-twilio'
+resource twilio 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+  name: 'extr-twilio-old'
   properties: {
     environment: environment
     fromNumber: '222-222-2222'
@@ -25,7 +25,7 @@ resource twilio 'Applications.Core/extenders@2022-03-15-privatepreview' = {
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'extr-ctnr'
+  name: 'extr-ctnr-old'
   location: 'global'
   properties: {
     application: app.id

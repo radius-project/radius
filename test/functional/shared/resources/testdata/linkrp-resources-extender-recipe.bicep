@@ -5,16 +5,16 @@ param registry string
 param version string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-extender-recipe-env'
+  name: 'linkrp-resources-extender-recipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-extender-recipe-env' 
+      namespace: 'linkrp-resources-extender-recipe-env' 
     }
     recipes: {
-      'Applications.Core/extenders':{
+      'Applications.Link/extenders':{
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/extender-recipe:${version}' 
@@ -28,21 +28,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-extender-recipe'
+  name: 'linkrp-resources-extender-recipe'
   location: 'global'
   properties: {
     environment: env.id
     extensions: [
       {
           kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-extender-recipe-app'
+          namespace: 'linkrp-resources-extender-recipe-app'
       }
     ]
   }
 }
 
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
-  name: 'extender-recipe'
+resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+  name: 'extender-recipe-old'
   properties: {
     environment: env.id
     application: app.id
