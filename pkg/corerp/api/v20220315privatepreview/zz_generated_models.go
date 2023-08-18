@@ -616,18 +616,6 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
-// ExtenderBasicResourceProperties - Basic properties of an Extender resource.
-type ExtenderBasicResourceProperties struct {
-	// REQUIRED; The resource id of the environment linked to the resource
-	Environment *string
-
-	// Specifies the resource id of the application
-	Application *string
-
-	// READ-ONLY; Status of an Extender resource.
-	Status *ResourceStatus
-}
-
 // ExtenderList - Object that includes an array of Extender and a possible portable resource for next set.
 type ExtenderList struct {
 	// The link used to fetch the next page of Extender list.
@@ -660,7 +648,7 @@ type ExtenderProperties struct {
 	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of an Extender resource.
+	// READ-ONLY; Status of a Portable resource.
 	Status *ResourceStatus
 }
 
@@ -1014,6 +1002,18 @@ func (p *PersistentVolume) GetVolume() *Volume {
 		Kind: p.Kind,
 		MountPath: p.MountPath,
 	}
+}
+
+// PortableResourceBasicProperties - Basic properties of a Portable resource.
+type PortableResourceBasicProperties struct {
+	// REQUIRED; The resource id of the environment linked to the resource
+	Environment *string
+
+	// Specifies the resource id of the application
+	Application *string
+
+	// READ-ONLY; Status of a Portable resource.
+	Status *ResourceStatus
 }
 
 // Providers - Cloud providers configuration

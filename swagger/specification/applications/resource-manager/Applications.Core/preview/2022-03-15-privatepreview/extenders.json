@@ -342,7 +342,7 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "#/definitions/ExtenderBasicResourceProperties"
+          "$ref": "#/definitions/PortableResourceBasicProperties"
         }
       ],
       "additionalProperties": true,
@@ -369,12 +369,12 @@
         "environment"
       ]
     },
-    "ExtenderBasicResourceProperties": {
+    "PortableResourceBasicProperties": {
       "type": "object",
       "properties": {
         "status": {
           "$ref": "global.json#/definitions/ResourceStatus",
-          "description": "Status of an Extender resource.",
+          "description": "Status of a Portable resource.",
           "readOnly": true
         },
         "environment": {
@@ -385,7 +385,7 @@
           "$ref": "global.json#/definitions/Application"
         }
       },
-      "description": "Basic properties of an Extender resource.",
+      "description": "Basic properties of a Portable resource.",
       "required": [
         "environment"
       ]

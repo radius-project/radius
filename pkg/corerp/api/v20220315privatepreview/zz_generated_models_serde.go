@@ -1234,41 +1234,6 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ExtenderBasicResourceProperties.
-func (e ExtenderBasicResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", e.Application)
-	populate(objectMap, "environment", e.Environment)
-	populate(objectMap, "status", e.Status)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ExtenderBasicResourceProperties.
-func (e *ExtenderBasicResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", e, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &e.Application)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &e.Environment)
-			delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &e.Status)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", e, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type ExtenderList.
 func (e ExtenderList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -2122,6 +2087,41 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "source":
 				err = unpopulate(val, "Source", &p.Source)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", p, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type PortableResourceBasicProperties.
+func (p PortableResourceBasicProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "application", p.Application)
+	populate(objectMap, "environment", p.Environment)
+	populate(objectMap, "status", p.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type PortableResourceBasicProperties.
+func (p *PortableResourceBasicProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", p, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &p.Application)
+			delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &p.Environment)
+			delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &p.Status)
 			delete(rawMsg, key)
 		}
 		if err != nil {
