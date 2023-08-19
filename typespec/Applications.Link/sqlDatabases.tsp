@@ -124,7 +124,7 @@ interface SqlDatabases {
     "RootScope"
   >;
 
-  @doc("Lists secrets values for the specified RabbitMQMessageQueue resource")
+  @doc("Lists secrets values for the specified SqlDatabase resource")
   @action("listSecrets")
   listSecrets is ArmResourceActionSync<
     SqlDatabaseResource,

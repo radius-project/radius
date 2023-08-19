@@ -124,7 +124,7 @@ interface RedisCaches {
     "RootScope"
   >;
 
-  @doc("Lists secrets values for the specified RedisCacheResource resource")
+  @doc("Lists secrets values for the specified RedisCache resource")
   @action("listSecrets")
   listSecrets is ArmResourceActionSync<
     RedisCacheResource,
