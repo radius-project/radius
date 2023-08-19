@@ -35,7 +35,7 @@ model BasicResourceProperties {
   environment: string;
 
   @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
-  application?: Application
+  application?: Application;
 }
 
 @doc("Basic properties of a Dapr component object.")
@@ -61,7 +61,7 @@ scalar Application extends string;
 @doc("Describes a reference to an existing resource")
 model ResourceReference {
   @doc("Resource id of an existing resource")
-  id: string
+  id: string;
 }
 
 @doc("Provisioning state of the portable resource at the time the operation was called")
