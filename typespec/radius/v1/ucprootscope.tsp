@@ -24,8 +24,6 @@ using TypeSpec.Http;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Foundations;
 
-namespace Radius.V1;
-
 @doc("The default rootScope parameter type.")
 model RootScopeParameter {
   @path

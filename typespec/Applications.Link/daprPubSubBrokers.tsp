@@ -31,7 +31,6 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
-using Radius.V1;
 
 @armProviderNamespace
 @service({

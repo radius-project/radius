@@ -14,12 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import "@typespec/rest";
-import "@typespec/openapi";
-import "@azure-tools/typespec-autorest";
-import "@azure-tools/typespec-azure-core";
-import "@azure-tools/typespec-azure-resource-manager";
-
 import "./mongoDatabases.tsp";
 import "./sqlDatabases.tsp";
 import "./redisCaches.tsp";

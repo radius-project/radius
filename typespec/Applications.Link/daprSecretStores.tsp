@@ -30,7 +30,6 @@ using TypeSpec.Http;
 using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Azure.ResourceManager;
-using Radius.V1;
 
 @service({
   title: "Applications.Link Management APIs",

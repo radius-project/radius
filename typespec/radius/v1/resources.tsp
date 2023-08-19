@@ -23,8 +23,6 @@ using OpenAPI;
 using Azure.Core;
 using Azure.ResourceManager;
 
-namespace Radius.V1;
-
 @doc("Basic properties of a Radius resource.")
 model BasicResourceProperties {
   @doc("Status of a resource.")

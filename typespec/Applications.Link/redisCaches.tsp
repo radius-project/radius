@@ -30,7 +30,6 @@ using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using OpenAPI;
-using Radius.V1;
 
 @service({
   title: "Applications.Link Management APIs",
@@ -42,11 +41,11 @@ namespace Applications.Link;
 
 @doc("RedisCache link")
 model RedisCacheResource is TrackedResource<RedisCacheProperties> {
+  @path
   @doc("The name of the RedisCache link resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("redisCacheName")
-  @path
   @segment("redisCaches")
   name: string;
 }
