@@ -36,10 +36,8 @@ using Radius.V1;
   title: "Applications.Link Management APIs",
   version: "2022-03-15-privatepreview",
 })
-
 @doc("REST APIs for Applications.Link/daprSecretStores")
 @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
-
 namespace Applications.Link;
 @doc("DaprSecretStore link properties")
 model DaprSecretStoreProperties extends BasicDaprResourceProperties {
@@ -79,11 +77,28 @@ model DaprSecretStoreResource is TrackedResource<DaprSecretStoreProperties> {
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface DaprSecretStore {
-  get is ArmResourceRead<DaprSecretStoreResource, UCPBaseParameters<DaprSecretStoreResource>>;
-  create is ArmResourceCreateOrUpdateAsync<DaprSecretStoreResource, UCPBaseParameters<DaprSecretStoreResource>>;
-  update is ArmResourcePatchAsync<DaprSecretStoreResource, DaprSecretStoreProperties, UCPBaseParameters<DaprSecretStoreResource>>;
-  delete is ArmResourceDeleteAsync<DaprSecretStoreResource, UCPBaseParameters<DaprSecretStoreResource>>;
+  get is ArmResourceRead<
+    DaprSecretStoreResource,
+    UCPBaseParameters<DaprSecretStoreResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    DaprSecretStoreResource,
+    UCPBaseParameters<DaprSecretStoreResource>
+  >;
+  update is ArmResourcePatchAsync<
+    DaprSecretStoreResource,
+    DaprSecretStoreProperties,
+    UCPBaseParameters<DaprSecretStoreResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    DaprSecretStoreResource,
+    UCPBaseParameters<DaprSecretStoreResource>
+  >;
 
-  listByRootScope is ArmResourceListByParent<DaprSecretStoreResource, UCPBaseParameters<DaprSecretStoreResource>, "RootScope", "RootScope">;
+  listByRootScope is ArmResourceListByParent<
+    DaprSecretStoreResource,
+    UCPBaseParameters<DaprSecretStoreResource>,
+    "RootScope",
+    "RootScope"
+  >;
 }
-    

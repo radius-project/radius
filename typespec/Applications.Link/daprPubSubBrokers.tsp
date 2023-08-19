@@ -83,10 +83,27 @@ model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @armResourceOperations
 interface DaprPubSubBroker {
-  get is ArmResourceRead<DaprPubSubBrokerResource, UCPBaseParameters<DaprPubSubBrokerResource>>;
-  create is ArmResourceCreateOrUpdateAsync<DaprPubSubBrokerResource, UCPBaseParameters<DaprPubSubBrokerResource>>;
-  update is ArmResourcePatchAsync<DaprPubSubBrokerResource, DaprPubSubBrokerProperties, UCPBaseParameters<DaprPubSubBrokerResource>>;
-  delete is ArmResourceDeleteAsync<DaprPubSubBrokerResource, UCPBaseParameters<DaprPubSubBrokerResource>>;
-  listByRootScope is ArmResourceListByParent<DaprPubSubBrokerResource, UCPBaseParameters<DaprPubSubBrokerResource>, "RootScope", "RootScope">;
+  get is ArmResourceRead<
+    DaprPubSubBrokerResource,
+    UCPBaseParameters<DaprPubSubBrokerResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    DaprPubSubBrokerResource,
+    UCPBaseParameters<DaprPubSubBrokerResource>
+  >;
+  update is ArmResourcePatchAsync<
+    DaprPubSubBrokerResource,
+    DaprPubSubBrokerProperties,
+    UCPBaseParameters<DaprPubSubBrokerResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    DaprPubSubBrokerResource,
+    UCPBaseParameters<DaprPubSubBrokerResource>
+  >;
+  listByRootScope is ArmResourceListByParent<
+    DaprPubSubBrokerResource,
+    UCPBaseParameters<DaprPubSubBrokerResource>,
+    "RootScope",
+    "RootScope"
+  >;
 }
-    

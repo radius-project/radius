@@ -41,8 +41,7 @@ using Radius.V1;
 namespace Applications.Link;
 
 @doc("RedisCache link")
-model RedisCacheResource
-  is TrackedResource<RedisCacheProperties> {
+model RedisCacheResource is TrackedResource<RedisCacheProperties> {
   @doc("The name of the RedisCache link resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
@@ -62,9 +61,9 @@ model RedisCacheSecrets {
 
   @doc("The password for this Redis cache instance")
   password?: string;
-  
+
   @doc("The URL used to connect to the Redis cache")
-  url?: string
+  url?: string;
 }
 
 @doc("RedisCache link properties")
@@ -85,7 +84,7 @@ model RedisCacheProperties extends BasicResourceProperties {
   @doc("The username for Redis cache")
   username?: string;
 
-  @doc("Specifies whether to enable SSL connections to the Redis cache")  
+  @doc("Specifies whether to enable SSL connections to the Redis cache")
   tls?: boolean;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the Redis caches link")
@@ -101,14 +100,36 @@ model RedisCacheProperties extends BasicResourceProperties {
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface RedisCaches {
-  get is ArmResourceRead<RedisCacheResource, UCPBaseParameters<RedisCacheResource>>;
-  create is ArmResourceCreateOrUpdateAsync<RedisCacheResource, UCPBaseParameters<RedisCacheResource>>;
-  update is ArmResourcePatchAsync<RedisCacheResource, RedisCacheProperties, UCPBaseParameters<RedisCacheResource>>;
-  delete is ArmResourceDeleteAsync<RedisCacheResource, UCPBaseParameters<RedisCacheResource>>;
-  listByRootScope is ArmResourceListByParent<RedisCacheResource, UCPBaseParameters<RedisCacheResource>, "RootScope", "RootScope">;
+  get is ArmResourceRead<
+    RedisCacheResource,
+    UCPBaseParameters<RedisCacheResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    RedisCacheResource,
+    UCPBaseParameters<RedisCacheResource>
+  >;
+  update is ArmResourcePatchAsync<
+    RedisCacheResource,
+    RedisCacheProperties,
+    UCPBaseParameters<RedisCacheResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    RedisCacheResource,
+    UCPBaseParameters<RedisCacheResource>
+  >;
+  listByRootScope is ArmResourceListByParent<
+    RedisCacheResource,
+    UCPBaseParameters<RedisCacheResource>,
+    "RootScope",
+    "RootScope"
+  >;
 
   @doc("Lists secrets values for the specified RedisCacheResource resource")
   @action("listSecrets")
-  listSecrets is ArmResourceActionSync<RedisCacheResource, {}, RedisCacheListSecretsResult, UCPBaseParameters<RedisCacheResource>>;
+  listSecrets is ArmResourceActionSync<
+    RedisCacheResource,
+    {},
+    RedisCacheListSecretsResult,
+    UCPBaseParameters<RedisCacheResource>
+  >;
 }
-    

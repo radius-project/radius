@@ -81,10 +81,27 @@ model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface DaprStateStore {
-  get is ArmResourceRead<DaprStateStoreResource, UCPBaseParameters<DaprStateStoreResource>>;
-  create is ArmResourceCreateOrUpdateAsync<DaprStateStoreResource, UCPBaseParameters<DaprStateStoreResource>>;
-  update is ArmResourcePatchAsync<DaprStateStoreResource, DaprStateStoreProperties, UCPBaseParameters<DaprStateStoreResource>>;
-  delete is ArmResourceDeleteAsync<DaprStateStoreResource, UCPBaseParameters<DaprStateStoreResource>>;
-  listByRootScope is ArmResourceListByParent<DaprStateStoreResource, UCPBaseParameters<DaprStateStoreResource>, "RootScope", "RootScope">;
+  get is ArmResourceRead<
+    DaprStateStoreResource,
+    UCPBaseParameters<DaprStateStoreResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    DaprStateStoreResource,
+    UCPBaseParameters<DaprStateStoreResource>
+  >;
+  update is ArmResourcePatchAsync<
+    DaprStateStoreResource,
+    DaprStateStoreProperties,
+    UCPBaseParameters<DaprStateStoreResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    DaprStateStoreResource,
+    UCPBaseParameters<DaprStateStoreResource>
+  >;
+  listByRootScope is ArmResourceListByParent<
+    DaprStateStoreResource,
+    UCPBaseParameters<DaprStateStoreResource>,
+    "RootScope",
+    "RootScope"
+  >;
 }
-    

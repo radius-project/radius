@@ -100,13 +100,36 @@ model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface SqlDatabases {
-  get is ArmResourceRead<SqlDatabaseResource, UCPBaseParameters<SqlDatabaseResource>>;
-  create is ArmResourceCreateOrUpdateAsync<SqlDatabaseResource, UCPBaseParameters<SqlDatabaseResource>>;
-  update is ArmResourcePatchAsync<SqlDatabaseResource, SqlDatabaseProperties, UCPBaseParameters<SqlDatabaseResource>>;
-  delete is ArmResourceDeleteAsync<SqlDatabaseResource, UCPBaseParameters<SqlDatabaseResource>>;
-  listByRootScope is ArmResourceListByParent<SqlDatabaseResource, UCPBaseParameters<SqlDatabaseResource>, "RootScope", "RootScope">;
+  get is ArmResourceRead<
+    SqlDatabaseResource,
+    UCPBaseParameters<SqlDatabaseResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    SqlDatabaseResource,
+    UCPBaseParameters<SqlDatabaseResource>
+  >;
+  update is ArmResourcePatchAsync<
+    SqlDatabaseResource,
+    SqlDatabaseProperties,
+    UCPBaseParameters<SqlDatabaseResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    SqlDatabaseResource,
+    UCPBaseParameters<SqlDatabaseResource>
+  >;
+  listByRootScope is ArmResourceListByParent<
+    SqlDatabaseResource,
+    UCPBaseParameters<SqlDatabaseResource>,
+    "RootScope",
+    "RootScope"
+  >;
 
   @doc("Lists secrets values for the specified RabbitMQMessageQueue resource")
   @action("listSecrets")
-  listSecrets is ArmResourceActionSync<SqlDatabaseResource, {}, SqlDatabaseListSecretsResult, UCPBaseParameters<SqlDatabaseResource>>;
+  listSecrets is ArmResourceActionSync<
+    SqlDatabaseResource,
+    {},
+    SqlDatabaseListSecretsResult,
+    UCPBaseParameters<SqlDatabaseResource>
+  >;
 }

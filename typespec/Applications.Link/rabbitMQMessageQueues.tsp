@@ -42,7 +42,8 @@ namespace Applications.Link;
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQMessageQueue link")
-model RabbitMQMessageQueueResource is TrackedResource<RabbitMQMessageQueueProperties> {
+model RabbitMQMessageQueueResource
+  is TrackedResource<RabbitMQMessageQueueProperties> {
   @doc("The name of the RabbitMQMessageQueue link resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
@@ -101,19 +102,41 @@ model RabbitMQMessageQueueProperties extends BasicResourceProperties {
 
   @doc("Specifies whether to use SSL when connecting to the RabbitMQ instance")
   tls?: boolean;
-
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface RabbitMQMessageQueue {
-  get is ArmResourceRead<RabbitMQMessageQueueResource, UCPBaseParameters<RabbitMQMessageQueueResource>>;
-  create is ArmResourceCreateOrUpdateAsync<RabbitMQMessageQueueResource, UCPBaseParameters<RabbitMQMessageQueueResource>>;
-  update is ArmResourcePatchAsync<RabbitMQMessageQueueResource, RabbitMQMessageQueueProperties, UCPBaseParameters<RabbitMQMessageQueueResource>>;
-  delete is ArmResourceDeleteAsync<RabbitMQMessageQueueResource, UCPBaseParameters<RabbitMQMessageQueueResource>>;
-  listByRootScope is ArmResourceListByParent<RabbitMQMessageQueueResource, UCPBaseParameters<RabbitMQMessageQueueResource>, "RootScope", "RootScope">;
+  get is ArmResourceRead<
+    RabbitMQMessageQueueResource,
+    UCPBaseParameters<RabbitMQMessageQueueResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    RabbitMQMessageQueueResource,
+    UCPBaseParameters<RabbitMQMessageQueueResource>
+  >;
+  update is ArmResourcePatchAsync<
+    RabbitMQMessageQueueResource,
+    RabbitMQMessageQueueProperties,
+    UCPBaseParameters<RabbitMQMessageQueueResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    RabbitMQMessageQueueResource,
+    UCPBaseParameters<RabbitMQMessageQueueResource>
+  >;
+  listByRootScope is ArmResourceListByParent<
+    RabbitMQMessageQueueResource,
+    UCPBaseParameters<RabbitMQMessageQueueResource>,
+    "RootScope",
+    "RootScope"
+  >;
 
   @doc("Lists secrets values for the specified RabbitMQMessageQueue resource")
   @action("listSecrets")
-  listSecrets is ArmResourceActionSync<RabbitMQMessageQueueResource, {}, RabbitMQListSecretsResult, UCPBaseParameters<RabbitMQMessageQueueResource>>;
+  listSecrets is ArmResourceActionSync<
+    RabbitMQMessageQueueResource,
+    {},
+    RabbitMQListSecretsResult,
+    UCPBaseParameters<RabbitMQMessageQueueResource>
+  >;
 }

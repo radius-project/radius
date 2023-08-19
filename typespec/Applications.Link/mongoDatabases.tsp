@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
@@ -66,7 +65,7 @@ model MongoDatabaseSecrets {
 }
 
 @doc("MongoDatabase link properties")
-model MongoDatabaseProperties extends BasicResourceProperties{
+model MongoDatabaseProperties extends BasicResourceProperties {
   @doc("Provisioning state of the mongo database link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
@@ -99,13 +98,36 @@ model MongoDatabaseProperties extends BasicResourceProperties{
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface MongoDatabases {
-  get is ArmResourceRead<MongoDatabaseResource, UCPBaseParameters<MongoDatabaseResource>>;
-  create is ArmResourceCreateOrUpdateAsync<MongoDatabaseResource, UCPBaseParameters<MongoDatabaseResource>>;
-  update is ArmResourcePatchAsync<MongoDatabaseResource, MongoDatabaseProperties, UCPBaseParameters<MongoDatabaseResource>>;
-  delete is ArmResourceDeleteAsync<MongoDatabaseResource, UCPBaseParameters<MongoDatabaseResource>>;
-  listByRootScope is ArmResourceListByParent<MongoDatabaseResource, UCPBaseParameters<MongoDatabaseResource>, "RootScope", "RootScope">;
+  get is ArmResourceRead<
+    MongoDatabaseResource,
+    UCPBaseParameters<MongoDatabaseResource>
+  >;
+  create is ArmResourceCreateOrUpdateAsync<
+    MongoDatabaseResource,
+    UCPBaseParameters<MongoDatabaseResource>
+  >;
+  update is ArmResourcePatchAsync<
+    MongoDatabaseResource,
+    MongoDatabaseProperties,
+    UCPBaseParameters<MongoDatabaseResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    MongoDatabaseResource,
+    UCPBaseParameters<MongoDatabaseResource>
+  >;
+  listByRootScope is ArmResourceListByParent<
+    MongoDatabaseResource,
+    UCPBaseParameters<MongoDatabaseResource>,
+    "RootScope",
+    "RootScope"
+  >;
 
   @doc("Lists secrets values for the specified MongoDatabases resource")
   @action("listSecrets")
-  listSecrets is ArmResourceActionSync<MongoDatabaseResource, {}, MongoDatabaseListSecretsResult, UCPBaseParameters<MongoDatabaseResource>>;
+  listSecrets is ArmResourceActionSync<
+    MongoDatabaseResource,
+    {},
+    MongoDatabaseListSecretsResult,
+    UCPBaseParameters<MongoDatabaseResource>
+  >;
 }
