@@ -4,9 +4,9 @@
     "title": "Applications.Link Management APIs",
     "version": "2022-03-15-privatepreview",
     "description": "REST APIs for Applications.Link DaprPubSubBroker Resource",
-    "x-cadl-generated": [
+    "x-typespec-generated": [
       {
-        "emitter": "@azure-tools/cadl-autorest"
+        "emitter": "@azure-tools/typespec-autorest"
       }
     ]
   },
@@ -52,7 +52,7 @@
       "name": "RedisCaches"
     },
     {
-      "name": "RabbitMQMessageQueues"
+      "name": "RabbitMQMessageQueue"
     },
     {
       "name": "DaprSecretStore"
@@ -67,17 +67,17 @@
   "paths": {
     "/{rootScope}/providers/Applications.Link/daprPubSubBrokers": {
       "get": {
+        "operationId": "DaprPubSubBroker_ListByRootScope",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_ListByRootScope",
-        "description": "Lists information about all DaprPubSubBrokerResources in the given root scope",
+        "description": "List DaprPubSubBrokerResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -101,27 +101,27 @@
     },
     "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}": {
       "get": {
+        "operationId": "DaprPubSubBroker_Get",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_Get",
-        "description": "Retrieves information about a DaprPubSubBrokerResource",
+        "description": "Get a DaprPubSubBrokerResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprPubSubBrokerName",
             "in": "path",
-            "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -140,35 +140,100 @@
         }
       },
       "put": {
+        "operationId": "DaprPubSubBroker_Create",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_CreateOrUpdate",
-        "description": "Creates or updates a DaprPubSubBrokerResource",
+        "description": "Create a DaprPubSubBrokerResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprPubSubBrokerName",
             "in": "path",
-            "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprPubSubBrokerResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprPubSubBrokerResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "DaprPubSubBroker_Update",
+        "tags": [
+          "DaprPubSubBroker"
+        ],
+        "description": "Update a DaprPubSubBrokerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "daprPubSubBrokerName",
+            "in": "path",
+            "description": "DaprPubSubBroker name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResourceUpdate"
             }
           }
         ],
@@ -179,17 +244,18 @@
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
           },
           "default": {
@@ -198,30 +264,34 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "DaprPubSubBroker_Delete",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_Delete",
-        "description": "Deletes an existing DaprPubSubBrokerResource",
+        "description": "Delete a DaprPubSubBrokerResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprPubSubBrokerName",
             "in": "path",
-            "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -232,9 +302,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -249,24 +323,24 @@
           }
         },
         "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
+          "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/daprSecretStores": {
       "get": {
+        "operationId": "DaprSecretStore_ListByRootScope",
         "tags": [
           "DaprSecretStore"
         ],
-        "operationId": "DaprSecretStore_ListByRootScope",
-        "description": "Lists information about all DaprSecretStoreResources in the given root scope",
+        "description": "List DaprSecretStoreResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -290,27 +364,27 @@
     },
     "/{rootScope}/providers/Applications.Link/daprSecretStores/{daprSecretStoreName}": {
       "get": {
+        "operationId": "DaprSecretStore_Get",
         "tags": [
           "DaprSecretStore"
         ],
-        "operationId": "DaprSecretStore_Get",
-        "description": "Retrieves information about a DaprSecretStoreResource",
+        "description": "Get a DaprSecretStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprSecretStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -329,35 +403,100 @@
         }
       },
       "put": {
+        "operationId": "DaprSecretStore_Create",
         "tags": [
           "DaprSecretStore"
         ],
-        "operationId": "DaprSecretStore_CreateOrUpdate",
-        "description": "Creates or updates a DaprSecretStoreResource",
+        "description": "Create a DaprSecretStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprSecretStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprSecretStoreResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprSecretStoreResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "DaprSecretStore_Update",
+        "tags": [
+          "DaprSecretStore"
+        ],
+        "description": "Update a DaprSecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "daprSecretStoreName",
+            "in": "path",
+            "description": "DaprSecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResourceUpdate"
             }
           }
         ],
@@ -368,17 +507,18 @@
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/DaprSecretStoreResource"
             }
           },
           "default": {
@@ -387,30 +527,34 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "DaprSecretStore_Delete",
         "tags": [
           "DaprSecretStore"
         ],
-        "operationId": "DaprSecretStore_Delete",
-        "description": "Deletes an existing DaprSecretStoreResource",
+        "description": "Delete a DaprSecretStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprSecretStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -421,9 +565,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -436,22 +584,26 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/daprStateStores": {
       "get": {
+        "operationId": "DaprStateStore_ListByRootScope",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_ListByRootScope",
-        "description": "Lists information about all DaprStateStoreResources in the given root scope",
+        "description": "List DaprStateStoreResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -475,27 +627,27 @@
     },
     "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}": {
       "get": {
+        "operationId": "DaprStateStore_Get",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_Get",
-        "description": "Retrieves information about a DaprStateStoreResource",
+        "description": "Get a DaprStateStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprStateStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -514,35 +666,100 @@
         }
       },
       "put": {
+        "operationId": "DaprStateStore_Create",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_CreateOrUpdate",
-        "description": "Creates or updates a DaprStateStoreResource",
+        "description": "Create a DaprStateStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprStateStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprStateStoreResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprStateStoreResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "DaprStateStore_Update",
+        "tags": [
+          "DaprStateStore"
+        ],
+        "description": "Update a DaprStateStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "daprStateStoreName",
+            "in": "path",
+            "description": "DaprStateStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResourceUpdate"
             }
           }
         ],
@@ -553,17 +770,18 @@
               "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           "default": {
@@ -572,30 +790,34 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "DaprStateStore_Delete",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_Delete",
-        "description": "Deletes an existing DaprStateStoreResource",
+        "description": "Delete a DaprStateStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "daprStateStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -606,9 +828,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -623,24 +849,24 @@
           }
         },
         "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
+          "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases": {
       "get": {
+        "operationId": "MongoDatabases_ListByRootScope",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_ListByRootScope",
-        "description": "Lists information about all MongoDatabaseResources in the given root scope",
+        "description": "List MongoDatabaseResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -664,27 +890,27 @@
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}": {
       "get": {
+        "operationId": "MongoDatabases_Get",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_Get",
-        "description": "Retrieves information about a MongoDatabaseResource",
+        "description": "Get a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -703,35 +929,100 @@
         }
       },
       "put": {
+        "operationId": "MongoDatabases_Create",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_CreateOrUpdate",
-        "description": "Creates or updates a MongoDatabaseResource",
+        "description": "Create a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'MongoDatabaseResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'MongoDatabaseResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "MongoDatabases_Update",
+        "tags": [
+          "MongoDatabases"
+        ],
+        "description": "Update a MongoDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "description": "The name of the MongoDatabase link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResourceUpdate"
             }
           }
         ],
@@ -742,17 +1033,18 @@
               "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "default": {
@@ -761,30 +1053,34 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "MongoDatabases_Delete",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_Delete",
-        "description": "Deletes an existing MongoDatabaseResource",
+        "description": "Delete a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -795,9 +1091,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -812,7 +1112,7 @@
           }
         },
         "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
+          "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       }
@@ -820,23 +1120,36 @@
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets": {
       "post": {
         "operationId": "MongoDatabases_ListSecrets",
-        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "tags": [
+          "MongoDatabases"
+        ],
+        "description": "Lists secrets values for the specified MongoDatabases resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -857,17 +1170,17 @@
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues": {
       "get": {
+        "operationId": "RabbitMqMessageQueue_ListByRootScope",
         "tags": [
-          "RabbitMQMessageQueues"
+          "RabbitMQMessageQueue"
         ],
-        "operationId": "RabbitMqMessageQueues_ListByRootScope",
-        "description": "Lists information about all RabbitMQMessageQueueResources in the given root scope",
+        "description": "List RabbitMQMessageQueueResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -891,26 +1204,26 @@
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
       "get": {
+        "operationId": "RabbitMqMessageQueue_Get",
         "tags": [
-          "RabbitMQMessageQueues"
+          "RabbitMQMessageQueue"
         ],
-        "operationId": "RabbitMqMessageQueues_Get",
-        "description": "Retrieves information about a RabbitMQMessageQueueResource",
+        "description": "Get a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -929,34 +1242,98 @@
         }
       },
       "put": {
+        "operationId": "RabbitMqMessageQueue_Create",
         "tags": [
-          "RabbitMQMessageQueues"
+          "RabbitMQMessageQueue"
         ],
-        "operationId": "RabbitMqMessageQueues_CreateOrUpdate",
-        "description": "Creates or updates a RabbitMQMessageQueueResource",
+        "description": "Create a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RabbitMQMessageQueueResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RabbitMQMessageQueueResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "RabbitMqMessageQueue_Update",
+        "tags": [
+          "RabbitMQMessageQueue"
+        ],
+        "description": "Update a RabbitMQMessageQueueResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "rabbitMQMessageQueueName",
+            "in": "path",
+            "description": "The name of the RabbitMQMessageQueue link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResourceUpdate"
             }
           }
         ],
@@ -967,17 +1344,18 @@
               "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -986,29 +1364,33 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "RabbitMqMessageQueue_Delete",
         "tags": [
-          "RabbitMQMessageQueues"
+          "RabbitMQMessageQueue"
         ],
-        "operationId": "RabbitMqMessageQueues_Delete",
-        "description": "Deletes an existing RabbitMQMessageQueueResource",
+        "description": "Delete a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1019,9 +1401,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1034,29 +1420,45 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
       "post": {
-        "operationId": "RabbitMqMessageQueues_ListSecrets",
+        "operationId": "RabbitMqMessageQueue_ListSecrets",
+        "tags": [
+          "RabbitMQMessageQueue"
+        ],
         "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -1077,17 +1479,17 @@
     },
     "/{rootScope}/providers/Applications.Link/redisCaches": {
       "get": {
+        "operationId": "RedisCaches_ListByRootScope",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_ListByRootScope",
-        "description": "Lists information about all RedisCacheResources in the given root scope",
+        "description": "List RedisCacheResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -1111,26 +1513,26 @@
     },
     "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}": {
       "get": {
+        "operationId": "RedisCaches_Get",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_Get",
-        "description": "Retrieves information about a RedisCacheResource",
+        "description": "Get a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1149,34 +1551,98 @@
         }
       },
       "put": {
+        "operationId": "RedisCaches_Create",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_CreateOrUpdate",
-        "description": "Creates or updates a RedisCacheResource",
+        "description": "Create a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/RedisCacheResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RedisCacheResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RedisCacheResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "RedisCaches_Update",
+        "tags": [
+          "RedisCaches"
+        ],
+        "description": "Update a RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "description": "The name of the RedisCache link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResourceUpdate"
             }
           }
         ],
@@ -1187,17 +1653,18 @@
               "$ref": "#/definitions/RedisCacheResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
             }
           },
           "default": {
@@ -1206,29 +1673,33 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "RedisCaches_Delete",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_Delete",
-        "description": "Deletes an existing RedisCacheResource",
+        "description": "Delete a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1239,9 +1710,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1254,29 +1729,45 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
       "post": {
         "operationId": "RedisCaches_ListSecrets",
+        "tags": [
+          "RedisCaches"
+        ],
         "description": "Lists secrets values for the specified RedisCache resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -1297,17 +1788,17 @@
     },
     "/{rootScope}/providers/Applications.Link/sqlDatabases": {
       "get": {
+        "operationId": "SqlDatabases_ListByRootScope",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_ListByRootScope",
-        "description": "Lists information about all SqlDatabaseResources in the given root scope",
+        "description": "List SqlDatabaseResource resources by RootScope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           }
         ],
         "responses": {
@@ -1331,27 +1822,27 @@
     },
     "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}": {
       "get": {
+        "operationId": "SqlDatabases_Get",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_Get",
-        "description": "Retrieves information about a SqlDatabaseResource",
+        "description": "Get a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -1370,35 +1861,100 @@
         }
       },
       "put": {
+        "operationId": "SqlDatabases_Create",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_CreateOrUpdate",
-        "description": "Creates or updates a SqlDatabaseResource",
+        "description": "Create a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'SqlDatabaseResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'SqlDatabaseResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "SqlDatabases_Update",
+        "tags": [
+          "SqlDatabases"
+        ],
+        "description": "Update a SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "description": "The name of the SqlDatabase link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResourceUpdate"
             }
           }
         ],
@@ -1409,17 +1965,18 @@
               "$ref": "#/definitions/SqlDatabaseResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResource"
             }
           },
           "default": {
@@ -1428,30 +1985,34 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "SqlDatabases_Delete",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_Delete",
-        "description": "Deletes an existing SqlDatabaseResource",
+        "description": "Delete a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
           }
         ],
         "responses": {
@@ -1462,9 +2023,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1477,29 +2042,46 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets": {
       "post": {
         "operationId": "SqlDatabases_ListSecrets",
+        "tags": [
+          "SqlDatabases"
+        ],
         "description": "Lists secrets values for the specified SqlDatabase resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/Radius.V1.RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "x-ms-parameter-location": "method"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -1520,10 +2102,10 @@
     },
     "/providers/Applications.Link/operations": {
       "get": {
+        "operationId": "Operations_List",
         "tags": [
           "Operations"
         ],
-        "operationId": "Operations_List",
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -1551,53 +2133,12 @@
     }
   },
   "definitions": {
-    "Application": {
-      "type": "string",
-      "description": "Fully qualified resource ID for the application that the link is consumed by"
-    },
-    "BasicDaprResourceProperties": {
-      "type": "object",
-      "properties": {
-        "componentName": {
-          "type": "string",
-          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
-          "readOnly": true
-        }
-      },
-      "description": "Basic properties of a Dapr component object.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
-      ]
-    },
-    "BasicResourceProperties": {
-      "type": "object",
-      "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
-        }
-      },
-      "description": "Basic properties of a Radius resource.",
-      "required": [
-        "environment"
-      ]
-    },
     "DaprPubSubBrokerProperties": {
       "type": "object",
+      "description": "DaprPubSubBroker link properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker resource at the time the operation was called",
           "readOnly": true
         },
@@ -1606,8 +2147,9 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         },
         "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec"
+          "type": "object",
+          "description": "Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -1615,11 +2157,10 @@
         },
         "resources": {
           "type": "array",
+          "description": "A collection of references to resources associated with the daprPubSubBroker",
           "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "A collection of references to resources associated with the daprPubSubBroker"
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
         },
         "type": {
           "type": "string",
@@ -1630,15 +2171,15 @@
           "description": "Dapr component version"
         }
       },
-      "description": "DaprPubSubBroker link properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicDaprResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicDaprResourceProperties"
         }
       ]
     },
     "DaprPubSubBrokerResource": {
       "type": "object",
+      "description": "DaprPubSubBroker link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprPubSubBrokerProperties",
@@ -1650,7 +2191,6 @@
           ]
         }
       },
-      "description": "DaprPubSubBroker link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1659,32 +2199,90 @@
     },
     "DaprPubSubBrokerResourceListResult": {
       "type": "object",
+      "description": "The response of a DaprPubSubBrokerResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The DaprPubSubBrokerResource items on this page",
           "items": {
             "$ref": "#/definitions/DaprPubSubBrokerResource"
-          },
-          "x-cadl-name": "DaprPubSubBrokerResource[]",
-          "description": "The DaprPubSubBrokerResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a DaprPubSubBrokerResource list operation.",
       "required": [
         "value"
       ]
     },
+    "DaprPubSubBrokerResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprPubSubBrokerResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubBrokerResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprPubSubBrokerResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprPubSubBrokerResource.",
+      "properties": {
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the daprPubSubBroker",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format."
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "DaprSecretStoreProperties": {
       "type": "object",
+      "description": "DaprSecretStore link properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the dapr secret store link at the time the operation was called",
           "readOnly": true
         },
@@ -1697,8 +2295,9 @@
           "description": "Dapr component version"
         },
         "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+          "type": "object",
+          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -1709,15 +2308,15 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "DaprSecretStore link properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicDaprResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicDaprResourceProperties"
         }
       ]
     },
     "DaprSecretStoreResource": {
       "type": "object",
+      "description": "DaprSecretStore link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprSecretStoreProperties",
@@ -1729,7 +2328,6 @@
           ]
         }
       },
-      "description": "DaprSecretStore link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1738,32 +2336,83 @@
     },
     "DaprSecretStoreResourceListResult": {
       "type": "object",
+      "description": "The response of a DaprSecretStoreResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The DaprSecretStoreResource items on this page",
           "items": {
             "$ref": "#/definitions/DaprSecretStoreResource"
-          },
-          "x-cadl-name": "DaprSecretStoreResource[]",
-          "description": "The DaprSecretStoreResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a DaprSecretStoreResource list operation.",
       "required": [
         "value"
       ]
     },
+    "DaprSecretStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprSecretStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprSecretStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprSecretStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprSecretStoreResource.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "DaprStateStoreProperties": {
       "type": "object",
+      "description": "DaprStateStore link properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the DaprStateStore link at the time the operation was called",
           "readOnly": true
         },
@@ -1772,8 +2421,9 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         },
         "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
+          "type": "object",
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -1781,11 +2431,10 @@
         },
         "resources": {
           "type": "array",
+          "description": "A collection of references to resources associated with the state store",
           "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "A collection of references to resources associated with the state store"
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
         },
         "type": {
           "type": "string",
@@ -1796,15 +2445,15 @@
           "description": "Dapr component version"
         }
       },
-      "description": "DaprStateStore link properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicDaprResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicDaprResourceProperties"
         }
       ]
     },
     "DaprStateStoreResource": {
       "type": "object",
+      "description": "DaprStateStore link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprStateStoreProperties",
@@ -1816,7 +2465,6 @@
           ]
         }
       },
-      "description": "DaprStateStore link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1825,29 +2473,87 @@
     },
     "DaprStateStoreResourceListResult": {
       "type": "object",
+      "description": "The response of a DaprStateStoreResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The DaprStateStoreResource items on this page",
           "items": {
             "$ref": "#/definitions/DaprStateStoreResource"
-          },
-          "x-cadl-name": "DaprStateStoreResource[]",
-          "description": "The DaprStateStoreResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a DaprStateStoreResource list operation.",
       "required": [
         "value"
       ]
     },
+    "DaprStateStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprStateStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprStateStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprStateStoreResource.",
+      "properties": {
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the state store",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "MongoDatabaseListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given MongoDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -1857,14 +2563,14 @@
           "type": "string",
           "description": "Connection string used to connect to the target Mongo database"
         }
-      },
-      "description": "The secret values for the given MongoDatabase resource"
+      }
     },
     "MongoDatabaseProperties": {
       "type": "object",
+      "description": "MongoDatabase link properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the mongo database link at the time the operation was called",
           "readOnly": true
         },
@@ -1891,11 +2597,10 @@
         },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the MongoDB resource",
           "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the MongoDB resource"
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -1906,15 +2611,15 @@
           "description": "Username to use when connecting to the target Mongo database"
         }
       },
-      "description": "MongoDatabase link properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicResourceProperties"
         }
       ]
     },
     "MongoDatabaseResource": {
       "type": "object",
+      "description": "MongoDatabase link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/MongoDatabaseProperties",
@@ -1926,7 +2631,6 @@
           ]
         }
       },
-      "description": "MongoDatabase link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1935,29 +2639,95 @@
     },
     "MongoDatabaseResourceListResult": {
       "type": "object",
+      "description": "The response of a MongoDatabaseResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The MongoDatabaseResource items on this page",
           "items": {
             "$ref": "#/definitions/MongoDatabaseResource"
-          },
-          "x-cadl-name": "MongoDatabaseResource[]",
-          "description": "The MongoDatabaseResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a MongoDatabaseResource list operation.",
       "required": [
         "value"
       ]
     },
+    "MongoDatabaseResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the MongoDatabaseResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/MongoDatabaseResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "MongoDatabaseResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the MongoDatabaseResource.",
+      "properties": {
+        "secrets": {
+          "$ref": "#/definitions/MongoDatabaseSecrets",
+          "description": "Secret values provided for the resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the MongoDB link"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the MongoDB resource",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Mongo database"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "MongoDatabaseSecrets": {
       "type": "object",
+      "description": "The secret values for the given MongoDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -1967,38 +2737,16 @@
           "type": "string",
           "description": "Connection string used to connect to the target Mongo database"
         }
-      },
-      "description": "The secret values for the given MongoDatabase resource"
-    },
-    "OutputResource": {
-      "type": "object",
-      "properties": {},
-      "description": "Properties of an output resource."
+      }
     },
     "Parameters": {
       "type": "object",
-      "properties": {},
-      "description": "Key/value parameters to pass into the recipe at deployment"
-    },
-    "ProvisioningState": {
-      "type": "string",
-      "description": "Provisioning state of the link at the time the operation was called",
-      "enum": [
-        "Succeeded",
-        "Failed",
-        "Canceled",
-        "Provisioning",
-        "Updating",
-        "Deleting",
-        "Accepted"
-      ],
-      "x-ms-enum": {
-        "name": "ProvisioningState",
-        "modelAsString": true
-      }
+      "description": "Key/value parameters to pass into the recipe at deployment",
+      "properties": {}
     },
     "RabbitMQListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given RabbitMQMessageQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2008,14 +2756,14 @@
           "type": "string",
           "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
-      },
-      "description": "The secret values for the given RabbitMQMessageQueue resource"
+      }
     },
     "RabbitMQMessageQueueProperties": {
       "type": "object",
+      "description": "RabbitMQMessageQueue link properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the rabbitMQ message queue link at the time the operation was called",
           "readOnly": true
         },
@@ -2046,11 +2794,10 @@
         },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the rabbitMQ resource",
           "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the rabbitMQ resource"
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -2065,15 +2812,15 @@
           "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
         }
       },
-      "description": "RabbitMQMessageQueue link properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicResourceProperties"
         }
       ]
     },
     "RabbitMQMessageQueueResource": {
       "type": "object",
+      "description": "RabbitMQMessageQueue link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/RabbitMQMessageQueueProperties",
@@ -2085,7 +2832,6 @@
           ]
         }
       },
-      "description": "RabbitMQMessageQueue link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2094,29 +2840,103 @@
     },
     "RabbitMQMessageQueueResourceListResult": {
       "type": "object",
+      "description": "The response of a RabbitMQMessageQueueResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The RabbitMQMessageQueueResource items on this page",
           "items": {
             "$ref": "#/definitions/RabbitMQMessageQueueResource"
-          },
-          "x-cadl-name": "RabbitMQMessageQueueResource[]",
-          "description": "The RabbitMQMessageQueueResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a RabbitMQMessageQueueResource list operation.",
       "required": [
         "value"
       ]
     },
+    "RabbitMQMessageQueueResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the RabbitMQMessageQueueResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/RabbitMQMessageQueueResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "RabbitMQMessageQueueResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the RabbitMQMessageQueueResource.",
+      "properties": {
+        "secrets": {
+          "$ref": "#/definitions/RabbitMQSecrets",
+          "description": "Secrets provided by resources,"
+        },
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        },
+        "host": {
+          "type": "string",
+          "description": "The hostname of the RabbitMQ instance"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port of the RabbitMQ instance. Defaults to 5672"
+        },
+        "vHost": {
+          "type": "string",
+          "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username to use when connecting to the RabbitMQ instance"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the rabbitMQ resource",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "RabbitMQSecrets": {
       "type": "object",
+      "description": "The secret values for the given RabbitMQMessageQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2126,11 +2946,140 @@
           "type": "string",
           "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
+      }
+    },
+    "Radius.V1.Application": {
+      "type": "string",
+      "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+    },
+    "Radius.V1.BasicDaprResourceProperties": {
+      "type": "object",
+      "description": "Basic properties of a Dapr component object.",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        }
       },
-      "description": "The secret values for the given RabbitMQMessageQueue resource"
+      "allOf": [
+        {
+          "$ref": "#/definitions/Radius.V1.BasicResourceProperties"
+        }
+      ]
+    },
+    "Radius.V1.BasicResourceProperties": {
+      "type": "object",
+      "description": "Basic properties of a Radius resource.",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/Radius.V1.ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "Radius.V1.OutputResource": {
+      "type": "object",
+      "description": "Properties of an output resource.",
+      "properties": {}
+    },
+    "Radius.V1.ProvisioningState": {
+      "type": "string",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
+    },
+    "Radius.V1.ResourceReference": {
+      "type": "object",
+      "description": "Describes a reference to an existing resource",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource id of an existing resource"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "Radius.V1.ResourceStatus": {
+      "type": "object",
+      "description": "Status of a resource.",
+      "properties": {
+        "outputResources": {
+          "type": "array",
+          "description": "Properties of an output resource",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.OutputResource"
+          },
+          "x-ms-identifiers": []
+        }
+      }
     },
     "Recipe": {
       "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "properties": {
         "name": {
           "type": "string",
@@ -2141,13 +3090,27 @@
           "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "required": [
         "name"
       ]
     },
+    "RecipeUpdate": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "$ref": "#/definitions/Parameters",
+          "description": "Key/value parameters to pass into the recipe at deployment"
+        }
+      }
+    },
     "RedisCacheListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given RedisCache resource",
       "properties": {
         "connectionString": {
           "type": "string",
@@ -2161,14 +3124,14 @@
           "type": "string",
           "description": "The URL used to connect to the Redis cache"
         }
-      },
-      "description": "The secret values for the given RedisCache resource"
+      }
     },
     "RedisCacheProperties": {
       "type": "object",
+      "description": "RedisCache link properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the redis cache link at the time the operation was called",
           "readOnly": true
         },
@@ -2199,26 +3162,25 @@
         },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the Redis resource",
           "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the Redis resource"
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "RedisCache link properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicResourceProperties"
         }
       ]
     },
     "RedisCacheResource": {
       "type": "object",
+      "description": "RedisCache link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/RedisCacheProperties",
@@ -2230,7 +3192,6 @@
           ]
         }
       },
-      "description": "RedisCache link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2239,29 +3200,95 @@
     },
     "RedisCacheResourceListResult": {
       "type": "object",
+      "description": "The response of a RedisCacheResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The RedisCacheResource items on this page",
           "items": {
             "$ref": "#/definitions/RedisCacheResource"
-          },
-          "x-cadl-name": "RedisCacheResource[]",
-          "description": "The RedisCacheResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a RedisCacheResource list operation.",
       "required": [
         "value"
       ]
     },
+    "RedisCacheResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the RedisCacheResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/RedisCacheResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "RedisCacheResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the RedisCacheResource.",
+      "properties": {
+        "secrets": {
+          "$ref": "#/definitions/RedisCacheSecrets",
+          "description": "Secrets provided by resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to enable SSL connections to the Redis cache"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the Redis caches link"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the Redis resource",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "RedisCacheSecrets": {
       "type": "object",
+      "description": "The secret values for the given RedisCache resource",
       "properties": {
         "connectionString": {
           "type": "string",
@@ -2275,8 +3302,7 @@
           "type": "string",
           "description": "The URL used to connect to the Redis cache"
         }
-      },
-      "description": "The secret values for the given RedisCache resource"
+      }
     },
     "ResourceProvisioning": {
       "type": "string",
@@ -2287,39 +3313,24 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true
-      }
-    },
-    "ResourceReference": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Resource id of an existing resource"
-        }
-      },
-      "description": "Describes a reference to an existing resource",
-      "required": [
-        "id"
-      ]
-    },
-    "ResourceStatus": {
-      "type": "object",
-      "properties": {
-        "outputResources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/OutputResource"
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "recipe",
+            "value": "recipe",
+            "description": "The resource lifecycle will be managed by Radius"
           },
-          "x-ms-identifiers": [],
-          "x-cadl-name": "OutputResource[]",
-          "description": "Properties of an output resource"
-        }
-      },
-      "description": "Status of a resource."
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
+      }
     },
     "SqlDatabaseListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given SqlDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2329,14 +3340,14 @@
           "type": "string",
           "description": "Connection string used to connect to the target Sql database"
         }
-      },
-      "description": "The secret values for the given SqlDatabase resource"
+      }
     },
     "SqlDatabaseProperties": {
       "type": "object",
+      "description": "SqlDatabase properties",
       "properties": {
         "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
+          "$ref": "#/definitions/Radius.V1.ProvisioningState",
           "description": "Provisioning state of the Sql database link at the time the operation was called",
           "readOnly": true
         },
@@ -2363,11 +3374,10 @@
         },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the SqlDatabase resource",
           "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the SqlDatabase resource"
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -2378,15 +3388,15 @@
           "description": "Secret values provided for the resource"
         }
       },
-      "description": "SqlDatabase properties",
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/Radius.V1.BasicResourceProperties"
         }
       ]
     },
     "SqlDatabaseResource": {
       "type": "object",
+      "description": "SqlDatabase link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/SqlDatabaseProperties",
@@ -2398,7 +3408,6 @@
           ]
         }
       },
-      "description": "SqlDatabase link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2407,29 +3416,95 @@
     },
     "SqlDatabaseResourceListResult": {
       "type": "object",
+      "description": "The response of a SqlDatabaseResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The SqlDatabaseResource items on this page",
           "items": {
             "$ref": "#/definitions/SqlDatabaseResource"
-          },
-          "x-cadl-name": "SqlDatabaseResource[]",
-          "description": "The SqlDatabaseResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a SqlDatabaseResource list operation.",
       "required": [
         "value"
       ]
     },
+    "SqlDatabaseResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the SqlDatabaseResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/SqlDatabaseResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "SqlDatabaseResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the SqlDatabaseResource.",
+      "properties": {
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Sql database"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Sql database"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the SqlDatabase resource",
+          "items": {
+            "$ref": "#/definitions/Radius.V1.ResourceReference"
+          }
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        },
+        "secrets": {
+          "$ref": "#/definitions/SqlDatabaseSecrets",
+          "description": "Secret values provided for the resource"
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Radius.V1.Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
     "SqlDatabaseSecrets": {
       "type": "object",
+      "description": "The secret values for the given SqlDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2439,24 +3514,21 @@
           "type": "string",
           "description": "Connection string used to connect to the target Sql database"
         }
-      },
-      "description": "The secret values for the given SqlDatabase resource"
-    },
-    "object": {
-      "type": "object",
-      "properties": {}
+      }
     }
   },
   "parameters": {
-    "RootScopeParam": {
+    "Radius.V1.RootScopeParameter": {
       "name": "rootScope",
       "in": "path",
+      "description": "The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
       "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "type": "string",
       "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
+      "maxLength": 90,
+      "pattern": "^[-\\w\\._\\(\\)]+$",
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
     }
   }
 }

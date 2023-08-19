@@ -28,6 +28,14 @@ Radius uses [OpenAPI2 specifications](../swagger/) for defining API and validati
    tsp compile ./Applications.Link
    ```
 
+## Formatting
+
+TypeSpec compiler has its own formatting TypeSpec files. Ensure that you run the following command once you edit spec files.
+
+```
+tsp format **/*.tsp
+```
+
 ## References
 
 * [Introduction to TypeSpec](https://microsoft.github.io/typespec/)
