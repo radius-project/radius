@@ -223,7 +223,7 @@ func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context
 		if err != nil {
 			return results, err
 		}
-		applicationList := nextPage.ApplicationResourceList.Value
+		applicationList := nextPage.ApplicationResourceListResult.Value
 		for _, application := range applicationList {
 			results = append(results, *application)
 		}
@@ -318,7 +318,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx contex
 		return err
 	}
 
-	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
+	_, err = client.Create(ctx, applicationName, resource, nil)
 	if err != nil {
 		return err
 	}
@@ -347,7 +347,7 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 		return nil
 	}
 
-	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
+	_, err = client.Create(ctx, applicationName, resource, nil)
 	if err != nil {
 		return err
 	}
@@ -366,7 +366,7 @@ func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Contex
 		return err
 	}
 
-	_, err = client.CreateOrUpdate(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
+	_, err = client.Create(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return err
 	}

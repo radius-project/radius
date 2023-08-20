@@ -277,7 +277,7 @@ func Test_Update(t *testing.T) {
 		environment := corerp.EnvironmentResource{
 			Name: to.Ptr("test-env"),
 			Properties: &corerp.EnvironmentProperties{
-				Recipes: map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+				Recipes: map[string]map[string]corerp.RecipePropertiesClassification{},
 				Compute: &corerp.KubernetesCompute{
 					Namespace:  to.Ptr("default"),
 					Kind:       to.Ptr("kubernetes"),
@@ -303,7 +303,7 @@ func Test_Update(t *testing.T) {
 
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Providers: testProviders,
-			Recipes:   map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+			Recipes:   map[string]map[string]corerp.RecipePropertiesClassification{},
 			Compute: &corerp.KubernetesCompute{
 				Namespace:  to.Ptr("default"),
 				Kind:       to.Ptr("kubernetes"),
