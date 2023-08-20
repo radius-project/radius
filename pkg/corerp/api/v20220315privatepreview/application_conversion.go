@@ -83,7 +83,7 @@ func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 		},
 	}
 
-	var extensions []ApplicationExtensionClassification
+	var extensions []ExtensionClassification
 	if app.Properties.Extensions != nil {
 		for _, e := range app.Properties.Extensions {
 			extensions = append(extensions, fromAppExtensionClassificationDataModel(e))
@@ -95,17 +95,17 @@ func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 }
 
 // fromAppExtensionClassificationDataModel: Converts from base datamodel to versioned datamodel
-func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationExtensionClassification {
+func fromAppExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
-		return &ApplicationKubernetesMetadataExtension{
+		return &KubernetesMetadataExtension{
 			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
 	case datamodel.KubernetesNamespaceExtension:
-		return &ApplicationKubernetesNamespaceExtension{
+		return &KubernetesNamespaceExtension{
 			Kind:      to.Ptr(string(e.Kind)),
 			Namespace: to.Ptr(e.KubernetesNamespace.Namespace),
 		}
@@ -115,9 +115,9 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationE
 }
 
 // toAppExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Extension {
+func toAppExtensionDataModel(e ExtensionClassification) *datamodel.Extension {
 	switch c := e.(type) {
-	case *ApplicationKubernetesMetadataExtension:
+	case *KubernetesMetadataExtension:
 		return &datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.KubeMetadataExtension{
@@ -125,7 +125,7 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Ex
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-	case *ApplicationKubernetesNamespaceExtension:
+	case *KubernetesNamespaceExtension:
 		if c.Namespace == nil || *c.Namespace == "" {
 			return nil
 		}

@@ -12,21 +12,56 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-// CertType - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
-type CertType string
+// ActionType - Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
+type ActionType string
 
 const (
-	CertTypeCertificate CertType = "certificate"
-	CertTypePrivatekey CertType = "privatekey"
-	CertTypePublickey CertType = "publickey"
+	ActionTypeInternal ActionType = "Internal"
 )
 
-// PossibleCertTypeValues returns the possible values for the CertType const type.
-func PossibleCertTypeValues() []CertType {
-	return []CertType{	
-		CertTypeCertificate,
-		CertTypePrivatekey,
-		CertTypePublickey,
+// PossibleActionTypeValues returns the possible values for the ActionType const type.
+func PossibleActionTypeValues() []ActionType {
+	return []ActionType{	
+		ActionTypeInternal,
+	}
+}
+
+// CertificateFormats - Represents certificate formats
+type CertificateFormats string
+
+const (
+	// CertificateFormatsPem - PEM Certificate format
+	CertificateFormatsPem CertificateFormats = "pem"
+	// CertificateFormatsPfx - PFX Certificate format
+	CertificateFormatsPfx CertificateFormats = "pfx"
+)
+
+// PossibleCertificateFormatsValues returns the possible values for the CertificateFormats const type.
+func PossibleCertificateFormatsValues() []CertificateFormats {
+	return []CertificateFormats{	
+		CertificateFormatsPem,
+		CertificateFormatsPfx,
+	}
+}
+
+// CertificateTypes - Represents certificate types
+type CertificateTypes string
+
+const (
+	// CertificateTypesCertificate - Certificate type
+	CertificateTypesCertificate CertificateTypes = "certificate"
+	// CertificateTypesPrivateKey - Private Key type
+	CertificateTypesPrivateKey CertificateTypes = "privateKey"
+	// CertificateTypesPublicKey - Public Key type
+	CertificateTypesPublicKey CertificateTypes = "publicKey"
+)
+
+// PossibleCertificateTypesValues returns the possible values for the CertificateTypes const type.
+func PossibleCertificateTypesValues() []CertificateTypes {
+	return []CertificateTypes{	
+		CertificateTypesCertificate,
+		CertificateTypesPrivateKey,
+		CertificateTypesPublicKey,
 	}
 }
 
@@ -50,45 +85,46 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
-// Encoding - Encoding format. Default utf-8
-type Encoding string
+// DaprSidecarExtensionProtocol - The Dapr sidecar extension protocol
+type DaprSidecarExtensionProtocol string
 
 const (
-	EncodingBase64 Encoding = "base64"
-	EncodingHex Encoding = "hex"
-	EncodingUTF8 Encoding = "utf-8"
+	// DaprSidecarExtensionProtocolGrpc - gRPC protocol
+	DaprSidecarExtensionProtocolGrpc DaprSidecarExtensionProtocol = "grpc"
+	// DaprSidecarExtensionProtocolHTTP - HTTP protocol
+	DaprSidecarExtensionProtocolHTTP DaprSidecarExtensionProtocol = "http"
 )
 
-// PossibleEncodingValues returns the possible values for the Encoding const type.
-func PossibleEncodingValues() []Encoding {
-	return []Encoding{	
-		EncodingBase64,
-		EncodingHex,
-		EncodingUTF8,
+// PossibleDaprSidecarExtensionProtocolValues returns the possible values for the DaprSidecarExtensionProtocol const type.
+func PossibleDaprSidecarExtensionProtocolValues() []DaprSidecarExtensionProtocol {
+	return []DaprSidecarExtensionProtocol{	
+		DaprSidecarExtensionProtocolGrpc,
+		DaprSidecarExtensionProtocolHTTP,
 	}
 }
 
-// Format - Certificate format. Default pem
-type Format string
+// IAMKind - The kind of IAM provider to configure
+type IAMKind string
 
 const (
-	FormatPem Format = "pem"
-	FormatPfx Format = "pfx"
+	// IAMKindAzure - Azure Active Directory
+	IAMKindAzure IAMKind = "azure"
 )
 
-// PossibleFormatValues returns the possible values for the Format const type.
-func PossibleFormatValues() []Format {
-	return []Format{	
-		FormatPem,
-		FormatPfx,
+// PossibleIAMKindValues returns the possible values for the IAMKind const type.
+func PossibleIAMKindValues() []IAMKind {
+	return []IAMKind{	
+		IAMKindAzure,
 	}
 }
 
-// IdentitySettingKind - Configuration for supported external identity providers
+// IdentitySettingKind - IdentitySettingKind is the kind of supported external identity setting
 type IdentitySettingKind string
 
 const (
+	// IdentitySettingKindAzureComWorkload - azure ad workload identity
 	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
+	// IdentitySettingKindUndefined - undefined identity
 	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
 )
 
@@ -100,25 +136,13 @@ func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 	}
 }
 
-// Kind - The kind of IAM provider to configure
-type Kind string
-
-const (
-	KindAzure Kind = "azure"
-)
-
-// PossibleKindValues returns the possible values for the Kind const type.
-func PossibleKindValues() []Kind {
-	return []Kind{	
-		KindAzure,
-	}
-}
-
-// ManagedStore - Backing store for the ephemeral volume
+// ManagedStore - The managed store for the ephemeral volume
 type ManagedStore string
 
 const (
+	// ManagedStoreDisk - Disk store
 	ManagedStoreDisk ManagedStore = "disk"
+	// ManagedStoreMemory - Memory store
 	ManagedStoreMemory ManagedStore = "memory"
 )
 
@@ -130,36 +154,60 @@ func PossibleManagedStoreValues() []ManagedStore {
 	}
 }
 
-// Protocol - Protocol in use by the port
-type Protocol string
+// Origin - The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
+// value is "user,system"
+type Origin string
 
 const (
-	ProtocolGrpc Protocol = "grpc"
-	ProtocolHTTP Protocol = "http"
-	ProtocolTCP Protocol = "TCP"
-	ProtocolUDP Protocol = "UDP"
+	OriginSystem Origin = "system"
+	OriginUser Origin = "user"
+	OriginUserSystem Origin = "user,system"
 )
 
-// PossibleProtocolValues returns the possible values for the Protocol const type.
-func PossibleProtocolValues() []Protocol {
-	return []Protocol{	
-		ProtocolGrpc,
-		ProtocolHTTP,
-		ProtocolTCP,
-		ProtocolUDP,
+// PossibleOriginValues returns the possible values for the Origin const type.
+func PossibleOriginValues() []Origin {
+	return []Origin{	
+		OriginSystem,
+		OriginUser,
+		OriginUserSystem,
 	}
 }
 
-// ProvisioningState - Provisioning state of the resource at the time the operation was called.
+// PortProtocol - The protocol in use by the port
+type PortProtocol string
+
+const (
+	// PortProtocolTCP - TCP protocol
+	PortProtocolTCP PortProtocol = "TCP"
+	// PortProtocolUDP - UDP protocol
+	PortProtocolUDP PortProtocol = "UDP"
+)
+
+// PossiblePortProtocolValues returns the possible values for the PortProtocol const type.
+func PossiblePortProtocolValues() []PortProtocol {
+	return []PortProtocol{	
+		PortProtocolTCP,
+		PortProtocolUDP,
+	}
+}
+
+// ProvisioningState - Provisioning state of the portable resource at the time the operation was called
 type ProvisioningState string
 
 const (
+	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
+	// ProvisioningStateCanceled - Resource creation was canceled.
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
+	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
+	// ProvisioningStateFailed - Resource creation failed.
 	ProvisioningStateFailed ProvisioningState = "Failed"
+	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	// ProvisioningStateSucceeded - Resource has been created.
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	// ProvisioningStateUpdating - The resource is updating
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
 
@@ -176,29 +224,13 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// ResourceProvisioning - Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe',
-// where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user
-// manages the resource and provides the values.
-type ResourceProvisioning string
-
-const (
-	ResourceProvisioningManual ResourceProvisioning = "manual"
-	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
-)
-
-// PossibleResourceProvisioningValues returns the possible values for the ResourceProvisioning const type.
-func PossibleResourceProvisioningValues() []ResourceProvisioning {
-	return []ResourceProvisioning{	
-		ResourceProvisioningManual,
-		ResourceProvisioningRecipe,
-	}
-}
-
-// SecretStoreDataType - The type of secret store data
+// SecretStoreDataType - SecretStore data type
 type SecretStoreDataType string
 
 const (
+	// SecretStoreDataTypeCertificate - Certificate secret data type
 	SecretStoreDataTypeCertificate SecretStoreDataType = "certificate"
+	// SecretStoreDataTypeGeneric - Generic secret data type
 	SecretStoreDataTypeGeneric SecretStoreDataType = "generic"
 )
 
@@ -210,11 +242,13 @@ func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 	}
 }
 
-// SecretValueEncoding - The encoding of value
+// SecretValueEncoding - SecretValue Encoding type
 type SecretValueEncoding string
 
 const (
+	// SecretValueEncodingBase64 - The base64-encoded secret value
 	SecretValueEncodingBase64 SecretValueEncoding = "base64"
+	// SecretValueEncodingRaw - The raw secret value
 	SecretValueEncodingRaw SecretValueEncoding = "raw"
 )
 
@@ -226,27 +260,31 @@ func PossibleSecretValueEncodingValues() []SecretValueEncoding {
 	}
 }
 
-// TLSMinVersion - TLS minimum protocol version (defaults to 1.2).
+// TLSMinVersion - Tls Minimum versions for Gateway resource.
 type TLSMinVersion string
 
 const (
-	TLSMinVersionOne2 TLSMinVersion = "1.2"
-	TLSMinVersionOne3 TLSMinVersion = "1.3"
+	// TLSMinVersionTls12 - TLS Version 1.2
+	TLSMinVersionTls12 TLSMinVersion = "1.2"
+	// TLSMinVersionTls13 - TLS Version 1.3
+	TLSMinVersionTls13 TLSMinVersion = "1.3"
 )
 
 // PossibleTLSMinVersionValues returns the possible values for the TLSMinVersion const type.
 func PossibleTLSMinVersionValues() []TLSMinVersion {
 	return []TLSMinVersion{	
-		TLSMinVersionOne2,
-		TLSMinVersionOne3,
+		TLSMinVersionTls12,
+		TLSMinVersionTls13,
 	}
 }
 
-// VolumePermission - Container read/write access to the volume
+// VolumePermission - The persistent volume permission
 type VolumePermission string
 
 const (
+	// VolumePermissionRead - Read only
 	VolumePermissionRead VolumePermission = "read"
+	// VolumePermissionWrite - Read and write
 	VolumePermissionWrite VolumePermission = "write"
 )
 
@@ -255,6 +293,27 @@ func PossibleVolumePermissionValues() []VolumePermission {
 	return []VolumePermission{	
 		VolumePermissionRead,
 		VolumePermissionWrite,
+	}
+}
+
+// VolumeSecretEncodings - Represents secret encodings
+type VolumeSecretEncodings string
+
+const (
+	// VolumeSecretEncodingsBase64 - Base64 encoding
+	VolumeSecretEncodingsBase64 VolumeSecretEncodings = "base64"
+	// VolumeSecretEncodingsHex - Hex encoding
+	VolumeSecretEncodingsHex VolumeSecretEncodings = "hex"
+	// VolumeSecretEncodingsUTF8 - UTF-8 encoding
+	VolumeSecretEncodingsUTF8 VolumeSecretEncodings = "utf-8"
+)
+
+// PossibleVolumeSecretEncodingsValues returns the possible values for the VolumeSecretEncodings const type.
+func PossibleVolumeSecretEncodingsValues() []VolumeSecretEncodings {
+	return []VolumeSecretEncodings{	
+		VolumeSecretEncodingsBase64,
+		VolumeSecretEncodingsHex,
+		VolumeSecretEncodingsUTF8,
 	}
 }
 

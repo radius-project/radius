@@ -192,7 +192,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
-	require.Equal(t, TLSMinVersionOne3, *versioned.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, TLSMinVersionTls13, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayTLSTerminationConvertVersionedToDataModel_NoMinProtocolVersion(t *testing.T) {
@@ -250,7 +250,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned_NoMinProtocolVersion(t
 	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
-	require.Equal(t, TLSMinVersionOne2, *versioned.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, TLSMinVersionTls12, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayConvertFromValidation(t *testing.T) {

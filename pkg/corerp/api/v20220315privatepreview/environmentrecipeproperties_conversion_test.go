@@ -30,7 +30,7 @@ import (
 
 func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
-		r := &RecipeMetadataProperties{}
+		r := &RecipeGetMetadataResponse{}
 		// act
 		_, err := r.ConvertTo()
 
@@ -49,7 +49,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 			require.NoError(t, err)
 
 			// act
-			versioned := &RecipeMetadataProperties{}
+			versioned := &RecipeGetMetadataResponse{}
 			err = versioned.ConvertFrom(r)
 			// assert
 			require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKin
 		require.NoError(t, err)
 
 		// act
-		versioned := &RecipeMetadataProperties{}
+		versioned := &RecipeGetMetadataResponse{}
 		err = versioned.ConvertFrom(r)
 		// assert
 		require.NoError(t, err)
@@ -93,7 +93,7 @@ func TestRecipeConvertVersionedToDataModel(t *testing.T) {
 			Name:     "mongo-azure",
 		}
 		rawPayload := testutil.ReadFixture(filename)
-		r := &Recipe{}
+		r := &RecipeGetMetadata{}
 		err := json.Unmarshal(rawPayload, r)
 		require.NoError(t, err)
 		// act

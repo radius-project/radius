@@ -23,55 +23,73 @@ import (
 // Don't use this type directly, use NewSecretStoresClient() instead.
 type SecretStoresClient struct {
 	internal *arm.Client
-	rootScope string
 }
 
 // NewSecretStoresClient creates a new instance of SecretStoresClient with the specified values.
-//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewSecretStoresClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*SecretStoresClient, error) {
+func NewSecretStoresClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*SecretStoresClient, error) {
 	cl, err := arm.NewClient(moduleName+".SecretStoresClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &SecretStoresClient{
-		rootScope: rootScope,
 	internal: cl,
 	}
 	return client, nil
 }
 
-// CreateOrUpdate - Create or update a secret store.
+// BeginCreate - Create a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - secretStoreName - The name of the secret store.
-//   - secretStoreResource - SecretStore details
-//   - options - SecretStoresClientCreateOrUpdateOptions contains the optional parameters for the SecretStoresClient.CreateOrUpdate
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - secretStoreName - SecretStore name
+//   - resource - Resource create parameters.
+//   - options - SecretStoresClientBeginCreateOptions contains the optional parameters for the SecretStoresClient.BeginCreate
 //     method.
-func (client *SecretStoresClient) CreateOrUpdate(ctx context.Context, secretStoreName string, secretStoreResource SecretStoreResource, options *SecretStoresClientCreateOrUpdateOptions) (SecretStoresClientCreateOrUpdateResponse, error) {
+func (client *SecretStoresClient) BeginCreate(ctx context.Context, rootScope string, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOptions) (*runtime.Poller[SecretStoresClientCreateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.create(ctx, rootScope, secretStoreName, resource, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientCreateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[SecretStoresClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Create - Create a SecretStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *SecretStoresClient) create(ctx context.Context, rootScope string, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createOrUpdateCreateRequest(ctx, secretStoreName, secretStoreResource, options)
+	req, err := client.createCreateRequest(ctx, rootScope, secretStoreName, resource, options)
 	if err != nil {
-		return SecretStoresClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return SecretStoresClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return SecretStoresClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
-	return resp, err
+	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Context, secretStoreName string, secretStoreResource SecretStoreResource, options *SecretStoresClientCreateOrUpdateOptions) (*policy.Request, error) {
+// createCreateRequest creates the Create request.
+func (client *SecretStoresClient) createCreateRequest(ctx context.Context, rootScope string, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -84,48 +102,62 @@ func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Contex
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, secretStoreResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, resource); err != nil {
 	return nil, err
 }
 	return req, nil
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *SecretStoresClient) createOrUpdateHandleResponse(resp *http.Response) (SecretStoresClientCreateOrUpdateResponse, error) {
-	result := SecretStoresClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SecretStoreResource); err != nil {
-		return SecretStoresClientCreateOrUpdateResponse{}, err
-	}
-	return result, nil
-}
-
-// Delete - Delete a secret store.
+// BeginDelete - Delete a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - secretStoreName - The name of the secret store.
-//   - options - SecretStoresClientDeleteOptions contains the optional parameters for the SecretStoresClient.Delete method.
-func (client *SecretStoresClient) Delete(ctx context.Context, secretStoreName string, options *SecretStoresClientDeleteOptions) (SecretStoresClientDeleteResponse, error) {
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - secretStoreName - SecretStore name
+//   - options - SecretStoresClientBeginDeleteOptions contains the optional parameters for the SecretStoresClient.BeginDelete
+//     method.
+func (client *SecretStoresClient) BeginDelete(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*runtime.Poller[SecretStoresClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, rootScope, secretStoreName, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[SecretStoresClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Delete - Delete a SecretStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *SecretStoresClient) deleteOperation(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	req, err := client.deleteCreateRequest(ctx, secretStoreName, options)
+	req, err := client.deleteCreateRequest(ctx, rootScope, secretStoreName, options)
 	if err != nil {
-		return SecretStoresClientDeleteResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return SecretStoresClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
-		return SecretStoresClientDeleteResponse{}, err
+		return nil, err
 	}
-	return SecretStoresClientDeleteResponse{}, nil
+	return httpResp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, secretStoreName string, options *SecretStoresClientDeleteOptions) (*policy.Request, error) {
+func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -141,15 +173,18 @@ func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, secre
 	return req, nil
 }
 
-// Get - Gets the properties of a secret store.
+// Get - Get a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - secretStoreName - The name of the secret store.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - secretStoreName - SecretStore name
 //   - options - SecretStoresClientGetOptions contains the optional parameters for the SecretStoresClient.Get method.
-func (client *SecretStoresClient) Get(ctx context.Context, secretStoreName string, options *SecretStoresClientGetOptions) (SecretStoresClientGetResponse, error) {
+func (client *SecretStoresClient) Get(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientGetOptions) (SecretStoresClientGetResponse, error) {
 	var err error
-	req, err := client.getCreateRequest(ctx, secretStoreName, options)
+	req, err := client.getCreateRequest(ctx, rootScope, secretStoreName, options)
 	if err != nil {
 		return SecretStoresClientGetResponse{}, err
 	}
@@ -166,9 +201,9 @@ func (client *SecretStoresClient) Get(ctx context.Context, secretStoreName strin
 }
 
 // getCreateRequest creates the Get request.
-func (client *SecretStoresClient) getCreateRequest(ctx context.Context, secretStoreName string, options *SecretStoresClientGetOptions) (*policy.Request, error) {
+func (client *SecretStoresClient) getCreateRequest(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -193,42 +228,46 @@ func (client *SecretStoresClient) getHandleResponse(resp *http.Response) (Secret
 	return result, nil
 }
 
-// NewListPager - List all secret stores in the given scope.
+// NewListByScopePager - List SecretStoreResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - options - SecretStoresClientListOptions contains the optional parameters for the SecretStoresClient.NewListPager method.
-func (client *SecretStoresClient) NewListPager(options *SecretStoresClientListOptions) (*runtime.Pager[SecretStoresClientListResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[SecretStoresClientListResponse]{
-		More: func(page SecretStoresClientListResponse) bool {
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - options - SecretStoresClientListByScopeOptions contains the optional parameters for the SecretStoresClient.NewListByScopePager
+//     method.
+func (client *SecretStoresClient) NewListByScopePager(rootScope string, options *SecretStoresClientListByScopeOptions) (*runtime.Pager[SecretStoresClientListByScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[SecretStoresClientListByScopeResponse]{
+		More: func(page SecretStoresClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *SecretStoresClientListResponse) (SecretStoresClientListResponse, error) {
+		Fetcher: func(ctx context.Context, page *SecretStoresClientListByScopeResponse) (SecretStoresClientListByScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listCreateRequest(ctx, options)
+				req, err = client.listByScopeCreateRequest(ctx, rootScope, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return SecretStoresClientListResponse{}, err
+				return SecretStoresClientListByScopeResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return SecretStoresClientListResponse{}, err
+				return SecretStoresClientListByScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return SecretStoresClientListResponse{}, runtime.NewResponseError(resp)
+				return SecretStoresClientListByScopeResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listHandleResponse(resp)
+			return client.listByScopeHandleResponse(resp)
 		},
 	})
 }
 
-// listCreateRequest creates the List request.
-func (client *SecretStoresClient) listCreateRequest(ctx context.Context, options *SecretStoresClientListOptions) (*policy.Request, error) {
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *SecretStoresClient) listByScopeCreateRequest(ctx context.Context, rootScope string, options *SecretStoresClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -240,11 +279,11 @@ func (client *SecretStoresClient) listCreateRequest(ctx context.Context, options
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *SecretStoresClient) listHandleResponse(resp *http.Response) (SecretStoresClientListResponse, error) {
-	result := SecretStoresClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SecretStoreResourceList); err != nil {
-		return SecretStoresClientListResponse{}, err
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *SecretStoresClient) listByScopeHandleResponse(resp *http.Response) (SecretStoresClientListByScopeResponse, error) {
+	result := SecretStoresClientListByScopeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.SecretStoreResourceListResult); err != nil {
+		return SecretStoresClientListByScopeResponse{}, err
 	}
 	return result, nil
 }
@@ -253,12 +292,16 @@ func (client *SecretStoresClient) listHandleResponse(resp *http.Response) (Secre
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - secretStoreName - The name of the secret store.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - secretStoreName - SecretStore name
+//   - body - The content of the action request
 //   - options - SecretStoresClientListSecretsOptions contains the optional parameters for the SecretStoresClient.ListSecrets
 //     method.
-func (client *SecretStoresClient) ListSecrets(ctx context.Context, secretStoreName string, options *SecretStoresClientListSecretsOptions) (SecretStoresClientListSecretsResponse, error) {
+func (client *SecretStoresClient) ListSecrets(ctx context.Context, rootScope string, secretStoreName string, body map[string]any, options *SecretStoresClientListSecretsOptions) (SecretStoresClientListSecretsResponse, error) {
 	var err error
-	req, err := client.listSecretsCreateRequest(ctx, secretStoreName, options)
+	req, err := client.listSecretsCreateRequest(ctx, rootScope, secretStoreName, body, options)
 	if err != nil {
 		return SecretStoresClientListSecretsResponse{}, err
 	}
@@ -275,9 +318,9 @@ func (client *SecretStoresClient) ListSecrets(ctx context.Context, secretStoreNa
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
-func (client *SecretStoresClient) listSecretsCreateRequest(ctx context.Context, secretStoreName string, options *SecretStoresClientListSecretsOptions) (*policy.Request, error) {
+func (client *SecretStoresClient) listSecretsCreateRequest(ctx context.Context, rootScope string, secretStoreName string, body map[string]any, options *SecretStoresClientListSecretsOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}/listSecrets"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -290,6 +333,9 @@ func (client *SecretStoresClient) listSecretsCreateRequest(ctx context.Context, 
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+	return nil, err
+}
 	return req, nil
 }
 
@@ -302,35 +348,57 @@ func (client *SecretStoresClient) listSecretsHandleResponse(resp *http.Response)
 	return result, nil
 }
 
-// Update - Update the properties of an existing secret store.
+// BeginUpdate - Update a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - secretStoreName - The name of the secret store.
-//   - secretStoreResource - SecretStore details
-//   - options - SecretStoresClientUpdateOptions contains the optional parameters for the SecretStoresClient.Update method.
-func (client *SecretStoresClient) Update(ctx context.Context, secretStoreName string, secretStoreResource SecretStoreResource, options *SecretStoresClientUpdateOptions) (SecretStoresClientUpdateResponse, error) {
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - secretStoreName - SecretStore name
+//   - properties - The resource properties to be updated.
+//   - options - SecretStoresClientBeginUpdateOptions contains the optional parameters for the SecretStoresClient.BeginUpdate
+//     method.
+func (client *SecretStoresClient) BeginUpdate(ctx context.Context, rootScope string, secretStoreName string, properties SecretStoreResourceUpdate, options *SecretStoresClientBeginUpdateOptions) (*runtime.Poller[SecretStoresClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, secretStoreName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[SecretStoresClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Update - Update a SecretStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *SecretStoresClient) update(ctx context.Context, rootScope string, secretStoreName string, properties SecretStoreResourceUpdate, options *SecretStoresClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, secretStoreName, secretStoreResource, options)
+	req, err := client.updateCreateRequest(ctx, rootScope, secretStoreName, properties, options)
 	if err != nil {
-		return SecretStoresClientUpdateResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return SecretStoresClientUpdateResponse{}, err
+		return nil, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
 		err = runtime.NewResponseError(httpResp)
-		return SecretStoresClientUpdateResponse{}, err
+		return nil, err
 	}
-	resp, err := client.updateHandleResponse(httpResp)
-	return resp, err
+	return httpResp, nil
 }
 
 // updateCreateRequest creates the Update request.
-func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, secretStoreName string, secretStoreResource SecretStoreResource, options *SecretStoresClientUpdateOptions) (*policy.Request, error) {
+func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, rootScope string, secretStoreName string, properties SecretStoreResourceUpdate, options *SecretStoresClientBeginUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
 	if secretStoreName == "" {
 		return nil, errors.New("parameter secretStoreName cannot be empty")
 	}
@@ -343,18 +411,9 @@ func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, secre
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, secretStoreResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
 	return nil, err
 }
 	return req, nil
-}
-
-// updateHandleResponse handles the Update response.
-func (client *SecretStoresClient) updateHandleResponse(resp *http.Response) (SecretStoresClientUpdateResponse, error) {
-	result := SecretStoresClientUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SecretStoreResource); err != nil {
-		return SecretStoresClientUpdateResponse{}, err
-	}
-	return result, nil
 }
 
