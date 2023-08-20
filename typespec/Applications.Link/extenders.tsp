@@ -33,6 +33,9 @@ using OpenAPI;
 
 namespace Applications.Link;
 
+alias ExtenderSecretObject = Record<string>;
+alias ExtenderListSecretResult = Record<string>;
+
 @doc("ExtenderResource link")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
   @path
@@ -49,7 +52,7 @@ model ExtenderProperties extends BasicResourceProperties {
   provisioningState?: ProvisioningState;
 
   @doc("The secrets for referenced resource")
-  secrets: {};
+  secrets: ExtenderSecretObject;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the extender link")
   recipe?: Recipe;
@@ -58,7 +61,6 @@ model ExtenderProperties extends BasicResourceProperties {
   resourceProvisioning?: ResourceProvisioning;
 }
 
-alias ExtenderListSecretResult = {};
 
 @armResourceOperations
 interface Extenders {
