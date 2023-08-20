@@ -4395,7 +4395,7 @@
       "minLength": 1,
       "maxLength": 90,
       "pattern": "^[-\\w\\._\\(\\)]+$",
-      "x-ms-parameter-location": "method",
+      "x-ms-parameter-location": "client",
       "x-ms-skip-url-encoding": true
     }
   }

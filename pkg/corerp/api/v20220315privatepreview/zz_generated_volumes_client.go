@@ -23,17 +23,22 @@ import (
 // Don't use this type directly, use NewVolumesClient() instead.
 type VolumesClient struct {
 	internal *arm.Client
+	rootScope string
 }
 
 // NewVolumesClient creates a new instance of VolumesClient with the specified values.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewVolumesClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*VolumesClient, error) {
+func NewVolumesClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*VolumesClient, error) {
 	cl, err := arm.NewClient(moduleName+".VolumesClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &VolumesClient{
+		rootScope: rootScope,
 	internal: cl,
 	}
 	return client, nil
@@ -43,15 +48,12 @@ func NewVolumesClient(credential azcore.TokenCredential, options *arm.ClientOpti
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - volumeName - Volume name
 //   - resource - Resource create parameters.
 //   - options - VolumesClientBeginCreateOptions contains the optional parameters for the VolumesClient.BeginCreate method.
-func (client *VolumesClient) BeginCreate(ctx context.Context, rootScope string, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*runtime.Poller[VolumesClientCreateResponse], error) {
+func (client *VolumesClient) BeginCreate(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*runtime.Poller[VolumesClientCreateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, rootScope, volumeName, resource, options)
+		resp, err := client.create(ctx, volumeName, resource, options)
 		if err != nil {
 			return nil, err
 		}
@@ -68,9 +70,9 @@ func (client *VolumesClient) BeginCreate(ctx context.Context, rootScope string, 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *VolumesClient) create(ctx context.Context, rootScope string, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*http.Response, error) {
+func (client *VolumesClient) create(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, rootScope, volumeName, resource, options)
+	req, err := client.createCreateRequest(ctx, volumeName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +88,9 @@ func (client *VolumesClient) create(ctx context.Context, rootScope string, volum
 }
 
 // createCreateRequest creates the Create request.
-func (client *VolumesClient) createCreateRequest(ctx context.Context, rootScope string, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*policy.Request, error) {
+func (client *VolumesClient) createCreateRequest(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/volumes/{volumeName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
@@ -111,14 +113,11 @@ func (client *VolumesClient) createCreateRequest(ctx context.Context, rootScope 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - volumeName - Volume name
 //   - options - VolumesClientBeginDeleteOptions contains the optional parameters for the VolumesClient.BeginDelete method.
-func (client *VolumesClient) BeginDelete(ctx context.Context, rootScope string, volumeName string, options *VolumesClientBeginDeleteOptions) (*runtime.Poller[VolumesClientDeleteResponse], error) {
+func (client *VolumesClient) BeginDelete(ctx context.Context, volumeName string, options *VolumesClientBeginDeleteOptions) (*runtime.Poller[VolumesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, rootScope, volumeName, options)
+		resp, err := client.deleteOperation(ctx, volumeName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -135,9 +134,9 @@ func (client *VolumesClient) BeginDelete(ctx context.Context, rootScope string, 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *VolumesClient) deleteOperation(ctx context.Context, rootScope string, volumeName string, options *VolumesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *VolumesClient) deleteOperation(ctx context.Context, volumeName string, options *VolumesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	req, err := client.deleteCreateRequest(ctx, rootScope, volumeName, options)
+	req, err := client.deleteCreateRequest(ctx, volumeName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -153,9 +152,9 @@ func (client *VolumesClient) deleteOperation(ctx context.Context, rootScope stri
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *VolumesClient) deleteCreateRequest(ctx context.Context, rootScope string, volumeName string, options *VolumesClientBeginDeleteOptions) (*policy.Request, error) {
+func (client *VolumesClient) deleteCreateRequest(ctx context.Context, volumeName string, options *VolumesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/volumes/{volumeName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
@@ -175,14 +174,11 @@ func (client *VolumesClient) deleteCreateRequest(ctx context.Context, rootScope 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - volumeName - Volume name
 //   - options - VolumesClientGetOptions contains the optional parameters for the VolumesClient.Get method.
-func (client *VolumesClient) Get(ctx context.Context, rootScope string, volumeName string, options *VolumesClientGetOptions) (VolumesClientGetResponse, error) {
+func (client *VolumesClient) Get(ctx context.Context, volumeName string, options *VolumesClientGetOptions) (VolumesClientGetResponse, error) {
 	var err error
-	req, err := client.getCreateRequest(ctx, rootScope, volumeName, options)
+	req, err := client.getCreateRequest(ctx, volumeName, options)
 	if err != nil {
 		return VolumesClientGetResponse{}, err
 	}
@@ -199,9 +195,9 @@ func (client *VolumesClient) Get(ctx context.Context, rootScope string, volumeNa
 }
 
 // getCreateRequest creates the Get request.
-func (client *VolumesClient) getCreateRequest(ctx context.Context, rootScope string, volumeName string, options *VolumesClientGetOptions) (*policy.Request, error) {
+func (client *VolumesClient) getCreateRequest(ctx context.Context, volumeName string, options *VolumesClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/volumes/{volumeName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}
@@ -229,11 +225,8 @@ func (client *VolumesClient) getHandleResponse(resp *http.Response) (VolumesClie
 // NewListByScopePager - List VolumeResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - options - VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.NewListByScopePager method.
-func (client *VolumesClient) NewListByScopePager(rootScope string, options *VolumesClientListByScopeOptions) (*runtime.Pager[VolumesClientListByScopeResponse]) {
+func (client *VolumesClient) NewListByScopePager(options *VolumesClientListByScopeOptions) (*runtime.Pager[VolumesClientListByScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[VolumesClientListByScopeResponse]{
 		More: func(page VolumesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -242,7 +235,7 @@ func (client *VolumesClient) NewListByScopePager(rootScope string, options *Volu
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByScopeCreateRequest(ctx, rootScope, options)
+				req, err = client.listByScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -262,9 +255,9 @@ func (client *VolumesClient) NewListByScopePager(rootScope string, options *Volu
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *VolumesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, options *VolumesClientListByScopeOptions) (*policy.Request, error) {
+func (client *VolumesClient) listByScopeCreateRequest(ctx context.Context, options *VolumesClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/volumes"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -289,15 +282,12 @@ func (client *VolumesClient) listByScopeHandleResponse(resp *http.Response) (Vol
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - volumeName - Volume name
 //   - properties - The resource properties to be updated.
 //   - options - VolumesClientBeginUpdateOptions contains the optional parameters for the VolumesClient.BeginUpdate method.
-func (client *VolumesClient) BeginUpdate(ctx context.Context, rootScope string, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*runtime.Poller[VolumesClientUpdateResponse], error) {
+func (client *VolumesClient) BeginUpdate(ctx context.Context, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*runtime.Poller[VolumesClientUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, volumeName, properties, options)
+		resp, err := client.update(ctx, volumeName, properties, options)
 		if err != nil {
 			return nil, err
 		}
@@ -314,9 +304,9 @@ func (client *VolumesClient) BeginUpdate(ctx context.Context, rootScope string, 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *VolumesClient) update(ctx context.Context, rootScope string, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*http.Response, error) {
+func (client *VolumesClient) update(ctx context.Context, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, volumeName, properties, options)
+	req, err := client.updateCreateRequest(ctx, volumeName, properties, options)
 	if err != nil {
 		return nil, err
 	}
@@ -332,9 +322,9 @@ func (client *VolumesClient) update(ctx context.Context, rootScope string, volum
 }
 
 // updateCreateRequest creates the Update request.
-func (client *VolumesClient) updateCreateRequest(ctx context.Context, rootScope string, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*policy.Request, error) {
+func (client *VolumesClient) updateCreateRequest(ctx context.Context, volumeName string, properties VolumeResourceUpdate, options *VolumesClientBeginUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/volumes/{volumeName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if volumeName == "" {
 		return nil, errors.New("parameter volumeName cannot be empty")
 	}

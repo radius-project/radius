@@ -23,17 +23,22 @@ import (
 // Don't use this type directly, use NewHTTPRoutesClient() instead.
 type HTTPRoutesClient struct {
 	internal *arm.Client
+	rootScope string
 }
 
 // NewHTTPRoutesClient creates a new instance of HTTPRoutesClient with the specified values.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewHTTPRoutesClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*HTTPRoutesClient, error) {
+func NewHTTPRoutesClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*HTTPRoutesClient, error) {
 	cl, err := arm.NewClient(moduleName+".HTTPRoutesClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &HTTPRoutesClient{
+		rootScope: rootScope,
 	internal: cl,
 	}
 	return client, nil
@@ -43,15 +48,12 @@ func NewHTTPRoutesClient(credential azcore.TokenCredential, options *arm.ClientO
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - httpRouteName - HTTPRoute name
 //   - resource - Resource create parameters.
 //   - options - HTTPRoutesClientBeginCreateOptions contains the optional parameters for the HTTPRoutesClient.BeginCreate method.
-func (client *HTTPRoutesClient) BeginCreate(ctx context.Context, rootScope string, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*runtime.Poller[HTTPRoutesClientCreateResponse], error) {
+func (client *HTTPRoutesClient) BeginCreate(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*runtime.Poller[HTTPRoutesClientCreateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, rootScope, httpRouteName, resource, options)
+		resp, err := client.create(ctx, httpRouteName, resource, options)
 		if err != nil {
 			return nil, err
 		}
@@ -68,9 +70,9 @@ func (client *HTTPRoutesClient) BeginCreate(ctx context.Context, rootScope strin
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *HTTPRoutesClient) create(ctx context.Context, rootScope string, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*http.Response, error) {
+func (client *HTTPRoutesClient) create(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, rootScope, httpRouteName, resource, options)
+	req, err := client.createCreateRequest(ctx, httpRouteName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +88,9 @@ func (client *HTTPRoutesClient) create(ctx context.Context, rootScope string, ht
 }
 
 // createCreateRequest creates the Create request.
-func (client *HTTPRoutesClient) createCreateRequest(ctx context.Context, rootScope string, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*policy.Request, error) {
+func (client *HTTPRoutesClient) createCreateRequest(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
@@ -111,14 +113,11 @@ func (client *HTTPRoutesClient) createCreateRequest(ctx context.Context, rootSco
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - httpRouteName - HTTPRoute name
 //   - options - HTTPRoutesClientBeginDeleteOptions contains the optional parameters for the HTTPRoutesClient.BeginDelete method.
-func (client *HTTPRoutesClient) BeginDelete(ctx context.Context, rootScope string, httpRouteName string, options *HTTPRoutesClientBeginDeleteOptions) (*runtime.Poller[HTTPRoutesClientDeleteResponse], error) {
+func (client *HTTPRoutesClient) BeginDelete(ctx context.Context, httpRouteName string, options *HTTPRoutesClientBeginDeleteOptions) (*runtime.Poller[HTTPRoutesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, rootScope, httpRouteName, options)
+		resp, err := client.deleteOperation(ctx, httpRouteName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -135,9 +134,9 @@ func (client *HTTPRoutesClient) BeginDelete(ctx context.Context, rootScope strin
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *HTTPRoutesClient) deleteOperation(ctx context.Context, rootScope string, httpRouteName string, options *HTTPRoutesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *HTTPRoutesClient) deleteOperation(ctx context.Context, httpRouteName string, options *HTTPRoutesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	req, err := client.deleteCreateRequest(ctx, rootScope, httpRouteName, options)
+	req, err := client.deleteCreateRequest(ctx, httpRouteName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -153,9 +152,9 @@ func (client *HTTPRoutesClient) deleteOperation(ctx context.Context, rootScope s
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, rootScope string, httpRouteName string, options *HTTPRoutesClientBeginDeleteOptions) (*policy.Request, error) {
+func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, httpRouteName string, options *HTTPRoutesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
@@ -175,14 +174,11 @@ func (client *HTTPRoutesClient) deleteCreateRequest(ctx context.Context, rootSco
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - httpRouteName - HTTPRoute name
 //   - options - HTTPRoutesClientGetOptions contains the optional parameters for the HTTPRoutesClient.Get method.
-func (client *HTTPRoutesClient) Get(ctx context.Context, rootScope string, httpRouteName string, options *HTTPRoutesClientGetOptions) (HTTPRoutesClientGetResponse, error) {
+func (client *HTTPRoutesClient) Get(ctx context.Context, httpRouteName string, options *HTTPRoutesClientGetOptions) (HTTPRoutesClientGetResponse, error) {
 	var err error
-	req, err := client.getCreateRequest(ctx, rootScope, httpRouteName, options)
+	req, err := client.getCreateRequest(ctx, httpRouteName, options)
 	if err != nil {
 		return HTTPRoutesClientGetResponse{}, err
 	}
@@ -199,9 +195,9 @@ func (client *HTTPRoutesClient) Get(ctx context.Context, rootScope string, httpR
 }
 
 // getCreateRequest creates the Get request.
-func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, rootScope string, httpRouteName string, options *HTTPRoutesClientGetOptions) (*policy.Request, error) {
+func (client *HTTPRoutesClient) getCreateRequest(ctx context.Context, httpRouteName string, options *HTTPRoutesClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}
@@ -229,12 +225,9 @@ func (client *HTTPRoutesClient) getHandleResponse(resp *http.Response) (HTTPRout
 // NewListByScopePager - List HttpRouteResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - options - HTTPRoutesClientListByScopeOptions contains the optional parameters for the HTTPRoutesClient.NewListByScopePager
 //     method.
-func (client *HTTPRoutesClient) NewListByScopePager(rootScope string, options *HTTPRoutesClientListByScopeOptions) (*runtime.Pager[HTTPRoutesClientListByScopeResponse]) {
+func (client *HTTPRoutesClient) NewListByScopePager(options *HTTPRoutesClientListByScopeOptions) (*runtime.Pager[HTTPRoutesClientListByScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[HTTPRoutesClientListByScopeResponse]{
 		More: func(page HTTPRoutesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -243,7 +236,7 @@ func (client *HTTPRoutesClient) NewListByScopePager(rootScope string, options *H
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByScopeCreateRequest(ctx, rootScope, options)
+				req, err = client.listByScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -263,9 +256,9 @@ func (client *HTTPRoutesClient) NewListByScopePager(rootScope string, options *H
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *HTTPRoutesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, options *HTTPRoutesClientListByScopeOptions) (*policy.Request, error) {
+func (client *HTTPRoutesClient) listByScopeCreateRequest(ctx context.Context, options *HTTPRoutesClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -290,15 +283,12 @@ func (client *HTTPRoutesClient) listByScopeHandleResponse(resp *http.Response) (
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - httpRouteName - HTTPRoute name
 //   - properties - The resource properties to be updated.
 //   - options - HTTPRoutesClientBeginUpdateOptions contains the optional parameters for the HTTPRoutesClient.BeginUpdate method.
-func (client *HTTPRoutesClient) BeginUpdate(ctx context.Context, rootScope string, httpRouteName string, properties HTTPRouteResourceUpdate, options *HTTPRoutesClientBeginUpdateOptions) (*runtime.Poller[HTTPRoutesClientUpdateResponse], error) {
+func (client *HTTPRoutesClient) BeginUpdate(ctx context.Context, httpRouteName string, properties HTTPRouteResourceUpdate, options *HTTPRoutesClientBeginUpdateOptions) (*runtime.Poller[HTTPRoutesClientUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, httpRouteName, properties, options)
+		resp, err := client.update(ctx, httpRouteName, properties, options)
 		if err != nil {
 			return nil, err
 		}
@@ -315,9 +305,9 @@ func (client *HTTPRoutesClient) BeginUpdate(ctx context.Context, rootScope strin
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *HTTPRoutesClient) update(ctx context.Context, rootScope string, httpRouteName string, properties HTTPRouteResourceUpdate, options *HTTPRoutesClientBeginUpdateOptions) (*http.Response, error) {
+func (client *HTTPRoutesClient) update(ctx context.Context, httpRouteName string, properties HTTPRouteResourceUpdate, options *HTTPRoutesClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, httpRouteName, properties, options)
+	req, err := client.updateCreateRequest(ctx, httpRouteName, properties, options)
 	if err != nil {
 		return nil, err
 	}
@@ -333,9 +323,9 @@ func (client *HTTPRoutesClient) update(ctx context.Context, rootScope string, ht
 }
 
 // updateCreateRequest creates the Update request.
-func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, rootScope string, httpRouteName string, properties HTTPRouteResourceUpdate, options *HTTPRoutesClientBeginUpdateOptions) (*policy.Request, error) {
+func (client *HTTPRoutesClient) updateCreateRequest(ctx context.Context, httpRouteName string, properties HTTPRouteResourceUpdate, options *HTTPRoutesClientBeginUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if httpRouteName == "" {
 		return nil, errors.New("parameter httpRouteName cannot be empty")
 	}

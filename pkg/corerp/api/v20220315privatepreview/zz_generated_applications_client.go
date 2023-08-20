@@ -23,17 +23,22 @@ import (
 // Don't use this type directly, use NewApplicationsClient() instead.
 type ApplicationsClient struct {
 	internal *arm.Client
+	rootScope string
 }
 
 // NewApplicationsClient creates a new instance of ApplicationsClient with the specified values.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewApplicationsClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*ApplicationsClient, error) {
+func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*ApplicationsClient, error) {
 	cl, err := arm.NewClient(moduleName+".ApplicationsClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &ApplicationsClient{
+		rootScope: rootScope,
 	internal: cl,
 	}
 	return client, nil
@@ -43,15 +48,12 @@ func NewApplicationsClient(credential azcore.TokenCredential, options *arm.Clien
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - applicationName - The application name
 //   - resource - Resource create parameters.
 //   - options - ApplicationsClientCreateOptions contains the optional parameters for the ApplicationsClient.Create method.
-func (client *ApplicationsClient) Create(ctx context.Context, rootScope string, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (ApplicationsClientCreateResponse, error) {
+func (client *ApplicationsClient) Create(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (ApplicationsClientCreateResponse, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, rootScope, applicationName, resource, options)
+	req, err := client.createCreateRequest(ctx, applicationName, resource, options)
 	if err != nil {
 		return ApplicationsClientCreateResponse{}, err
 	}
@@ -68,9 +70,9 @@ func (client *ApplicationsClient) Create(ctx context.Context, rootScope string, 
 }
 
 // createCreateRequest creates the Create request.
-func (client *ApplicationsClient) createCreateRequest(ctx context.Context, rootScope string, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (*policy.Request, error) {
+func (client *ApplicationsClient) createCreateRequest(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -102,14 +104,11 @@ func (client *ApplicationsClient) createHandleResponse(resp *http.Response) (App
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - applicationName - The application name
 //   - options - ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
-func (client *ApplicationsClient) Delete(ctx context.Context, rootScope string, applicationName string, options *ApplicationsClientDeleteOptions) (ApplicationsClientDeleteResponse, error) {
+func (client *ApplicationsClient) Delete(ctx context.Context, applicationName string, options *ApplicationsClientDeleteOptions) (ApplicationsClientDeleteResponse, error) {
 	var err error
-	req, err := client.deleteCreateRequest(ctx, rootScope, applicationName, options)
+	req, err := client.deleteCreateRequest(ctx, applicationName, options)
 	if err != nil {
 		return ApplicationsClientDeleteResponse{}, err
 	}
@@ -125,9 +124,9 @@ func (client *ApplicationsClient) Delete(ctx context.Context, rootScope string, 
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, rootScope string, applicationName string, options *ApplicationsClientDeleteOptions) (*policy.Request, error) {
+func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, applicationName string, options *ApplicationsClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -147,14 +146,11 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, rootS
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - applicationName - The application name
 //   - options - ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
-func (client *ApplicationsClient) Get(ctx context.Context, rootScope string, applicationName string, options *ApplicationsClientGetOptions) (ApplicationsClientGetResponse, error) {
+func (client *ApplicationsClient) Get(ctx context.Context, applicationName string, options *ApplicationsClientGetOptions) (ApplicationsClientGetResponse, error) {
 	var err error
-	req, err := client.getCreateRequest(ctx, rootScope, applicationName, options)
+	req, err := client.getCreateRequest(ctx, applicationName, options)
 	if err != nil {
 		return ApplicationsClientGetResponse{}, err
 	}
@@ -171,9 +167,9 @@ func (client *ApplicationsClient) Get(ctx context.Context, rootScope string, app
 }
 
 // getCreateRequest creates the Get request.
-func (client *ApplicationsClient) getCreateRequest(ctx context.Context, rootScope string, applicationName string, options *ApplicationsClientGetOptions) (*policy.Request, error) {
+func (client *ApplicationsClient) getCreateRequest(ctx context.Context, applicationName string, options *ApplicationsClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}
@@ -201,12 +197,9 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 // NewListByScopePager - List ApplicationResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - options - ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.NewListByScopePager
 //     method.
-func (client *ApplicationsClient) NewListByScopePager(rootScope string, options *ApplicationsClientListByScopeOptions) (*runtime.Pager[ApplicationsClientListByScopeResponse]) {
+func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) (*runtime.Pager[ApplicationsClientListByScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[ApplicationsClientListByScopeResponse]{
 		More: func(page ApplicationsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -215,7 +208,7 @@ func (client *ApplicationsClient) NewListByScopePager(rootScope string, options 
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByScopeCreateRequest(ctx, rootScope, options)
+				req, err = client.listByScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -235,9 +228,9 @@ func (client *ApplicationsClient) NewListByScopePager(rootScope string, options 
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, options *ApplicationsClientListByScopeOptions) (*policy.Request, error) {
+func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, options *ApplicationsClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -262,15 +255,12 @@ func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response)
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - applicationName - The application name
 //   - properties - The resource properties to be updated.
 //   - options - ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
-func (client *ApplicationsClient) Update(ctx context.Context, rootScope string, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (ApplicationsClientUpdateResponse, error) {
+func (client *ApplicationsClient) Update(ctx context.Context, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (ApplicationsClientUpdateResponse, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, applicationName, properties, options)
+	req, err := client.updateCreateRequest(ctx, applicationName, properties, options)
 	if err != nil {
 		return ApplicationsClientUpdateResponse{}, err
 	}
@@ -287,9 +277,9 @@ func (client *ApplicationsClient) Update(ctx context.Context, rootScope string, 
 }
 
 // updateCreateRequest creates the Update request.
-func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, rootScope string, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (*policy.Request, error) {
+func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
 		return nil, errors.New("parameter applicationName cannot be empty")
 	}

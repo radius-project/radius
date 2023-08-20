@@ -23,17 +23,22 @@ import (
 // Don't use this type directly, use NewEnvironmentsClient() instead.
 type EnvironmentsClient struct {
 	internal *arm.Client
+	rootScope string
 }
 
 // NewEnvironmentsClient creates a new instance of EnvironmentsClient with the specified values.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewEnvironmentsClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*EnvironmentsClient, error) {
+func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*EnvironmentsClient, error) {
 	cl, err := arm.NewClient(moduleName+".EnvironmentsClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &EnvironmentsClient{
+		rootScope: rootScope,
 	internal: cl,
 	}
 	return client, nil
@@ -43,15 +48,12 @@ func NewEnvironmentsClient(credential azcore.TokenCredential, options *arm.Clien
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - environmentName - environment name
 //   - resource - Resource create parameters.
 //   - options - EnvironmentsClientCreateOptions contains the optional parameters for the EnvironmentsClient.Create method.
-func (client *EnvironmentsClient) Create(ctx context.Context, rootScope string, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOptions) (EnvironmentsClientCreateResponse, error) {
+func (client *EnvironmentsClient) Create(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOptions) (EnvironmentsClientCreateResponse, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, rootScope, environmentName, resource, options)
+	req, err := client.createCreateRequest(ctx, environmentName, resource, options)
 	if err != nil {
 		return EnvironmentsClientCreateResponse{}, err
 	}
@@ -68,9 +70,9 @@ func (client *EnvironmentsClient) Create(ctx context.Context, rootScope string, 
 }
 
 // createCreateRequest creates the Create request.
-func (client *EnvironmentsClient) createCreateRequest(ctx context.Context, rootScope string, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) createCreateRequest(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -102,14 +104,11 @@ func (client *EnvironmentsClient) createHandleResponse(resp *http.Response) (Env
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - environmentName - environment name
 //   - options - EnvironmentsClientDeleteOptions contains the optional parameters for the EnvironmentsClient.Delete method.
-func (client *EnvironmentsClient) Delete(ctx context.Context, rootScope string, environmentName string, options *EnvironmentsClientDeleteOptions) (EnvironmentsClientDeleteResponse, error) {
+func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName string, options *EnvironmentsClientDeleteOptions) (EnvironmentsClientDeleteResponse, error) {
 	var err error
-	req, err := client.deleteCreateRequest(ctx, rootScope, environmentName, options)
+	req, err := client.deleteCreateRequest(ctx, environmentName, options)
 	if err != nil {
 		return EnvironmentsClientDeleteResponse{}, err
 	}
@@ -125,9 +124,9 @@ func (client *EnvironmentsClient) Delete(ctx context.Context, rootScope string, 
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, rootScope string, environmentName string, options *EnvironmentsClientDeleteOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, environmentName string, options *EnvironmentsClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -147,14 +146,11 @@ func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, rootS
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - environmentName - environment name
 //   - options - EnvironmentsClientGetOptions contains the optional parameters for the EnvironmentsClient.Get method.
-func (client *EnvironmentsClient) Get(ctx context.Context, rootScope string, environmentName string, options *EnvironmentsClientGetOptions) (EnvironmentsClientGetResponse, error) {
+func (client *EnvironmentsClient) Get(ctx context.Context, environmentName string, options *EnvironmentsClientGetOptions) (EnvironmentsClientGetResponse, error) {
 	var err error
-	req, err := client.getCreateRequest(ctx, rootScope, environmentName, options)
+	req, err := client.getCreateRequest(ctx, environmentName, options)
 	if err != nil {
 		return EnvironmentsClientGetResponse{}, err
 	}
@@ -171,9 +167,9 @@ func (client *EnvironmentsClient) Get(ctx context.Context, rootScope string, env
 }
 
 // getCreateRequest creates the Get request.
-func (client *EnvironmentsClient) getCreateRequest(ctx context.Context, rootScope string, environmentName string, options *EnvironmentsClientGetOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) getCreateRequest(ctx context.Context, environmentName string, options *EnvironmentsClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -202,16 +198,13 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - environmentName - environment name
 //   - body - The content of the action request
 //   - options - EnvironmentsClientGetmetadataOptions contains the optional parameters for the EnvironmentsClient.Getmetadata
 //     method.
-func (client *EnvironmentsClient) Getmetadata(ctx context.Context, rootScope string, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetmetadataOptions) (EnvironmentsClientGetmetadataResponse, error) {
+func (client *EnvironmentsClient) Getmetadata(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetmetadataOptions) (EnvironmentsClientGetmetadataResponse, error) {
 	var err error
-	req, err := client.getmetadataCreateRequest(ctx, rootScope, environmentName, body, options)
+	req, err := client.getmetadataCreateRequest(ctx, environmentName, body, options)
 	if err != nil {
 		return EnvironmentsClientGetmetadataResponse{}, err
 	}
@@ -228,9 +221,9 @@ func (client *EnvironmentsClient) Getmetadata(ctx context.Context, rootScope str
 }
 
 // getmetadataCreateRequest creates the Getmetadata request.
-func (client *EnvironmentsClient) getmetadataCreateRequest(ctx context.Context, rootScope string, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetmetadataOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) getmetadataCreateRequest(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetmetadataOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getmetadata"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}
@@ -261,12 +254,9 @@ func (client *EnvironmentsClient) getmetadataHandleResponse(resp *http.Response)
 // NewListByScopePager - List EnvironmentResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.NewListByScopePager
 //     method.
-func (client *EnvironmentsClient) NewListByScopePager(rootScope string, options *EnvironmentsClientListByScopeOptions) (*runtime.Pager[EnvironmentsClientListByScopeResponse]) {
+func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) (*runtime.Pager[EnvironmentsClientListByScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[EnvironmentsClientListByScopeResponse]{
 		More: func(page EnvironmentsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -275,7 +265,7 @@ func (client *EnvironmentsClient) NewListByScopePager(rootScope string, options 
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByScopeCreateRequest(ctx, rootScope, options)
+				req, err = client.listByScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -295,9 +285,9 @@ func (client *EnvironmentsClient) NewListByScopePager(rootScope string, options 
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, options *EnvironmentsClientListByScopeOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, options *EnvironmentsClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -322,15 +312,12 @@ func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response)
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - environmentName - environment name
 //   - properties - The resource properties to be updated.
 //   - options - EnvironmentsClientUpdateOptions contains the optional parameters for the EnvironmentsClient.Update method.
-func (client *EnvironmentsClient) Update(ctx context.Context, rootScope string, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (EnvironmentsClientUpdateResponse, error) {
+func (client *EnvironmentsClient) Update(ctx context.Context, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (EnvironmentsClientUpdateResponse, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, environmentName, properties, options)
+	req, err := client.updateCreateRequest(ctx, environmentName, properties, options)
 	if err != nil {
 		return EnvironmentsClientUpdateResponse{}, err
 	}
@@ -347,9 +334,9 @@ func (client *EnvironmentsClient) Update(ctx context.Context, rootScope string, 
 }
 
 // updateCreateRequest creates the Update request.
-func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, rootScope string, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
 	}

@@ -15,47 +15,51 @@ import (
 // ClientFactory is a client factory used to create any client in this module.
 // Don't use this type directly, use NewClientFactory instead.
 type ClientFactory struct {
+	rootScope string
 	credential azcore.TokenCredential
 	options *arm.ClientOptions
 }
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
 // The parameter values will be propagated to any client created from this factory.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewClientFactory( credential azcore.TokenCredential, options *arm.ClientOptions) (*ClientFactory, error) {
+func NewClientFactory(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*ClientFactory, error) {
 	_, err := arm.NewClient(moduleName+".ClientFactory", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	return &ClientFactory{
-		credential: credential,
+		rootScope: 	rootScope,		credential: credential,
 		options: options.Clone(),
 	}, nil
 }
 
 func (c *ClientFactory) NewApplicationsClient() *ApplicationsClient {
-	subClient, _ := NewApplicationsClient(c.credential, c.options)
+	subClient, _ := NewApplicationsClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 
 func (c *ClientFactory) NewContainersClient() *ContainersClient {
-	subClient, _ := NewContainersClient(c.credential, c.options)
+	subClient, _ := NewContainersClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 
 func (c *ClientFactory) NewEnvironmentsClient() *EnvironmentsClient {
-	subClient, _ := NewEnvironmentsClient(c.credential, c.options)
+	subClient, _ := NewEnvironmentsClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 
 func (c *ClientFactory) NewGatewaysClient() *GatewaysClient {
-	subClient, _ := NewGatewaysClient(c.credential, c.options)
+	subClient, _ := NewGatewaysClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 
 func (c *ClientFactory) NewHTTPRoutesClient() *HTTPRoutesClient {
-	subClient, _ := NewHTTPRoutesClient(c.credential, c.options)
+	subClient, _ := NewHTTPRoutesClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 
@@ -65,12 +69,12 @@ func (c *ClientFactory) NewOperationsClient() *OperationsClient {
 }
 
 func (c *ClientFactory) NewSecretStoresClient() *SecretStoresClient {
-	subClient, _ := NewSecretStoresClient(c.credential, c.options)
+	subClient, _ := NewSecretStoresClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 
 func (c *ClientFactory) NewVolumesClient() *VolumesClient {
-	subClient, _ := NewVolumesClient(c.credential, c.options)
+	subClient, _ := NewVolumesClient(c.rootScope, c.credential, c.options)
 	return subClient
 }
 

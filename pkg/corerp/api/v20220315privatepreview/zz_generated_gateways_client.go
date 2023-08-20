@@ -23,17 +23,22 @@ import (
 // Don't use this type directly, use NewGatewaysClient() instead.
 type GatewaysClient struct {
 	internal *arm.Client
+	rootScope string
 }
 
 // NewGatewaysClient creates a new instance of GatewaysClient with the specified values.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewGatewaysClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*GatewaysClient, error) {
+func NewGatewaysClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*GatewaysClient, error) {
 	cl, err := arm.NewClient(moduleName+".GatewaysClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
 	client := &GatewaysClient{
+		rootScope: rootScope,
 	internal: cl,
 	}
 	return client, nil
@@ -43,15 +48,12 @@ func NewGatewaysClient(credential azcore.TokenCredential, options *arm.ClientOpt
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - gatewayName - Gateway name
 //   - resource - Resource create parameters.
 //   - options - GatewaysClientBeginCreateOptions contains the optional parameters for the GatewaysClient.BeginCreate method.
-func (client *GatewaysClient) BeginCreate(ctx context.Context, rootScope string, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*runtime.Poller[GatewaysClientCreateResponse], error) {
+func (client *GatewaysClient) BeginCreate(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*runtime.Poller[GatewaysClientCreateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, rootScope, gatewayName, resource, options)
+		resp, err := client.create(ctx, gatewayName, resource, options)
 		if err != nil {
 			return nil, err
 		}
@@ -68,9 +70,9 @@ func (client *GatewaysClient) BeginCreate(ctx context.Context, rootScope string,
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *GatewaysClient) create(ctx context.Context, rootScope string, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*http.Response, error) {
+func (client *GatewaysClient) create(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, rootScope, gatewayName, resource, options)
+	req, err := client.createCreateRequest(ctx, gatewayName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +88,9 @@ func (client *GatewaysClient) create(ctx context.Context, rootScope string, gate
 }
 
 // createCreateRequest creates the Create request.
-func (client *GatewaysClient) createCreateRequest(ctx context.Context, rootScope string, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*policy.Request, error) {
+func (client *GatewaysClient) createCreateRequest(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -111,14 +113,11 @@ func (client *GatewaysClient) createCreateRequest(ctx context.Context, rootScope
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - gatewayName - Gateway name
 //   - options - GatewaysClientBeginDeleteOptions contains the optional parameters for the GatewaysClient.BeginDelete method.
-func (client *GatewaysClient) BeginDelete(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*runtime.Poller[GatewaysClientDeleteResponse], error) {
+func (client *GatewaysClient) BeginDelete(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*runtime.Poller[GatewaysClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, rootScope, gatewayName, options)
+		resp, err := client.deleteOperation(ctx, gatewayName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -135,9 +134,9 @@ func (client *GatewaysClient) BeginDelete(ctx context.Context, rootScope string,
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *GatewaysClient) deleteOperation(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
+func (client *GatewaysClient) deleteOperation(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
-	req, err := client.deleteCreateRequest(ctx, rootScope, gatewayName, options)
+	req, err := client.deleteCreateRequest(ctx, gatewayName, options)
 	if err != nil {
 		return nil, err
 	}
@@ -153,9 +152,9 @@ func (client *GatewaysClient) deleteOperation(ctx context.Context, rootScope str
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*policy.Request, error) {
+func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -175,14 +174,11 @@ func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, rootScope
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - gatewayName - Gateway name
 //   - options - GatewaysClientGetOptions contains the optional parameters for the GatewaysClient.Get method.
-func (client *GatewaysClient) Get(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientGetOptions) (GatewaysClientGetResponse, error) {
+func (client *GatewaysClient) Get(ctx context.Context, gatewayName string, options *GatewaysClientGetOptions) (GatewaysClientGetResponse, error) {
 	var err error
-	req, err := client.getCreateRequest(ctx, rootScope, gatewayName, options)
+	req, err := client.getCreateRequest(ctx, gatewayName, options)
 	if err != nil {
 		return GatewaysClientGetResponse{}, err
 	}
@@ -199,9 +195,9 @@ func (client *GatewaysClient) Get(ctx context.Context, rootScope string, gateway
 }
 
 // getCreateRequest creates the Get request.
-func (client *GatewaysClient) getCreateRequest(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientGetOptions) (*policy.Request, error) {
+func (client *GatewaysClient) getCreateRequest(ctx context.Context, gatewayName string, options *GatewaysClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
@@ -229,12 +225,9 @@ func (client *GatewaysClient) getHandleResponse(resp *http.Response) (GatewaysCl
 // NewListByScopePager - List GatewayResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - options - GatewaysClientListByScopeOptions contains the optional parameters for the GatewaysClient.NewListByScopePager
 //     method.
-func (client *GatewaysClient) NewListByScopePager(rootScope string, options *GatewaysClientListByScopeOptions) (*runtime.Pager[GatewaysClientListByScopeResponse]) {
+func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByScopeOptions) (*runtime.Pager[GatewaysClientListByScopeResponse]) {
 	return runtime.NewPager(runtime.PagingHandler[GatewaysClientListByScopeResponse]{
 		More: func(page GatewaysClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -243,7 +236,7 @@ func (client *GatewaysClient) NewListByScopePager(rootScope string, options *Gat
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByScopeCreateRequest(ctx, rootScope, options)
+				req, err = client.listByScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
@@ -263,9 +256,9 @@ func (client *GatewaysClient) NewListByScopePager(rootScope string, options *Gat
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *GatewaysClient) listByScopeCreateRequest(ctx context.Context, rootScope string, options *GatewaysClientListByScopeOptions) (*policy.Request, error) {
+func (client *GatewaysClient) listByScopeCreateRequest(ctx context.Context, options *GatewaysClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
@@ -290,15 +283,12 @@ func (client *GatewaysClient) listByScopeHandleResponse(resp *http.Response) (Ga
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is
-//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - gatewayName - Gateway name
 //   - properties - The resource properties to be updated.
 //   - options - GatewaysClientBeginUpdateOptions contains the optional parameters for the GatewaysClient.BeginUpdate method.
-func (client *GatewaysClient) BeginUpdate(ctx context.Context, rootScope string, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*runtime.Poller[GatewaysClientUpdateResponse], error) {
+func (client *GatewaysClient) BeginUpdate(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*runtime.Poller[GatewaysClientUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, gatewayName, properties, options)
+		resp, err := client.update(ctx, gatewayName, properties, options)
 		if err != nil {
 			return nil, err
 		}
@@ -315,9 +305,9 @@ func (client *GatewaysClient) BeginUpdate(ctx context.Context, rootScope string,
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *GatewaysClient) update(ctx context.Context, rootScope string, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*http.Response, error) {
+func (client *GatewaysClient) update(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, gatewayName, properties, options)
+	req, err := client.updateCreateRequest(ctx, gatewayName, properties, options)
 	if err != nil {
 		return nil, err
 	}
@@ -333,9 +323,9 @@ func (client *GatewaysClient) update(ctx context.Context, rootScope string, gate
 }
 
 // updateCreateRequest creates the Update request.
-func (client *GatewaysClient) updateCreateRequest(ctx context.Context, rootScope string, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*policy.Request, error) {
+func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
 		return nil, errors.New("parameter gatewayName cannot be empty")
 	}
