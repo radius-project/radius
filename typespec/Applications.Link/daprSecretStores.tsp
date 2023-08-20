@@ -44,9 +44,9 @@ model DaprSecretStoreProperties extends BasicDaprResourceProperties {
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/")
-  type?: string;
+  @friendlyName("type")
+  secretStoreType?: string;
 
   @doc("Dapr component version")
   version?: string;

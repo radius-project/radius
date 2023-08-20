@@ -57,9 +57,9 @@ model DaprStateStoreProperties extends BasicDaprResourceProperties {
   @doc("A collection of references to resources associated with the state store")
   resources?: ResourceReference[];
 
-  #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type?: string;
+  @friendlyName("type")
+  stateStoreType?: string;
 
   @doc("Dapr component version")
   version?: string;

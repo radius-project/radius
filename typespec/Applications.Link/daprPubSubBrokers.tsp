@@ -59,9 +59,9 @@ model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
   @doc("A collection of references to resources associated with the daprPubSubBroker")
   resources?: ResourceReference[];
 
-  #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.")
-  type?: string;
+  @friendlyName("type")
+  brokerType?: string;
 
   @doc("Dapr component version")
   version?: string;
