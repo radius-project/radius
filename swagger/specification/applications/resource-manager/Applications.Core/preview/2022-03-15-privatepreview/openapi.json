@@ -168,7 +168,13 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'ApplicationResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ApplicationResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/ApplicationResource"
             }
@@ -633,7 +639,13 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'EnvironmentResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'EnvironmentResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/EnvironmentResource"
             }
