@@ -64,13 +64,10 @@ model DaprSecretStoreProperties extends BasicDaprResourceProperties {
 @doc("DaprSecretStore link")
 model DaprSecretStoreResource is TrackedResource<DaprSecretStoreProperties> {
   @doc("DaprSecretStore name")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$")
   @key("daprSecretStoreName")
   @path
   @segment("daprSecretStores")
-  @extension("x-ms-parameter-location", "method")
-  name: string;
+  name: ResourceNameString;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"

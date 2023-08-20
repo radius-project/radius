@@ -42,13 +42,10 @@ namespace Applications.Link;
 @doc("MongoDatabase link")
 model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
   @doc("The name of the MongoDatabase link resource")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @segment("mongoDatabases")
   @key("mongoDatabaseName")
-  @extension("x-ms-parameter-location", "method")
-  name: string;
+  name: ResourceNameString;
 }
 
 @doc("The secret values for the given MongoDatabase resource")

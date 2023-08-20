@@ -43,11 +43,9 @@ namespace Applications.Link;
 model RedisCacheResource is TrackedResource<RedisCacheProperties> {
   @path
   @doc("The name of the RedisCache link resource")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("redisCacheName")
   @segment("redisCaches")
-  name: string;
+  name: ResourceNameString;
 }
 
 @doc("The secret values for the given RedisCache resource")

@@ -87,13 +87,10 @@ model SqlDatabaseSecrets {
 @doc("SqlDatabase link")
 model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
   @doc("The name of the SqlDatabase link resource")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("sqlDatabaseName")
   @path
   @segment("sqlDatabases")
-  @extension("x-ms-parameter-location", "method")
-  name: string;
+  name: ResourceNameString;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"

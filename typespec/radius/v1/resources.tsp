@@ -79,3 +79,8 @@ enum ProvisioningState {
   @doc("The resource create request has been accepted")
   Accepted,
 }
+
+@doc("The application name")
+@maxLength(63)
+@pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
+scalar ResourceNameString extends string;

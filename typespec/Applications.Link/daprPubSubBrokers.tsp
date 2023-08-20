@@ -70,13 +70,10 @@ model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
 @doc("DaprPubSubBroker link")
 model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
   @doc("DaprPubSubBroker name")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$")
   @key("daprPubSubBrokerName")
   @path
-  @extension("x-ms-parameter-location", "method")
   @segment("daprPubSubBrokers")
-  name: string;
+  name: ResourceNameString;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"

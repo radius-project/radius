@@ -44,12 +44,10 @@ namespace Applications.Link;
 model RabbitMQMessageQueueResource
   is TrackedResource<RabbitMQMessageQueueProperties> {
   @doc("The name of the RabbitMQMessageQueue link resource")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("rabbitMQMessageQueueName")
   @segment("rabbitMQMessageQueues")
   @path
-  name: string;
+  name: ResourceNameString;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
