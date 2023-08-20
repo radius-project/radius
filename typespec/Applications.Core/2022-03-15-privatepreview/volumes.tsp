@@ -117,10 +117,10 @@ enum CertificateTypes {
   certificate: "certificate",
 
   @doc("Private Key type")
-  privateKey: "privateKey",
+  privatekey: "privatekey",
 
   @doc("Public Key type")
-  publicKey: "publicKey",
+  publickey: "publickey",
 }
 
 @doc("Represents secret object properties")

@@ -50,18 +50,18 @@ type CertificateTypes string
 const (
 	// CertificateTypesCertificate - Certificate type
 	CertificateTypesCertificate CertificateTypes = "certificate"
-	// CertificateTypesPrivateKey - Private Key type
-	CertificateTypesPrivateKey CertificateTypes = "privateKey"
-	// CertificateTypesPublicKey - Public Key type
-	CertificateTypesPublicKey CertificateTypes = "publicKey"
+	// CertificateTypesPrivatekey - Private Key type
+	CertificateTypesPrivatekey CertificateTypes = "privatekey"
+	// CertificateTypesPublickey - Public Key type
+	CertificateTypesPublickey CertificateTypes = "publickey"
 )
 
 // PossibleCertificateTypesValues returns the possible values for the CertificateTypes const type.
 func PossibleCertificateTypesValues() []CertificateTypes {
 	return []CertificateTypes{	
 		CertificateTypesCertificate,
-		CertificateTypesPrivateKey,
-		CertificateTypesPublicKey,
+		CertificateTypesPrivatekey,
+		CertificateTypesPublickey,
 	}
 }
 

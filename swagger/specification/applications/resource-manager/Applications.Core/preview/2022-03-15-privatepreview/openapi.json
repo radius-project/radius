@@ -2208,8 +2208,8 @@
       "description": "Represents certificate types",
       "enum": [
         "certificate",
-        "privateKey",
-        "publicKey"
+        "privatekey",
+        "publickey"
       ],
       "x-ms-enum": {
         "name": "CertificateTypes",
@@ -2221,13 +2221,13 @@
             "description": "Certificate type"
           },
           {
-            "name": "privateKey",
-            "value": "privateKey",
+            "name": "privatekey",
+            "value": "privatekey",
             "description": "Private Key type"
           },
           {
-            "name": "publicKey",
-            "value": "publicKey",
+            "name": "publickey",
+            "value": "publickey",
             "description": "Public Key type"
           }
         ]

@@ -230,9 +230,9 @@ func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjec
 		switch *c.CertType {
 		case CertificateTypesCertificate:
 			prop.CertType = to.Ptr(datamodel.CertificateTypeCertificate)
-		case CertificateTypesPrivateKey:
+		case CertificateTypesPrivatekey:
 			prop.CertType = to.Ptr(datamodel.CertificateTypePrivateKey)
-		case CertificateTypesPublicKey:
+		case CertificateTypesPublickey:
 			prop.CertType = to.Ptr(datamodel.CertificateTypePublicKey)
 		}
 	}
@@ -264,9 +264,9 @@ func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateOb
 		case datamodel.CertificateTypeCertificate:
 			prop.CertType = to.Ptr(CertificateTypesCertificate)
 		case datamodel.CertificateTypePrivateKey:
-			prop.CertType = to.Ptr(CertificateTypesPrivateKey)
+			prop.CertType = to.Ptr(CertificateTypesPrivatekey)
 		case datamodel.CertificateTypePublicKey:
-			prop.CertType = to.Ptr(CertificateTypesPublicKey)
+			prop.CertType = to.Ptr(CertificateTypesPublickey)
 		}
 	}
 
