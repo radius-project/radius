@@ -108,11 +108,11 @@ interface RedisCaches {
     RedisCacheResource,
     UCPBaseParameters<RedisCacheResource>
   >;
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     RedisCacheResource,
     UCPBaseParameters<RedisCacheResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("Lists secrets values for the specified RedisCache resource")

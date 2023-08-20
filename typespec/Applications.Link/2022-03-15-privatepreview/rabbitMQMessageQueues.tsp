@@ -116,11 +116,11 @@ interface RabbitMQMessageQueues {
     RabbitMQMessageQueueResource,
     UCPBaseParameters<RabbitMQMessageQueueResource>
   >;
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     RabbitMQMessageQueueResource,
     UCPBaseParameters<RabbitMQMessageQueueResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("Lists secrets values for the specified RabbitMQMessageQueue resource")

@@ -48,9 +48,9 @@ model SecretStoreProperties extends BasicResourceProperties {
   @visibility("read")
   provisioningState?: ProvisioningState;
 
+  #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("The type of secret store data")
-  @friendlyName("type")
-  secretType?: SecretStoreDataType = SecretStoreDataType.generic;
+  type?: SecretStoreDataType = SecretStoreDataType.generic;
 
   @doc("An object to represent key-value type secrets")
   data: Record<SecretValueProperties>;
@@ -128,11 +128,11 @@ interface SecretStores {
     UCPBaseParameters<SecretStoreResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("List the secrets of a secret stores.")

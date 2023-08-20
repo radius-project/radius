@@ -41,3 +41,5 @@ tsp format **/*.tsp
 
 * [Introduction to TypeSpec](https://microsoft.github.io/typespec/)
 * [TypeSpec Azure](https://azure.github.io/typespec-azure/)
+* [TypeSpec Samples](https://github.com/microsoft/typespec/tree/main/packages/samples)
+* [TypeSpec Azure samples](https://github.com/Azure/typespec-azure/tree/main/packages/samples/specs/resource-manager)

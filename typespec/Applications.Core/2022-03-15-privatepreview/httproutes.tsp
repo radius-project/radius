@@ -84,10 +84,10 @@ interface HttpRoutes {
     UCPBaseParameters<HttpRouteResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

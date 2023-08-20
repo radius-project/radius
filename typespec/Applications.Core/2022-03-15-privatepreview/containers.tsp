@@ -55,7 +55,7 @@ model ContainerProperties extends BasicResourceProperties {
   connections?: Record<ConnectionProperties>;
 
   @doc("Configuration for supported external identity providers")
-  identity?: IdentitySetting;
+  identity?: IdentitySettings;
 
   @doc("Extensions spec of the resource")
   @extension("x-ms-identifiers", [])
@@ -72,6 +72,12 @@ model ContainerPortProperties {
 
   @doc("Specifies a route provided by this port")
   provides?: string;
+
+  @doc("Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value")
+  scheme?: string;
+
+  @doc("Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired")
+  port?: int32;
 }
 
 @doc("Properties for readiness/liveness probe")
@@ -85,6 +91,9 @@ model HealthProbeProperties {
 
   @doc("Interval for the readiness/liveness probe in seconds")
   periodSeconds?: float32;
+
+  @doc("Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds")
+  timeoutSeconds?: float32 = 5.0;
 }
 
 @doc("Specifies the properties for readiness/liveness probe using HTTP Get")
@@ -252,10 +261,10 @@ interface Containers {
     UCPBaseParameters<ContainerResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     ContainerResource,
     UCPBaseParameters<ContainerResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

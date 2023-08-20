@@ -40,8 +40,7 @@ model DaprSecretStoreProperties extends BasicDaprResourceProperties {
   provisioningState?: ProvisioningState;
 
   @doc("Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/")
-  @friendlyName("type")
-  secretStoreType?: string;
+  type?: string;
 
   @doc("Dapr component version")
   version?: string;
@@ -86,10 +85,10 @@ interface DaprSecretStore {
     UCPBaseParameters<DaprSecretStoreResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     DaprSecretStoreResource,
     UCPBaseParameters<DaprSecretStoreResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

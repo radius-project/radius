@@ -33,8 +33,8 @@ using OpenAPI;
 
 namespace Applications.Link;
 
-alias ExtenderSecretObject = Record<string>;
-alias ExtenderListSecretResult = Record<string>;
+model ExtenderSecretObject is Record<string>;
+model ExtenderListSecretResponse is Record<string>;
 
 @doc("ExtenderResource link")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
@@ -77,11 +77,11 @@ interface Extenders {
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("Lists secrets values for the specified RedisCache resource")
@@ -89,7 +89,7 @@ interface Extenders {
   listSecrets is ArmResourceActionSync<
     ExtenderResource,
     {},
-    ExtenderListSecretResult,
+    ExtenderListSecretResponse,
     UCPBaseParameters<ExtenderResource>
   >;
 }

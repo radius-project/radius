@@ -54,33 +54,33 @@ model EnvironmentProperties extends BasicResourceProperties {
   compute: EnvironmentCompute;
 
   @doc("Cloud providers configuration for the environment.")
-  provider?: Providers;
+  providers?: Providers;
 
   @doc("Specifies Recipes linked to the Environment.")
-  recipes?: RecipeProperties;
+  recipes?: Record<Record<RecipeProperties>>;
 
   @doc("The environment extension.")
   @extension("x-ms-identifiers", [])
-  extenions?: Array<Extension>;
+  extensions?: Array<Extension>;
 }
 
 @doc("The Cloud providers configuration")
 model Providers {
   @doc("The Azure cloud provider configuration")
-  azure?: ProviderAzure;
+  azure?: ProvidersAzure;
 
   @doc("The AWS cloud provider configuration")
-  aws?: ProviderAws;
+  aws?: ProvidersAws;
 }
 
 @doc("The Azure cloud provider definition")
-model ProviderAzure {
+model ProvidersAzure {
   @doc("Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'")
   scope: string;
 }
 
 @doc("The AWS cloud provider definition")
-model ProviderAws {
+model ProvidersAws {
   @doc("Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'")
   scope: string;
 }
@@ -110,8 +110,17 @@ model TerraformRecipeProperties extends RecipeProperties {
   templateVersion: string;
 }
 
+@doc("Represents the request body of the getmetadata action.")
+model RecipeGetMetadata {
+  @doc("Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'")
+  linkType: string;
+
+  @doc("The name of the recipe registered to the environment")
+  name: string;
+}
+
 @doc("The properties of a Recipe linked to an Environment.")
-model RecipeMetadataResult {
+model RecipeGetMetadataResponse {
   @doc("The format of the template provided by the recipe. Allowed values: bicep, terraform.")
   templateKind: string;
 
@@ -126,7 +135,7 @@ model RecipeMetadataResult {
 }
 
 @armResourceOperations
-interface Environment {
+interface Environments {
   get is ArmResourceRead<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>
@@ -145,19 +154,19 @@ interface Environment {
     UCPBaseParameters<EnvironmentResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("Gets recipe metadata including parameters and any constraints on the parameters.")
   @action("getmetadata")
   getmetadata is ArmResourceActionSync<
     EnvironmentResource,
-    {},
-    RecipeMetadataResult,
+    RecipeGetMetadata,
+    RecipeGetMetadataResponse,
     UCPBaseParameters<EnvironmentResource>
   >;
 }

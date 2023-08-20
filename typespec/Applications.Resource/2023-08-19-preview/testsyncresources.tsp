@@ -70,10 +70,10 @@ interface TestSyncResources {
     UCPBaseParameters<TestSyncResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     TestSyncResource,
     UCPBaseParameters<TestSyncResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

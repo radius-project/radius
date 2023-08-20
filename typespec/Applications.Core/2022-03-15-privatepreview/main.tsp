@@ -23,6 +23,7 @@ import "./containers.tsp";
 import "./gateways.tsp";
 import "./httproutes.tsp";
 import "./secretstores.tsp";
+import "./volumes.tsp";
 
 using TypeSpec.Versioning;
 using Azure.ResourceManager;

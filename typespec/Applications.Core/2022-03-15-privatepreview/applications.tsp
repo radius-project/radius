@@ -52,7 +52,7 @@ model ApplicationProperties extends BasicResourceProperties {
 
   @doc("The application extension.")
   @extension("x-ms-identifiers", [])
-  extenions: Array<Extension>;
+  extensions: Array<Extension>;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"
@@ -76,10 +76,10 @@ interface Applications {
     UCPBaseParameters<ApplicationResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

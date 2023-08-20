@@ -105,11 +105,11 @@ interface SqlDatabases {
     SqlDatabaseResource,
     UCPBaseParameters<SqlDatabaseResource>
   >;
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     SqlDatabaseResource,
     UCPBaseParameters<SqlDatabaseResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("Lists secrets values for the specified SqlDatabase resource")

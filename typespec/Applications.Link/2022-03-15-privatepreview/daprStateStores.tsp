@@ -51,9 +51,9 @@ model DaprStateStoreProperties extends BasicDaprResourceProperties {
   @doc("A collection of references to resources associated with the state store")
   resources?: ResourceReference[];
 
+  #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
-  @friendlyName("type")
-  stateStoreType?: string;
+  type?: string;
 
   @doc("Dapr component version")
   version?: string;
@@ -88,10 +88,10 @@ interface DaprStateStore {
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

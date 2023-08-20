@@ -73,10 +73,10 @@ interface TestAsyncResources {
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }

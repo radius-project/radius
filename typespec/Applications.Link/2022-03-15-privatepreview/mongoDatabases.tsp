@@ -105,11 +105,11 @@ interface MongoDatabases {
     MongoDatabaseResource,
     UCPBaseParameters<MongoDatabaseResource>
   >;
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     MongoDatabaseResource,
     UCPBaseParameters<MongoDatabaseResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 
   @doc("Lists secrets values for the specified MongoDatabases resource")

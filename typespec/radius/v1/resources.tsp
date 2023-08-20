@@ -43,8 +43,52 @@ model BasicDaprResourceProperties extends BasicResourceProperties {
   componentName?: string;
 }
 
+
+@doc("IdentitySettings is the external identity setting.")
+model IdentitySettings {
+  @doc("kind of identity setting")
+  kind: IdentitySettingKind;
+
+  @doc("The URI for your compute platform's OIDC issuer")
+  oidcIssuer?: string;
+
+  @doc("The resource ID of the provisioned identity")
+  resource?: string;
+}
+
+@doc("IdentitySettingKind is the kind of supported external identity setting")
+enum IdentitySettingKind {
+  @doc("undefined identity")
+  undefined: "undefined",
+
+  @doc("azure ad workload identity")
+  `azure.com.workload`: "azure.com.workload",
+}
+
+@discriminator("kind")
+@doc("Represents backing compute resource")
+model EnvironmentCompute {
+  @doc("The resource id of the compute resource for application environment.")
+  resourceId?: string;
+
+  @doc("Configuration for supported external identity providers")
+  identity?: IdentitySettings;
+}
+
+@doc("The Kubernetes compute configuration")
+model KubernetesCompute extends EnvironmentCompute {
+  @doc("The Kubernetes compute kind")
+  kind: "kubernetes";
+
+  @doc("The namespace to use for the environment.")
+  `namespace`: string;
+}
+
 @doc("Status of a resource.")
 model ResourceStatus {
+  @doc("The compute resource associated with the resource.")
+  compute?: EnvironmentCompute;
+
   @doc("Properties of an output resource")
   @extension("x-ms-identifiers", [])
   outputResources?: OutputResource[];

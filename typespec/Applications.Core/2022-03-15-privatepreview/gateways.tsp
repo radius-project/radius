@@ -125,10 +125,10 @@ interface Gateways {
     UCPBaseParameters<GatewayResource>
   >;
 
-  listByRootScope is ArmResourceListByParent<
+  listByScope is ArmResourceListByParent<
     GatewayResource,
     UCPBaseParameters<GatewayResource>,
-    "RootScope",
-    "RootScope"
+    "Scope",
+    "Scope"
   >;
 }
