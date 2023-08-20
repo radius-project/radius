@@ -17,3 +17,5 @@ limitations under the License.
 import "@typespec/openapi";
 
 using OpenAPI;
+
+// TODO: Add shared models here.

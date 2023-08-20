@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/versioning";
 import "@azure-tools/typespec-azure-resource-manager";
 
+// TODO: import the multiple type spec files.
 import "./testsyncresources.tsp";
 import "./testasyncresources.tsp";
 
@@ -25,10 +26,10 @@ using Azure.ResourceManager;
 
 @armProviderNamespace
 @service({
-  title: "Applications.Test Resource Management APIs",
+  title: "Applications.Resource Resource Management APIs",
   version: "2023-08-19-preview",
 })
 @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
-namespace Applications.Test;
+namespace Applications.Resource;
 
 interface Operations extends Azure.ResourceManager.Operations {}

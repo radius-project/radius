@@ -21,10 +21,9 @@ import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
 
-import "../radius/v1/ucprootscope.tsp";
-import "../radius/v1/resources.tsp";
+import "../../radius/v1/ucprootscope.tsp";
+import "../../radius/v1/resources.tsp";
 import "./common.tsp";
-import "./extensions.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -33,52 +32,47 @@ using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
 
-namespace Applications.Core;
+namespace Applications.Resource;
 
-@doc("Radius Application resource")
-model ApplicationResource is TrackedResource<ApplicationProperties> {
-  @doc("The application name")
+@doc("The TestSyncResource type.")
+model TestSyncResource is TrackedResource<TestSyncResourceProperties> {
+  @doc("The name of TestSyncResource")
   @path
-  @key("applicationName")
-  @segment("applications")
+  @key("testSyncResourceName")
+  @segment("testSyncResources")
   name: ResourceNameString;
 }
 
-@doc("Application properties")
-model ApplicationProperties extends BasicResourceProperties {
+@doc("TestSyncResource properties")
+model TestSyncResourceProperties {
   @visibility("read")
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;
 
-  @doc("The application extension.")
-  @extension("x-ms-identifiers", [])
-  extenions: Array<Extension>;
+  @doc("The property1 of TestSyncResource")
+  property1: string;
 }
 
-#suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
-interface Applications {
-  get is ArmResourceRead<
-    ApplicationResource,
-    UCPBaseParameters<ApplicationResource>
-  >;
+interface TestSyncResources {
+  get is ArmResourceRead<TestSyncResource, UCPBaseParameters<TestSyncResource>>;
   create is ArmResourceCreateOrUpdateSync<
-    ApplicationResource,
-    UCPBaseParameters<ApplicationResource>
+    TestSyncResource,
+    UCPBaseParameters<TestSyncResource>
   >;
   update is ArmResourcePatchSync<
-    ApplicationResource,
-    EnvironmentProperties,
-    UCPBaseParameters<ApplicationResource>
+    TestSyncResource,
+    TestSyncResourceProperties,
+    UCPBaseParameters<TestSyncResource>
   >;
   delete is ArmResourceDeleteSync<
-    ApplicationResource,
-    UCPBaseParameters<ApplicationResource>
+    TestSyncResource,
+    UCPBaseParameters<TestSyncResource>
   >;
 
   listByRootScope is ArmResourceListByParent<
-    ApplicationResource,
-    UCPBaseParameters<ApplicationResource>,
+    TestSyncResource,
+    UCPBaseParameters<TestSyncResource>,
     "RootScope",
     "RootScope"
   >;

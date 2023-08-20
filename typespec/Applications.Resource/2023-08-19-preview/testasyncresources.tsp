@@ -21,8 +21,8 @@ import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
 
-import "../radius/v1/ucprootscope.tsp";
-import "../radius/v1/resources.tsp";
+import "../../radius/v1/ucprootscope.tsp";
+import "../../radius/v1/resources.tsp";
 import "./common.tsp";
 
 using TypeSpec.Http;
@@ -32,17 +32,15 @@ using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
 
-namespace Applications.Test;
+namespace Applications.Resource;
 
 @doc("The TestAsyncResource which implements asynchornous API.")
 model TestAsyncResource is TrackedResource<TestAsyncResourceProperties> {
   @doc("The name of TestSyncResource")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
-  @key("testAsyncResourceName")
   @path
+  @key("testAsyncResourceName")
   @segment("testAsyncResources")
-  name: string;
+  name: ResourceNameString;
 }
 
 @doc("TestAsyncResource properties")
