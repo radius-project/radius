@@ -31,12 +31,6 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using OpenAPI;
 
-@service({
-  title: "Applications.Link Management APIs",
-  version: "2022-03-15-privatepreview",
-})
-@doc("REST APIs for Applications.Link/rabbitMQMessageQueues")
-@useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
@@ -63,6 +57,7 @@ model RabbitMQSecrets {
   @doc("The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value")
   uri?: string;
 }
+
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQMessageQueue link properties")
 model RabbitMQMessageQueueProperties extends BasicResourceProperties {
@@ -101,9 +96,9 @@ model RabbitMQMessageQueueProperties extends BasicResourceProperties {
   tls?: boolean;
 }
 
-#suppress "@azure-tools/typespec-azure-core/casing-style"
+#suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @armResourceOperations
-interface RabbitMQMessageQueue {
+interface RabbitMQMessageQueues {
   get is ArmResourceRead<
     RabbitMQMessageQueueResource,
     UCPBaseParameters<RabbitMQMessageQueueResource>

@@ -31,12 +31,6 @@ using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Azure.ResourceManager;
 
-@service({
-  title: "Applications.Link Management APIs",
-  version: "2022-03-15-privatepreview",
-})
-@doc("REST API for Applications.Link DaprStateStore Resource")
-@useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
 @doc("DaprStateStore link properties")

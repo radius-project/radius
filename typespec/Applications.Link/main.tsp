@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import "@typespec/versioning";
+import "@azure-tools/typespec-azure-resource-manager";
+
 import "./mongoDatabases.tsp";
 import "./sqlDatabases.tsp";
 import "./redisCaches.tsp";
@@ -21,3 +24,18 @@ import "./rabbitMQMessageQueues.tsp";
 import "./daprSecretStores.tsp";
 import "./daprStateStores.tsp";
 import "./daprPubSubBrokers.tsp";
+import "./extenders.tsp";
+
+using TypeSpec.Versioning;
+using Azure.ResourceManager;
+
+@armProviderNamespace
+@service({
+  title: "Applications.Link Management APIs",
+  version: "2022-03-15-privatepreview",
+})
+@doc("REST APIs for Applications.Link DaprPubSubBroker Resource")
+@useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Applications.Link;
+
+interface Operations extends Azure.ResourceManager.Operations {}

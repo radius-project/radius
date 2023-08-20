@@ -32,13 +32,6 @@ using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
 
-@armProviderNamespace
-@service({
-  title: "Applications.Link Management APIs",
-  version: "2022-03-15-privatepreview",
-})
-@doc("REST APIs for Applications.Link DaprPubSubBroker Resource")
-@useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
 @doc("DaprPubSubBroker link properties")

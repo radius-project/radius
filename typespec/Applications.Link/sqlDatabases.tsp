@@ -31,16 +31,8 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using OpenAPI;
 
-@armProviderNamespace
-@service({
-  title: "Applications.Link Management APIs",
-  version: "2022-03-15-privatepreview",
-})
-@doc("REST APIs for Applications.Link/sqlDatabases")
-@useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
-interface Operations extends Azure.ResourceManager.Operations {}
 @doc("SqlDatabase properties")
 model SqlDatabaseProperties extends BasicResourceProperties {
   @doc("Provisioning state of the Sql database link at the time the operation was called")
