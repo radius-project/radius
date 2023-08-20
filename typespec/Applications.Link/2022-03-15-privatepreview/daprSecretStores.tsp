@@ -72,7 +72,7 @@ interface DaprSecretStore {
     DaprSecretStoreResource,
     UCPBaseParameters<DaprSecretStoreResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     DaprSecretStoreResource,
     UCPBaseParameters<DaprSecretStoreResource>
   >;

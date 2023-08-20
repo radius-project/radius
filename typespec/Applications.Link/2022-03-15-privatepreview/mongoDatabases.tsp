@@ -92,7 +92,7 @@ interface MongoDatabases {
     MongoDatabaseResource,
     UCPBaseParameters<MongoDatabaseResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     MongoDatabaseResource,
     UCPBaseParameters<MongoDatabaseResource>
   >;

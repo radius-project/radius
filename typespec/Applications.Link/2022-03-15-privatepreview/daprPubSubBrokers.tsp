@@ -76,7 +76,7 @@ interface DaprPubSubBroker {
     DaprPubSubBrokerResource,
     UCPBaseParameters<DaprPubSubBrokerResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     DaprPubSubBrokerResource,
     UCPBaseParameters<DaprPubSubBrokerResource>
   >;

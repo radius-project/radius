@@ -92,7 +92,7 @@ interface SqlDatabases {
     SqlDatabaseResource,
     UCPBaseParameters<SqlDatabaseResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     SqlDatabaseResource,
     UCPBaseParameters<SqlDatabaseResource>
   >;

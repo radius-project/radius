@@ -95,7 +95,7 @@ interface RedisCaches {
     RedisCacheResource,
     UCPBaseParameters<RedisCacheResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     RedisCacheResource,
     UCPBaseParameters<RedisCacheResource>
   >;

@@ -111,7 +111,7 @@ model GatewayRoute {
 @armResourceOperations
 interface Gateways {
   get is ArmResourceRead<GatewayResource, UCPBaseParameters<GatewayResource>>;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     GatewayResource,
     UCPBaseParameters<GatewayResource>
   >;

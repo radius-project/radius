@@ -103,7 +103,7 @@ interface RabbitMQMessageQueues {
     RabbitMQMessageQueueResource,
     UCPBaseParameters<RabbitMQMessageQueueResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     RabbitMQMessageQueueResource,
     UCPBaseParameters<RabbitMQMessageQueueResource>
   >;

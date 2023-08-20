@@ -70,7 +70,7 @@ interface HttpRoutes {
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>
   >;

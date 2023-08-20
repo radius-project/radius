@@ -75,7 +75,7 @@ interface DaprStateStore {
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;

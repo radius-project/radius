@@ -64,7 +64,7 @@ model ExtenderProperties extends BasicResourceProperties {
 @armResourceOperations
 interface Extenders {
   get is ArmResourceRead<ExtenderResource, UCPBaseParameters<ExtenderResource>>;
-  create is ArmResourceCreateOrUpdateAsync<
+  create is ArmResourceCreateOrReplaceAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;

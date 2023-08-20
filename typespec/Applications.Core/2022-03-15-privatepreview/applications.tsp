@@ -62,7 +62,7 @@ interface Applications {
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>
   >;
-  create is ArmResourceCreateOrUpdateSync<
+  create is ArmResourceCreateOrReplaceSync<
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>
   >;
