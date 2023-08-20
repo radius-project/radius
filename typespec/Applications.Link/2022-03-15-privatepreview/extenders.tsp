@@ -61,7 +61,6 @@ model ExtenderProperties extends BasicResourceProperties {
   resourceProvisioning?: ResourceProvisioning;
 }
 
-
 @armResourceOperations
 interface Extenders {
   get is ArmResourceRead<ExtenderResource, UCPBaseParameters<ExtenderResource>>;
