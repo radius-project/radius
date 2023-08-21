@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the `rad app list` command and runner.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a new Runner, and configures the command with flags and usage information
 // to list Radius applications in a resource group associated with the default environment.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -81,8 +80,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad app list` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the workspace, scope, and output format of the command and sets them in the Runner struct,
 // returning an error if any of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -111,8 +109,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad app list` command.
 //
-// # Function Explanation
-//
+
 // Run() creates an ApplicationsManagementClient using the provided ConnectionFactory, then lists the applications and
 // writes the output in the specified format, returning an error if any of these steps fail.
 func (r *Runner) Run(ctx context.Context) error {

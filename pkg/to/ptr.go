@@ -18,15 +18,11 @@ limitations under the License.
 
 package to
 
-// # Function Explanation
-//
 // Ptr takes in a value of any type and returns a pointer to that value.
 func Ptr[T any](v T) *T {
 	return &v
 }
 
-// # Function Explanation
-//
 // SliceOfPtrs takes in a variable number of arguments of any type and returns a slice of pointers to those arguments.
 func SliceOfPtrs[T any](vv ...T) []*T {
 	slc := make([]*T, len(vv))
@@ -36,8 +32,6 @@ func SliceOfPtrs[T any](vv ...T) []*T {
 	return slc
 }
 
-// # Function Explanation
-//
 // StringMapPtr creates a new map with string keys and pointer values from an existing map with string keys and string values.
 func StringMapPtr(ms map[string]string) *map[string]*string {
 	msp := make(map[string]*string, len(ms))

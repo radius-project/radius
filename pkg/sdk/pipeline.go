@@ -35,16 +35,12 @@ const (
 	version = "v0.0.1"
 )
 
-// # Function Explanation
-//
 // NewPipeline builds a runtime.Pipeline from a Radius SDK connection. This is used to construct
 // autorest Track2 Go clients.
 func NewPipeline(connection Connection) runtime.Pipeline {
 	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection).ClientOptions)
 }
 
-// # Function Explanation
-//
 // NewClientOptions creates a new ARM client options object with the given connection's endpoint, audience, transport and
 // removes the authorization header policy.
 func NewClientOptions(connection Connection) *arm.ClientOptions {
@@ -77,8 +73,6 @@ var _ policy.Policy = (*removeAuthorizationHeaderPolicy)(nil)
 type removeAuthorizationHeaderPolicy struct {
 }
 
-// # Function Explanation
-//
 // Do removes the Authorization header from the request before sending it to the next policy.
 func (p *removeAuthorizationHeaderPolicy) Do(req *policy.Request) (*http.Response, error) {
 	delete(req.Raw().Header, "Authorization")

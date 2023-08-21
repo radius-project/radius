@@ -39,8 +39,6 @@ var (
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 
-// # Function Explanation
-//
 // NewEnvironmentLoader creates a new environmentLoader instance with the given ARM Client Options.
 func NewEnvironmentLoader(armOptions *arm.ClientOptions) ConfigurationLoader {
 	return &environmentLoader{ArmClientOptions: armOptions}
@@ -52,8 +50,6 @@ type environmentLoader struct {
 	ArmClientOptions *arm.ClientOptions
 }
 
-// # Function Explanation
-//
 // LoadConfiguration fetches an environment and an application (if provided) and returns a configuration based on them. It returns
 // an error if either the environment or the application (if provided) cannot be fetched.
 func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.Configuration, error) {
@@ -117,8 +113,6 @@ func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, 
 	return &config, nil
 }
 
-// # Function Explanation
-//
 // LoadRecipe fetches the recipe information from the environment. It returns an error if the environment cannot be fetched.
 func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	environment, err := util.FetchEnvironment(ctx, recipe.EnvironmentID, e.ArmClientOptions)
@@ -145,13 +139,14 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 
 	definition := &recipes.EnvironmentDefinition{
 		Name:         recipeName,
-		Driver:       *found.TemplateKind,
+		Driver:       *found.GetEnvironmentRecipeProperties().TemplateKind,
 		ResourceType: resource.Type(),
-		Parameters:   found.Parameters,
-		TemplatePath: *found.TemplatePath,
+		Parameters:   found.GetEnvironmentRecipeProperties().Parameters,
+		TemplatePath: *found.GetEnvironmentRecipeProperties().TemplatePath,
 	}
-	if *found.TemplateKind == recipes.TemplateKindTerraform {
-		definition.TemplateVersion = *found.TemplateVersion
+	switch c := found.(type) {
+	case *v20220315privatepreview.TerraformRecipeProperties:
+		definition.TemplateVersion = *c.TemplateVersion
 	}
 
 	return definition, nil

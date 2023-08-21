@@ -140,6 +140,7 @@ func isValidLinkType(link string) bool {
 		linkrp.N_MongoDatabasesResourceType,
 		linkrp.N_RedisCachesResourceType,
 		linkrp.N_SqlDatabasesResourceType,
+		linkrp.N_ExtendersResourceType,
 	}
 	return slices.Contains(linkTypes, link)
 }

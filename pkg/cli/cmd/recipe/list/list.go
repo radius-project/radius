@@ -28,13 +28,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad recipe list` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner object, configures the command with flags and arguments, and
 // returns the command and the runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -77,8 +77,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad recipe list` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the command line arguments for a workspace, environment name, and output format, and sets the corresponding
 // fields in the Runner struct if they are valid. If any of the arguments are invalid, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -106,8 +105,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad recipe list` command.
 //
-// # Function Explanation
-//
+
 // Run retrieves environment recipes from the given workspace and writes them to the output in the specified format.
 // It returns an error if the connection to the workspace fails or if there is an error writing to the output.
 func (r *Runner) Run(ctx context.Context) error {
@@ -122,16 +120,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	var envRecipes []types.EnvironmentRecipe
 	for link, recipes := range envResource.Properties.Recipes {
 		for recipeName, recipeDetails := range recipes {
-			recipe := types.EnvironmentRecipe{
-				Name:         recipeName,
-				LinkType:     link,
-				TemplatePath: *recipeDetails.TemplatePath,
-				TemplateKind: *recipeDetails.TemplateKind,
+			recipe := types.EnvironmentRecipe{}
+			switch c := recipeDetails.(type) {
+			case *corerp.TerraformRecipeProperties:
+				recipe = types.EnvironmentRecipe{
+					Name:            recipeName,
+					LinkType:        link,
+					TemplatePath:    *c.TemplatePath,
+					TemplateKind:    *c.TemplateKind,
+					TemplateVersion: *c.TemplateVersion,
+				}
+			case *corerp.BicepRecipeProperties:
+				recipe = types.EnvironmentRecipe{
+					Name:         recipeName,
+					LinkType:     link,
+					TemplatePath: *c.TemplatePath,
+					TemplateKind: *c.TemplateKind,
+				}
 			}
-			if recipeDetails.TemplateVersion != nil {
-				recipe.TemplateVersion = *recipeDetails.TemplateVersion
-			}
-
 			envRecipes = append(envRecipes, recipe)
 		}
 	}

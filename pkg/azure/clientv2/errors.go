@@ -23,8 +23,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 )
 
-// # Function Explanation
-//
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
 func Is404Error(err error) bool {
 	respErr, ok := ExtractResponseError(err)
@@ -39,8 +37,6 @@ func Is404Error(err error) bool {
 	return false
 }
 
-// # Function Explanation
-//
 // ExtractResponseError extracts the ResponseError from the error.
 // Returns true if the error is a ResponseError.
 func ExtractResponseError(err error) (*azcore.ResponseError, bool) {

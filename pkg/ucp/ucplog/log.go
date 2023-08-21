@@ -182,8 +182,6 @@ func Unwrap(logger logr.Logger) *zap.Logger {
 	return nil
 }
 
-// # Function Explanation
-//
 // FromContextOrDiscard returns a logger with trace and span IDs populated from the context if they exist.
 // In order to get logger without span, use logr.FromContextOrDiscard(ctx context.Context).
 func FromContextOrDiscard(ctx context.Context) logr.Logger {
@@ -201,8 +199,6 @@ func FromContextOrDiscard(ctx context.Context) logr.Logger {
 	return logger
 }
 
-// # Function Explanation
-//
 // This function creates a new resource object with the given service name, hostname and version.
 func NewResourceObject(serviceName string) []any {
 	host, _ := os.Hostname()

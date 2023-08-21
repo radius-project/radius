@@ -36,8 +36,7 @@ const (
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new cobra command that can be used to delete an environment, with options to specify the
 // environment name, resource group, workspace, output format, and confirmation prompt.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -49,16 +48,16 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long:  `Delete environment. Deletes the user's default environment by default.`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
-# Delete current enviroment
+# Delete current environment
 rad env delete
 
-# Delete current enviroment and bypass confirmation prompt
+# Delete current environment and bypass confirmation prompt
 rad env delete --yes
 
-# Delete specified enviroment
+# Delete specified environment
 rad env delete my-env
 
-# Delete specified enviroment in a specified resource group
+# Delete specified environment in a specified resource group
 rad env delete my-env --group my-env
 `,
 		RunE: framework.RunCommand(runner),
@@ -98,8 +97,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad env delete` command.
 //
-// # Function Explanation
-//
+
 // Validate takes in a command and a slice of strings and sets the workspace, scope, environment name, confirmation and output
 // format of the runner based on the command and the strings. It returns an error if any of these values cannot be set.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -138,8 +136,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env delete` command.
 //
-// # Function Explanation
-//
+
 // Run prompts the user to confirm the deletion of an environment, creates an applications management client, and
 // deletes the environment if confirmed. It returns an error if the prompt or client creation fails.
 func (r *Runner) Run(ctx context.Context) error {

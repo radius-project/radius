@@ -24,8 +24,6 @@ import (
 // FakeResource is a fake resource type.
 type FakeResource struct{}
 
-// # Function Explanation
-//
 // Always returns "FakeResource" as the name.
 func (f *FakeResource) ResourceTypeName() string {
 	return "FakeResource"

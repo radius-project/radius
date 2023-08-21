@@ -43,8 +43,6 @@ const (
 	AzureWorkloadIdentityUseKey = "azure.workload.identity/use"
 )
 
-// # Function Explanation
-//
 // MakeManagedIdentity parses the Azure Provider scope and creates an OutputResource with the parsed subscription ID and
 // resource group, and the given name. It returns an error if the scope is invalid or if the environment providers are not specified.
 func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*rpv1.OutputResource, error) {
@@ -74,8 +72,6 @@ func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*rpv1
 	}, nil
 }
 
-// # Function Explanation
-//
 // MakeRoleAssignments creates OutputResources and Dependencies for each roleName in the roleNames slice, and adds them to
 // the outputResources and deps slices respectively.
 func MakeRoleAssignments(azResourceID string, roleNames []string) ([]rpv1.OutputResource, []rpv1.Dependency) {
@@ -106,8 +102,6 @@ func MakeRoleAssignments(azResourceID string, roleNames []string) ([]rpv1.Output
 	return outputResources, deps
 }
 
-// # Function Explanation
-//
 // MakeFederatedIdentity creates an OutputResource object with the necessary fields to create a Federated Identity in
 // Azure (aka workload identity), and returns an error if the OIDC Issuer URL or namespace is not specified.
 func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*rpv1.OutputResource, error) {
@@ -140,8 +134,6 @@ func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*
 	}, nil
 }
 
-// # Function Explanation
-//
 // TransformFederatedIdentitySA extracts the identity info from the request and adds it to the ServiceAccount annotations.
 func TransformFederatedIdentitySA(ctx context.Context, options *handlers.PutOptions) error {
 	sa, ok := options.Resource.Resource.(*corev1.ServiceAccount)
@@ -181,8 +173,6 @@ func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantI
 	return
 }
 
-// # Function Explanation
-//
 // MakeFederatedIdentitySA creates a ServiceAccount with descriptive labels and placeholder annotations for Azure Workload
 // Identity, and returns an OutputResource with the ServiceAccount and a dependency on the FederatedIdentity.
 func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {

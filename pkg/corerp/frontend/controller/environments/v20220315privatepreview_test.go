@@ -44,7 +44,7 @@ func getTestModels20220315privatepreview() (*v20220315privatepreview.Environment
 	return envInput, envDataModel, expectedOutput
 }
 
-func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.Recipe, *datamodel.Environment, *v20220315privatepreview.EnvironmentRecipeProperties) {
+func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.Recipe, *datamodel.Environment, *v20220315privatepreview.RecipeMetadataProperties) {
 	rawInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input.json")
 	envInput := &v20220315privatepreview.Recipe{}
 	_ = json.Unmarshal(rawInput, envInput)
@@ -54,7 +54,7 @@ func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepr
 	_ = json.Unmarshal(rawExistingDataModel, envExistingDataModel)
 
 	rawExpectedOutput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_output.json")
-	expectedOutput := &v20220315privatepreview.EnvironmentRecipeProperties{}
+	expectedOutput := &v20220315privatepreview.RecipeMetadataProperties{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
 	return envInput, envExistingDataModel, expectedOutput

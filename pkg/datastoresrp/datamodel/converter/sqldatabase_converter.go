@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 )
 
-// # Function Explanation
-//
 // SqlDatabaseDataModelToVersioned converts a SqlDatabase data model to a VersionedModelInterface based on the specified
 // version, returning an error if the version is unsupported.
 func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (v1.VersionedModelInterface, error) {
@@ -40,8 +38,6 @@ func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version strin
 	}
 }
 
-// # Function Explanation
-//
 // SqlDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a SqlDatabase object and an
 // error if one occurs.
 func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.SqlDatabase, error) {
@@ -62,8 +58,6 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 	}
 }
 
-// # Function Explanation
-//
 // This function converts a SqlDatabaseSecretsDataModel to a VersionedModelInterface based on the version provided, and
 // returns an error if the version is unsupported.
 func SqlDatabaseSecretsDataModelToVersioned(model *datamodel.SqlDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {

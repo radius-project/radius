@@ -66,4 +66,4 @@ jobs:
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh
         env:
-          BICEP_PATH: .
+          BICEP_PATH: './rad-bicep-corerp'

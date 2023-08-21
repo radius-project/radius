@@ -64,8 +64,7 @@ func (c *client) initializeCredentials() error {
 
 // Locations lists the locations available for a subscription.
 //
-// # Function Explanation
-//
+
 // Locations() initializes credentials, creates a new client, and then uses a pager to retrieve a
 // list of locations associated with a given subscription ID, which is then returned as a slice of
 // armsubscriptions.Location objects. It returns an error if any of the steps fail.
@@ -100,8 +99,7 @@ func (c *client) Locations(ctx context.Context, subscriptionID string) ([]armsub
 
 // Subscriptions lists the subscriptions available to the user.
 //
-// # Function Explanation
-//
+
 // Subscriptions() attempts to load subscriptions from the user profile, and if that fails, it falls back to
 // loading them from Azure, returning an error if unsuccessful.
 func (c *client) Subscriptions(ctx context.Context) (*SubscriptionResult, error) {
@@ -124,8 +122,7 @@ func (c *client) Subscriptions(ctx context.Context) (*SubscriptionResult, error)
 
 // ResourceGroups lists the existing resource groups in a subscription.
 //
-// # Function Explanation
-//
+
 // ResourceGroups() initializes credentials, creates a new resource groups client, and then iterates through a list of
 // resource groups, appending each one to a slice before returning the slice and any errors.
 func (c *client) ResourceGroups(ctx context.Context, subscriptionID string) ([]armresources.ResourceGroup, error) {
@@ -157,8 +154,7 @@ func (c *client) ResourceGroups(ctx context.Context, subscriptionID string) ([]a
 
 // CheckResourceGroupExistence checks if a resource group exists.
 //
-// # Function Explanation
-//
+
 // CheckResourceGroupExistence initializes credentials, creates a new resource group client, checks the existence of the
 // resource group and returns a boolean indicating whether the resource group exists or not. An error is returned if any
 // of the steps fail.
@@ -183,8 +179,7 @@ func (c *client) CheckResourceGroupExistence(ctx context.Context, subscriptionID
 
 // CreateOrUpdateResourceGroup creates or updates a resource group.
 //
-// # Function Explanation
-//
+
 // CreateOrUpdateResourceGroup initializes credentials, creates a new resource group client, creates a new resource group
 // with the given name and location, and then creates or updates the resource group. An error is returned if any
 // of the steps fail.

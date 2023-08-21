@@ -26,8 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// # Function Explanation
-//
 // Recoverer handles panics and logs the error, returning an Internal Server Error response.
 func Recoverer(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

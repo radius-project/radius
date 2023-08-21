@@ -17,20 +17,19 @@ limitations under the License.
 package driver
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -45,16 +44,13 @@ import (
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
 const (
-	deploymentPrefix   = "recipe"
-	pollFrequency      = time.Second * 5
-	ResultPropertyName = "result"
-	recipeParameters   = "parameters"
+	deploymentPrefix = "recipe"
+	pollFrequency    = time.Second * 5
+	recipeParameters = "parameters"
 )
 
 var _ Driver = (*bicepDriver)(nil)
 
-// # Function Explanation
-//
 // NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client and resource client.
 func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
 	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient, ResourceClient: client}
@@ -66,8 +62,6 @@ type bicepDriver struct {
 	ResourceClient   processors.ResourceClient
 }
 
-// # Function Explanation
-//
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
 // a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
 // is done and prepares the recipe response.
@@ -76,10 +70,14 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
 
 	recipeData := make(map[string]any)
+	downloadStartTime := time.Now()
 	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.SuccessfulOperationState))
+
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&recipe, &configuration)
 	if err != nil {
@@ -88,7 +86,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
-	_, isContextParameterDefined := recipeData[recipeParameters].(map[string]any)[datamodel.RecipeContextParameter]
+	isContextParameterDefined := hasContextParameter(recipeData)
 	parameters := createRecipeParameters(recipe.Parameters, definition.Parameters, isContextParameterDefined, recipeContext)
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -130,16 +128,14 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		return nil, err
 	}
 
-	recipeResponse, err := prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read the recipe output %q: %w", ResultPropertyName, err)
+		return nil, fmt.Errorf("failed to read the recipe output %q: %w", recipes.ResultPropertyName, err)
 	}
 
-	return &recipeResponse, nil
+	return recipeResponse, nil
 }
 
-// # Function Explanation
-//
 // Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
 // resources that are not managed by Radius. It returns an error if any of the resources fail to delete.
 func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
@@ -173,6 +169,21 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 	return nil
 }
 
+func hasContextParameter(recipeData map[string]any) bool {
+	parametersAny, ok := recipeData[recipeParameters]
+	if !ok {
+		return false
+	}
+
+	parameters, ok := parametersAny.(map[string]any)
+	if !ok {
+		return false
+	}
+
+	_, ok = parameters[datamodel.RecipeContextParameter]
+	return ok
+}
+
 // createRecipeParameters creates the parameters to be passed for recipe deployment after handling conflicts in parameters set by operator and developer.
 // In case of conflict the developer parameter takes precedence. If recipe has context parameter defined adds the context information to the parameters list
 func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet bool, recipeContext *recipecontext.Context) map[string]any {
@@ -188,7 +199,7 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	if isCxtSet {
-		parameters["context"] = map[string]any{
+		parameters[recipecontext.RecipeContextParamKey] = map[string]any{
 			"value": *recipeContext,
 		}
 	}
@@ -231,7 +242,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -241,25 +252,14 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 	//
 	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
 	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-	recipeResponse := recipes.RecipeOutput{}
-
+	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok {
-		recipeOutput, ok := out[ResultPropertyName].(map[string]any)
-		if ok {
-			output, ok := recipeOutput["value"].(map[string]any)
-			if ok {
-				b, err := json.Marshal(&output)
+		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
+			if resultValue, ok := result["value"].(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(resultValue)
 				if err != nil {
-					return recipes.RecipeOutput{}, err
-				}
-
-				// Using a decoder to block unknown fields.
-				decoder := json.NewDecoder(bytes.NewBuffer(b))
-				decoder.DisallowUnknownFields()
-				err = decoder.Decode(&recipeResponse)
-				if err != nil {
-					return recipes.RecipeOutput{}, err
+					return &recipes.RecipeOutput{}, err
 				}
 			}
 		}
@@ -268,14 +268,6 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 	// process the 'resources' created by the template
 	for _, id := range resources {
 		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
-	}
-
-	// Make sure our maps are non-nil (it's just friendly).
-	if recipeResponse.Secrets == nil {
-		recipeResponse.Secrets = map[string]any{}
-	}
-	if recipeResponse.Values == nil {
-		recipeResponse.Values = map[string]any{}
 	}
 
 	return recipeResponse, nil

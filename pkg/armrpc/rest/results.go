@@ -68,8 +68,6 @@ func NewOKResponseWithHeaders(body any, headers map[string]string) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply sets the response headers and body, and writes the response to the http.ResponseWriter with a status
 // code of 200. If an error occurs while marshaling the body or writing the response, an error is returned.
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -106,16 +104,12 @@ type CreatedResponse struct {
 	Body any
 }
 
-// # Function Explanation
-//
 // NewCreatedResponse creates a Created HTTP Response object with the given data.
 func NewCreatedResponse(body any) Response {
 	response := &CreatedResponse{Body: body}
 	return response
 }
 
-// # Function Explanation
-//
 // Apply renders CreatedResponse to http.ResponseWriter by serializing empty body and set
 // 201 Created response code and returns an error if any of these steps fail.
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -146,15 +140,11 @@ type CreatedAsyncResponse struct {
 	Scheme   string
 }
 
-// # Function Explanation
-//
 // NewCreatedAsyncResponse creates a new HTTP Response for asynchronous operation.
 func NewCreatedAsyncResponse(body any, location string, scheme string) Response {
 	return &CreatedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
 
-// # Function Explanation
-//
 // Apply renders Created HTTP Response into http.ResponseWriter with Location header for asynchronous operation and returns an error if it fails.
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -206,8 +196,6 @@ func NewAcceptedAsyncResponse(body any, location string, scheme string) Response
 	return &AcceptedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
 
-// # Function Explanation
-//
 // Apply renders Accepted HTTP Response into http.ResponseWriter with Location header for asynchronous operation and returns an error if it fails.
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -278,8 +266,6 @@ func NewAsyncOperationResponse(body any, location string, code int, resourceID r
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders asynchronous operationStatuses response with Location/Azure-AsyncOperation URL headers and Retry-After header, which allows client to retry.
 func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	// Write Body
@@ -370,15 +356,11 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 type NoContentResponse struct {
 }
 
-// # Function Explanation
-//
 // NewNoContentResponse creates a new NoContentResponse object.
 func NewNoContentResponse() Response {
 	return &NoContentResponse{}
 }
 
-// # Function Explanation
-//
 // Apply renders NoContent HTTP Response into http.ResponseWriter.
 func (r *NoContentResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	w.WriteHeader(204)
@@ -425,8 +407,6 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rpv1
 	}
 }
 
-// # Function Explanation
-//
 // NewBadRequestResponse creates a BadRequestResponse with a given error message.
 func NewBadRequestResponse(message string) Response {
 	return &BadRequestResponse{
@@ -439,8 +419,6 @@ func NewBadRequestResponse(message string) Response {
 	}
 }
 
-// # Function Explanation
-//
 // NewBadRequestARMResponse creates a BadRequestResponse with error message.
 func NewBadRequestARMResponse(body v1.ErrorResponse) Response {
 	return &BadRequestResponse{
@@ -448,8 +426,6 @@ func NewBadRequestARMResponse(body v1.ErrorResponse) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders the general BadRequest HTTP response into http.ResponseWriter by serializing ErrorResponse.
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -475,8 +451,6 @@ type ValidationErrorResponse struct {
 	Body v1.ErrorResponse
 }
 
-// # Function Explanation
-//
 // NewValidationErrorResponse creates a BadRequest response for invalid API validation.
 func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 	body := v1.ErrorResponse{
@@ -499,8 +473,6 @@ func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 	return &ValidationErrorResponse{Body: body}
 }
 
-// # Function Explanation
-//
 // Apply renders BadRequest HTTP response into http.ResponseWriter by serializing invalid API validation error response and setting Content-Type.
 func (r *ValidationErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -565,8 +537,6 @@ func NewNotFoundAPIVersionResponse(resourceType string, namespace string, apiVer
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders 404 NotFound HTTP response into http.ResponseWriter by setting Content-Type and serializing response.
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -594,8 +564,6 @@ type ConflictResponse struct {
 	Body v1.ErrorResponse
 }
 
-// # Function Explanation
-//
 // NewConflictResponse creates a ConflictResponse for conflicting operations and resources.
 func NewConflictResponse(message string) Response {
 	return &ConflictResponse{
@@ -608,8 +576,6 @@ func NewConflictResponse(message string) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders 409 Conflict HTTP response into http.ResponseWriter by setting Content-Type and serializing response.
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -634,8 +600,6 @@ type InternalServerErrorResponse struct {
 	Body v1.ErrorResponse
 }
 
-// # Function Explanation
-//
 // NewInternalServerErrorARMResponse creates a new InternalServerErrorResponse with the given error message.
 func NewInternalServerErrorARMResponse(body v1.ErrorResponse) Response {
 	return &InternalServerErrorResponse{
@@ -643,8 +607,6 @@ func NewInternalServerErrorARMResponse(body v1.ErrorResponse) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders 500 InternalServerError HTTP response into http.ResponseWriter by setting Content-Type and serializing response.
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -670,8 +632,6 @@ type PreconditionFailedResponse struct {
 	Body v1.ErrorResponse
 }
 
-// # Function Explanation
-//
 // NewPreconditionFailedResponse creates a new PreconditionFailedResponse with the given target resource and message.
 func NewPreconditionFailedResponse(target string, message string) Response {
 	return &PreconditionFailedResponse{
@@ -685,8 +645,6 @@ func NewPreconditionFailedResponse(target string, message string) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders 412 PreconditionFailed HTTP response into http.ResponseWriter by setting Content-Type and serializing response.
 func (r *PreconditionFailedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -712,8 +670,6 @@ type ClientAuthenticationFailed struct {
 	Body v1.ErrorResponse
 }
 
-// # Function Explanation
-//
 // NewClientAuthenticationFailedARMResponse creates a ClientAuthenticationFailed Response with CodeInvalidAuthenticationInfo code and its message.
 func NewClientAuthenticationFailedARMResponse() Response {
 	return &ClientAuthenticationFailed{
@@ -726,8 +682,6 @@ func NewClientAuthenticationFailedARMResponse() Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply writes a response with status code 401 Unauthorized and a JSON body to the response writer. It returns an error
 // if there is an issue marshaling the body or writing it to the response writer.
 func (r *ClientAuthenticationFailed) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -753,8 +707,6 @@ type AsyncOperationResultResponse struct {
 	Headers map[string]string
 }
 
-// # Function Explanation
-//
 // NewAsyncOperationResultResponse creates a new AsyncOperationResultResponse with the given headers.
 func NewAsyncOperationResultResponse(headers map[string]string) Response {
 	return &AsyncOperationResultResponse{
@@ -762,8 +714,6 @@ func NewAsyncOperationResultResponse(headers map[string]string) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply sets the response headers and status code to http.StatusAccepted and returns nil.
 func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -787,8 +737,7 @@ type MethodNotAllowedResponse struct {
 
 // NewMethodNotAllowedResponse creates MethodNotAllowedResponse instance.
 //
-// # Function Explanation
-//
+
 // NewMethodNotAllowedResponse creates a MethodNotAllowedResponse with the given message and target resource.
 func NewMethodNotAllowedResponse(target string, message string) Response {
 	return &MethodNotAllowedResponse{
@@ -802,8 +751,6 @@ func NewMethodNotAllowedResponse(target string, message string) Response {
 	}
 }
 
-// # Function Explanation
-//
 // Apply renders a HTTP response by serializing Body in JSON and setting 405 response code and returns an error if it fails.
 func (r *MethodNotAllowedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := ucplog.FromContextOrDiscard(ctx)

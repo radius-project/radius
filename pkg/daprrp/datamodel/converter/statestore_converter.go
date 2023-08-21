@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
 )
 
-// # Function Explanation
-//
 // StateStoreDataModelToVersioned converts a version-agnostic datamodel.DaprStateStore to a versioned model interface based on the
 // version string provided, or returns an error if the version is not supported.
 func StateStoreDataModelToVersioned(model *datamodel.DaprStateStore, version string) (v1.VersionedModelInterface, error) {
@@ -40,8 +38,6 @@ func StateStoreDataModelToVersioned(model *datamodel.DaprStateStore, version str
 	}
 }
 
-// # Function Explanation
-//
 // StateStoreDataModelFromVersioned unmarshals a JSON byte slice into a DaprStateStoreResource struct, then converts it to
 // a version-agnostic DaprStateStore struct and returns it, or an error if the version is unsupported.
 func StateStoreDataModelFromVersioned(content []byte, version string) (*datamodel.DaprStateStore, error) {

@@ -74,8 +74,6 @@ type ValidateMocks struct {
 	AWSClient                   *aws.MockClient
 }
 
-// # Function Explanation
-//
 // SharedCommandValidation tests that the command created by the factory function has all the required fields set.
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
 	cmd, _ := factory(&framework.Impl{})
@@ -87,8 +85,6 @@ func SharedCommandValidation(t *testing.T, factory func(framework framework.Fact
 	require.NotNil(t, cmd.RunE, "RunE is required")
 }
 
-// # Function Explanation
-//
 // SharedValidateValidation runs a series of tests to validate command line arguments and flags, and returns
 // an error if validation fails.
 func SharedValidateValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner), testcases []ValidateInput) {
@@ -208,8 +204,6 @@ const (
 	TestEnvironmentName = "test-environment"
 )
 
-// # Function Explanation
-//
 // LoadConfig reads a YAML configuration from a string and returns a Viper object.
 func LoadConfig(t *testing.T, yamlData string) *viper.Viper {
 	v := viper.New()
@@ -219,8 +213,6 @@ func LoadConfig(t *testing.T, yamlData string) *viper.Viper {
 	return v
 }
 
-// # Function Explanation
-//
 // LoadConfigWithWorkspace loads a config with a workspace and returns a viper instance.
 func LoadConfigWithWorkspace(t *testing.T) *viper.Viper {
 
@@ -239,8 +231,6 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
-// # Function Explanation
-//
 // LoadConfigWithWorkspaceAndApplication loads a config with a test-workspace and test-application.
 func LoadConfigWithWorkspaceAndApplication(t *testing.T) *viper.Viper {
 
@@ -260,8 +250,6 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
-// # Function Explanation
-//
 // LoadEmptyConfig creates a viper instance with an empty workspaces configuration.
 func LoadEmptyConfig(t *testing.T) *viper.Viper {
 
@@ -272,8 +260,6 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
-// # Function Explanation
-//
 // Create404Error creates an error with a status code of 404.
 func Create404Error() error {
 	code := v1.CodeNotFound
@@ -283,8 +269,6 @@ func Create404Error() error {
 	}
 }
 
-// # Function Explanation
-//
 // CreateResource creates a generic resource with the given resource type and name, and sets the ID, Name, Type and
 // Location fields.
 func CreateResource(resourceType string, resourceName string) generated.GenericResource {
@@ -299,8 +283,6 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 	}
 }
 
-// # Function Explanation
-//
 // // CreateResourceGroup creates a ResourceGroupResource object with the given name and a generated ID.
 func CreateResourceGroup(resourceGroupName string) v20220901privatepreview.ResourceGroupResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)

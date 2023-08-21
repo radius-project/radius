@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // SecretStoreModelToVersioned converts version agnostic SecretStore datamodel to versioned model.
 func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -39,8 +37,6 @@ func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (
 	}
 }
 
-// # Function Explanation
-//
 // ListSecretsToVersioned converts version agnostic SecretStoreListSecrets datamodel to versioned model.
 func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -54,8 +50,6 @@ func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version str
 	}
 }
 
-// # Function Explanation
-//
 // SecretStoreModelFromVersioned converts versioned SecretStore model to datamodel.
 func SecretStoreModelFromVersioned(content []byte, version string) (*datamodel.SecretStore, error) {
 	switch version {

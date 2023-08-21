@@ -35,7 +35,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ParameterConflict(t *testing.T) {
+func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {
+	devParams := map[string]any{}
+	operatorParams := map[string]any{}
+	expectedParams := map[string]any{}
+
+	actualParams := createRecipeParameters(devParams, operatorParams, false, nil)
+	require.Equal(t, expectedParams, actualParams)
+}
+
+func Test_CreateRecipeParameters_ParameterConflict(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -65,7 +74,7 @@ func Test_ParameterConflict(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_DevParameterWithContextParameter(t *testing.T) {
+func Test_CreateRecipeParameters_WithContextParameter(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -113,7 +122,7 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
+func Test_CreateRecipeParameters_EmptyResourceParameters(t *testing.T) {
 	operatorParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -161,7 +170,7 @@ func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_DevParameterWithOperatorParameter(t *testing.T) {
+func Test_CreateRecipeParameters_ResourceAndEnvParameters(t *testing.T) {
 	operatorParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -248,7 +257,10 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 	actual := newProviderConfig("test-rg", providers)
 	require.Equal(t, expected, actual)
 }
-func Test_RecipeResponseSuccess(t *testing.T) {
+
+func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -270,7 +282,7 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
-	expectedResponse := recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets: map[string]any{
 			"username":         "testUser",
@@ -283,12 +295,14 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_RecipeResponseWithoutSecret(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -305,7 +319,7 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
-	expectedResponse := recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets:   map[string]any{},
 		Values: map[string]any{
@@ -314,25 +328,25 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_RecipeResponseWithoutResult(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
 		},
 	}
 	response := map[string]any{}
-	expectedResponse := recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"outputResourceId"},
-		Secrets:   map[string]any{},
-		Values:    map[string]any{},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -348,7 +362,7 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 	return driver, client
 }
 
-func Test_Driver_Delete_Success(t *testing.T) {
+func Test_Bicep_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
@@ -392,7 +406,7 @@ func Test_Driver_Delete_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_Driver_Delete_Error(t *testing.T) {
+func Test_Bicep_Delete_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{

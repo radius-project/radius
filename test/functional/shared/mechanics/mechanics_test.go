@@ -23,7 +23,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
@@ -309,9 +308,41 @@ func Test_InvalidResourceIDs(t *testing.T) {
 	name := "corerp-mechanics-invalid-resourceids"
 	template := "testdata/corerp-mechanics-invalid-resourceids.bicep"
 
+	// We've avoiding including resource IDs here because they can change depending on how the run is
+	// configured.
+	validate := step.ValidateAllDetails("DeploymentFailed", []step.DeploymentErrorDetail{
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "BadRequest",
+					MessageContains: "has invalid Applications.Core/applications resource type.",
+				},
+			},
+		},
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "BadRequest",
+					MessageContains: "application ID \"not_an_id\" for the resource",
+				},
+			},
+		},
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "BadRequest",
+					MessageContains: "application ID \"global\" for the resource",
+				},
+			},
+		},
+	})
+
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid, nil, functional.GetMagpieImage()),
+			Executor: step.NewDeployErrorExecutor(template, validate, functional.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{

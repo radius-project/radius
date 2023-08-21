@@ -26,8 +26,6 @@ type armProxy struct {
 	ProxyAddress string
 }
 
-// # Function Explanation
-//
 // NewARMProxy creates a ReverseProxy with custom directors, transport and responders to process requests and responses.
 func NewARMProxy(options ReverseProxyOptions, downstream *url.URL, configure func(builder *ReverseProxyBuilder)) ReverseProxy {
 	p := armProxy{

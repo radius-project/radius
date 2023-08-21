@@ -22,8 +22,6 @@ import (
 	"strings"
 )
 
-// # Function Explanation
-//
 // ValidateResourceIDsForResource checks if the given properties map contains all the required keys and returns an error if
 //
 //	any of the keys are missing.
@@ -44,8 +42,6 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
 }
 
-// # Function Explanation
-//
 // GetMapValue returns the value of a given key from a map of strings or a map of any type, or an error if the key is not
 // found or the value is not of the expected type.
 func GetMapValue[T any](collection any, key string) (T, error) {

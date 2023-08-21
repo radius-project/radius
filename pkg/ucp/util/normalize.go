@@ -21,8 +21,6 @@ import (
 	"unicode"
 )
 
-// # Function Explanation
-//
 // NormalizeStringToLower takes in a string and returns a normalized version of the string with all non-alphanumeric
 // characters replaced with hyphens and all letters converted to lowercase.
 func NormalizeStringToLower(s string) string {

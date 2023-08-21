@@ -43,8 +43,7 @@ const (
 
 // NewCommand creates an instance of the command and runner for the `rad env update` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command for updating an environment's configuration, such as adding or removing cloud
 // providers, and returns a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -121,8 +120,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad env update` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the command flags and arguments for the required workspace, scope, environment name, Azure
 // subscription ID, Azure resource group, AWS region, and AWS account ID, and sets the corresponding values in the Runner
 // struct. If any of these values are not provided, an error is returned.
@@ -193,8 +191,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad env update` command.
 //
-// # Function Explanation
-//
+
 // Run updates the environment with the given name with the given cloud provider scope. It returns an error
 // if the environment does not exist or if the update fails.
 func (r *Runner) Run(ctx context.Context) error {

@@ -26,6 +26,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -38,14 +39,15 @@ const (
 var ErrModuleNotFound = errors.New("module not found in Terraform config")
 
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
-// from environment recipe and resource recipe metadata.
+// Parameters are populated from environment recipe and resource recipe metadata.
 func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
 	// Resource parameter gets precedence over environment level parameter,
 	// if same parameter is defined in both environment and resource recipe metadata.
 	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
 
 	return &TerraformConfig{
-		Provider: nil,
+		Terraform: nil,
+		Provider:  nil,
 		Module: map[string]TFModuleConfig{
 			moduleName: moduleData,
 		},
@@ -57,7 +59,7 @@ func getMainConfigFilePath(workingDir string) string {
 	return fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
 }
 
-// Save writes the Terraform config to the main config file present at ConfigFilePath().
+// Save writes the Terraform config to main.tf.json file in the working directory.
 // This overwrites the existing file if it exists.
 func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -153,4 +155,38 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 	}
 
 	return providerConfigs, nil
+}
+
+// AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.
+// Save() must be called to save the generated backend config.
+// Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
+func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (map[string]any, error) {
+	backendConfig, err := backend.BuildBackend(resourceRecipe)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Terraform = &TerraformDefinition{
+		Backend: backendConfig,
+	}
+
+	return backendConfig, nil
+}
+
+// Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
+// Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
+// https://developer.hashicorp.com/terraform/language/modules/syntax#accessing-module-output-values
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+
+	cfg.Output = map[string]any{
+		recipes.ResultPropertyName: map[string]any{
+			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",
+			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
+		},
+	}
+
+	return nil
 }

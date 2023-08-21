@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // HTTPRouteDataModelToVersioned converts version agnostic HTTPRoute datamodel to versioned model.
 func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -39,8 +37,6 @@ func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (
 	}
 }
 
-// # Function Explanation
-//
 // HTTPRouteDataModelFromVersioned converts versioned HTTPRoute model to datamodel.
 func HTTPRouteDataModelFromVersioned(content []byte, version string) (*datamodel.HTTPRoute, error) {
 	switch version {

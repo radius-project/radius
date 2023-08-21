@@ -57,8 +57,6 @@ type objectValues struct {
 type KeyVaultRenderer struct {
 }
 
-// # Function Explanation
-//
 // Render creates a spec for the secret objects, keys and certificates from the VolumeResource and
 // returns a RendererOutput with the spec and empty Resources and SecretValues.
 func (r *KeyVaultRenderer) Render(ctx context.Context, resource v1.DataModelInterface, options *renderers.RenderOptions) (*renderers.RendererOutput, error) {

@@ -47,16 +47,12 @@ type Options struct {
 	BaseURI string
 }
 
-// # Function Explanation
-//
 // NewFederatedIdentityClient creates a new FederatedIdentityCredentialsClient and returns it along with any error.
 func NewFederatedIdentityClient(subscriptionID string, options *Options) (*armmsi.FederatedIdentityCredentialsClient, error) {
 	// TODO: Add LRU cache to maintain the clients.
 	return armmsi.NewFederatedIdentityCredentialsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewUserAssignedIdentityClient creates a new UserAssignedIdentitiesClient with the given subscriptionID and Options and
 // returns it, or an error if one occurs.
 func NewUserAssignedIdentityClient(subscriptionID string, options *Options) (*armmsi.UserAssignedIdentitiesClient, error) {
@@ -64,22 +60,24 @@ func NewUserAssignedIdentityClient(subscriptionID string, options *Options) (*ar
 	return armmsi.NewUserAssignedIdentitiesClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewCustomActionClient creates a new CustomActionClient with the provided subscriptionID and Options, and returns an
 // error if one occurs.
-func NewCustomActionClient(subscriptionID string, options *Options) (*CustomActionClient, error) {
+func NewCustomActionClient(subscriptionID string, options *Options, clientOptions *arm.ClientOptions) (*CustomActionClient, error) {
 	baseURI := DefaultBaseURI
 	if options.BaseURI != "" {
 		baseURI = options.BaseURI
 	}
 
-	client, err := armresources.NewClient(subscriptionID, options.Cred, defaultClientOptions)
+	if clientOptions == nil {
+		clientOptions = defaultClientOptions
+	}
+
+	client, err := armresources.NewClient(subscriptionID, options.Cred, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, defaultClientOptions)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -91,15 +89,11 @@ func NewCustomActionClient(subscriptionID string, options *Options) (*CustomActi
 	}, nil
 }
 
-// # Function Explanation
-//
 // NewSubscriptionsClient creates a new ARM Subscriptions Client using the provided options and returns it, or an error if one occurs.
 func NewSubscriptionsClient(options *Options) (*armsubscriptions.Client, error) {
 	return armsubscriptions.NewClient(options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewGenericResourceClient creates a new ARM resources client with the given subscription ID, options and client options.
 func NewGenericResourceClient(subscriptionID string, options *Options, clientOptions *arm.ClientOptions) (*armresources.Client, error) {
 	// Allow setting client options for testing.
@@ -109,8 +103,6 @@ func NewGenericResourceClient(subscriptionID string, options *Options, clientOpt
 	return armresources.NewClient(subscriptionID, options.Cred, clientOptions)
 }
 
-// # Function Explanation
-//
 // NewProvidersClient creates a new ARM ProvidersClient with the given subscription ID and ARM ClientOptions,
 // that can be used to look up resource providers and API versions.
 func NewProvidersClient(subcriptionID string, options *Options, clientOptions *arm.ClientOptions) (*armresources.ProvidersClient, error) {
@@ -121,52 +113,38 @@ func NewProvidersClient(subcriptionID string, options *Options, clientOptions *a
 	return armresources.NewProvidersClient(subcriptionID, options.Cred, clientOptions)
 }
 
-// # Function Explanation
-//
 // NewAccountsClient creates a new ARM Storage Accounts Client with the given subscription ID and options.
 func NewAccountsClient(subscriptionID string, options *Options) (*armstorage.AccountsClient, error) {
 	return armstorage.NewAccountsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewRoleDefinitionsClient creates a new RoleDefinitionsClient from the given Options and returns it, or an error if one occurs.
 func NewRoleDefinitionsClient(options *Options) (*armauthorization.RoleDefinitionsClient, error) {
 	return armauthorization.NewRoleDefinitionsClient(options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewRoleAssignmentsClient creates a new RoleAssignmentsClient with the given subscriptionID and Options, and returns an
 // error if one occurs.
 func NewRoleAssignmentsClient(subscriptionID string, options *Options) (*armauthorization.RoleAssignmentsClient, error) {
 	return armauthorization.NewRoleAssignmentsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewServiceBusNamespacesClient creates a new ARM Service Bus Namespaces Client with the given subscription ID and
 // options.
 func NewServiceBusNamespacesClient(subscriptionID string, options *Options) (*armservicebus.NamespacesClient, error) {
 	return armservicebus.NewNamespacesClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // // NewDeploymentsClient creates a new DeploymentsClient which can be used to manage Azure deployments.
 func NewDeploymentsClient(subscriptionID string, options *Options) (*armresources.DeploymentsClient, error) {
 	return armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewDeploymentOperationsClient creates a new ARM deployment operations client for managing deployment operations.
 func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*armresources.DeploymentOperationsClient, error) {
 	return armresources.NewDeploymentOperationsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
-// # Function Explanation
-//
 // NewResourceGroupsClient creates a new ARM Resource Groups Client with the given subscription ID and options.
 func NewResourceGroupsClient(subscriptionID string, options *Options) (*armresources.ResourceGroupsClient, error) {
 	return armresources.NewResourceGroupsClient(subscriptionID, options.Cred, defaultClientOptions)

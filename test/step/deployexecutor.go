@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,8 +45,6 @@ type DeployExecutor struct {
 	Environment string
 }
 
-// # Function Explanation
-//
 // NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
@@ -57,8 +54,6 @@ func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	}
 }
 
-// # Function Explanation
-//
 // WithApplication sets the application name for the DeployExecutor instance and returns the same instance.
 func (d *DeployExecutor) WithApplication(application string) *DeployExecutor {
 	d.Application = application
@@ -71,31 +66,11 @@ func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
 	return d
 }
 
-// # Function Explanation
-//
 // GetDescription returns the Description field of the DeployExecutor instance.
 func (d *DeployExecutor) GetDescription() string {
 	return d.Description
 }
 
-func unpackErrorAndMatch(err error, failWithAny []string) bool {
-	for _, errString := range failWithAny {
-		cliErr := err.(*radcli.CLIError)
-		for _, detail := range cliErr.ErrorResponse.Error.Details {
-			if detail.Code != "OK" {
-				for _, innerDetail := range detail.Details {
-					if strings.Contains(innerDetail.Message, errString) {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
-}
-
-// # Function Explanation
-//
 // Execute deploys an application from a template file using the provided parameters and logs the deployment process.
 func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
 	cwd, err := os.Getwd()

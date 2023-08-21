@@ -51,8 +51,6 @@ func NewCreateOrUpdateAWSResource(opts armrpc_controller.Options, awsClients ucp
 	}, nil
 }
 
-// # Function Explanation
-//
 // "Run" reads the request body, determines if the resource exists, and either creates or updates the
 // resource accordingly, returning an async operation response with the resource's properties and a request token.
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

@@ -22,8 +22,6 @@ const (
 	DefaultFormat = FormatTable
 )
 
-// # Function Explanation
-//
 // SupportedFormats returns a slice of strings containing the supported formats for a request.
 func SupportedFormats() []string {
 	return []string{
