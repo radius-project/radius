@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -32,6 +33,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -58,24 +60,35 @@ model ApplicationProperties is RadiusResource<ApplicationProperties> {
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface Applications {
+  @example("./examples/ApplicationsGet.json", "RadiusApplicationGet")
   get is ArmResourceRead<
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>
   >;
+
+  @example("./examples/ApplicationsPut.json", "RadiusApplicationPut")
   create is ArmResourceCreateOrReplaceSync<
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>
   >;
+
+  @example("./examples/ApplicationsPatch.json", "RadiusApplicationPatch")
   update is ArmResourcePatchSync<
     ApplicationResource,
     EnvironmentProperties,
     UCPBaseParameters<ApplicationResource>
   >;
+
+  @example("./examples/ApplicationsDelete.json", "RadiusApplicationDelete")
   delete is ArmResourceDeleteSync<
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>
   >;
 
+  @example(
+    "./examples/ApplicationsListByScope.json",
+    "RadiusApplicationsListByScope"
+  )
   listByScope is ArmResourceListByParent<
     ApplicationResource,
     UCPBaseParameters<ApplicationResource>,

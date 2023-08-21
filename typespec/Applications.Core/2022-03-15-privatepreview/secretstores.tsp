@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -31,6 +32,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -110,24 +112,52 @@ model SecretStoreListSecretsResult {
 
 @armResourceOperations
 interface SecretStores {
+  @extension(
+    "x-ms-examples",
+    {
+      RadiusSecretStoresGet: {
+        $ref: "./examples/SecretStoresGet.json",
+      },
+      RadiusSecretStoresAzureKeyVaultGet: {
+        $ref: "./examples/SecretStoresGet_AzureKeyVault.json",
+      },
+    }
+  )
   get is ArmResourceRead<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;
+
+  @extension(
+    "x-ms-examples",
+    {
+      RadiusSecretStoresPutValueFrom: {
+        $ref: "./examples/SecretStoresPutValueFrom.json",
+      },
+      RadiusSecretStoresPutValue: {
+        $ref: "./examples/SecretStoresPutValue.json",
+      },
+    }
+  )
   create is ArmResourceCreateOrReplaceAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;
+
+  @example("./examples/SecretStoresPatch.json", "RadiusSecretStoresPatch")
   update is ArmResourcePatchAsync<
     SecretStoreResource,
     SecretStoreProperties,
     UCPBaseParameters<SecretStoreResource>
   >;
+
+  @example("./examples/SecretStoresDelete.json", "RadiusSecretStoresDelete")
   delete is ArmResourceDeleteAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;
 
+  @example("./examples/SecretStoresList.json", "RadiusSecretStoresList")
   listByScope is ArmResourceListByParent<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>,
@@ -135,6 +165,10 @@ interface SecretStores {
     "Scope"
   >;
 
+  @example(
+    "./examples/SecretStoresListSecrets.json",
+    "RadiusSecretStoresPostListSecret"
+  )
   @doc("List the secrets of a secret stores.")
   @action("listSecrets")
   listSecrets is ArmResourceActionSync<

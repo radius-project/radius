@@ -5,7 +5,7 @@ TypeSpec is a language for describing cloud service APIs and generating other AP
 ## Strcutures
 
 * **[Applications.Core](./Applications.Core/): This directory contains Applications.Core TypeSpec files to define its namespace and resource types.
-* **[Applications.Resource](./Applications.Resource/): This directory contains the template typespec files to create new namespace and resource types.
+* **[Test.Resource](./Test.Resource/): This directory contains the template typespec files to create new namespace and resource types.
 * **[radius/v1](./radius/v1/)**: This directory contains the radius shared typespec v1 libraries used by each namespace.
 
 ## Prerequisite

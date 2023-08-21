@@ -30,6 +30,6 @@ using Azure.ResourceManager;
   version: "2023-08-19-preview",
 })
 @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
-namespace Applications.Resource;
+namespace Test.Resource;
 
 interface Operations extends Azure.ResourceManager.Operations {}

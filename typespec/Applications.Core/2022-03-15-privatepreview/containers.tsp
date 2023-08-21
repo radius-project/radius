@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -32,6 +33,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -243,24 +245,32 @@ enum IAMKind {
 
 @armResourceOperations
 interface Containers {
+  @example("./examples/ContainersGet.json", "ContainersGet")
   get is ArmResourceRead<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;
+
+  @example("./examples/ContainersPut.json", "ContainersPut")
   create is ArmResourceCreateOrReplaceAsync<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;
+
+  @example("./examples/ContainersPatch.json", "ContainersPatch")
   update is ArmResourcePatchAsync<
     ContainerResource,
     ContainerProperties,
     UCPBaseParameters<ContainerResource>
   >;
+
+  @example("./examples/ContainersDelete.json", "ContainersDelete")
   delete is ArmResourceDeleteAsync<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;
 
+  @example("./examples/ContainersListByScope.json", "ContainersListByScope")
   listByScope is ArmResourceListByParent<
     ContainerResource,
     UCPBaseParameters<ContainerResource>,

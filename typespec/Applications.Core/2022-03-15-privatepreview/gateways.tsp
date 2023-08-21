@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -31,6 +32,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -110,21 +112,29 @@ model GatewayRoute {
 
 @armResourceOperations
 interface Gateways {
+  @example("./examples/GatewaysGet.json", "RadiusGatewaysGet")
   get is ArmResourceRead<GatewayResource, UCPBaseParameters<GatewayResource>>;
+
+  @example("./examples/GatewaysPut.json", "RadiusGatewaysPut")
   create is ArmResourceCreateOrReplaceAsync<
     GatewayResource,
     UCPBaseParameters<GatewayResource>
   >;
+
+  @example("./examples/GatewaysPatch.json", "RadiusGatewaysPatch")
   update is ArmResourcePatchAsync<
     GatewayResource,
     GatewayProperties,
     UCPBaseParameters<GatewayResource>
   >;
+
+  @example("./examples/GatewaysDelete.json", "RadiusGatewaysDelete")
   delete is ArmResourceDeleteAsync<
     GatewayResource,
     UCPBaseParameters<GatewayResource>
   >;
 
+  @example("./examples/GatewaysListByScope.json", "RadiusGatewaysListByScope")
   listByScope is ArmResourceListByParent<
     GatewayResource,
     UCPBaseParameters<GatewayResource>,

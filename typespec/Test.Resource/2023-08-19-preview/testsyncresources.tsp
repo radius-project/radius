@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -31,8 +32,9 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
-namespace Applications.Resource;
+namespace Test.Resource;
 
 @doc("The TestSyncResource type.")
 model TestSyncResource is TrackedResource<TestSyncResourceProperties> {
@@ -55,21 +57,32 @@ model TestSyncResourceProperties is RadiusResource<TestSyncResourceProperties> {
 
 @armResourceOperations
 interface TestSyncResources {
+  @example("./example/TestSyncResourceGet.json", "Get TestSyncResource")
   get is ArmResourceRead<TestSyncResource, UCPBaseParameters<TestSyncResource>>;
+
+  @example("./example/TestSyncResourcePut.json", "Put TestSyncResource")
   create is ArmResourceCreateOrReplaceSync<
     TestSyncResource,
     UCPBaseParameters<TestSyncResource>
   >;
+
+  @example("./example/TestSyncResourcePatch.json", "Patch TestSyncResource")
   update is ArmResourcePatchSync<
     TestSyncResource,
     TestSyncResourceProperties,
     UCPBaseParameters<TestSyncResource>
   >;
+
+  @example("./example/TestSyncResourceDelete.json", "Delete TestSyncResource")
   delete is ArmResourceDeleteSync<
     TestSyncResource,
     UCPBaseParameters<TestSyncResource>
   >;
 
+  @example(
+    "./example/TestSyncResourceListByScope.json",
+    "List TestSyncResource by scope"
+  )
   listByScope is ArmResourceListByParent<
     TestSyncResource,
     UCPBaseParameters<TestSyncResource>,

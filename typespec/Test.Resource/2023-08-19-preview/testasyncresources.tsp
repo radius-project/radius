@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -31,8 +32,9 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
-namespace Applications.Resource;
+namespace Test.Resource;
 
 @doc("The TestAsyncResource which implements asynchornous API.")
 model TestAsyncResource is TrackedResource<TestAsyncResourceProperties> {
@@ -56,24 +58,35 @@ model TestAsyncResourceProperties
 
 @armResourceOperations
 interface TestAsyncResources {
+  @example("./example/TestAsyncResourceGet.json", "Get TestAsyncResource")
   get is ArmResourceRead<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;
+
+  @example("./example/TestAsyncResourcePut.json", "Put TestAsyncResource")
   create is ArmResourceCreateOrReplaceAsync<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;
+
+  @example("./example/TestAsyncResourcePatch.json", "Patch TestAsyncResource")
   update is ArmResourcePatchAsync<
     TestAsyncResource,
     TestAsyncResourceProperties,
     UCPBaseParameters<TestAsyncResource>
   >;
+
+  @example("./example/TestAsyncResourceDelete.json", "Delete TestAsyncResource")
   delete is ArmResourceDeleteAsync<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;
 
+  @example(
+    "./example/TestAsyncResourceListByScope.json",
+    "List TestAsyncResource by scope"
+  )
   listByScope is ArmResourceListByParent<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>,

@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -32,6 +33,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -136,24 +138,35 @@ model RecipeGetMetadataResponse {
 
 @armResourceOperations
 interface Environments {
+  @example("./examples/EnvironmentsGetEnv0.json", "RadiusEnvironmentsGet")
   get is ArmResourceRead<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>
   >;
+
+  @example("./examples/EnvironmentsPutEnv0.json", "RadiusEnvironmentsPut")
   create is ArmResourceCreateOrReplaceSync<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>
   >;
+
+  @example("./examples/EnvironmentsPatchEnv0.json", "RadiusEnvironmentsPatch")
   update is ArmResourcePatchSync<
     EnvironmentResource,
     EnvironmentProperties,
     UCPBaseParameters<EnvironmentResource>
   >;
+
+  @example("./examples/EnvironmentsDeleteEnv0.json", "RadiusEnvironmentsDelete")
   delete is ArmResourceDeleteSync<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>
   >;
 
+  @example(
+    "./examples/EnvironmentsListByScope.json",
+    "RadiusEnvironmentsListByScope"
+  )
   listByScope is ArmResourceListByParent<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>,
@@ -163,6 +176,10 @@ interface Environments {
 
   @doc("Gets recipe metadata including parameters and any constraints on the parameters.")
   @action("getmetadata")
+  @example(
+    "./examples/EnvironmentsGetRecipeMetadata.json",
+    "RadiusEnvironmentsGetRecipeMetadata"
+  )
   getmetadata is ArmResourceActionSync<
     EnvironmentResource,
     RecipeGetMetadata,

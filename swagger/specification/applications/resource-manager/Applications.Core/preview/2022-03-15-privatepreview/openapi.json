@@ -96,6 +96,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusApplicationsListByScope": {
+            "$ref": "./examples/ApplicationsListByScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -137,6 +142,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusApplicationGet": {
+            "$ref": "./examples/ApplicationsGet.json"
           }
         }
       },
@@ -191,6 +201,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusApplicationPut": {
+            "$ref": "./examples/ApplicationsPut.json"
+          }
         }
       },
       "patch": {
@@ -238,6 +253,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusApplicationPatch": {
+            "$ref": "./examples/ApplicationsPatch.json"
+          }
         }
       },
       "delete": {
@@ -276,6 +296,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusApplicationDelete": {
+            "$ref": "./examples/ApplicationsDelete.json"
+          }
         }
       }
     },
@@ -306,6 +331,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "ContainersListByScope": {
+            "$ref": "./examples/ContainersListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -349,6 +379,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "ContainersGet": {
+            "$ref": "./examples/ContainersGet.json"
           }
         }
       },
@@ -409,6 +444,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "ContainersPut": {
+            "$ref": "./examples/ContainersPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -476,6 +516,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "ContainersPatch": {
+            "$ref": "./examples/ContainersPatch.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -532,6 +577,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "ContainersDelete": {
+            "$ref": "./examples/ContainersDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -565,6 +615,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusEnvironmentsListByScope": {
+            "$ref": "./examples/EnvironmentsListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -608,6 +663,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusEnvironmentsGet": {
+            "$ref": "./examples/EnvironmentsGetEnv0.json"
           }
         }
       },
@@ -662,6 +722,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusEnvironmentsPut": {
+            "$ref": "./examples/EnvironmentsPutEnv0.json"
+          }
         }
       },
       "patch": {
@@ -709,6 +774,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusEnvironmentsPatch": {
+            "$ref": "./examples/EnvironmentsPatchEnv0.json"
+          }
         }
       },
       "delete": {
@@ -746,6 +816,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusEnvironmentsDelete": {
+            "$ref": "./examples/EnvironmentsDeleteEnv0.json"
           }
         }
       }
@@ -796,6 +871,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusEnvironmentsGetRecipeMetadata": {
+            "$ref": "./examples/EnvironmentsGetRecipeMetadata.json"
+          }
         }
       }
     },
@@ -826,6 +906,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "ExtendersListByRootScope": {
+            "$ref": "./examples/ExtendersListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -869,6 +954,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "ExtendersGet": {
+            "$ref": "./examples/ExtendersGet.json"
           }
         }
       },
@@ -929,6 +1019,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "ExtendersPut": {
+            "$ref": "./examples/ExtendersPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -996,6 +1091,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "ExtendersPatch": {
+            "$ref": "./examples/ExtendersPatch.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1052,6 +1152,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "ExtendersDelete": {
+            "$ref": "./examples/ExtendersDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1105,6 +1210,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "ExtendersListSecrets": {
+            "$ref": "./examples/ExtendersListSecrets.json"
+          }
         }
       }
     },
@@ -1135,6 +1245,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusGatewaysListByScope": {
+            "$ref": "./examples/GatewaysListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1178,6 +1293,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusGatewaysGet": {
+            "$ref": "./examples/GatewaysGet.json"
           }
         }
       },
@@ -1238,6 +1358,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusGatewaysPut": {
+            "$ref": "./examples/GatewaysPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1305,6 +1430,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusGatewaysPatch": {
+            "$ref": "./examples/GatewaysPatch.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1361,6 +1491,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusGatewaysDelete": {
+            "$ref": "./examples/GatewaysDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1394,6 +1529,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusHttpRoutesListByScope": {
+            "$ref": "./examples/HttpRoutesListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1437,6 +1577,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusHttpRoutesGet": {
+            "$ref": "./examples/HttpRoutesGet.json"
           }
         }
       },
@@ -1497,6 +1642,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusHttpRoutesPut": {
+            "$ref": "./examples/HttpRoutesPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1564,6 +1714,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusHttpRoutesPatch": {
+            "$ref": "./examples/HttpRoutesPatch.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1620,6 +1775,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusHttpRoutesDelete": {
+            "$ref": "./examples/HttpRoutesDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1653,6 +1813,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusSecretStoresList": {
+            "$ref": "./examples/SecretStoresList.json"
           }
         },
         "x-ms-pageable": {
@@ -1696,6 +1861,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusSecretStoresGet": {
+            "$ref": "./examples/SecretStoresGet.json"
+          },
+          "RadiusSecretStoresAzureKeyVaultGet": {
+            "$ref": "./examples/SecretStoresGet_AzureKeyVault.json"
           }
         }
       },
@@ -1756,6 +1929,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusSecretStoresPutValueFrom": {
+            "$ref": "./examples/SecretStoresPutValueFrom.json"
+          },
+          "RadiusSecretStoresPutValue": {
+            "$ref": "./examples/SecretStoresPutValue.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1823,6 +2004,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusSecretStoresPatch": {
+            "$ref": "./examples/SecretStoresPatch.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1879,6 +2065,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusSecretStoresDelete": {
+            "$ref": "./examples/SecretStoresDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1932,6 +2123,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RadiusSecretStoresPostListSecret": {
+            "$ref": "./examples/SecretStoresListSecrets.json"
+          }
         }
       }
     },
@@ -1962,6 +2158,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusVolumesListByScope": {
+            "$ref": "./examples/VolumesListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -2005,6 +2206,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusVolumesGet": {
+            "$ref": "./examples/VolumesGet.json"
           }
         }
       },
@@ -2065,6 +2271,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusVolumesPut": {
+            "$ref": "./examples/VolumesPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2132,6 +2343,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RadiusVolumesPatch": {
+            "$ref": "./examples/VolumesPatch.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -2186,6 +2402,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "RadiusVolumesDelete": {
+            "$ref": "./examples/VolumesDelete.json"
           }
         },
         "x-ms-long-running-operation-options": {

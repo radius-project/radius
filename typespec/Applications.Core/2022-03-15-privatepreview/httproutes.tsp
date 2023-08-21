@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -31,6 +32,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -66,24 +68,35 @@ model HttpRouteProperties is RadiusResource<HttpRouteProperties> {
 
 @armResourceOperations
 interface HttpRoutes {
+  @example("./examples/HttpRoutesGet.json", "RadiusHttpRoutesGet")
   get is ArmResourceRead<
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>
   >;
+
+  @example("./examples/HttpRoutesPut.json", "RadiusHttpRoutesPut")
   create is ArmResourceCreateOrReplaceAsync<
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>
   >;
+
+  @example("./examples/HttpRoutesPatch.json", "RadiusHttpRoutesPatch")
   update is ArmResourcePatchAsync<
     HttpRouteResource,
     HttpRouteProperties,
     UCPBaseParameters<HttpRouteResource>
   >;
+
+  @example("./examples/HttpRoutesDelete.json", "RadiusHttpRoutesDelete")
   delete is ArmResourceDeleteAsync<
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>
   >;
 
+  @example(
+    "./examples/HttpRoutesListByScope.json",
+    "RadiusHttpRoutesListByScope"
+  )
   listByScope is ArmResourceListByParent<
     HttpRouteResource,
     UCPBaseParameters<HttpRouteResource>,

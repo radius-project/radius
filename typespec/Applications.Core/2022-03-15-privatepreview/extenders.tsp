@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -30,6 +31,7 @@ using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -68,20 +70,32 @@ model ExtenderProperties
 
 @armResourceOperations
 interface Extenders {
+  @example("./examples/ExtendersGet.json", "ExtendersGet")
   get is ArmResourceRead<ExtenderResource, UCPBaseParameters<ExtenderResource>>;
+
+  @example("./examples/ExtendersPut.json", "ExtendersPut")
   create is ArmResourceCreateOrReplaceAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;
+
+  @example("./examples/ExtendersPatch.json", "ExtendersPatch")
   update is ArmResourcePatchAsync<
     ExtenderResource,
     ExtenderProperties,
     UCPBaseParameters<ExtenderResource>
   >;
+
+  @example("./examples/ExtendersDelete.json", "ExtendersDelete")
   delete is ArmResourceDeleteAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;
+
+  @example(
+    "./examples/ExtendersListByRootScope.json",
+    "ExtendersListByRootScope"
+  )
   listByScope is ArmResourceListByParent<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>,
@@ -89,6 +103,7 @@ interface Extenders {
     "Scope"
   >;
 
+  @example("./examples/ExtendersListSecrets.json", "ExtendersListSecrets")
   @doc("Lists secrets values for the specified RedisCache resource")
   @action("listSecrets")
   listSecrets is ArmResourceActionSync<

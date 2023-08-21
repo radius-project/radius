@@ -17,6 +17,7 @@ limitations under the License.
 import "@typespec/rest";
 import "@typespec/versioning";
 import "@typespec/openapi";
+import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@azure-tools/typespec-providerhub";
@@ -31,6 +32,7 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using Azure.Core;
 using OpenAPI;
+using Autorest;
 
 namespace Applications.Core;
 
@@ -152,21 +154,29 @@ model KeyObjectProperties {
 
 @armResourceOperations
 interface Volumes {
+  @example("./examples/VolumesGet.json", "RadiusVolumesGet")
   get is ArmResourceRead<VolumeResource, UCPBaseParameters<VolumeResource>>;
+
+  @example("./examples/VolumesPut.json", "RadiusVolumesPut")
   create is ArmResourceCreateOrReplaceAsync<
     VolumeResource,
     UCPBaseParameters<VolumeResource>
   >;
+
+  @example("./examples/VolumesPatch.json", "RadiusVolumesPatch")
   update is ArmResourcePatchAsync<
     VolumeResource,
     VolumeProperties,
     UCPBaseParameters<VolumeResource>
   >;
+
+  @example("./examples/VolumesDelete.json", "RadiusVolumesDelete")
   delete is ArmResourceDeleteAsync<
     VolumeResource,
     UCPBaseParameters<VolumeResource>
   >;
 
+  @example("./examples/VolumesListByScope.json", "RadiusVolumesListByScope")
   listByScope is ArmResourceListByParent<
     VolumeResource,
     UCPBaseParameters<VolumeResource>,
