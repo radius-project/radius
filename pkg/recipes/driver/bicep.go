@@ -73,6 +73,8 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	downloadStartTime := time.Now()
 	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
 	if err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.FailedOperationState))
 		return nil, err
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,

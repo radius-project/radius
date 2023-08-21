@@ -35,6 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/otel/attribute"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -159,6 +160,9 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
+				options.EnvRecipe, metrics.FailedOperationState))
 		return "", err
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
@@ -238,9 +242,13 @@ func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.Sta
 
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
+			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
+
 		return nil, fmt.Errorf("terraform init failure: %w", err)
 	}
-	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
+		[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState)})
 
 	// Apply Terraform configuration
 	logger.Info("Running Terraform apply")

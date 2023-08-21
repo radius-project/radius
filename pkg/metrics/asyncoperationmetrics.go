@@ -137,7 +137,7 @@ func newAsyncOperationCommonAttributes(req *ctrl.Request, res *ctrl.Result) []at
 	}
 
 	if res != nil && res.ProvisioningState() != "" {
-		attrs = append(attrs, operationStateAttrKey.String(normalizeAttrValue(string(res.ProvisioningState()))))
+		attrs = append(attrs, OperationStateAttrKey.String(normalizeAttrValue(string(res.ProvisioningState()))))
 		attrs = append(attrs, operationErrorCodeAttrKey.String(normalizeAttrValue(string(res.Error.Code))))
 	}
 
