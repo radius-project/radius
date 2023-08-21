@@ -26,19 +26,15 @@ package resource_test
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/base64"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -49,11 +45,10 @@ import (
 //
 // - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
 // - The recipe deployment creates a Kubernetes deployment and a Kubernetes service.
-func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-redis.bicep"
-	name := "corerp-resources-terraform-redis"
-	appName := "corerp-resources-terraform-redis-app"
-	envName := "corerp-resources-terraform-redis-env"
+func Test_LinkRP_TerraformRecipe_KubernetesRedis(t *testing.T) {
+	template := "testdata/linkrp-resources-terraform-redis.bicep"
+	name := "linkrp-resources-terraform-redis"
+	appName := "linkrp-resources-terraform-redis-app"
 	redisCacheName := "tf-redis-cache"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
@@ -62,7 +57,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: envName,
+						Name: "linkrp-resources-terraform-redis-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -70,8 +65,8 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:            name,
-						Type:            validation.ExtendersResource,
+						Name:            "linkrp-resources-terraform-redis",
+						Type:            validation.O_ExtendersResource,
 						App:             appName,
 						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
 					},
@@ -84,19 +79,17 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/" + name
-				testSecretDeletion(t, ctx, test, appName, envName, resourceID)
-			},
+			SkipResourceDeletion: true, // Skip deletion because Terraform Recipe deletion isn't supported yet.
 		},
 	})
 	test.Test(t)
 }
 
-func Test_TerraformRecipe_Context(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-context.bicep"
-	name := "corerp-resources-terraform-context"
-	appNamespace := "corerp-resources-terraform-context-app"
+func Test_LinkRP_TerraformRecipe_Context(t *testing.T) {
+	template := "testdata/linkrp-resources-terraform-context.bicep"
+	name := "linkrp-resources-terraform-context"
+
+	appNamespace := "linkrp-resources-terraform-context-app"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -109,7 +102,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					},
 					{
 						Name: name,
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
@@ -130,7 +123,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 				r, err := resources.ParseResource(string(decoded))
 				require.NoError(t, err)
 
-				rgName := r.FindScope(resources_radius.ScopeResourceGroups)
+				rgName := r.FindScope(resources.ResourceGroupsSegment)
 
 				tests := []struct {
 					key      string
@@ -138,7 +131,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 				}{
 					{
 						key:      "resource.type",
-						expected: "Applications.Core/extenders",
+						expected: "Applications.Link/extenders",
 					},
 					{
 						key:      "azure.subscription_id",
@@ -146,7 +139,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					},
 					{
 						key:      "recipe_context",
-						expected: "{\"application\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/applications/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"aws\":null,\"azure\":{\"resourceGroup\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context\",\"name\":\"rg-terraform-context\"},\"subscription\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000\",\"subscriptionId\":\"00000000-0000-0000-0000-100000000000\"}},\"environment\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/environments/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\"},\"resource\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/extenders/corerp-resources-terraform-context\",\"name\":\"corerp-resources-terraform-context\",\"type\":\"Applications.Core/extenders\"},\"runtime\":{\"kubernetes\":{\"environmentNamespace\":\"corerp-resources-terraform-context-env\",\"namespace\":\"corerp-resources-terraform-context-app\"}}}",
+						expected: "{\"application\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/applications/linkrp-resources-terraform-context\",\"name\":\"linkrp-resources-terraform-context\"},\"aws\":null,\"azure\":{\"resourceGroup\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context\",\"name\":\"rg-terraform-context\"},\"subscription\":{\"id\":\"/subscriptions/00000000-0000-0000-0000-100000000000\",\"subscriptionId\":\"00000000-0000-0000-0000-100000000000\"}},\"environment\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Core/environments/linkrp-resources-terraform-context\",\"name\":\"linkrp-resources-terraform-context\"},\"resource\":{\"id\":\"/planes/radius/local/resourcegroups/radiusGroup/providers/Applications.Link/extenders/linkrp-resources-terraform-context\",\"name\":\"linkrp-resources-terraform-context\",\"type\":\"Applications.Link/extenders\"},\"runtime\":{\"kubernetes\":{\"environmentNamespace\":\"linkrp-resources-terraform-context-env\",\"namespace\":\"linkrp-resources-terraform-context-app\"}}}",
 					},
 				}
 
@@ -165,11 +158,10 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 }
 
 // Test_TerraformRecipe_AzureStorage creates an Extender resource consuming a Terraform recipe that deploys an Azure blob storage instance.
-func Test_TerraformRecipe_AzureStorage(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-azurestorage.bicep"
-	name := "corerp-resources-terraform-azstorage"
-	appName := "corerp-resources-terraform-azstorage-app"
-	envName := "corerp-resources-terraform-azstorage-env"
+func Test_LinkRP_TerraformRecipe_AzureStorage(t *testing.T) {
+	template := "testdata/linkrp-resources-terraform-azurestorage.bicep"
+	name := "linkrp-resources-terraform-azstorage"
+	appName := "linkrp-resources-terraform-azstorage-app"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -177,7 +169,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: envName,
+						Name: "linkrp-resources-terraform-azstorage-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -185,52 +177,22 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: name,
-						Type: validation.ExtendersResource,
+						Name: "linkrp-resources-terraform-azstorage",
+						Type: validation.O_ExtendersResource,
 						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							// Azure storage account.
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  "RecipeResource0",
+							},
+						},
 					},
 				},
 			},
 			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/" + name
-				testSecretDeletion(t, ctx, test, appName, envName, resourceID)
-			},
+			SkipResourceDeletion: true, // Skip deletion because Terraform Recipe deletion isn't supported yet.
 		},
 	})
 	test.Test(t)
-}
-
-func testSecretDeletion(t *testing.T, ctx context.Context, test shared.RPTest, appName, envName, resourceID string) {
-	secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
-	require.NoError(t, err)
-
-	secret, err := test.Options.K8sClient.CoreV1().Secrets(appName).
-		Get(ctx, "tfstate-default-"+secretSuffix, metav1.GetOptions{})
-	require.Error(t, err)
-	require.True(t, apierrors.IsNotFound(err))
-	require.Equal(t, secret, &corev1.Secret{})
-}
-
-func getSecretSuffix(resourceID, envName, appName string) (string, error) {
-	parsedResourceID, err := resources.Parse(resourceID)
-	if err != nil {
-		return "", err
-	}
-
-	prefix := fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.Name())
-	maxResourceNameLen := 22
-	if len(prefix) >= maxResourceNameLen {
-		prefix = prefix[:maxResourceNameLen]
-	}
-
-	hasher := sha1.New()
-	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.String()))))
-	if err != nil {
-		return "", err
-	}
-	hash := hasher.Sum(nil)
-
-	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%x", prefix, hash), nil
 }

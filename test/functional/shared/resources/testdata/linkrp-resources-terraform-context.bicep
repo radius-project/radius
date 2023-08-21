@@ -3,25 +3,25 @@ import radius as radius
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
 
-@description('Name of the Redis Cache resource.')
-param redisCacheName string
-
-@description('Name of the Radius Application.')
-param appName string
-
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-terraform-redis-env'
+  name: 'linkrp-resources-terraform-context'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-redis-env'
+      namespace: 'linkrp-resources-terraform-context-env'
+    }
+    providers: {
+      azure: {
+        // This is the fake scope for testing purposes.
+        scope: '/subscriptions/00000000-0000-0000-0000-100000000000/resourceGroups/rg-terraform-context'
+      }
     }
     recipes: {
-      'Applications.Core/extenders': {
+      'Applications.Link/extenders': {
         default: {
           templateKind: 'terraform'
-          templatePath: '${moduleServer}/kubernetes-redis.zip'
+          templatePath: '${moduleServer}/k8ssecret-context.zip'
         }
       }
     }
@@ -29,28 +29,22 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: appName
+  name: 'linkrp-resources-terraform-context'
   properties: {
     environment: env.id
     extensions: [
       {
         kind: 'kubernetesNamespace'
-        namespace: appName
+        namespace: 'linkrp-resources-terraform-context-app'
       }
     ]
   }
 }
 
-resource webapp 'Applications.Core/extenders@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-terraform-redis'
+resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+  name: 'linkrp-resources-terraform-context'
   properties: {
     application: app.id
     environment: env.id
-    recipe: {
-      name: 'default'
-      parameters: {
-        redis_cache_name: redisCacheName
-      }
-    }
   }
 }

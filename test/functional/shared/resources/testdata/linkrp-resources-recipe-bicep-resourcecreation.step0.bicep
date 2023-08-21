@@ -5,7 +5,7 @@ param registry string
 @description('The OCI tag for test Bicep recipes.')
 param version string
 
-@description('The base name of the test, used to qualify resources and namespaces. eg: corerp-resources-terraform-helloworld')
+@description('The base name of the test, used to qualify resources and namespaces. eg: linkrp-resources-terraform-helloworld')
 param basename string
 @description('The recipe to test. eg: hello-world')
 param recipe string
@@ -23,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: '${basename}-env'
     }
     recipes: {
-      'Applications.Core/extenders': {
+      'Applications.Link/extenders': {
         '${environmentRecipeName}': {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/${recipe}:${version}'
@@ -49,7 +49,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 
 // This resources is intentionally NOT using a recipe. It's being created so we can reference
 // it inside a recipe in the next step.
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
   name: '${basename}-existing'
   properties: {
     application: app.id

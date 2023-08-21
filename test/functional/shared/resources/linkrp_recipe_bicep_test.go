@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
@@ -41,9 +41,9 @@ import (
 // Tests in this file should be kept *roughly* in sync with recipe_terraform_test and any other drivers.
 
 // This tests parameters on the input side and values/secrets on the output side.
-func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-bicep.bicep"
-	name := "corerp-resources-recipe-bicep-parametersandoutputs"
+func Test_LinkRP_BicepRecipe_ParametersAndOutputs(t *testing.T) {
+	template := "testdata/linkrp-resources-recipe-bicep.bicep"
+	name := "linkrp-resources-recipe-bicep-parametersandoutputs"
 
 	// Best way to pass complex parameters is to use JSON.
 	parametersFilePath := functional.WriteBicepParameterFile(t, map[string]any{
@@ -79,13 +79,13 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 					},
 					{
 						Name: name,
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Link/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")
@@ -128,15 +128,15 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 // - Referencing an existing resource
 //
 // Each of these cases requires a distinct behavior from the driver.
-func Test_BicepRecipe_ResourceCreation(t *testing.T) {
-	templateFmt := "testdata/corerp-resources-recipe-bicep-resourcecreation.%s.bicep"
-	name := "corerp-resources-recipe-bicep-resourcecreation"
+func Test_LinkRP_BicepRecipe_ResourceCreation(t *testing.T) {
+	templateFmt := "testdata/linkrp-resources-recipe-bicep-resourcecreation.%s.bicep"
+	name := "linkrp-resources-recipe-bicep-resourcecreation"
 
 	parametersStep0 := []string{
 		functional.GetBicepRecipeRegistry(),
 		functional.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
-		fmt.Sprintf("recipe=%s", "resource-creation"),
+		fmt.Sprintf("recipe=%s", "linkrp-resource-creation"),
 	}
 
 	parametersStep1 := []string{
@@ -154,7 +154,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 					},
 					{
 						Name: name + "-existing",
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
@@ -171,19 +171,19 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 					},
 					{
 						Name: name + "-existing",
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 					{
 						Name: name, // Using a recipe
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 					{
 						Name: name + "-created", // Created inside the recipe
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 					{
 						Name: name + "-module", // Created inside the recipe using a module
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
@@ -192,7 +192,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 			// This currently fails.
 			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Link/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")
@@ -206,12 +206,27 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 				scope := strings.ReplaceAll(parsed.RootScope(), "resourcegroups", "resourceGroups")
 				expected := []any{
 					map[string]any{
-						"id": "/planes/kubernetes/local/namespaces/" + name + "-app/providers/core/Secret/" + name,
+						"Identity": map[string]any{
+							"apiVersion": "unknown",
+							"kind":       "Secret",
+							"name":       name,
+							"namespace":  name + "-app",
+						},
+						"LocalID":  "RecipeResource0",
+						"Provider": "kubernetes",
 					},
 					map[string]any{
-						"id": scope + "/providers/Applications.Link/extenders/" + name + "-created",
+						"Identity": map[string]interface{}{
+							"id": scope + "/providers/Applications.Link/extenders/" + name + "-created",
+						},
+						"LocalID":  "RecipeResource1",
+						"Provider": "radius",
 					}, map[string]interface{}{
-						"id": scope + "/providers/Applications.Link/extenders/" + name + "-module",
+						"Identity": map[string]interface{}{
+							"id": scope + "/providers/Applications.Link/extenders/" + name + "-module",
+						},
+						"LocalID":  "RecipeResource2",
+						"Provider": "radius",
 					},
 				}
 				actual := resource.Properties["status"].(map[string]any)["outputResources"].([]any)
@@ -222,9 +237,9 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-bicep.bicep"
-	name := "corerp-resources-recipe-bicep-parameternotdefined"
+func Test_LinkRP_BicepRecipe_ParameterNotDefined(t *testing.T) {
+	template := "testdata/linkrp-resources-recipe-bicep.bicep"
+	name := "linkrp-resources-recipe-bicep-parameternotdefined"
 
 	// Best way to pass complex parameters is to use JSON.
 	parametersFilePath := functional.WriteBicepParameterFile(t, map[string]any{
@@ -251,7 +266,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
+				Code: v1.CodeInternal,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -273,7 +288,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 					},
 					{
 						Name: name,
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
@@ -283,9 +298,9 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_BicepRecipe_WrongOutput(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-bicep.bicep"
-	name := "corerp-resources-recipe-bicep-wrongoutput"
+func Test_LinkRP_BicepRecipe_WrongOutput(t *testing.T) {
+	template := "testdata/linkrp-resources-recipe-bicep.bicep"
+	name := "linkrp-resources-recipe-bicep-wrongoutput"
 	parameters := []string{
 		functional.GetBicepRecipeRegistry(),
 		functional.GetBicepRecipeVersion(),
@@ -297,7 +312,7 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code:            recipes.InvalidRecipeOutputs,
+				Code:            v1.CodeInternal,
 				MessageContains: "failed to read the recipe output \"result\": json: unknown field \"error\"",
 			},
 		},
@@ -314,7 +329,7 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 					},
 					{
 						Name: name,
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
@@ -324,21 +339,21 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_BicepRecipe_LanguageFailure(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-bicep.bicep"
-	name := "corerp-resources-recipe-bicep-langugagefailure"
+func Test_LinkRP_BicepRecipe_LanguageFailure(t *testing.T) {
+	template := "testdata/linkrp-resources-recipe-bicep.bicep"
+	name := "linkrp-resources-recipe-bicep-langugagefailure"
 	parameters := []string{
 		functional.GetBicepRecipeRegistry(),
 		functional.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
-		fmt.Sprintf("recipe=%s", "language-failure"),
+		fmt.Sprintf("recipe=%s", "linkrp-language-failure"),
 	}
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
+				Code: v1.CodeInternal,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -360,7 +375,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 					},
 					{
 						Name: name,
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},
@@ -370,21 +385,21 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-bicep.bicep"
-	name := "corerp-resources-recipe-bicep-resourcecreationfailure"
+func Test_LinkRP_BicepRecipe_ResourceCreationFailure(t *testing.T) {
+	template := "testdata/linkrp-resources-recipe-bicep.bicep"
+	name := "linkrp-resources-recipe-bicep-resourcecreationfailure"
 	parameters := []string{
 		functional.GetBicepRecipeRegistry(),
 		functional.GetBicepRecipeVersion(),
 		fmt.Sprintf("basename=%s", name),
-		fmt.Sprintf("recipe=%s", "resource-creation-failure"),
+		fmt.Sprintf("recipe=%s", "linkrp-resource-creation-failure"),
 	}
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
+				Code: v1.CodeInternal,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -406,7 +421,7 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 					},
 					{
 						Name: name,
-						Type: validation.ExtendersResource,
+						Type: validation.O_ExtendersResource,
 					},
 				},
 			},

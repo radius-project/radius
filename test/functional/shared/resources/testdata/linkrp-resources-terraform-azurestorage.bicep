@@ -9,12 +9,12 @@ param moduleServer string
 param appName string
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-terraform-azstorage-env'
+  name: 'linkrp-resources-terraform-azstorage-env'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-azstorage-env'
+      namespace: 'linkrp-resources-terraform-azstorage-env'
     }
     providers: {
       azure: {
@@ -22,7 +22,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Core/extenders': {
+      'Applications.Link/extenders': {
         default: {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/azure-storage.zip'
@@ -50,8 +50,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/extenders@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-terraform-azstorage'
+resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+  name: 'linkrp-resources-terraform-azstorage'
   properties: {
     application: app.id
     environment: env.id
