@@ -36,6 +36,7 @@ import (
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
+	ext_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/extenders"
 	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateways"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
 	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
@@ -736,6 +737,108 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ResourceType:      secret_ctrl.ResourceTypeName,
 			Method:            secret_ctrl.OperationListSecrets,
 			ControllerFactory: secret_ctrl.NewListSecrets,
+		},
+	}...)
+
+	extPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.core/extenders", validator)
+	extResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/extenders", validator)
+	extResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.core/extenders/{extenderName}", validator)
+
+	handlerOptions = append(handlerOptions, []server.HandlerOptions{
+		{
+			ParentRouter: extPlaneRouter,
+			ResourceType: ext_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:   converter.ExtenderDataModelFromVersioned,
+						ResponseConverter:  converter.ExtenderDataModelToVersioned,
+						ListRecursiveQuery: true,
+					})
+			},
+		},
+		{
+			ParentRouter: extResourceGroupRouter,
+			ResourceType: ext_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: extResourceRouter,
+			ResourceType: ext_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+					})
+			},
+		},
+		{
+			ParentRouter: extResourceRouter,
+			ResourceType: ext_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
+						},
+						AsyncOperationTimeout:    ext_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: extResourceRouter,
+			ResourceType: ext_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
+							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
+						},
+						AsyncOperationTimeout:    ext_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: extResourceRouter,
+			ResourceType: ext_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:         converter.ExtenderDataModelFromVersioned,
+						ResponseConverter:        converter.ExtenderDataModelToVersioned,
+						AsyncOperationTimeout:    ext_ctrl.AsyncDeleteExtenderTimeout,
+						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter:      extResourceRouter,
+			Path:              "/listsecrets",
+			ResourceType:      ext_ctrl.ResourceTypeName,
+			Method:            ext_ctrl.OperationListSecrets,
+			ControllerFactory: ext_ctrl.NewListSecretsExtender,
 		},
 	}...)
 
