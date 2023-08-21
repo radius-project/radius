@@ -43,7 +43,6 @@ model BasicDaprResourceProperties extends BasicResourceProperties {
   componentName?: string;
 }
 
-
 @doc("IdentitySettings is the external identity setting.")
 model IdentitySettings {
   @doc("kind of identity setting")

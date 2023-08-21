@@ -17,4 +17,3 @@ limitations under the License.
 import "@typespec/openapi";
 
 using OpenAPI;
-
