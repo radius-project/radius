@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp/processors"
+	"github.com/radius-project/radius/pkg/linkrp/renderers"
 )
 
 // Processor is a processor for MongoDB resources.

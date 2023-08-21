@@ -19,10 +19,10 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_DaprServiceInvocation(t *testing.T) {

@@ -17,11 +17,11 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/linkrp"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel and returns it,

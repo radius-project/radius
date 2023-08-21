@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/radius-project/radius/pkg/azure/azresources"
+	"github.com/radius-project/radius/pkg/linkrp"
 	"github.com/stretchr/testify/require"
 )
 

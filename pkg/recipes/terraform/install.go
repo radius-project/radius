@@ -27,8 +27,8 @@ import (
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
-	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 )
 

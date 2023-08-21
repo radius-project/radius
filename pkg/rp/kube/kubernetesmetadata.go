@@ -20,8 +20,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"k8s.io/apimachinery/pkg/labels"
 )
 

@@ -19,9 +19,9 @@ package recipecontext
 import (
 	"fmt"
 
-	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 var (

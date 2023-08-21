@@ -19,8 +19,8 @@ package dapr
 import (
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/kubernetes"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

@@ -27,7 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 type Deployment struct {

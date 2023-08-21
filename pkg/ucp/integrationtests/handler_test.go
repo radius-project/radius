@@ -20,8 +20,8 @@ import (
 	"net/http"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 	"github.com/stretchr/testify/require"
 )
 

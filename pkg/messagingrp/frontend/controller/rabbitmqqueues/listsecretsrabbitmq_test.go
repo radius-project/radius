@@ -25,11 +25,11 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/messagingrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/linkrp/renderers"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 

@@ -24,13 +24,13 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/test/radcli"
+	"github.com/radius-project/radius/test/radcli"
 )
 
 const (
@@ -69,7 +69,7 @@ type RPResource struct {
 }
 
 // Output resource fields returned as a part of get/list response payload for Radius resources
-// https://github.com/project-radius/radius/blob/main/pkg/rp/types.go#L173
+// https://github.com/radius-project/radius/blob/main/pkg/rp/types.go#L173
 type OutputResourceResponse struct {
 	LocalID  string
 	Provider string

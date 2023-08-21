@@ -9,11 +9,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp"
+	"github.com/radius-project/radius/pkg/linkrp/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 

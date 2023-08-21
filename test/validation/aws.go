@@ -23,13 +23,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 

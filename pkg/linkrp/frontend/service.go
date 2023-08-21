@@ -21,11 +21,11 @@ import (
 	"fmt"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/linkrp/frontend/handler"
 
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 )
 
 type Service struct {

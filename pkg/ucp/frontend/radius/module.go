@@ -18,8 +18,8 @@ package radius
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/validator"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/validator"
 )
 
 // NewModule creates a new Radius module.

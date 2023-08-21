@@ -22,13 +22,13 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	model "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 

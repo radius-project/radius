@@ -21,16 +21,16 @@ import (
 	"errors"
 	"fmt"
 
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
-	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Link resources.

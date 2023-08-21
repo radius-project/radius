@@ -94,7 +94,7 @@ const (
 	RedisCachesResourceType           = "Applications.Link/redisCaches"
 	SqlDatabasesResourceType          = "Applications.Link/sqlDatabases"
 	/* The following are new temporary resource type names. These values will replace the above resource type names after
-	testing for the new namespaces is completed. (https://github.com/project-radius/radius/issues/3499)
+	testing for the new namespaces is completed. (https://github.com/radius-project/radius/issues/3499)
 	*/
 	N_DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
 	N_DaprSecretStoresResourceType  = "Applications.Dapr/secretStores"

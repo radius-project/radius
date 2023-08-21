@@ -19,7 +19,7 @@ package config
 import (
 	"errors"
 
-	"github.com/project-radius/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/sdk"
 	"k8s.io/client-go/rest"
 )
 

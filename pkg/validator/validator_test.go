@@ -26,7 +26,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/swagger"
+	"github.com/radius-project/radius/swagger"
 )
 
 func Test_FindParam(t *testing.T) {

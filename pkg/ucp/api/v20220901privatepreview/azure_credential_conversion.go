@@ -19,9 +19,9 @@ package v20220901privatepreview
 import (
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 const (

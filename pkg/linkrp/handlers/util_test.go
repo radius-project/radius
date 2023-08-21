@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/test/k8sutil"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/linkrp"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"

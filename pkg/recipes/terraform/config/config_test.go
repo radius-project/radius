@@ -26,12 +26,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (

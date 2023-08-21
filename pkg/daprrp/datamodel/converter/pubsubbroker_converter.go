@@ -19,9 +19,9 @@ package converter
 import (
 	"encoding/json"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 )
 
 // PubSubBrokerDataModelToVersioned converts a version-agnostic datamodel.DaprPubSubBroker to a versioned model based on the version

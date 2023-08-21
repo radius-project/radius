@@ -23,7 +23,7 @@ import (
 	"net/textproto"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/radius-project/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
 )
 

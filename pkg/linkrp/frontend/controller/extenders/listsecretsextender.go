@@ -20,11 +20,11 @@ import (
 	"context"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel/converter"
 )
 
 var _ ctrl.Controller = (*ListSecretsExtender)(nil)

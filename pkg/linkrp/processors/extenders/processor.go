@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp/processors"
+	"github.com/radius-project/radius/pkg/recipes"
 )
 
 // Processor is a processor for Extender resources.

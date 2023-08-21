@@ -19,9 +19,9 @@ package rediscaches
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/radius-project/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 const testHeaderfile = "20220315privatepreview_requestheaders.json"

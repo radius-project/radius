@@ -19,7 +19,7 @@ package credentials
 import (
 	"context"
 
-	ucp_dm "github.com/project-radius/radius/pkg/ucp/datamodel"
+	ucp_dm "github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 const (

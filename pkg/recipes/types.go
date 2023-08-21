@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // Configuration represents kubernetes runtime and cloud provider configuration, which is used by the driver while deploying recipes.

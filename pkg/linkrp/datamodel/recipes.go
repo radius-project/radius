@@ -21,7 +21,7 @@ limitations under the License.
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/radius-project/radius/pkg/linkrp"
 )
 
 // RecipeDataModel should be implemented on the datamodel of types that support recipes.

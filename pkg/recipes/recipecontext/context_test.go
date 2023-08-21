@@ -19,8 +19,8 @@ package recipecontext
 import (
 	"testing"
 
-	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 
 	"github.com/stretchr/testify/require"
 )

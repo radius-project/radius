@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 // This file contains tests for general recipe engine functionality - covering general behaviors that should
@@ -34,7 +34,7 @@ import (
 // behaviors. Some functionality needs to be tested for each driver.
 
 func Test_Recipe_NotFound(t *testing.T) {
-	t.Skip("Blocked by https://github.com/project-radius/radius/issues/6040")
+	t.Skip("Blocked by https://github.com/radius-project/radius/issues/6040")
 
 	template := "testdata/corerp-resources-recipe-notfound.bicep"
 	name := "corerp-resources-recipe-notfound"

@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
-	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/engine"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
+	ds_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp"
+	"github.com/radius-project/radius/pkg/linkrp/datamodel"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 var _ ctrl.Controller = (*DeleteResource)(nil)

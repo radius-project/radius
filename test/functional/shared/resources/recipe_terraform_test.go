@@ -33,12 +33,12 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 // Test_TerraformRecipe_Redis covers the following terraform recipe scenario:

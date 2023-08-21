@@ -17,9 +17,9 @@ limitations under the License.
 package frontend
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 const (

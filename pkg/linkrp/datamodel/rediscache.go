@@ -22,10 +22,10 @@ import (
 	"strconv"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/linkrp"
+	"github.com/radius-project/radius/pkg/linkrp/renderers"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // RedisCache represents RedisCache link resource.

@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
 
@@ -32,7 +32,7 @@ const (
 
 	// go-cosmosdb does not return the error response code. Comparing error message is the only way to check the errors.
 	// Once we move to official Go SDK, we can have the better error handling.
-	// TODO: Switch to the official cosmosdb SDK - https://github.com/project-radius/radius/issues/2225
+	// TODO: Switch to the official cosmosdb SDK - https://github.com/radius-project/radius/issues/2225
 	// 1. Repalce github.com/vippsas/go-cosmosdb/cosmosapi with the official sdk when it supports query api.
 	// 2. Improve error handling using response code instead of string match.
 	errResourceNotFoundMsg       = "Resource that no longer exists"

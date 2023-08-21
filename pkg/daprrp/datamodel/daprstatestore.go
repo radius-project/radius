@@ -17,11 +17,11 @@ limitations under the License.
 package datamodel
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/linkrp"
+	linkrp_dm "github.com/radius-project/radius/pkg/linkrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp/renderers"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // DaprStateStore represents DaprStateStore portable resource.

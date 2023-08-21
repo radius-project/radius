@@ -19,8 +19,8 @@ package v1
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/resourcekinds"
+	"github.com/radius-project/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
 )
 

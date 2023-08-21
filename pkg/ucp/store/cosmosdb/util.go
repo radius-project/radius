@@ -22,8 +22,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/spaolacci/murmur3"
 )
 

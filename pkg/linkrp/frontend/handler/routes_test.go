@@ -23,17 +23,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/linkrp"
-	extender_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/extenders"
-	mongo_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
-	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
-	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
-	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/linkrp"
+	extender_ctrl "github.com/radius-project/radius/pkg/linkrp/frontend/controller/extenders"
+	mongo_ctrl "github.com/radius-project/radius/pkg/linkrp/frontend/controller/mongodatabases"
+	rabbitmq_ctrl "github.com/radius-project/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
+	redis_ctrl "github.com/radius-project/radius/pkg/linkrp/frontend/controller/rediscaches"
+	sql_ctrl "github.com/radius-project/radius/pkg/linkrp/frontend/controller/sqldatabases"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{

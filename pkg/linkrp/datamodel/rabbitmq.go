@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/linkrp"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // RabbitMQMessageQueue represents RabbitMQMessageQueue link resource.

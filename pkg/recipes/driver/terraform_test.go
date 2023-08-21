@@ -26,13 +26,13 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	tfjson "github.com/hashicorp/terraform-json"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 
-	"github.com/project-radius/radius/pkg/recipes/terraform"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 

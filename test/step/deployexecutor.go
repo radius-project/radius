@@ -25,8 +25,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/radcli"
+	"github.com/radius-project/radius/test"
+	"github.com/radius-project/radius/test/radcli"
 )
 
 var _ Executor = (*DeployExecutor)(nil)

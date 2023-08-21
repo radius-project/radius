@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	linkrp_util "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	linkrp_util "github.com/radius-project/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 

@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp/processors"
+	"github.com/radius-project/radius/pkg/linkrp/renderers"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
 )
 
 const (

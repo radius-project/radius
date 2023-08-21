@@ -24,8 +24,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/to"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 )
 

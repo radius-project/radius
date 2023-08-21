@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // ResourceProcessor is responsible for processing the results of recipe execution or any
@@ -55,7 +55,7 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-//go:generate mockgen -destination=./mock_resourceclient.go -package=processors -self_package github.com/project-radius/radius/pkg/linkrp/processors github.com/project-radius/radius/pkg/linkrp/processors ResourceClient
+//go:generate mockgen -destination=./mock_resourceclient.go -package=processors -self_package github.com/radius-project/radius/pkg/linkrp/processors github.com/radius-project/radius/pkg/linkrp/processors ResourceClient
 
 // ResourceClient is a client used by resource processors for interacting with UCP resources.
 type ResourceClient interface {

@@ -19,10 +19,10 @@ package resource_test
 import (
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_DaprComponentNameConflict(t *testing.T) {

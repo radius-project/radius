@@ -17,9 +17,9 @@ limitations under the License.
 package datamodel
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/linkrp"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // DaprPubSubBroker represents DaprPubSubBroker link resource.

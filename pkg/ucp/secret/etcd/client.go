@@ -19,8 +19,8 @@ package etcd
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/util"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/util"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 

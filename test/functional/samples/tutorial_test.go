@@ -29,11 +29,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -53,7 +53,7 @@ var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO
 // Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
 func Test_FirstApplicationSample(t *testing.T) {
 	if !samplesRepoEnvVarSet {
-		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
+		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the radius-project/samples repository")
 	}
 
 	cwd, err := os.Getwd()
@@ -105,7 +105,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 
 				require.Fail(t, fmt.Sprintf("tests failed after %d retries", retries))
 			},
-			// TODO: validation of k8s resources blocked by https://github.com/project-radius/radius/issues/4689
+			// TODO: validation of k8s resources blocked by https://github.com/radius-project/radius/issues/4689
 			K8sOutputResources: []unstructured.Unstructured{},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{

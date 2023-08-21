@@ -17,11 +17,11 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/linkrp"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel

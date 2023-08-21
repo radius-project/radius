@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"os"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"gopkg.in/yaml.v3"
 )
 
