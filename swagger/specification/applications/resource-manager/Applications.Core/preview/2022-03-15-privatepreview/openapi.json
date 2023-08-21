@@ -2235,6 +2235,19 @@
       "type": "object",
       "description": "Application properties",
       "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the last operation.",
@@ -2250,12 +2263,8 @@
         }
       },
       "required": [
+        "environment",
         "extensions"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
       ]
     },
     "ApplicationResource": {
@@ -2320,6 +2329,14 @@
       "type": "object",
       "description": "The updatable properties of the ApplicationResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "compute": {
           "$ref": "#/definitions/EnvironmentComputeUpdate",
           "description": "The compute resource used by application environment."
@@ -2345,14 +2362,6 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -2395,44 +2404,6 @@
         }
       ],
       "x-ms-discriminator-value": "azure.com.keyvault"
-    },
-    "BasicDaprResourceProperties": {
-      "type": "object",
-      "description": "Basic properties of a Dapr component object.",
-      "properties": {
-        "componentName": {
-          "type": "string",
-          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
-          "readOnly": true
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
-      ]
-    },
-    "BasicResourceProperties": {
-      "type": "object",
-      "description": "Basic properties of a Radius resource.",
-      "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        }
-      },
-      "required": [
-        "environment"
-      ]
     },
     "BicepRecipeProperties": {
       "type": "object",
@@ -2710,6 +2681,19 @@
       "type": "object",
       "description": "Container properties",
       "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the last operation."
@@ -2739,12 +2723,8 @@
         }
       },
       "required": [
+        "environment",
         "container"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
       ]
     },
     "ContainerResource": {
@@ -2809,6 +2789,14 @@
       "type": "object",
       "description": "The updatable properties of the ContainerResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the last operation."
@@ -2835,14 +2823,6 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -3007,6 +2987,19 @@
       "type": "object",
       "description": "Environment properties",
       "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the last operation.",
@@ -3040,12 +3033,8 @@
         }
       },
       "required": [
+        "environment",
         "compute"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
       ]
     },
     "EnvironmentResource": {
@@ -3110,6 +3099,14 @@
       "type": "object",
       "description": "The updatable properties of the EnvironmentResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "compute": {
           "$ref": "#/definitions/EnvironmentComputeUpdate",
           "description": "The compute resource used by application environment."
@@ -3135,14 +3132,6 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -3409,7 +3398,26 @@
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "type": "object",
+          "description": "The base resource properties definition for Radius top-level resource properties",
+          "properties": {
+            "status": {
+              "$ref": "#/definitions/ResourceStatus",
+              "description": "Status of a resource.",
+              "readOnly": true
+            },
+            "environment": {
+              "type": "string",
+              "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+            },
+            "application": {
+              "$ref": "#/definitions/Application",
+              "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+            }
+          },
+          "required": [
+            "environment"
+          ]
         }
       ]
     },
@@ -3619,6 +3627,19 @@
       "type": "object",
       "description": "HTTPRoute properties",
       "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the HTTPRoute at the time the operation was called.",
@@ -3644,10 +3665,8 @@
           "readOnly": true
         }
       },
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "HttpRouteResource": {
@@ -3712,6 +3731,14 @@
       "type": "object",
       "description": "The updatable properties of the HttpRouteResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "hostname": {
           "type": "string",
           "description": "The internal hostname accepting traffic for the HTTP Route. Readonly."
@@ -3720,14 +3747,6 @@
           "type": "integer",
           "format": "int32",
           "description": "The port number for the HTTP Route. Defaults to 80. Readonly."
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -4443,6 +4462,19 @@
       "type": "object",
       "description": "SecretStore properties",
       "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the Gateway at the time the operation was called.",
@@ -4466,12 +4498,8 @@
         }
       },
       "required": [
+        "environment",
         "data"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
       ]
     },
     "SecretStoreResource": {
@@ -4536,6 +4564,14 @@
       "type": "object",
       "description": "The updatable properties of the SecretStoreResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "type": {
           "$ref": "#/definitions/SecretStoreDataType",
           "description": "The type of secret store data",
@@ -4551,14 +4587,6 @@
         "resource": {
           "type": "string",
           "description": "The resource id of external secret store."
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -4757,6 +4785,19 @@
           "type": "string",
           "description": "Discriminator property for VolumeProperties."
         },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the Volume at the time the operation was called.",
@@ -4765,12 +4806,8 @@
       },
       "discriminator": "kind",
       "required": [
-        "kind"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+        "kind",
+        "environment"
       ]
     },
     "VolumeResource": {
