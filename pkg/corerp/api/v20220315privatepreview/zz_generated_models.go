@@ -691,13 +691,12 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 // ExtenderProperties - ExtenderResource link properties
 type ExtenderProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	// REQUIRED; The resource id of the environment linked to the resource
 	Environment *string
 
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// Specifies the resource id of the application
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
 	// The recipe used to automatically deploy underlying infrastructure for the extender link
@@ -712,7 +711,7 @@ type ExtenderProperties struct {
 	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of a Portable resource.
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
@@ -1306,19 +1305,6 @@ func (p *PersistentVolumeUpdate) GetVolumeUpdate() *VolumeUpdate {
 }
 
 // Providers - The Cloud providers configuration
-// PortableResourceBasicProperties - Basic properties of a Portable resource.
-type PortableResourceBasicProperties struct {
-	// REQUIRED; The resource id of the environment linked to the resource
-	Environment *string
-
-	// Specifies the resource id of the application
-	Application *string
-
-	// READ-ONLY; Status of a Portable resource.
-	Status *ResourceStatus
-}
-
-// Providers - Cloud providers configuration
 type Providers struct {
 	// The AWS cloud provider configuration
 	Aws *ProvidersAws

@@ -2919,17 +2919,6 @@ func (p PersistentVolumeUpdate) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type PersistentVolumeUpdate.
 func (p *PersistentVolumeUpdate) UnmarshalJSON(data []byte) error {
-// MarshalJSON implements the json.Marshaller interface for type PortableResourceBasicProperties.
-func (p PortableResourceBasicProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", p.Application)
-	populate(objectMap, "environment", p.Environment)
-	populate(objectMap, "status", p.Status)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type PortableResourceBasicProperties.
-func (p *PortableResourceBasicProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", p, err)
@@ -2948,14 +2937,6 @@ func (p *PortableResourceBasicProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "source":
 				err = unpopulate(val, "Source", &p.Source)
-		case "application":
-				err = unpopulate(val, "Application", &p.Application)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &p.Environment)
-			delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &p.Status)
 			delete(rawMsg, key)
 		}
 		if err != nil {
