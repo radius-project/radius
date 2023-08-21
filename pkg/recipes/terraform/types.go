@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -29,7 +30,7 @@ import (
 
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
-	Deploy(ctx context.Context, options Options) (*recipes.RecipeOutput, error)
+	Deploy(ctx context.Context, options Options) (*tfjson.State, error)
 }
 
 // Options represents the options required to build inputs to interact with Terraform.

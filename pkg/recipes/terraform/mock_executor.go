@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	recipes "github.com/project-radius/radius/pkg/recipes"
+	terraform_json "github.com/hashicorp/terraform-json"
 )
 
 // MockTerraformExecutor is a mock of TerraformExecutor interface.
@@ -36,10 +36,10 @@ func (m *MockTerraformExecutor) EXPECT() *MockTerraformExecutorMockRecorder {
 }
 
 // Deploy mocks base method.
-func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*recipes.RecipeOutput, error) {
+func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*terraform_json.State, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1)
-	ret0, _ := ret[0].(*recipes.RecipeOutput)
+	ret0, _ := ret[0].(*terraform_json.State)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

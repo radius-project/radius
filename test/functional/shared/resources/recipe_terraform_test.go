@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
@@ -176,10 +177,16 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:            "corerp-resources-terraform-azstorage",
-						Type:            validation.ExtendersResource,
-						App:             appName,
-						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
+						Name: "corerp-resources-terraform-azstorage",
+						Type: validation.ExtendersResource,
+						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							// Azure storage account.
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  "RecipeResource0",
+							},
+						},
 					},
 				},
 			},

@@ -355,6 +355,8 @@ jobs:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
       HELM_CHARTS_DIR: deploy/Chart
+      OCI_REGISTRY: ghcr.io
+      OCI_REPOSITORY: ${{ startsWith(github.ref, 'refs/tags/v') && 'project-radius/helm-chart' || 'project-radius/dev/helm-chart' }} 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -382,6 +384,10 @@ jobs:
       - name: Push helm chart to ACR
         run: |
           az acr helm push --name radius ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz --force
+      - name: Push helm chart to GHCR
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
+          helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
   publish_release:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
@@ -406,7 +412,7 @@ jobs:
             ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --generate-notes \
-            --verify-tags \
+            --verify-tag \
             --prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -417,7 +423,7 @@ jobs:
             ${{ env.RELEASE_PATH }}/* \
             --title "Project Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
-            --verify-tags
+            --verify-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
   # TODO_LAUNCH: Remove this job once we opensource - https://github.com/project-radius/radius/issues/5892

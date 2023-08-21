@@ -61,7 +61,7 @@ func TestInitAndApply_EmptyWorkingDirPath(t *testing.T) {
 	testDir := t.TempDir()
 	execPath := filepath.Join(testDir, "terraform")
 
-	err := initAndApply(testcontext.New(t), "", execPath)
+	_, err := initAndApply(testcontext.New(t), "", execPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
 }
@@ -113,7 +113,7 @@ func TestGeneratedConfig(t *testing.T) {
 			}
 			execPath := filepath.Join(tc.workingDir, "terraform")
 			e := executor{}
-			err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
+			_, err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})

@@ -17,16 +17,14 @@ limitations under the License.
 package driver
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -46,10 +44,9 @@ import (
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
 const (
-	deploymentPrefix   = "recipe"
-	pollFrequency      = time.Second * 5
-	ResultPropertyName = "result"
-	recipeParameters   = "parameters"
+	deploymentPrefix = "recipe"
+	pollFrequency    = time.Second * 5
+	recipeParameters = "parameters"
 )
 
 var _ Driver = (*bicepDriver)(nil)
@@ -131,12 +128,12 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		return nil, err
 	}
 
-	recipeResponse, err := prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read the recipe output %q: %w", ResultPropertyName, err)
+		return nil, fmt.Errorf("failed to read the recipe output %q: %w", recipes.ResultPropertyName, err)
 	}
 
-	return &recipeResponse, nil
+	return recipeResponse, nil
 }
 
 // Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
@@ -202,7 +199,7 @@ func createRecipeParameters(devParams, operatorParams map[string]any, isCxtSet b
 		}
 	}
 	if isCxtSet {
-		parameters["context"] = map[string]any{
+		parameters[recipecontext.RecipeContextParamKey] = map[string]any{
 			"value": *recipeContext,
 		}
 	}
@@ -245,7 +242,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -255,25 +252,14 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 	//
 	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
 	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-	recipeResponse := recipes.RecipeOutput{}
-
+	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok {
-		recipeOutput, ok := out[ResultPropertyName].(map[string]any)
-		if ok {
-			output, ok := recipeOutput["value"].(map[string]any)
-			if ok {
-				b, err := json.Marshal(&output)
+		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
+			if resultValue, ok := result["value"].(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(resultValue)
 				if err != nil {
-					return recipes.RecipeOutput{}, err
-				}
-
-				// Using a decoder to block unknown fields.
-				decoder := json.NewDecoder(bytes.NewBuffer(b))
-				decoder.DisallowUnknownFields()
-				err = decoder.Decode(&recipeResponse)
-				if err != nil {
-					return recipes.RecipeOutput{}, err
+					return &recipes.RecipeOutput{}, err
 				}
 			}
 		}
@@ -282,14 +268,6 @@ func prepareRecipeResponse(outputs any, resources []*armresources.ResourceRefere
 	// process the 'resources' created by the template
 	for _, id := range resources {
 		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
-	}
-
-	// Make sure our maps are non-nil (it's just friendly).
-	if recipeResponse.Secrets == nil {
-		recipeResponse.Secrets = map[string]any{}
-	}
-	if recipeResponse.Values == nil {
-		recipeResponse.Values = map[string]any{}
 	}
 
 	return recipeResponse, nil
