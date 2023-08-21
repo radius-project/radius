@@ -2231,11 +2231,6 @@
       "type": "object",
       "description": "Application properties",
       "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -2243,6 +2238,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -2677,11 +2677,6 @@
       "type": "object",
       "description": "Container properties",
       "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -2689,6 +2684,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -2983,11 +2983,6 @@
       "type": "object",
       "description": "Environment properties",
       "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -2995,6 +2990,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -3194,11 +3194,6 @@
       "type": "object",
       "description": "ExtenderResource link properties",
       "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -3206,6 +3201,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -3397,11 +3397,6 @@
           "type": "object",
           "description": "The base resource properties definition for Radius top-level resource properties",
           "properties": {
-            "status": {
-              "$ref": "#/definitions/ResourceStatus",
-              "description": "Status of a resource.",
-              "readOnly": true
-            },
             "environment": {
               "type": "string",
               "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -3409,6 +3404,11 @@
             "application": {
               "type": "string",
               "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+            },
+            "status": {
+              "$ref": "#/definitions/ResourceStatus",
+              "description": "Status of a resource.",
+              "readOnly": true
             }
           },
           "required": [
@@ -3623,11 +3623,6 @@
       "type": "object",
       "description": "HTTPRoute properties",
       "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -3635,6 +3630,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -4458,11 +4458,6 @@
       "type": "object",
       "description": "SecretStore properties",
       "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -4470,6 +4465,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -4781,11 +4781,6 @@
           "type": "string",
           "description": "Discriminator property for VolumeProperties."
         },
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
@@ -4793,6 +4788,11 @@
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",

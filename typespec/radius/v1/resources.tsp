@@ -30,15 +30,15 @@ scalar ResourceNameString extends string;
 
 @doc("Base properties of a Radius resource.")
 model RadiusResourceBase {
-  @doc("Status of a resource.")
-  @visibility("read")
-  status?: ResourceStatus;
-
   @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
   environment: string;
 
   @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
   application?: string;
+
+  @doc("Status of a resource.")
+  @visibility("read")
+  status?: ResourceStatus;
 }
 
 @doc("The base resource properties definition for Radius top-level resource properties")
