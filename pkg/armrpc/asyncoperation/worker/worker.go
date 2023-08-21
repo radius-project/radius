@@ -31,6 +31,7 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/trace"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -308,6 +309,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 func extractError(err error) v1.ErrorDetails {
 	if clientErr, ok := err.(*v1.ErrClientRP); ok {
 		return v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
+	} else if recipeError, ok := err.(*recipes.RecipeError); ok {
+		return recipeError.ErrorDetails
 	} else {
 		return v1.ErrorDetails{Code: v1.CodeInternal, Message: err.Error()}
 	}

@@ -57,6 +57,9 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 		Code:    err.Code,
 		Message: err.Message,
 	}
+	if err.Details != nil {
+		r.Error.Details = err.Details
+	}
 }
 
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field

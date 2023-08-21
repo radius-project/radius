@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -150,6 +151,26 @@ func TestErrorHandling(t *testing.T) {
 		{
 			err:            errors.New("internal error"),
 			expectedArmErr: v1.ErrorDetails{Code: v1.CodeInternal, Message: "internal error"},
+		},
+		{
+			err:            recipes.NewRecipeError(recipes.RecipeDeploymentFailed, "test-recipe-deployment-failed-message", nil),
+			expectedArmErr: v1.ErrorDetails{Code: recipes.RecipeDeploymentFailed, Message: "test-recipe-deployment-failed-message"},
+		},
+		{
+			err: recipes.NewRecipeError(recipes.RecipeDownloadFailed,
+				"test-recipe-download-failed-message",
+				&v1.ErrorDetails{
+					Code:    recipes.RecipeLanguageFailure,
+					Message: "test-recipe-language-failure-message",
+				}),
+			expectedArmErr: v1.ErrorDetails{Code: recipes.RecipeDownloadFailed,
+				Message: "test-recipe-download-failed-message",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    recipes.RecipeLanguageFailure,
+						Message: "test-recipe-language-failure-message",
+					},
+				}},
 		},
 	}
 

@@ -100,12 +100,12 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		EnvRecipe:      &definition,
 	})
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	return recipeOutputs, nil
