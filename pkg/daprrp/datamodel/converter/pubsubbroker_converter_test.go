@@ -24,6 +24,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
+	linkrp_util "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -150,7 +151,7 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
+			c, err := linkrp_util.LoadTestData(tc.dataModelFile)
 			require.NoError(t, err)
 			dm := &datamodel.DaprPubSubBroker{}
 			_ = json.Unmarshal(c, dm)
@@ -208,7 +209,7 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.versionedModelFile)
+			c, err := linkrp_util.LoadTestData(tc.versionedModelFile)
 			require.NoError(t, err)
 			dm, err := PubSubBrokerDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
