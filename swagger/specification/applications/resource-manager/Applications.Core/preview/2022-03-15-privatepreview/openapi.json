@@ -61,6 +61,9 @@
     },
     {
       "name": "Volumes"
+    },
+    {
+      "name": "Extenders"
     }
   ],
   "paths": {
@@ -785,6 +788,315 @@
             "description": "ARM operation completed successfully.",
             "schema": {
               "$ref": "#/definitions/RecipeGetMetadataResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/extenders": {
+      "get": {
+        "operationId": "Extenders_ListByScope",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "List ExtenderResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/extenders/{extenderName}": {
+      "get": {
+        "operationId": "Extenders_Get",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Get a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "Extenders_Create",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Create a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ExtenderResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ExtenderResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "Extenders_Update",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Update a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "Extenders_Delete",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Delete a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets": {
+      "post": {
+        "operationId": "Extenders_ListSecrets",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Lists secrets values for the specified RedisCache resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderListSecretResponse"
             }
           },
           "default": {
@@ -2888,6 +3200,146 @@
       ],
       "x-ms-discriminator-value": "exec"
     },
+    "ExtenderListSecretResponse": {
+      "type": "object",
+      "description": "Response for list secrets API call",
+      "properties": {}
+    },
+    "ExtenderProperties": {
+      "type": "object",
+      "description": "ExtenderResource link properties",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the extender link at the time the operation was called",
+          "readOnly": true
+        },
+        "secrets": {
+          "$ref": "#/definitions/ExtenderSecretObject",
+          "description": "The secrets for referenced resource"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      },
+      "required": [
+        "environment"
+      ],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "ExtenderResource": {
+      "type": "object",
+      "description": "ExtenderResource link",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ExtenderProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ExtenderResourceListResult": {
+      "type": "object",
+      "description": "The response of a ExtenderResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ExtenderResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ExtenderResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ExtenderResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the ExtenderResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/ExtenderResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "ExtenderResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the ExtenderResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "$ref": "#/definitions/Application",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "secrets": {
+          "$ref": "#/definitions/ExtenderSecretObject",
+          "description": "The secrets for referenced resource"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "ExtenderSecretObject": {
+      "type": "object",
+      "description": "Key/value pair secret object",
+      "properties": {}
+    },
     "Extension": {
       "type": "object",
       "description": "Extension of a environment/application resource.",
@@ -3747,6 +4199,24 @@
       },
       "readOnly": true
     },
+    "Recipe": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
     "RecipeGetMetadata": {
       "type": "object",
       "description": "Represents the request body of the getmetadata action.",
@@ -3840,6 +4310,45 @@
       "required": [
         "templateKind"
       ]
+    },
+    "RecipeUpdate": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      }
+    },
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "recipe",
+            "value": "recipe",
+            "description": "The resource lifecycle will be managed by Radius"
+          },
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
+      }
     },
     "ResourceStatus": {
       "type": "object",

@@ -53,6 +53,11 @@ func (c *ClientFactory) NewEnvironmentsClient() *EnvironmentsClient {
 	return subClient
 }
 
+func (c *ClientFactory) NewExtendersClient() *ExtendersClient {
+	subClient, _ := NewExtendersClient(c.rootScope, c.credential, c.options)
+	return subClient
+}
+
 func (c *ClientFactory) NewGatewaysClient() *GatewaysClient {
 	subClient, _ := NewGatewaysClient(c.rootScope, c.credential, c.options)
 	return subClient

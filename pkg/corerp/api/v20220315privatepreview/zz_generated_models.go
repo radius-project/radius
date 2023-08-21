@@ -688,6 +688,93 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
+// ExtenderProperties - ExtenderResource link properties
+type ExtenderProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
+	AdditionalProperties map[string]any
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	Recipe *Recipe
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+	// The secrets for referenced resource
+	Secrets map[string]any
+
+	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
+}
+
+// ExtenderResource link
+type ExtenderResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// The resource-specific properties for this resource.
+	Properties *ExtenderProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// ExtenderResourceListResult - The response of a ExtenderResource list operation.
+type ExtenderResourceListResult struct {
+	// REQUIRED; The ExtenderResource items on this page
+	Value []*ExtenderResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// ExtenderResourceUpdate - The type used for update operations of the ExtenderResource.
+type ExtenderResourceUpdate struct {
+	// The updatable properties of the ExtenderResource.
+	Properties *ExtenderResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// ExtenderResourceUpdateProperties - The updatable properties of the ExtenderResource.
+type ExtenderResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	Recipe *RecipeUpdate
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+	// The secrets for referenced resource
+	Secrets map[string]any
+}
+
 // Extension of a environment/application resource.
 type Extension struct {
 	// REQUIRED; Discriminator property for Extension.
@@ -1259,6 +1346,15 @@ type ProvidersUpdate struct {
 	Azure *ProvidersAzureUpdate
 }
 
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+type Recipe struct {
+	// REQUIRED; The name of the recipe within the environment to use
+	Name *string
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]any
+}
+
 // RecipeGetMetadata - Represents the request body of the getmetadata action.
 type RecipeGetMetadata struct {
 	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
@@ -1313,6 +1409,15 @@ type RecipePropertiesUpdate struct {
 
 // GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type RecipePropertiesUpdate.
 func (r *RecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate { return r }
+
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a link
+type RecipeUpdate struct {
+	// The name of the recipe within the environment to use
+	Name *string
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]any
+}
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {

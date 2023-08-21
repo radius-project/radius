@@ -90,6 +90,39 @@ type EnvironmentsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ExtendersClientBeginCreateOptions contains the optional parameters for the ExtendersClient.BeginCreate method.
+type ExtendersClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ExtendersClientBeginDeleteOptions contains the optional parameters for the ExtendersClient.BeginDelete method.
+type ExtendersClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ExtendersClientBeginUpdateOptions contains the optional parameters for the ExtendersClient.BeginUpdate method.
+type ExtendersClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ExtendersClientGetOptions contains the optional parameters for the ExtendersClient.Get method.
+type ExtendersClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersClientListByScopeOptions contains the optional parameters for the ExtendersClient.NewListByScopePager method.
+type ExtendersClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
+type ExtendersClientListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // GatewaysClientBeginCreateOptions contains the optional parameters for the GatewaysClient.BeginCreate method.
 type GatewaysClientBeginCreateOptions struct {
 	// Resumes the LRO from the provided token.

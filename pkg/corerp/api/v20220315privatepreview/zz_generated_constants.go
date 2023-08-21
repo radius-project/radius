@@ -224,6 +224,26 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// ResourceProvisioning - Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe',
+// where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user
+// manages the resource and provides the values.
+type ResourceProvisioning string
+
+const (
+	// ResourceProvisioningManual - The resource lifecycle will be managed by the user
+	ResourceProvisioningManual ResourceProvisioning = "manual"
+	// ResourceProvisioningRecipe - The resource lifecycle will be managed by Radius
+	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
+)
+
+// PossibleResourceProvisioningValues returns the possible values for the ResourceProvisioning const type.
+func PossibleResourceProvisioningValues() []ResourceProvisioning {
+	return []ResourceProvisioning{	
+		ResourceProvisioningManual,
+		ResourceProvisioningRecipe,
+	}
+}
+
 // SecretStoreDataType - SecretStore data type
 type SecretStoreDataType string
 

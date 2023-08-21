@@ -100,6 +100,41 @@ type EnvironmentsClientUpdateResponse struct {
 	EnvironmentResource
 }
 
+// ExtendersClientCreateResponse contains the response from method ExtendersClient.BeginCreate.
+type ExtendersClientCreateResponse struct {
+	// ExtenderResource link
+	ExtenderResource
+}
+
+// ExtendersClientDeleteResponse contains the response from method ExtendersClient.BeginDelete.
+type ExtendersClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
+type ExtendersClientGetResponse struct {
+	// ExtenderResource link
+	ExtenderResource
+}
+
+// ExtendersClientListByScopeResponse contains the response from method ExtendersClient.NewListByScopePager.
+type ExtendersClientListByScopeResponse struct {
+	// The response of a ExtenderResource list operation.
+	ExtenderResourceListResult
+}
+
+// ExtendersClientListSecretsResponse contains the response from method ExtendersClient.ListSecrets.
+type ExtendersClientListSecretsResponse struct {
+	// Any object
+	Object map[string]any
+}
+
+// ExtendersClientUpdateResponse contains the response from method ExtendersClient.BeginUpdate.
+type ExtendersClientUpdateResponse struct {
+	// ExtenderResource link
+	ExtenderResource
+}
+
 // GatewaysClientCreateResponse contains the response from method GatewaysClient.BeginCreate.
 type GatewaysClientCreateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
