@@ -627,14 +627,14 @@ type ExtenderList struct {
 
 // ExtenderProperties - Extender portable resource properties.
 type ExtenderProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string
+	// REQUIRED; The resource id of the environment linked to the resource
+	Environment *string
 
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// The resource id of the environment linked to the resource
-	Environment *string
+	// Specifies the resource id of the application
+	Application *string
 
 	// The recipe used to automatically deploy underlying infrastructure for the Extender portable resource.
 	Recipe *ResourceRecipe
@@ -648,7 +648,7 @@ type ExtenderProperties struct {
 	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a Portable resource.
 	Status *ResourceStatus
 }
 
@@ -1002,6 +1002,18 @@ func (p *PersistentVolume) GetVolume() *Volume {
 		Kind: p.Kind,
 		MountPath: p.MountPath,
 	}
+}
+
+// PortableResourceBasicProperties - Basic properties of a Portable resource.
+type PortableResourceBasicProperties struct {
+	// REQUIRED; The resource id of the environment linked to the resource
+	Environment *string
+
+	// Specifies the resource id of the application
+	Application *string
+
+	// READ-ONLY; Status of a Portable resource.
+	Status *ResourceStatus
 }
 
 // Providers - Cloud providers configuration
