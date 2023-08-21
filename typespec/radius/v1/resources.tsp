@@ -43,8 +43,8 @@ model RadiusResourceBase {
 
 @doc("The base resource properties definition for Radius top-level resource properties")
 model RadiusResource<TProperties extends {}> {
-  ...TProperties;
   ...RadiusResourceBase;
+  ...TProperties;
 }
 
 // ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
