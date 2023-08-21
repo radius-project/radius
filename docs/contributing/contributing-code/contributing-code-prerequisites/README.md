@@ -53,7 +53,7 @@ You can build the main outputs using `make`:
 make build && make lint
 ```
 
-Running these steps will run our build and lint steps and verify that the tools are installed correctly. If you get stuck or suspect something is not working in these instructions please [open an issue](https://github.com/project-radius/radius/issues/new/choose).
+Running these steps will run our build and lint steps and verify that the tools are installed correctly. If you get stuck or suspect something is not working in these instructions please [open an issue](https://github.com/radius-project/radius/issues/new/choose).
 
 ### Editor
 

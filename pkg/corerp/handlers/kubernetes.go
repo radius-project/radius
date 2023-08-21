@@ -23,12 +23,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

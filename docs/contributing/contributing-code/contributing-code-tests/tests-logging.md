@@ -5,7 +5,7 @@ The Radius tests redirect the Resource Provider logger output to the testing err
 ```go
 import (
     ...
-    "github.com/project-radius/radius/test/testcontext"
+    "github.com/radius-project/radius/test/testcontext"
     ...
 )
 

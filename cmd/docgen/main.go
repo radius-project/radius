@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-radius/radius/cmd/rad/cmd"
+	"github.com/radius-project/radius/cmd/rad/cmd"
 	"github.com/spf13/cobra/doc"
 )
 

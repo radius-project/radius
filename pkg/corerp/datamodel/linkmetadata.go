@@ -17,7 +17,7 @@ limitations under the License.
 package datamodel
 
 import (
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // LinkMetadata represents internal DataModel properties common to all link types.

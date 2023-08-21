@@ -19,7 +19,7 @@ package output
 import (
 	"fmt"
 
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
+	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (

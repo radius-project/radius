@@ -21,10 +21,10 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (

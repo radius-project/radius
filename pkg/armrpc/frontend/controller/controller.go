@@ -21,12 +21,12 @@ import (
 	"net/http"
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/store"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )

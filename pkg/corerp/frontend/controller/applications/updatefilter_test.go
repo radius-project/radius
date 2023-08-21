@@ -21,17 +21,17 @@ import (
 	"strings"
 	"testing"
 
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/k8sutil"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/test/k8sutil"
 
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
 

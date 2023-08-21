@@ -20,27 +20,27 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	backend_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
-	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/model"
-	"github.com/project-radius/radius/pkg/corerp/processors/extenders"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
-	"github.com/project-radius/radius/pkg/recipes/driver"
-	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	backend_ctrl "github.com/radius-project/radius/pkg/corerp/backend/controller"
+	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/model"
+	"github.com/radius-project/radius/pkg/corerp/processors/extenders"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/linkrp"
+	linkrp_backend_ctrl "github.com/radius-project/radius/pkg/linkrp/backend/controller"
+	"github.com/radius-project/radius/pkg/linkrp/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"k8s.io/client-go/discovery"
 )
 
@@ -127,7 +127,7 @@ func (w *Service) Run(ctx context.Context) error {
 	}
 
 	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
-	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
+	// TODO: Disable UseLegacyDiscovery once https://github.com/radius-project/radius/issues/5974 is resolved.
 	discoveryClient.UseLegacyDiscovery = true
 
 	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, runtimeClient, discoveryClient)

@@ -19,17 +19,17 @@ package register
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/bicep"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 

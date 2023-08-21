@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	types "github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	types "github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 const (

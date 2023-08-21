@@ -20,9 +20,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 

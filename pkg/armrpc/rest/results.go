@@ -27,12 +27,12 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/logging"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/logging"
 
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (

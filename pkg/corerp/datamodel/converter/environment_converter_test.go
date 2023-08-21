@@ -21,9 +21,9 @@ import (
 	"os"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
 

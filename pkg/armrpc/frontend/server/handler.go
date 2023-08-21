@@ -25,12 +25,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )

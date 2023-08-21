@@ -20,9 +20,9 @@ import (
 	"context"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
 // DefaultAsyncPut is the controller implementation to create or update async resource.

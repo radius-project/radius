@@ -16,8 +16,8 @@ jobs:
           ISSUE: ${{ github.event.issue.html_url }}
           AUTHOR: ${{ github.actor }}
         run: |
-          MEMBERS=$(gh api orgs/project-radius/teams/Radius-Preview/members | jq -r '.[] | .login')
-          ADMINS=$(gh api orgs/project-radius/teams/Radius-Admin/members | jq -r '.[] | .login')
+          MEMBERS=$(gh api orgs/radius-project/teams/Radius-Preview/members | jq -r '.[] | .login')
+          ADMINS=$(gh api orgs/radius-project/teams/Radius-Admin/members | jq -r '.[] | .login')
           for USER in $MEMBERS; do
             if [[ "$USER" == "$AUTHOR" ]]; then
               ISADMIN=false

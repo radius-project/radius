@@ -119,7 +119,7 @@ func UnflattenProperties(state map[string]any) map[string]any {
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
 // current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
 func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
-	// See: https://github.com/project-radius/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
+	// See: https://github.com/radius-project/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
 
 	// Get the resource type schema - this will tell us the properties of the
 	// resource as well as which properties are read-only, create-only, etc.

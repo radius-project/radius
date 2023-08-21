@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/armauth"
 )
 
 const (

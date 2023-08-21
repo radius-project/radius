@@ -21,9 +21,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 const (

@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	"github.com/go-openapi/jsonpointer"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // compute constructs an application graph from the given application and environment resources.

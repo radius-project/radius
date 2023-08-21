@@ -24,16 +24,16 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/logging"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	"github.com/radius-project/radius/pkg/logging"
+	"github.com/radius-project/radius/pkg/resourcekinds"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (

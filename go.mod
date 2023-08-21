@@ -1,4 +1,4 @@
-module github.com/project-radius/radius
+module github.com/radius-project/radius
 
 go 1.21
 

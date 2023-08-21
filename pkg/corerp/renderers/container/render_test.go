@@ -20,19 +20,19 @@ import (
 	"fmt"
 	"testing"
 
-	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
-	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/testcontext"
+	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
+	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/resourcekinds"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -220,7 +220,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 
 	properties := datamodel.ContainerProperties{
 		// Simulating error code path
-		// Revert this once TODO: https://github.com/project-radius/core-team/issues/238 is done.
+		// Revert this once TODO: https://github.com/radius-project/core-team/issues/238 is done.
 		Connections: map[string]datamodel.ConnectionProperties{
 			"AzureResourceTest": {
 				Source: "//subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace",
@@ -294,7 +294,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, labels, deployment.Spec.Template.Labels)
 		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
 
-		// See https://github.com/project-radius/radius/issues/3002
+		// See https://github.com/radius-project/radius/issues/3002
 		//
 		// We disable service links and rely on Radius' connections feature instead.
 		require.NotNil(t, deployment.Spec.Template.Spec.EnableServiceLinks)

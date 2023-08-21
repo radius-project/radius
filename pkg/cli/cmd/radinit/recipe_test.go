@@ -21,9 +21,9 @@ import (
 	reflect "reflect"
 	"testing"
 
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 

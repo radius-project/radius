@@ -16,7 +16,7 @@ limitations under the License.
 
 package main
 
-import "github.com/project-radius/radius/cmd/ucpd/cmd"
+import "github.com/radius-project/radius/cmd/ucpd/cmd"
 
 func main() {
 	cmd.Execute()

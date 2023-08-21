@@ -33,18 +33,18 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
-	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
+	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/resourcekinds"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -620,7 +620,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				},
 				Spec: corev1.PodSpec{
 					// See: https://github.com/kubernetes/kubernetes/issues/92226 and
-					// 		https://github.com/project-radius/radius/issues/3002
+					// 		https://github.com/radius-project/radius/issues/3002
 					//
 					// Service links are a flawed and Kubernetes-only feature that we don't
 					// want to leak into Radius containers.

@@ -21,12 +21,12 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 

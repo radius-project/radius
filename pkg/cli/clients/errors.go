@@ -21,8 +21,8 @@ import (
 	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.

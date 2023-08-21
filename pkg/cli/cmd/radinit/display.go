@@ -26,7 +26,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 )
 
 const (

@@ -49,9 +49,9 @@ env:
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
   # Container registry for storing test images and recipes
-  CACHE_REGISTRY: ghcr.io/project-radius/dev
+  CACHE_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing recipe artifacts
-  # TODO_LAUNCH: Change it to ghcr.io/project-radius/dev - https://github.com/project-radius/radius/issues/5892
+  # TODO_LAUNCH: Change it to ghcr.io/radius-project/dev - https://github.com/radius-project/radius/issues/5892
   BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
@@ -316,7 +316,7 @@ jobs:
         uses: actions/checkout@v3
         if: matrix.name == 'samples'
         with:
-          repository: project-radius/samples
+          repository: radius-project/samples
           ref: refs/heads/edge
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
@@ -471,7 +471,7 @@ jobs:
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
-          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/project-radius/radius/issues/5892
+          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/radius-project/radius/issues/5892
           az acr login -n ${{ env.BICEP_RECIPE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''

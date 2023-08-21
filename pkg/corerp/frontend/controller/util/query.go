@@ -19,7 +19,7 @@ package util
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 // FindResources searches for resources of a given type with a given filter key and value, and returns the query result.

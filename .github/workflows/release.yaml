@@ -39,7 +39,7 @@ jobs:
     env:
       RELNOTE_FOUND: false
     steps:
-      - name: Checkout project-radius/radius
+      - name: Checkout radius-project/radius
         uses: actions/checkout@v3
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
@@ -110,7 +110,7 @@ jobs:
             ## :warning: Missing release note :warning:
             
             This is the official Radius release. Create the release note by following instruction:            
-            1. Create ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md from [release note template](https://github.com/project-radius/radius/blob/main/docs/release-notes/template.md)
+            1. Create ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md from [release note template](https://github.com/radius-project/radius/blob/main/docs/release-notes/template.md)
             2. Update the each section and add the above Change logs to the end of release note.
             3. Push release note changes to the PR branch.
       - name: Stop the workflow if release is the offical and its release note is not found.
@@ -121,31 +121,31 @@ jobs:
     if: github.event_name == 'push'
     runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     steps:
-      - name: Checkout project-radius/radius@main
+      - name: Checkout radius-project/radius@main
         uses: actions/checkout@v3
         with:
-          repository: project-radius/radius
+          repository: radius-project/radius
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: radius
-      - name: Checkout project-radius/bicep@bicep-extensibility
+      - name: Checkout radius-project/bicep@bicep-extensibility
         uses: actions/checkout@v3
         with:
-          repository: project-radius/bicep
+          repository: radius-project/bicep
           ref: bicep-extensibility
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: bicep
-      - name: Checkout project-radius/deployment-engine@main
+      - name: Checkout radius-project/deployment-engine@main
         uses: actions/checkout@v3
         with:
-          repository: project-radius/deployment-engine
+          repository: radius-project/deployment-engine
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: deployment-engine
-      - name: Checkout project-radius/recipes@main
+      - name: Checkout radius-project/recipes@main
         uses: actions/checkout@v3
         with:
-          repository: project-radius/recipes
+          repository: radius-project/recipes
           ref: main
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: recipes
@@ -171,19 +171,19 @@ jobs:
           echo "* Desired release tag: ${{ steps.get-version.outputs.release-version }}" >> $GITHUB_STEP_SUMMARY
           echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
-      - name: Release project-radius/radius version ${{ steps.get-version.outputs.release-version }}
+      - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh radius ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
-      - name: Release project-radius/bicep version ${{ steps.get-version.outputs.release-version }}
+      - name: Release radius-project/bicep version ${{ steps.get-version.outputs.release-version }}
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
-      - name: Release project-radius/deployment-engine version ${{ steps.get-version.outputs.release-version }}
+      - name: Release radius-project/deployment-engine version ${{ steps.get-version.outputs.release-version }}
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh deployment-engine ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
-      - name: Release project-radius/recipes version ${{ steps.get-version.outputs.release-version }}
+      - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
         if: success()

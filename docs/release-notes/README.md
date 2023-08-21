@@ -1,6 +1,6 @@
 # Radius release notes
 
-This directory contains the release notes for each Radius release. The release notes are written in Markdown and are included as the body of [each Radius release](https://github.com/project-radius/radius/releases).
+This directory contains the release notes for each Radius release. The release notes are written in Markdown and are included as the body of [each Radius release](https://github.com/radius-project/radius/releases).
 
 ## Release process
 
@@ -32,7 +32,7 @@ Within the template is the `## Full changelog` section, which is a complete list
 
 To generate the release notes:
 
-1. Visit [Generate a new release](https://github.com/project-radius/radius/releases/new) in the radius repository.
+1. Visit [Generate a new release](https://github.com/radius-project/radius/releases/new) in the radius repository.
    - _Note that you will not be creating the release through the UI, just generating the list of merged PRs. This could be automated in the future using the [GitHub API](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits)_
 2. Dropdown the `Choose a tag` menu and manually enter the tag for the upcoming release (_e.g. `v0.21.0`_). Keep `Target` as 'main'.
 3. Dropdown the `Previous tag` menu and select the tag for the previous minor release (_e.g. `v0.20.0`_). Don't select patch or RC releases.

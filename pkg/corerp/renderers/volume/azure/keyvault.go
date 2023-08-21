@@ -20,11 +20,11 @@ import (
 	"context"
 	"errors"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"gopkg.in/yaml.v3"

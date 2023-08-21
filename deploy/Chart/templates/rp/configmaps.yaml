@@ -9,7 +9,7 @@ metadata:
 data:
   radius-self-host.yaml: |-
     # Radius configuration file.
-    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    # See https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
     environment:
       name: self-hosted
       roleLocation: "global"
@@ -53,7 +53,7 @@ data:
 
   link-self-host.yaml: |-
     # Radius configuration file.
-    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    # See https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
     environment:
       name: self-hosted
       roleLocation: "global"

@@ -24,10 +24,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"

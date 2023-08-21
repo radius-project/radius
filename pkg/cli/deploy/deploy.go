@@ -20,9 +20,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/project-radius/radius/pkg/cli/bicep"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used

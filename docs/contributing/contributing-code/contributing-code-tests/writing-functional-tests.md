@@ -17,7 +17,7 @@ For example a test for deploying an Azure Service Bus resource would be in `/tes
 Tests should look like the following. You can actually copy-paste this to create a new test!
 
 ```go
-import "github.com/project-radius/radius/test/functional/azure"
+import "github.com/radius-project/radius/test/functional/azure"
 
 func Test_DescriptiveTestName(t *testing.T) {
     application := "unique-application-name"

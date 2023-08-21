@@ -20,10 +20,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/resourcekinds"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 func makeRBACRole(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {

@@ -21,11 +21,11 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/armrpc/authentication"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/validator"
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/armrpc/authentication"
+	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/validator"
+	"github.com/radius-project/radius/pkg/version"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"

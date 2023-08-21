@@ -21,11 +21,11 @@ import (
 	"errors"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*GetOperationStatus)(nil)
