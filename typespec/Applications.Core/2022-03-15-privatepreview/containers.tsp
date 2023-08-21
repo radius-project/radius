@@ -14,32 +14,56 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import "@cadl-lang/rest";
-import "@cadl-lang/versioning";
-import "@azure-tools/cadl-azure-core";
-import "@azure-tools/cadl-azure-resource-manager";
-import "@azure-tools/cadl-providerhub";
+import "@typespec/rest";
+import "@typespec/versioning";
+import "@typespec/openapi";
+import "@azure-tools/typespec-azure-core";
+import "@azure-tools/typespec-azure-resource-manager";
+import "@azure-tools/typespec-providerhub";
 
-// These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
-import "../customRootScope.cadl";
-import "../aksrootscope.cadl";
+import "../../radius/v1/ucprootscope.tsp";
+import "../../radius/v1/resources.tsp";
+import "./common.tsp";
+import "./extensions.tsp";
 
-import "./global.cadl";
-
-using Cadl.Http;
-using Cadl.Rest;
-using Cadl.Versioning;
+using TypeSpec.Http;
+using TypeSpec.Rest;
+using TypeSpec.Versioning;
 using Azure.ResourceManager;
-using Azure.ResourceManager.Radius;
+using Azure.Core;
+using OpenAPI;
 
-@armNamespace
-@serviceTitle("Applications.Core Management APIs")
-@doc("REST API for Applications.Core Container Resource")
-@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Core;
 
+model ContainerResource is TrackedResource<ContainerProperties> {
+  @doc("Container name")
+  @path
+  @key("containerName")
+  @segment("containers")
+  name: ResourceNameString;
+}
+
+@doc("Container properties")
+model ContainerProperties is RadiusResource<ContainerProperties> {
+  @doc("The status of the last operation.")
+  provisioningState?: ProvisioningState;
+
+  @doc("Definition of a container.")
+  container: Container;
+
+  @doc("Specifies a connection to another resource.")
+  connections?: Record<ConnectionProperties>;
+
+  @doc("Configuration for supported external identity providers")
+  identity?: IdentitySettings;
+
+  @doc("Extensions spec of the resource")
+  @extension("x-ms-identifiers", [])
+  extensions?: Extension[];
+}
+
 @doc("Specifies a listening port for the container")
-model ContainerPort {
+model ContainerPortProperties {
   @doc("The listening port number")
   containerPort: int32;
 
@@ -48,6 +72,12 @@ model ContainerPort {
 
   @doc("Specifies a route provided by this port")
   provides?: string;
+
+  @doc("Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value")
+  scheme?: string;
+
+  @doc("Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired")
+  port?: int32;
 }
 
 @doc("Properties for readiness/liveness probe")
@@ -61,6 +91,9 @@ model HealthProbeProperties {
 
   @doc("Interval for the readiness/liveness probe in seconds")
   periodSeconds?: float32;
+
+  @doc("Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds")
+  timeoutSeconds?: float32 = 5.0;
 }
 
 @doc("Specifies the properties for readiness/liveness probe using HTTP Get")
@@ -75,7 +108,7 @@ model HttpGetHealthProbeProperties extends HealthProbeProperties {
   path: string;
 
   @doc("Custom HTTP headers to add to the get request")
-  headers?: Map<string, string>;
+  headers?: Record<string>;
 }
 
 @doc("Specifies the properties for readiness/liveness probe using TCP")
@@ -100,7 +133,7 @@ model ExecHealthProbeProperties extends HealthProbeProperties {
 @doc("Specifies a volume for a container")
 model Volume {
   @doc("The path where the volume is mounted")
-  mountPath?: string;
+  mountPath: string;
 }
 
 @doc("Specifies an ephemeral volume for a container")
@@ -118,50 +151,19 @@ model PersistentVolume extends Volume {
   kind: "persistent";
 
   @doc("Container read/write access to the volume")
-  rbac?: VolumePermission;
+  permission?: VolumePermission;
 
   @doc("The source of the volume")
   source: string;
 }
 
-@doc("Extension of a resource.")
-@discriminator("kind")
-model Extension {}
-
-@doc("ManualScaling Extension")
-model ManualScalingExtension extends Extension {
-  @doc("Specifies the extension of the resource")
-  kind: "manualScaling";
-
-  @doc("Replica count.")
-  replicas: int32;
-}
-
-@doc("Specifies the resource should have a Dapr sidecar injected")
-model DaprSidecarExtension extends Extension {
-  @doc("Specifies the extension of the resource")
-  kind: "daprSidecar";
-
-  @doc("The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ")
-  appPort?: int32;
-
-  @doc("The Dapr appId. Specifies the identifier used by Dapr for service invocation.")
-  appId: string;
-
-  @doc("Specifies the Dapr configuration to use for the resource.")
-  config?: string;
-
-  @doc("Specifies the Dapr app-protocol to use for the resource.")
-  protocol?: DaprProtocol;
-}
-
-@doc("Iam properties")
+@doc("IAM properties")
 model IamProperties {
   @doc("The kind of IAM provider to configure")
-  kind: Kind;
+  kind: IAMKind;
 
   @doc("RBAC permissions to be assigned on the source resource")
-  roles: string[];
+  roles?: string[];
 }
 
 @doc("Connection Properties")
@@ -182,10 +184,10 @@ model Container {
   image: string;
 
   @doc("environment")
-  env?: Map<string, string>;
+  env?: Record<string>;
 
   @doc("container ports")
-  ports?: Map<string, ContainerPort>;
+  ports?: Record<ContainerPortProperties>;
 
   @doc("readiness probe properties")
   readinessProbe?: HealthProbeProperties;
@@ -194,87 +196,75 @@ model Container {
   livenessProbe?: HealthProbeProperties;
 
   @doc("container volumes")
-  volumes?: Map<string, Volume>;
+  volumes?: Record<Volume>;
+
+  @doc("Entrypoint array. Overrides the container image's ENTRYPOINT")
+  command?: string[];
+
+  @doc("Arguments to the entrypoint. Overrides the container image's CMD")
+  args?: string[];
+
+  @doc("Working directory for the container")
+  workingDir: string;
 }
 
-@doc("Container properties")
-model ContainerProperties extends BasicResourceProperties {
-  @doc("The status of the last operation.")
-  provisioningState?: ProvisioningState;
-
-  @doc("Specifies resource id of the application")
-  application: string;
-
-  @doc("Specifies a connection to another resource.")
-  connections: Map<string, ConnectionProperties>;
-
-  @doc("Definition of a container.")
-  container: Container;
-
-  @doc("Extensions spec of the resource")
-  extensions: Extension[];
-}
-
-model ContainerResource is TrackedResource<ContainerProperties> {
-  @doc("Container name")
-  @maxLength(63)
-  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
-  @key("containerName")
-  @path
-  @segment("containers")
-  name: string;
-}
-
-@armResourceOperations
-interface Containers
-  extends Radius.RootScopeResourceOperations<
-      ContainerResource,
-      ContainerProperties,
-      RootScopeParam
-    > {}
-
-@knownValues(ProvisioningStateKV)
-model ProvisioningState is string;
-enum ProvisioningStateKV {
-  Succeeded,
-  Failed,
-  Canceled,
-  Provisioning,
-  Updating,
-  Deleting,
-  Accepted,
-}
-
-@knownValues(PortProtocolKV)
-model PortProtocol is string;
-enum PortProtocolKV {
+@doc("The protocol in use by the port")
+enum PortProtocol {
+  @doc("TCP protocol")
   TCP,
+
+  @doc("UDP protocol")
   UDP,
 }
 
-@knownValues(ManagedStoreKV)
-model ManagedStore is string;
-enum ManagedStoreKV {
+@doc("The managed store for the ephemeral volume")
+enum ManagedStore {
+  @doc("Memory store")
   memory,
+
+  @doc("Disk store")
   disk,
 }
 
-@knownValues(VolumePermissionKV)
-model VolumePermission is string;
-enum VolumePermissionKV {
+@doc("The persistent volume permission")
+enum VolumePermission {
+  @doc("Read only")
   read,
+
+  @doc("Read and write")
   write,
 }
 
-@knownValues(KindKV)
-model Kind is string;
-enum KindKV {
+@doc("The kind of IAM provider to configure")
+enum IAMKind {
+  @doc("Azure Active Directory")
   azure,
 }
 
-@knownValues(DaprProtocolKV)
-model DaprProtocol is string;
-enum DaprProtocolKV {
-  http,
-  grpc,
+@armResourceOperations
+interface Containers {
+  get is ArmResourceRead<
+    ContainerResource,
+    UCPBaseParameters<ContainerResource>
+  >;
+  create is ArmResourceCreateOrReplaceAsync<
+    ContainerResource,
+    UCPBaseParameters<ContainerResource>
+  >;
+  update is ArmResourcePatchAsync<
+    ContainerResource,
+    ContainerProperties,
+    UCPBaseParameters<ContainerResource>
+  >;
+  delete is ArmResourceDeleteAsync<
+    ContainerResource,
+    UCPBaseParameters<ContainerResource>
+  >;
+
+  listByScope is ArmResourceListByParent<
+    ContainerResource,
+    UCPBaseParameters<ContainerResource>,
+    "Scope",
+    "Scope"
+  >;
 }
