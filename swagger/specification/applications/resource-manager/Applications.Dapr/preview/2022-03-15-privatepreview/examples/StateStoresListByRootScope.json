@@ -1,59 +1,76 @@
 {
-    "parameters": {
-      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
-      "api-version": "2022-03-15-privatepreview"
-    },
-    "responses": {
-      "200": {
-        "body": {
-          "value": [
-            {
-              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore0",
-              "name": "daprStateStore0",
-              "type": "Applications.Dapr/stateStores",
-              "location": "global",
-              "properties": {
-                "provisioningState": "Succeeded",
-                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-                "mode": "resource",
-                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
-              }
-            },
-            {
-              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Dapr/stateStores/daprStateStore1",
-              "name": "daprStateStore1",
-              "type": "Applications.Dapr/stateStores",
-              "location": "global",
-              "properties": {
-                "provisioningState": "Succeeded",
-                "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-                "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-                "mode": "resource",
-                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
-              }
-            },
-            {
-                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore2",
-                "name": "daprStateStore2",
-                "type": "Applications.Dapr/stateStores",
-                "location": "global",
-                "properties": {
-                  "provisioningState": "Succeeded",
-                  "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-                  "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-                  "mode": "values",
-                  "type": "state.zookeeper",
-                  "version": "v1",
-                  "metadata": {
-                  "foo": "bar"
-                  }
+  "parameters": {
+    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore0",
+            "name": "daprStateStore0",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
                 }
+              ],
+              "type": "state.zookeeper",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
               }
-          ],
-          "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Dapr/stateStores?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
-        }
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Dapr/stateStores/daprStateStore1",
+            "name": "daprStateStore1",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+                }
+              ],
+              "type": "state.zookeeper",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprStateStore2",
+            "name": "daprStateStore2",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "type": "state.zookeeper",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Dapr/stateStores?api-version=2022-03-15-privatepreview&$skipToken=X'12345'"
       }
     }
   }
-  
+}

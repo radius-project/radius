@@ -19,10 +19,10 @@ package converter
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	linkrp_util "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/messagingrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -43,7 +43,7 @@ func TestRabbitMQQueueDataModelToVersioned(t *testing.T) {
 			nil,
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_datamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -52,7 +52,8 @@ func TestRabbitMQQueueDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c, err := linkrp_util.LoadTestData(tc.dataModelFile)
+			require.NoError(t, err)
 			dm := &datamodel.RabbitMQQueue{}
 			_ = json.Unmarshal(c, dm)
 			am, err := RabbitMQQueueDataModelToVersioned(dm, tc.apiVersion)
@@ -83,7 +84,7 @@ func TestRabbitMQQueueDataModelFromVersioned(t *testing.T) {
 			errors.New("json: cannot unmarshal number into Go struct field RabbitMQQueueProperties.properties.resource of type string"),
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -91,7 +92,8 @@ func TestRabbitMQQueueDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.versionedModelFile)
+			c, err := linkrp_util.LoadTestData(tc.versionedModelFile)
+			require.NoError(t, err)
 			dm, err := RabbitMQQueueDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -117,7 +119,7 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 			nil,
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/rabbitmqsecretsdatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -126,7 +128,8 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c, err := linkrp_util.LoadTestData(tc.dataModelFile)
+			require.NoError(t, err)
 			dm := &datamodel.RabbitMQSecrets{}
 			_ = json.Unmarshal(c, dm)
 			am, err := RabbitMQSecretsDataModelToVersioned(dm, tc.apiVersion)
@@ -138,12 +141,4 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 			}
 		})
 	}
-}
-
-func loadTestData(testfile string) []byte {
-	d, err := os.ReadFile(testfile)
-	if err != nil {
-		return nil
-	}
-	return d
 }
