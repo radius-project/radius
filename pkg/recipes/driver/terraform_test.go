@@ -140,7 +140,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 		EnvRecipe:      &envRecipe,
 	}
 	recipeError := recipes.RecipeError{
-		v1.ErrorDetails{
+		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeploymentFailed,
 			Message: "Failed to deploy terraform module",
 		},
@@ -188,7 +188,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 		},
 	}
 	recipeError := recipes.RecipeError{
-		v1.ErrorDetails{
+		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.InvalidRecipeOutputs,
 			Message: "json: unknown field \"invalid\"",
 		},

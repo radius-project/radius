@@ -429,7 +429,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 		},
 	}
 	recipeError := recipes.RecipeError{
-		v1.ErrorDetails{
+		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeletionFailed,
 			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type),
 		},

@@ -20,12 +20,12 @@ import (
 )
 
 type RecipeError struct {
-	v1.ErrorDetails
+	ErrorDetails v1.ErrorDetails
 }
 
 // Error returns an error string describing the error code and message.
 func (r *RecipeError) Error() string {
-	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
+	return fmt.Sprintf("code %v: err %v", r.ErrorDetails.Code, r.ErrorDetails.Message)
 }
 
 func (e *RecipeError) Is(target error) bool {
@@ -36,10 +36,10 @@ func (e *RecipeError) Is(target error) bool {
 // NewRecipeError creates a new RecipeError error with a given code, message and error details.
 func NewRecipeError(code string, message string, details *v1.ErrorDetails) *RecipeError {
 	err := new(RecipeError)
-	err.Message = message
-	err.Code = code
+	err.ErrorDetails.Message = message
+	err.ErrorDetails.Code = code
 	if details != nil {
-		err.Details = []v1.ErrorDetails{*details}
+		err.ErrorDetails.Details = []v1.ErrorDetails{*details}
 	}
 	return err
 }
