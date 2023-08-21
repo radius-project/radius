@@ -287,80 +287,6 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type BasicDaprResourceProperties.
-func (b BasicDaprResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", b.Application)
-	populate(objectMap, "componentName", b.ComponentName)
-	populate(objectMap, "environment", b.Environment)
-	populate(objectMap, "status", b.Status)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type BasicDaprResourceProperties.
-func (b *BasicDaprResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", b, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &b.Application)
-			delete(rawMsg, key)
-		case "componentName":
-				err = unpopulate(val, "ComponentName", &b.ComponentName)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &b.Environment)
-			delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &b.Status)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", b, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
-func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "application", b.Application)
-	populate(objectMap, "environment", b.Environment)
-	populate(objectMap, "status", b.Status)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type BasicResourceProperties.
-func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", b, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &b.Application)
-			delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &b.Environment)
-			delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &b.Status)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", b, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type BicepRecipeProperties.
 func (b BicepRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -469,6 +395,41 @@ func (c *CertificateObjectProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "version":
 				err = unpopulate(val, "Version", &c.Version)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", c, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type Components1Btn3DqSchemasGatewaypropertiesAllof0.
+func (c Components1Btn3DqSchemasGatewaypropertiesAllof0) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "application", c.Application)
+	populate(objectMap, "environment", c.Environment)
+	populate(objectMap, "status", c.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type Components1Btn3DqSchemasGatewaypropertiesAllof0.
+func (c *Components1Btn3DqSchemasGatewaypropertiesAllof0) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", c, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &c.Application)
+			delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &c.Environment)
+			delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &c.Status)
 			delete(rawMsg, key)
 		}
 		if err != nil {

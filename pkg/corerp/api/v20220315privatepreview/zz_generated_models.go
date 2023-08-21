@@ -131,34 +131,6 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	}
 }
 
-// BasicDaprResourceProperties - Basic properties of a Dapr component object.
-type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus
-}
-
-// BasicResourceProperties - Basic properties of a Radius resource.
-type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus
-}
-
 // BicepRecipeProperties - Represents Bicep recipe properties.
 type BicepRecipeProperties struct {
 	// REQUIRED; Discriminator property for RecipeProperties.
@@ -220,6 +192,19 @@ type CertificateObjectProperties struct {
 
 	// Certificate version
 	Version *string
+}
+
+// Components1Btn3DqSchemasGatewaypropertiesAllof0 - The base resource properties definition for Radius top-level resource
+// properties
+type Components1Btn3DqSchemasGatewaypropertiesAllof0 struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
 }
 
 // ConnectionProperties - Connection Properties
