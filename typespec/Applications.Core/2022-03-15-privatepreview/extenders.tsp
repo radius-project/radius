@@ -31,10 +31,13 @@ using TypeSpec.Versioning;
 using Azure.ResourceManager;
 using OpenAPI;
 
-namespace Applications.Link;
+namespace Applications.Core;
 
-model ExtenderSecretObject is Record<string>;
-model ExtenderListSecretResponse is Record<string>;
+@doc("Key/value pair secret object")
+model ExtenderSecretObject {}
+
+@doc("Response for list secrets API call")
+model ExtenderListSecretResponse {}
 
 @doc("ExtenderResource link")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
@@ -45,14 +48,20 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
   name: ResourceNameString;
 }
 
+// ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
+// we need to extend `Record<unknown>`.
+// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("ExtenderResource link properties")
-model ExtenderProperties extends BasicResourceProperties {
+model ExtenderProperties extends Record<unknown> {
+  ...BasicResourceProperties;
+
   @doc("Provisioning state of the extender link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
   @doc("The secrets for referenced resource")
-  secrets: ExtenderSecretObject;
+  secrets?: ExtenderSecretObject;
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the extender link")
   recipe?: Recipe;

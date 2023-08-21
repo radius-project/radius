@@ -124,6 +124,24 @@ enum ProvisioningState {
   Accepted,
 }
 
+@doc("Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.")
+enum ResourceProvisioning {
+  @doc("The resource lifecycle will be managed by Radius")
+  recipe,
+
+  @doc("The resource lifecycle will be managed by the user")
+  manual,
+}
+
+@doc("The recipe used to automatically deploy underlying infrastructure for a link")
+model Recipe {
+  @doc("The name of the recipe within the environment to use")
+  name: string;
+
+  @doc("Key/value parameters to pass into the recipe at deployment")
+  parameters?: {};
+}
+
 @doc("The application name")
 @maxLength(63)
 @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")

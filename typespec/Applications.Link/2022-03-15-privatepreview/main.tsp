@@ -24,7 +24,6 @@ import "./rabbitMQMessageQueues.tsp";
 import "./daprSecretStores.tsp";
 import "./daprStateStores.tsp";
 import "./daprPubSubBrokers.tsp";
-import "./extenders.tsp";
 
 using TypeSpec.Versioning;
 using Azure.ResourceManager;
