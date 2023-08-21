@@ -31,6 +31,6 @@ git remote -v
 
 2. Go to the main radius repo and create a pull request using the _compare against forks_ option:
 
-<img width="800px" src="compare.png" alt="Creating a pull request across forks">
+    <img width="800px" src="compare.png" alt="Creating a pull request across forks">
 
     Make sure you select the fields (shown in red) "head repository" as your fork (<username>/radius) and "compare" as your branch with the code changes.
