@@ -29,9 +29,9 @@ import "./common.tsp";
 using TypeSpec.Http;
 using TypeSpec.Rest;
 using TypeSpec.Versioning;
+using Autorest;
 using Azure.ResourceManager;
 using OpenAPI;
-using Autorest;
 
 namespace Applications.Core;
 
