@@ -32,7 +32,7 @@ on:
 
 env:
   # Go version
-  GOVER: '^1.20'
+  GOVER: '^1.21'
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -140,22 +140,9 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
-      - name: Get Go Cache path
-        id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
-            ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Generate ID for release
         id: gen-id
         run: |

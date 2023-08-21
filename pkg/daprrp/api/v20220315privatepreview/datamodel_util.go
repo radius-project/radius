@@ -18,15 +18,12 @@ package v20220315privatepreview
 
 import (
 	"fmt"
-	"os"
-	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 )
-
-const defaultRecipeName = "default"
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
 	if state == nil {
@@ -105,22 +102,22 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
 		CreatedBy:          to.Ptr(s.CreatedBy),
 		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
-		CreatedAt:          unmarshalTimeString(s.CreatedAt),
+		CreatedAt:          v20220315privatepreview.UnmarshalTimeString(s.CreatedAt),
 		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
-		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+		LastModifiedAt:     v20220315privatepreview.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }
 
 func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
 		return linkrp.LinkRecipe{
-			Name: defaultRecipeName,
+			Name: v20220315privatepreview.DefaultRecipeName,
 		}
 	}
 	recipe := linkrp.LinkRecipe{}
 	if r.Name == nil {
-		recipe.Name = defaultRecipeName
+		recipe.Name = v20220315privatepreview.DefaultRecipeName
 	} else {
 		recipe.Name = to.String(r.Name)
 	}
@@ -161,18 +158,4 @@ func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference 
 		}
 	}
 	return resources
-}
-
-func unmarshalTimeString(ts string) *time.Time {
-	var tt timeRFC3339
-	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(&tt)
-}
-
-func LoadTestData(testfile string) ([]byte, error) {
-	d, err := os.ReadFile(testfile)
-	if err != nil {
-		return nil, err
-	}
-	return d, nil
 }

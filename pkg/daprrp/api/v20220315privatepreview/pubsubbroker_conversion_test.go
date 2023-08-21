@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -112,7 +113,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := LoadTestData("./testdata/" + tc.file)
+			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &DaprPubSubBrokerResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -150,7 +151,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := LoadTestData("./testdata/" + test.payload)
+			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &DaprStateStoreResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -246,7 +247,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := LoadTestData("./testdata/" + tc.file)
+			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.DaprPubSubBroker{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -269,7 +270,7 @@ func TestDaprPubSubBroker_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
