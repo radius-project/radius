@@ -58,7 +58,7 @@ model RedisCacheSecrets {
 }
 
 @doc("RedisCache link properties")
-model RedisCacheProperties extends BasicResourceProperties {
+model RedisCacheProperties is RadiusResource<RedisCacheProperties> {
   @doc("Provisioning state of the redis cache link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

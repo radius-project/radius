@@ -43,7 +43,7 @@ model GatewayResource is TrackedResource<GatewayProperties> {
 }
 
 @doc("Gateway properties")
-model GatewayProperties extends BasicResourceProperties {
+model GatewayProperties extends RadiusResource<GatewayProperties> {
   @doc("Provisioning state of the Gateway at the time the operation was called.")
   @visibility("read")
   provisioningState?: ProvisioningState;

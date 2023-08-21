@@ -60,7 +60,8 @@ model RabbitMQSecrets {
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQMessageQueue link properties")
-model RabbitMQMessageQueueProperties extends BasicResourceProperties {
+model RabbitMQMessageQueueProperties
+  is RadiusResource<RabbitMQMessageQueueProperties> {
   @doc("Provisioning state of the rabbitMQ message queue link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

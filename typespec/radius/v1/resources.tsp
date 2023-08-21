@@ -23,8 +23,8 @@ using OpenAPI;
 using Azure.Core;
 using Azure.ResourceManager;
 
-@doc("Basic properties of a Radius resource.")
-model BasicResourceProperties {
+@doc("Base properties of a Radius resource.")
+model RadiusResourceBase {
   @doc("Status of a resource.")
   @visibility("read")
   status?: ResourceStatus;
@@ -36,11 +36,20 @@ model BasicResourceProperties {
   application?: Application;
 }
 
-@doc("Basic properties of a Dapr component object.")
-model BasicDaprResourceProperties extends BasicResourceProperties {
-  @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
-  @visibility("read")
-  componentName?: string;
+@doc("The base resource properties definition for Radius top-level resource properties")
+model RadiusResource<TProperties extends {}> {
+  ...TProperties;
+  ...RadiusResourceBase;
+}
+
+// ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
+// we need to extend `Record<unknown>`.
+// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
+@doc("The base resource properties definition for Radius top=level resource properties with additional properties")
+model RadiusResourceWithAdditionalProperties<TProperties extends {}>
+  extends Record<unknown> {
+  ...RadiusResourceBase;
+  ...TProperties;
 }
 
 @doc("IdentitySettings is the external identity setting.")

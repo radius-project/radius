@@ -35,7 +35,8 @@ using OpenAPI;
 namespace Applications.Link;
 
 @doc("DaprPubSubBroker link properties")
-model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
+model DaprPubSubBrokerProperties
+  is DaprResourceProperties<DaprPubSubBrokerProperties> {
   @doc("Provisioning state of the daprPubSubBroker resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

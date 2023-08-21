@@ -44,7 +44,8 @@ model TestAsyncResource is TrackedResource<TestAsyncResourceProperties> {
 }
 
 @doc("TestAsyncResource properties")
-model TestAsyncResourceProperties {
+model TestAsyncResourceProperties
+  is RadiusResource<TestAsyncResourceProperties> {
   @visibility("read")
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;

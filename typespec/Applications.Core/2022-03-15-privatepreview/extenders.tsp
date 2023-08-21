@@ -48,14 +48,10 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
   name: ResourceNameString;
 }
 
-// ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
-// we need to extend `Record<unknown>`.
-// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("ExtenderResource link properties")
-model ExtenderProperties extends Record<unknown> {
-  ...BasicResourceProperties;
-
+model ExtenderProperties
+  is RadiusResourceWithAdditionalProperties<ExtenderProperties> {
   @doc("Provisioning state of the extender link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

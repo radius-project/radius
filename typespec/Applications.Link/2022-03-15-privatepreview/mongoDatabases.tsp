@@ -55,7 +55,7 @@ model MongoDatabaseSecrets {
 }
 
 @doc("MongoDatabase link properties")
-model MongoDatabaseProperties extends BasicResourceProperties {
+model MongoDatabaseProperties is RadiusResource<MongoDatabaseProperties> {
   @doc("Provisioning state of the mongo database link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

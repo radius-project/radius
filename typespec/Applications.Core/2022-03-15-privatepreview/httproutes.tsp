@@ -44,7 +44,7 @@ model HttpRouteResource is TrackedResource<HttpRouteProperties> {
 }
 
 @doc("HTTPRoute properties")
-model HttpRouteProperties extends BasicResourceProperties {
+model HttpRouteProperties is RadiusResource<HttpRouteProperties> {
   @doc("Provisioning state of the HTTPRoute at the time the operation was called.")
   @visibility("read")
   provisioningState?: ProvisioningState;

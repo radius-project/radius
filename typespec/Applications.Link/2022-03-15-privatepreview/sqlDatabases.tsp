@@ -34,7 +34,7 @@ using OpenAPI;
 namespace Applications.Link;
 
 @doc("SqlDatabase properties")
-model SqlDatabaseProperties extends BasicResourceProperties {
+model SqlDatabaseProperties is RadiusResource<SqlDatabaseProperties> {
   @doc("Provisioning state of the Sql database link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

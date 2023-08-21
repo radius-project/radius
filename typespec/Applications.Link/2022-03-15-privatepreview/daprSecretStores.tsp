@@ -34,11 +34,13 @@ using Azure.ResourceManager;
 namespace Applications.Link;
 
 @doc("DaprSecretStore link properties")
-model DaprSecretStoreProperties extends BasicDaprResourceProperties {
+model DaprSecretStoreProperties
+  is DaprResourceProperties<DaprSecretStoreProperties> {
   @doc("Provisioning state of the dapr secret store link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
+  #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/")
   type?: string;
 

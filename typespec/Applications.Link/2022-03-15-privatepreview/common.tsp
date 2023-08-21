@@ -17,3 +17,11 @@ limitations under the License.
 import "@typespec/openapi";
 
 using OpenAPI;
+
+@doc("The base properties of a Dapr component object.")
+model DaprResourceProperties<TResource extends {}>
+  extends RadiusResource<TResource> {
+  @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
+  @visibility("read")
+  componentName?: string;
+}

@@ -34,7 +34,8 @@ using Azure.ResourceManager;
 namespace Applications.Link;
 
 @doc("DaprStateStore link properties")
-model DaprStateStoreProperties extends BasicDaprResourceProperties {
+model DaprStateStoreProperties
+  is DaprResourceProperties<DaprStateStoreProperties> {
   @doc("Provisioning state of the DaprStateStore link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;

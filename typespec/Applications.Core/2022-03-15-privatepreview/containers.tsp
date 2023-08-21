@@ -44,7 +44,7 @@ model ContainerResource is TrackedResource<ContainerProperties> {
 }
 
 @doc("Container properties")
-model ContainerProperties extends BasicResourceProperties {
+model ContainerProperties is RadiusResource<ContainerProperties> {
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;
 

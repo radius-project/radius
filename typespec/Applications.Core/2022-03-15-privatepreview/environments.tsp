@@ -45,7 +45,7 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
 }
 
 @doc("Environment properties")
-model EnvironmentProperties extends BasicResourceProperties {
+model EnvironmentProperties is RadiusResource<EnvironmentProperties> {
   @visibility("read")
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;

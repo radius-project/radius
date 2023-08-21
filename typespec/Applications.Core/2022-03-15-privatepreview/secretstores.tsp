@@ -43,7 +43,7 @@ model SecretStoreResource is TrackedResource<SecretStoreProperties> {
 }
 
 @doc("SecretStore properties")
-model SecretStoreProperties extends BasicResourceProperties {
+model SecretStoreProperties is RadiusResource<SecretStoreProperties> {
   @doc("Provisioning state of the Gateway at the time the operation was called.")
   @visibility("read")
   provisioningState?: ProvisioningState;
