@@ -22,18 +22,12 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
-
-type fakeResource struct{}
-
-// ResourceTypeName returns type of the resource.
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
 
 func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 	testCases := []struct {
@@ -122,7 +116,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			versionedResource := &RabbitMQQueueResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -223,7 +217,7 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
+			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
 			require.NoError(t, err)
 			resource := &datamodel.RabbitMQQueue{}
 			err = json.Unmarshal(rawPayload, resource)
@@ -261,7 +255,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
+			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + test.payload)
 			require.NoError(t, err)
 			versionedResource := &RabbitMQQueueResource{}
 			err = json.Unmarshal(rawPayload, versionedResource)
@@ -281,7 +275,7 @@ func TestRabbitMQQueue_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -294,7 +288,7 @@ func TestRabbitMQQueue_ConvertFromValidation(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rabbitmqsecrets.json")
+	rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/rabbitmqsecrets.json")
 	require.NoError(t, err)
 	versioned := &RabbitMQSecrets{}
 	err = json.Unmarshal(rawPayload, versioned)
@@ -311,7 +305,7 @@ func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rabbitmqsecretsdatamodel.json")
+	rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/rabbitmqsecretsdatamodel.json")
 	require.NoError(t, err)
 	secrets := &datamodel.RabbitMQSecrets{}
 	err = json.Unmarshal(rawPayload, secrets)
@@ -331,7 +325,7 @@ func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

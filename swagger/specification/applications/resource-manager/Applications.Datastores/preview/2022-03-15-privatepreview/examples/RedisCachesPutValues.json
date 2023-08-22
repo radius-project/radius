@@ -1,58 +1,57 @@
 {
-    "parameters": {
-      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
-      "redisCacheName": "redis0",
-      "api-version": "2022-03-15-privatepreview",
-      "RedisCacheParameters": {
+  "parameters": {
+    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "redisCacheName": "redis0",
+    "api-version": "2022-03-15-privatepreview",
+    "RedisCacheParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "resourceProvisioning": "manual",
+        "host": "myrediscache.redis.cache.windows.net",
+        "port": 6380,
+        "secrets": {
+          "password": "testPassword",
+          "connectionString": "test-connection-string"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis0",
+        "name": "redis0",
+        "type": "Applications.Datastores/redisCaches",
         "location": "West US",
         "properties": {
+          "provisioningState": "Succeeded",
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-          "mode": "values",
-          "host":"myrediscache.redis.cache.windows.net",
-          "port":6380,
-          "secrets": {
-            "password": "testPassword",
-            "connectionString": "test-connection-string"
-          }
+          "resourceProvisioning": "manual",
+          "host": "myrediscache.redis.cache.windows.net",
+          "port": 6380,
+          "username": "username"
         }
       }
     },
-    "responses": {
-      "200": {
-        "body": {
-          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis0",
-          "name": "redis0",
-          "type": "Applications.Datastores/redisCaches",
-          "location": "West US",
-          "properties": {
-            "provisioningState": "Succeeded",
-            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "mode": "values",
-            "host":"myrediscache.redis.cache.windows.net",
-            "port":6380,
-            "username": "username"
-          }
-        }
-      },
-      "201": {
-        "body": {
-          "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis1",
-          "name": "redis1",
-          "type": "Applications.Datastores/redisCaches",
-          "location": "West US",
-          "properties": {
-            "provisioningState": "Succeeded",
-            "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-            "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-            "mode": "values",
-            "host":"myrediscache.redis.cache.windows.net",
-            "port":6380,
-            "username": "username"
-          }
+    "201": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis0",
+        "name": "redis0",
+        "type": "Applications.Datastores/redisCaches",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "host": "myrediscache.redis.cache.windows.net",
+          "port": 6380,
+          "username": "username"
         }
       }
     }
   }
-  
+}
