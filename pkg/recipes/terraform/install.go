@@ -51,6 +51,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
 
 	installStartTime := time.Now()
+	result := metrics.SuccessfulOperationState
 	// Re-visit this: consider checking if an existing installation of same version of Terraform is available.
 	// For initial iteration we will always install Terraform for every execution of the recipe driver.
 	execPath, err := installer.Ensure(ctx, []src.Source{
@@ -60,14 +61,18 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to install terraform: %w", err)
+		result = metrics.FailedOperationState
 	}
 
 	// TODO: Update the metric to record the TF version when we start using a versioned TF installation.
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
-		[]attribute.KeyValue{metrics.TerraformVersionAttrKey.String("latest")})
+		[]attribute.KeyValue{
+			metrics.TerraformVersionAttrKey.String("latest"),
+			metrics.OperationStateAttrKey.String(result),
+		},
+	)
 
 	logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
 
-	return execPath, nil
+	return execPath, err
 }
