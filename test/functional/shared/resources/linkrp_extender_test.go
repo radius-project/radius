@@ -107,7 +107,7 @@ func Test_LinkRP_Extender_RecipeAWS(t *testing.T) {
 		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
 	}
 
-	template := "testdata/linkrp-resources-extenders-aws-s3-recipe.bicep"
+	template := "testdata/linkrp-resources-extender-aws-s3-recipe.bicep"
 	name := "linkrp-resources-extenders-aws-s3-recipe"
 	appName := "linkrp-resources-extenders-aws-s3-recipe-app"
 	bucketName := generateS3BucketName()
