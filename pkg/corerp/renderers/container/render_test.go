@@ -109,10 +109,9 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) reso
 			{Type: "subscriptions", Name: "test-subscription"},
 			{Type: "resourceGroups", Name: "test-resourcegroup"},
 		},
-		resources.TypeSegment{
-			Type: resourceType,
-			Name: resourceName,
-		}))
+		[]resources.TypeSegment{
+			{Type: resourceType, Name: resourceName},
+		}, nil))
 	require.NoError(t, err)
 
 	return id
