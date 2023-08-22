@@ -34,12 +34,14 @@ func (e *RecipeError) Is(target error) bool {
 }
 
 // NewRecipeError creates a new RecipeError error with a given code, message and error details.
-func NewRecipeError(code string, message string, details *v1.ErrorDetails) *RecipeError {
+func NewRecipeError(code string, message string, details ...*v1.ErrorDetails) *RecipeError {
 	err := new(RecipeError)
 	err.ErrorDetails.Message = message
 	err.ErrorDetails.Code = code
-	if details != nil {
-		err.ErrorDetails.Details = []v1.ErrorDetails{*details}
+	for _, val := range details {
+		if val != nil {
+			err.ErrorDetails.Details = append(err.ErrorDetails.Details, *val)
+		}
 	}
 	return err
 }
