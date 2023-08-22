@@ -41,22 +41,6 @@ model RadiusResourceBase {
   status?: ResourceStatus;
 }
 
-@doc("The base resource properties definition for Radius top-level resource properties")
-model RadiusResource<TProperties extends {}> {
-  ...RadiusResourceBase;
-  ...TProperties;
-}
-
-// ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
-// we need to extend `Record<unknown>`.
-// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
-@doc("The base resource properties definition for Radius top=level resource properties with additional properties")
-model RadiusResourceWithAdditionalProperties<TProperties extends {}>
-  extends Record<unknown> {
-  ...RadiusResourceBase;
-  ...TProperties;
-}
-
 @doc("IdentitySettings is the external identity setting.")
 model IdentitySettings {
   @doc("kind of identity setting")

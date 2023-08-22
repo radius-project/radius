@@ -46,7 +46,9 @@ model TestSyncResource is TrackedResource<TestSyncResourceProperties> {
 }
 
 @doc("TestSyncResource properties")
-model TestSyncResourceProperties is RadiusResource<TestSyncResourceProperties> {
+model TestSyncResourceProperties {
+  ...RadiusResourceBase;
+
   @visibility("read")
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;

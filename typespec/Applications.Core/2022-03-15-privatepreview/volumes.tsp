@@ -47,7 +47,9 @@ model VolumeResource is TrackedResource<VolumeProperties> {
 
 @doc("Volume properties")
 @discriminator("kind")
-model VolumeProperties is RadiusResource<VolumeProperties> {
+model VolumeProperties {
+  ...RadiusResourceBase;
+
   @doc("Provisioning state of the Volume at the time the operation was called.")
   @visibility("read")
   provisioningState?: ProvisioningState;

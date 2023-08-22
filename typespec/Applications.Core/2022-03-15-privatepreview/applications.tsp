@@ -47,7 +47,9 @@ model ApplicationResource is TrackedResource<ApplicationProperties> {
 }
 
 @doc("Application properties")
-model ApplicationProperties is RadiusResource<ApplicationProperties> {
+model ApplicationProperties {
+  ...RadiusResourceBase;
+
   @visibility("read")
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;
