@@ -43,6 +43,7 @@ func NewRecipeError(code string, message string, details ...*v1.ErrorDetails) *R
 			err.ErrorDetails.Details = append(err.ErrorDetails.Details, *val)
 		}
 	}
+
 	return err
 }
 
@@ -52,5 +53,6 @@ func GetRecipeErrorDetails(err error) *v1.ErrorDetails {
 	if recipeError != nil {
 		return &recipeError.ErrorDetails
 	}
+
 	return nil
 }

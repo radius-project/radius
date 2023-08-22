@@ -239,7 +239,7 @@ func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.Sta
 
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, fmt.Sprintf("terraform init failure: %s", err.Error()), recipes.GetRecipeErrorDetails(err))
+		return nil, fmt.Errorf("terraform init failure: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 

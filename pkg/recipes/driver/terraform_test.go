@@ -207,10 +207,16 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
 	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
-	require.Equal(t, "path is a required option for Terraform driver", err.Error())
+	require.Equal(t, err, &expErr)
+
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
