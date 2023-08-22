@@ -353,7 +353,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeLanguageFailure,
+				Code: recipes.RecipeDeploymentFailed,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
