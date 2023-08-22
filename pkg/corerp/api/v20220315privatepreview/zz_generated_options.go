@@ -7,8 +7,8 @@
 
 package v20220315privatepreview
 
-// ApplicationsClientCreateOrUpdateOptions contains the optional parameters for the ApplicationsClient.CreateOrUpdate method.
-type ApplicationsClientCreateOrUpdateOptions struct {
+// ApplicationsClientCreateOptions contains the optional parameters for the ApplicationsClient.Create method.
+type ApplicationsClientCreateOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -32,14 +32,22 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ContainersClientCreateOrUpdateOptions contains the optional parameters for the ContainersClient.CreateOrUpdate method.
-type ContainersClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// ContainersClientBeginCreateOptions contains the optional parameters for the ContainersClient.BeginCreate method.
+type ContainersClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// ContainersClientDeleteOptions contains the optional parameters for the ContainersClient.Delete method.
-type ContainersClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// ContainersClientBeginDeleteOptions contains the optional parameters for the ContainersClient.BeginDelete method.
+type ContainersClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ContainersClientBeginUpdateOptions contains the optional parameters for the ContainersClient.BeginUpdate method.
+type ContainersClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // ContainersClientGetOptions contains the optional parameters for the ContainersClient.Get method.
@@ -52,13 +60,8 @@ type ContainersClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ContainersClientUpdateOptions contains the optional parameters for the ContainersClient.Update method.
-type ContainersClientUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate method.
-type EnvironmentsClientCreateOrUpdateOptions struct {
+// EnvironmentsClientCreateOptions contains the optional parameters for the EnvironmentsClient.Create method.
+type EnvironmentsClientCreateOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -72,9 +75,8 @@ type EnvironmentsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// EnvironmentsClientGetRecipeMetadataOptions contains the optional parameters for the EnvironmentsClient.GetRecipeMetadata
-// method.
-type EnvironmentsClientGetRecipeMetadataOptions struct {
+// EnvironmentsClientGetmetadataOptions contains the optional parameters for the EnvironmentsClient.Getmetadata method.
+type EnvironmentsClientGetmetadataOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -88,14 +90,22 @@ type EnvironmentsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ExtendersClientCreateOrUpdateOptions contains the optional parameters for the ExtendersClient.CreateOrUpdate method.
-type ExtendersClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// ExtendersClientBeginCreateOptions contains the optional parameters for the ExtendersClient.BeginCreate method.
+type ExtendersClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// ExtendersClientDeleteOptions contains the optional parameters for the ExtendersClient.Delete method.
-type ExtendersClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// ExtendersClientBeginDeleteOptions contains the optional parameters for the ExtendersClient.BeginDelete method.
+type ExtendersClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// ExtendersClientBeginUpdateOptions contains the optional parameters for the ExtendersClient.BeginUpdate method.
+type ExtendersClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // ExtendersClientGetOptions contains the optional parameters for the ExtendersClient.Get method.
@@ -103,9 +113,8 @@ type ExtendersClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ExtendersClientListByRootScopeOptions contains the optional parameters for the ExtendersClient.NewListByRootScopePager
-// method.
-type ExtendersClientListByRootScopeOptions struct {
+// ExtendersClientListByScopeOptions contains the optional parameters for the ExtendersClient.NewListByScopePager method.
+type ExtendersClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -114,14 +123,22 @@ type ExtendersClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// GatewaysClientCreateOrUpdateOptions contains the optional parameters for the GatewaysClient.CreateOrUpdate method.
-type GatewaysClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// GatewaysClientBeginCreateOptions contains the optional parameters for the GatewaysClient.BeginCreate method.
+type GatewaysClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// GatewaysClientDeleteOptions contains the optional parameters for the GatewaysClient.Delete method.
-type GatewaysClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// GatewaysClientBeginDeleteOptions contains the optional parameters for the GatewaysClient.BeginDelete method.
+type GatewaysClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// GatewaysClientBeginUpdateOptions contains the optional parameters for the GatewaysClient.BeginUpdate method.
+type GatewaysClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // GatewaysClientGetOptions contains the optional parameters for the GatewaysClient.Get method.
@@ -134,19 +151,22 @@ type GatewaysClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// GatewaysClientUpdateOptions contains the optional parameters for the GatewaysClient.Update method.
-type GatewaysClientUpdateOptions struct {
-	// placeholder for future optional parameters
+// HTTPRoutesClientBeginCreateOptions contains the optional parameters for the HTTPRoutesClient.BeginCreate method.
+type HTTPRoutesClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// HTTPRoutesClientCreateOrUpdateOptions contains the optional parameters for the HTTPRoutesClient.CreateOrUpdate method.
-type HTTPRoutesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// HTTPRoutesClientBeginDeleteOptions contains the optional parameters for the HTTPRoutesClient.BeginDelete method.
+type HTTPRoutesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// HTTPRoutesClientDeleteOptions contains the optional parameters for the HTTPRoutesClient.Delete method.
-type HTTPRoutesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// HTTPRoutesClientBeginUpdateOptions contains the optional parameters for the HTTPRoutesClient.BeginUpdate method.
+type HTTPRoutesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // HTTPRoutesClientGetOptions contains the optional parameters for the HTTPRoutesClient.Get method.
@@ -159,19 +179,27 @@ type HTTPRoutesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// HTTPRoutesClientUpdateOptions contains the optional parameters for the HTTPRoutesClient.Update method.
-type HTTPRoutesClientUpdateOptions struct {
+// OperationsClientListOptions contains the optional parameters for the OperationsClient.NewListPager method.
+type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SecretStoresClientCreateOrUpdateOptions contains the optional parameters for the SecretStoresClient.CreateOrUpdate method.
-type SecretStoresClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// SecretStoresClientBeginCreateOptions contains the optional parameters for the SecretStoresClient.BeginCreate method.
+type SecretStoresClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// SecretStoresClientDeleteOptions contains the optional parameters for the SecretStoresClient.Delete method.
-type SecretStoresClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// SecretStoresClientBeginDeleteOptions contains the optional parameters for the SecretStoresClient.BeginDelete method.
+type SecretStoresClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// SecretStoresClientBeginUpdateOptions contains the optional parameters for the SecretStoresClient.BeginUpdate method.
+type SecretStoresClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // SecretStoresClientGetOptions contains the optional parameters for the SecretStoresClient.Get method.
@@ -179,8 +207,8 @@ type SecretStoresClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SecretStoresClientListOptions contains the optional parameters for the SecretStoresClient.NewListPager method.
-type SecretStoresClientListOptions struct {
+// SecretStoresClientListByScopeOptions contains the optional parameters for the SecretStoresClient.NewListByScopePager method.
+type SecretStoresClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -189,19 +217,22 @@ type SecretStoresClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SecretStoresClientUpdateOptions contains the optional parameters for the SecretStoresClient.Update method.
-type SecretStoresClientUpdateOptions struct {
-	// placeholder for future optional parameters
+// VolumesClientBeginCreateOptions contains the optional parameters for the VolumesClient.BeginCreate method.
+type VolumesClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// VolumesClientCreateOrUpdateOptions contains the optional parameters for the VolumesClient.CreateOrUpdate method.
-type VolumesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// VolumesClientBeginDeleteOptions contains the optional parameters for the VolumesClient.BeginDelete method.
+type VolumesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// VolumesClientDeleteOptions contains the optional parameters for the VolumesClient.Delete method.
-type VolumesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// VolumesClientBeginUpdateOptions contains the optional parameters for the VolumesClient.BeginUpdate method.
+type VolumesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // VolumesClientGetOptions contains the optional parameters for the VolumesClient.Get method.
@@ -211,11 +242,6 @@ type VolumesClientGetOptions struct {
 
 // VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.NewListByScopePager method.
 type VolumesClientListByScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// VolumesClientUpdateOptions contains the optional parameters for the VolumesClient.Update method.
-type VolumesClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 

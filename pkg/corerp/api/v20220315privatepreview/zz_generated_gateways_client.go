@@ -27,7 +27,9 @@ type GatewaysClient struct {
 }
 
 // NewGatewaysClient creates a new instance of GatewaysClient with the specified values.
-//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
 func NewGatewaysClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*GatewaysClient, error) {
@@ -42,33 +44,51 @@ func NewGatewaysClient(rootScope string, credential azcore.TokenCredential, opti
 	return client, nil
 }
 
-// CreateOrUpdate - Create or update a Gateway.
+// BeginCreate - Create a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - gatewayName - The name of the Gateway.
-//   - gatewayResource - Gateway details
-//   - options - GatewaysClientCreateOrUpdateOptions contains the optional parameters for the GatewaysClient.CreateOrUpdate method.
-func (client *GatewaysClient) CreateOrUpdate(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysClientCreateOrUpdateOptions) (GatewaysClientCreateOrUpdateResponse, error) {
+//   - gatewayName - Gateway name
+//   - resource - Resource create parameters.
+//   - options - GatewaysClientBeginCreateOptions contains the optional parameters for the GatewaysClient.BeginCreate method.
+func (client *GatewaysClient) BeginCreate(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*runtime.Poller[GatewaysClientCreateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.create(ctx, gatewayName, resource, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientCreateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[GatewaysClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Create - Create a GatewayResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *GatewaysClient) create(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createOrUpdateCreateRequest(ctx, gatewayName, gatewayResource, options)
+	req, err := client.createCreateRequest(ctx, gatewayName, resource, options)
 	if err != nil {
-		return GatewaysClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return GatewaysClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return GatewaysClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
-	return resp, err
+	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysClientCreateOrUpdateOptions) (*policy.Request, error) {
+// createCreateRequest creates the Create request.
+func (client *GatewaysClient) createCreateRequest(ctx context.Context, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
@@ -83,46 +103,56 @@ func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, g
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, gatewayResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, resource); err != nil {
 	return nil, err
 }
 	return req, nil
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *GatewaysClient) createOrUpdateHandleResponse(resp *http.Response) (GatewaysClientCreateOrUpdateResponse, error) {
-	result := GatewaysClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.GatewayResource); err != nil {
-		return GatewaysClientCreateOrUpdateResponse{}, err
-	}
-	return result, nil
-}
-
-// Delete - Delete a Gateway.
+// BeginDelete - Delete a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - gatewayName - The name of the Gateway.
-//   - options - GatewaysClientDeleteOptions contains the optional parameters for the GatewaysClient.Delete method.
-func (client *GatewaysClient) Delete(ctx context.Context, gatewayName string, options *GatewaysClientDeleteOptions) (GatewaysClientDeleteResponse, error) {
+//   - gatewayName - Gateway name
+//   - options - GatewaysClientBeginDeleteOptions contains the optional parameters for the GatewaysClient.BeginDelete method.
+func (client *GatewaysClient) BeginDelete(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*runtime.Poller[GatewaysClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, gatewayName, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[GatewaysClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Delete - Delete a GatewayResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *GatewaysClient) deleteOperation(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, gatewayName, options)
 	if err != nil {
-		return GatewaysClientDeleteResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return GatewaysClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
-		return GatewaysClientDeleteResponse{}, err
+		return nil, err
 	}
-	return GatewaysClientDeleteResponse{}, nil
+	return httpResp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayName string, options *GatewaysClientDeleteOptions) (*policy.Request, error) {
+func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
@@ -140,11 +170,11 @@ func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, gatewayNa
 	return req, nil
 }
 
-// Get - Gets the properties of a Gateway.
+// Get - Get a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - gatewayName - The name of the Gateway.
+//   - gatewayName - Gateway name
 //   - options - GatewaysClientGetOptions contains the optional parameters for the GatewaysClient.Get method.
 func (client *GatewaysClient) Get(ctx context.Context, gatewayName string, options *GatewaysClientGetOptions) (GatewaysClientGetResponse, error) {
 	var err error
@@ -192,7 +222,7 @@ func (client *GatewaysClient) getHandleResponse(resp *http.Response) (GatewaysCl
 	return result, nil
 }
 
-// NewListByScopePager - List all Gateways in the given scope.
+// NewListByScopePager - List GatewayResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - options - GatewaysClientListByScopeOptions contains the optional parameters for the GatewaysClient.NewListByScopePager
@@ -243,39 +273,57 @@ func (client *GatewaysClient) listByScopeCreateRequest(ctx context.Context, opti
 // listByScopeHandleResponse handles the ListByScope response.
 func (client *GatewaysClient) listByScopeHandleResponse(resp *http.Response) (GatewaysClientListByScopeResponse, error) {
 	result := GatewaysClientListByScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.GatewayResourceList); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.GatewayResourceListResult); err != nil {
 		return GatewaysClientListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// Update - Update the properties of an existing Gateway.
+// BeginUpdate - Update a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - gatewayName - The name of the Gateway.
-//   - gatewayResource - Gateway details
-//   - options - GatewaysClientUpdateOptions contains the optional parameters for the GatewaysClient.Update method.
-func (client *GatewaysClient) Update(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysClientUpdateOptions) (GatewaysClientUpdateResponse, error) {
+//   - gatewayName - Gateway name
+//   - properties - The resource properties to be updated.
+//   - options - GatewaysClientBeginUpdateOptions contains the optional parameters for the GatewaysClient.BeginUpdate method.
+func (client *GatewaysClient) BeginUpdate(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*runtime.Poller[GatewaysClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, gatewayName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[GatewaysClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Update - Update a GatewayResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *GatewaysClient) update(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, gatewayName, gatewayResource, options)
+	req, err := client.updateCreateRequest(ctx, gatewayName, properties, options)
 	if err != nil {
-		return GatewaysClientUpdateResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return GatewaysClientUpdateResponse{}, err
+		return nil, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
 		err = runtime.NewResponseError(httpResp)
-		return GatewaysClientUpdateResponse{}, err
+		return nil, err
 	}
-	resp, err := client.updateHandleResponse(httpResp)
-	return resp, err
+	return httpResp, nil
 }
 
 // updateCreateRequest creates the Update request.
-func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayName string, gatewayResource GatewayResource, options *GatewaysClientUpdateOptions) (*policy.Request, error) {
+func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if gatewayName == "" {
@@ -290,18 +338,9 @@ func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayNa
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, gatewayResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
 	return nil, err
 }
 	return req, nil
-}
-
-// updateHandleResponse handles the Update response.
-func (client *GatewaysClient) updateHandleResponse(resp *http.Response) (GatewaysClientUpdateResponse, error) {
-	result := GatewaysClientUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.GatewayResource); err != nil {
-		return GatewaysClientUpdateResponse{}, err
-	}
-	return result, nil
 }
 

@@ -7,9 +7,9 @@
 
 package v20220315privatepreview
 
-// ApplicationsClientCreateOrUpdateResponse contains the response from method ApplicationsClient.CreateOrUpdate.
-type ApplicationsClientCreateOrUpdateResponse struct {
-	// Radius Application.
+// ApplicationsClientCreateResponse contains the response from method ApplicationsClient.Create.
+type ApplicationsClientCreateResponse struct {
+	// Radius Application resource
 	ApplicationResource
 }
 
@@ -20,54 +20,54 @@ type ApplicationsClientDeleteResponse struct {
 
 // ApplicationsClientGetResponse contains the response from method ApplicationsClient.Get.
 type ApplicationsClientGetResponse struct {
-	// Radius Application.
+	// Radius Application resource
 	ApplicationResource
 }
 
 // ApplicationsClientListByScopeResponse contains the response from method ApplicationsClient.NewListByScopePager.
 type ApplicationsClientListByScopeResponse struct {
-	// The list of applications.
-	ApplicationResourceList
+	// The response of a ApplicationResource list operation.
+	ApplicationResourceListResult
 }
 
 // ApplicationsClientUpdateResponse contains the response from method ApplicationsClient.Update.
 type ApplicationsClientUpdateResponse struct {
-	// Radius Application.
+	// Radius Application resource
 	ApplicationResource
 }
 
-// ContainersClientCreateOrUpdateResponse contains the response from method ContainersClient.CreateOrUpdate.
-type ContainersClientCreateOrUpdateResponse struct {
-	// Container
+// ContainersClientCreateResponse contains the response from method ContainersClient.BeginCreate.
+type ContainersClientCreateResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	ContainerResource
 }
 
-// ContainersClientDeleteResponse contains the response from method ContainersClient.Delete.
+// ContainersClientDeleteResponse contains the response from method ContainersClient.BeginDelete.
 type ContainersClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
 // ContainersClientGetResponse contains the response from method ContainersClient.Get.
 type ContainersClientGetResponse struct {
-	// Container
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	ContainerResource
 }
 
 // ContainersClientListByScopeResponse contains the response from method ContainersClient.NewListByScopePager.
 type ContainersClientListByScopeResponse struct {
-	// The list of containers.
-	ContainerResourceList
+	// The response of a ContainerResource list operation.
+	ContainerResourceListResult
 }
 
-// ContainersClientUpdateResponse contains the response from method ContainersClient.Update.
+// ContainersClientUpdateResponse contains the response from method ContainersClient.BeginUpdate.
 type ContainersClientUpdateResponse struct {
-	// Container
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	ContainerResource
 }
 
-// EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
-type EnvironmentsClientCreateOrUpdateResponse struct {
-	// Application environment.
+// EnvironmentsClientCreateResponse contains the response from method EnvironmentsClient.Create.
+type EnvironmentsClientCreateResponse struct {
+	// The environment resource
 	EnvironmentResource
 }
 
@@ -76,138 +76,150 @@ type EnvironmentsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// EnvironmentsClientGetRecipeMetadataResponse contains the response from method EnvironmentsClient.GetRecipeMetadata.
-type EnvironmentsClientGetRecipeMetadataResponse struct {
-	// Properties of a Recipe linked to an Environment.
-	RecipeMetadataProperties
-}
-
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.
 type EnvironmentsClientGetResponse struct {
-	// Application environment.
+	// The environment resource
 	EnvironmentResource
+}
+
+// EnvironmentsClientGetmetadataResponse contains the response from method EnvironmentsClient.Getmetadata.
+type EnvironmentsClientGetmetadataResponse struct {
+	// The properties of a Recipe linked to an Environment.
+	RecipeGetMetadataResponse
 }
 
 // EnvironmentsClientListByScopeResponse contains the response from method EnvironmentsClient.NewListByScopePager.
 type EnvironmentsClientListByScopeResponse struct {
-	// The list of environments.
-	EnvironmentResourceList
+	// The response of a EnvironmentResource list operation.
+	EnvironmentResourceListResult
 }
 
 // EnvironmentsClientUpdateResponse contains the response from method EnvironmentsClient.Update.
 type EnvironmentsClientUpdateResponse struct {
-	// Application environment.
+	// The environment resource
 	EnvironmentResource
 }
 
-// ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
-type ExtendersClientCreateOrUpdateResponse struct {
-	// Extender portable resource.
+// ExtendersClientCreateResponse contains the response from method ExtendersClient.BeginCreate.
+type ExtendersClientCreateResponse struct {
+	// ExtenderResource link
 	ExtenderResource
 }
 
-// ExtendersClientDeleteResponse contains the response from method ExtendersClient.Delete.
+// ExtendersClientDeleteResponse contains the response from method ExtendersClient.BeginDelete.
 type ExtendersClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
 // ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
 type ExtendersClientGetResponse struct {
-	// Extender portable resource.
+	// ExtenderResource link
 	ExtenderResource
 }
 
-// ExtendersClientListByRootScopeResponse contains the response from method ExtendersClient.NewListByRootScopePager.
-type ExtendersClientListByRootScopeResponse struct {
-	// Object that includes an array of Extender and a possible portable resource for next set.
-	ExtenderList
+// ExtendersClientListByScopeResponse contains the response from method ExtendersClient.NewListByScopePager.
+type ExtendersClientListByScopeResponse struct {
+	// The response of a ExtenderResource list operation.
+	ExtenderResourceListResult
 }
 
 // ExtendersClientListSecretsResponse contains the response from method ExtendersClient.ListSecrets.
 type ExtendersClientListSecretsResponse struct {
-	// The secret values for the given Extender portable resource.
-	Value map[string]any
+	// Any object
+	Object map[string]any
 }
 
-// GatewaysClientCreateOrUpdateResponse contains the response from method GatewaysClient.CreateOrUpdate.
-type GatewaysClientCreateOrUpdateResponse struct {
-	// Gateway Resource that specifies how traffic is exposed to the application.
+// ExtendersClientUpdateResponse contains the response from method ExtendersClient.BeginUpdate.
+type ExtendersClientUpdateResponse struct {
+	// ExtenderResource link
+	ExtenderResource
+}
+
+// GatewaysClientCreateResponse contains the response from method GatewaysClient.BeginCreate.
+type GatewaysClientCreateResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	GatewayResource
 }
 
-// GatewaysClientDeleteResponse contains the response from method GatewaysClient.Delete.
+// GatewaysClientDeleteResponse contains the response from method GatewaysClient.BeginDelete.
 type GatewaysClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
 // GatewaysClientGetResponse contains the response from method GatewaysClient.Get.
 type GatewaysClientGetResponse struct {
-	// Gateway Resource that specifies how traffic is exposed to the application.
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	GatewayResource
 }
 
 // GatewaysClientListByScopeResponse contains the response from method GatewaysClient.NewListByScopePager.
 type GatewaysClientListByScopeResponse struct {
-	// The list of Gateways.
-	GatewayResourceList
+	// The response of a GatewayResource list operation.
+	GatewayResourceListResult
 }
 
-// GatewaysClientUpdateResponse contains the response from method GatewaysClient.Update.
+// GatewaysClientUpdateResponse contains the response from method GatewaysClient.BeginUpdate.
 type GatewaysClientUpdateResponse struct {
-	// Gateway Resource that specifies how traffic is exposed to the application.
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	GatewayResource
 }
 
-// HTTPRoutesClientCreateOrUpdateResponse contains the response from method HTTPRoutesClient.CreateOrUpdate.
-type HTTPRoutesClientCreateOrUpdateResponse struct {
-	// Radius HTTP Route Resource.
+// HTTPRoutesClientCreateResponse contains the response from method HTTPRoutesClient.BeginCreate.
+type HTTPRoutesClientCreateResponse struct {
+	// Radius HTTPRoute Resource.
 	HTTPRouteResource
 }
 
-// HTTPRoutesClientDeleteResponse contains the response from method HTTPRoutesClient.Delete.
+// HTTPRoutesClientDeleteResponse contains the response from method HTTPRoutesClient.BeginDelete.
 type HTTPRoutesClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
 // HTTPRoutesClientGetResponse contains the response from method HTTPRoutesClient.Get.
 type HTTPRoutesClientGetResponse struct {
-	// Radius HTTP Route Resource.
+	// Radius HTTPRoute Resource.
 	HTTPRouteResource
 }
 
 // HTTPRoutesClientListByScopeResponse contains the response from method HTTPRoutesClient.NewListByScopePager.
 type HTTPRoutesClientListByScopeResponse struct {
-	// The list of HTTP Routes.
-	HTTPRouteResourceList
+	// The response of a HttpRouteResource list operation.
+	HTTPRouteResourceListResult
 }
 
-// HTTPRoutesClientUpdateResponse contains the response from method HTTPRoutesClient.Update.
+// HTTPRoutesClientUpdateResponse contains the response from method HTTPRoutesClient.BeginUpdate.
 type HTTPRoutesClientUpdateResponse struct {
-	// Radius HTTP Route Resource.
+	// Radius HTTPRoute Resource.
 	HTTPRouteResource
 }
 
-// SecretStoresClientCreateOrUpdateResponse contains the response from method SecretStoresClient.CreateOrUpdate.
-type SecretStoresClientCreateOrUpdateResponse struct {
-	// Radius SecretStore Resource.
+// OperationsClientListResponse contains the response from method OperationsClient.NewListPager.
+type OperationsClientListResponse struct {
+	// A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to get the next set of results.
+	OperationListResult
+}
+
+// SecretStoresClientCreateResponse contains the response from method SecretStoresClient.BeginCreate.
+type SecretStoresClientCreateResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	SecretStoreResource
 }
 
-// SecretStoresClientDeleteResponse contains the response from method SecretStoresClient.Delete.
+// SecretStoresClientDeleteResponse contains the response from method SecretStoresClient.BeginDelete.
 type SecretStoresClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
 // SecretStoresClientGetResponse contains the response from method SecretStoresClient.Get.
 type SecretStoresClientGetResponse struct {
-	// Radius SecretStore Resource.
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	SecretStoreResource
 }
 
-// SecretStoresClientListResponse contains the response from method SecretStoresClient.NewListPager.
-type SecretStoresClientListResponse struct {
-	// The list of SecretStores.
-	SecretStoreResourceList
+// SecretStoresClientListByScopeResponse contains the response from method SecretStoresClient.NewListByScopePager.
+type SecretStoresClientListByScopeResponse struct {
+	// The response of a SecretStoreResource list operation.
+	SecretStoreResourceListResult
 }
 
 // SecretStoresClientListSecretsResponse contains the response from method SecretStoresClient.ListSecrets.
@@ -216,38 +228,38 @@ type SecretStoresClientListSecretsResponse struct {
 	SecretStoreListSecretsResult
 }
 
-// SecretStoresClientUpdateResponse contains the response from method SecretStoresClient.Update.
+// SecretStoresClientUpdateResponse contains the response from method SecretStoresClient.BeginUpdate.
 type SecretStoresClientUpdateResponse struct {
-	// Radius SecretStore Resource.
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	SecretStoreResource
 }
 
-// VolumesClientCreateOrUpdateResponse contains the response from method VolumesClient.CreateOrUpdate.
-type VolumesClientCreateOrUpdateResponse struct {
-	// Radius Volume Resource.
+// VolumesClientCreateResponse contains the response from method VolumesClient.BeginCreate.
+type VolumesClientCreateResponse struct {
+	// Radius Volume resource.
 	VolumeResource
 }
 
-// VolumesClientDeleteResponse contains the response from method VolumesClient.Delete.
+// VolumesClientDeleteResponse contains the response from method VolumesClient.BeginDelete.
 type VolumesClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
 // VolumesClientGetResponse contains the response from method VolumesClient.Get.
 type VolumesClientGetResponse struct {
-	// Radius Volume Resource.
+	// Radius Volume resource.
 	VolumeResource
 }
 
 // VolumesClientListByScopeResponse contains the response from method VolumesClient.NewListByScopePager.
 type VolumesClientListByScopeResponse struct {
-	// The list of Volumes.
-	VolumeResourceList
+	// The response of a VolumeResource list operation.
+	VolumeResourceListResult
 }
 
-// VolumesClientUpdateResponse contains the response from method VolumesClient.Update.
+// VolumesClientUpdateResponse contains the response from method VolumesClient.BeginUpdate.
 type VolumesClientUpdateResponse struct {
-	// Radius Volume Resource.
+	// Radius Volume resource.
 	VolumeResource
 }
 

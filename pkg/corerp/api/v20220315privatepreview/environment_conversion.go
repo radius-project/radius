@@ -70,7 +70,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {
 				if recipeDetails != nil {
-					if recipeDetails.GetEnvironmentRecipeProperties().TemplateKind == nil || !isValidTemplateKind(*recipeDetails.GetEnvironmentRecipeProperties().TemplateKind) {
+					if recipeDetails.GetRecipeProperties().TemplateKind == nil || !isValidTemplateKind(*recipeDetails.GetRecipeProperties().TemplateKind) {
 						formats := []string{}
 						for _, format := range types.SupportedTemplateKind {
 							formats = append(formats, fmt.Sprintf("%q", format))
@@ -135,9 +135,9 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 
 	if env.Properties.Recipes != nil {
-		recipes := make(map[string]map[string]EnvironmentRecipePropertiesClassification)
+		recipes := make(map[string]map[string]RecipePropertiesClassification)
 		for resourceType, recipe := range env.Properties.Recipes {
-			recipes[resourceType] = map[string]EnvironmentRecipePropertiesClassification{}
+			recipes[resourceType] = map[string]RecipePropertiesClassification{}
 			for recipeName, recipeDetails := range recipe {
 				recipes[resourceType][recipeName] = fromRecipePropertiesClassificationDatamodel(recipeDetails)
 			}
@@ -159,7 +159,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 	}
 
-	var extensions []EnvironmentExtensionClassification
+	var extensions []ExtensionClassification
 	if env.Properties.Extensions != nil {
 		for _, e := range env.Properties.Extensions {
 			extensions = append(extensions, fromEnvExtensionClassificationDataModel(e))
@@ -255,11 +255,11 @@ func fromEnvironmentComputeKind(kind rpv1.EnvironmentComputeKind) *string {
 }
 
 // fromExtensionClassificationEnvDataModel: Converts from base datamodel to versioned datamodel
-func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentExtensionClassification {
+func fromEnvExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
-		return &EnvironmentKubernetesMetadataExtension{
+		return &KubernetesMetadataExtension{
 			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
@@ -270,9 +270,9 @@ func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentE
 }
 
 // toEnvExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Extension {
+func toEnvExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
-	case *EnvironmentKubernetesMetadataExtension:
+	case *KubernetesMetadataExtension:
 		return datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.KubeMetadataExtension{
@@ -285,7 +285,7 @@ func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Ext
 	return datamodel.Extension{}
 }
 
-func toEnvironmentRecipeProperties(e EnvironmentRecipePropertiesClassification) (datamodel.EnvironmentRecipeProperties, error) {
+func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.EnvironmentRecipeProperties, error) {
 	switch c := e.(type) {
 	case *TerraformRecipeProperties:
 		if c.TemplatePath != nil {
@@ -310,7 +310,7 @@ func toEnvironmentRecipeProperties(e EnvironmentRecipePropertiesClassification) 
 	return datamodel.EnvironmentRecipeProperties{}, nil
 }
 
-func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) EnvironmentRecipePropertiesClassification {
+func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipeProperties) RecipePropertiesClassification {
 	switch e.TemplateKind {
 	case types.TemplateKindTerraform:
 		return &TerraformRecipeProperties{

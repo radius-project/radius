@@ -117,14 +117,14 @@ func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning)
 	return &converted
 }
 
-func fromRecipeDataModel(r linkrp.LinkRecipe) *ResourceRecipe {
-	return &ResourceRecipe{
+func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
+	return &Recipe{
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
 	}
 }
 
-func toRecipeDataModel(r *ResourceRecipe) linkrp.LinkRecipe {
+func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
 		return linkrp.LinkRecipe{
 			Name: linkrp_apiver.DefaultRecipeName,

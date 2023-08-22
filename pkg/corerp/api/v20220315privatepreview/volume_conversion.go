@@ -167,8 +167,8 @@ func toSecretDataModel(s *SecretObjectProperties) *datamodel.SecretObjectPropert
 	}
 }
 
-func fromEncoding(encode *datamodel.SecretEncoding) *Encoding {
-	enc := EncodingUTF8
+func fromEncoding(encode *datamodel.SecretEncoding) *VolumeSecretEncodings {
+	enc := VolumeSecretEncodingsUTF8
 
 	if encode == nil {
 		return &enc
@@ -176,18 +176,18 @@ func fromEncoding(encode *datamodel.SecretEncoding) *Encoding {
 
 	switch *encode {
 	case datamodel.SecretObjectPropertiesEncodingBase64:
-		enc = EncodingBase64
+		enc = VolumeSecretEncodingsBase64
 	case datamodel.SecretObjectPropertiesEncodingHex:
-		enc = EncodingHex
+		enc = VolumeSecretEncodingsHex
 	case datamodel.SecretObjectPropertiesEncodingUTF8:
-		enc = EncodingUTF8
+		enc = VolumeSecretEncodingsUTF8
 	default:
-		enc = EncodingUTF8
+		enc = VolumeSecretEncodingsUTF8
 	}
 	return &enc
 }
 
-func toEncoding(e *Encoding) *datamodel.SecretEncoding {
+func toEncoding(e *VolumeSecretEncodings) *datamodel.SecretEncoding {
 	enc := datamodel.SecretObjectPropertiesEncodingUTF8
 
 	if e == nil {
@@ -195,11 +195,11 @@ func toEncoding(e *Encoding) *datamodel.SecretEncoding {
 	}
 
 	switch *e {
-	case EncodingBase64:
+	case VolumeSecretEncodingsBase64:
 		enc = datamodel.SecretObjectPropertiesEncodingBase64
-	case EncodingHex:
+	case VolumeSecretEncodingsHex:
 		enc = datamodel.SecretObjectPropertiesEncodingHex
-	case EncodingUTF8:
+	case VolumeSecretEncodingsUTF8:
 		enc = datamodel.SecretObjectPropertiesEncodingUTF8
 	default:
 		enc = datamodel.SecretObjectPropertiesEncodingUTF8
@@ -217,9 +217,9 @@ func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjec
 
 	if c.Format != nil {
 		switch *c.Format {
-		case FormatPem:
+		case CertificateFormatsPem:
 			prop.Format = to.Ptr(datamodel.CertificateFormatPEM)
-		case FormatPfx:
+		case CertificateFormatsPfx:
 			prop.Format = to.Ptr(datamodel.CertificateFormatPFX)
 		default:
 			prop.Format = to.Ptr(datamodel.CertificateFormatPEM)
@@ -228,11 +228,11 @@ func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjec
 
 	if c.CertType != nil {
 		switch *c.CertType {
-		case CertTypeCertificate:
+		case CertificateTypesCertificate:
 			prop.CertType = to.Ptr(datamodel.CertificateTypeCertificate)
-		case CertTypePrivatekey:
+		case CertificateTypesPrivatekey:
 			prop.CertType = to.Ptr(datamodel.CertificateTypePrivateKey)
-		case CertTypePublickey:
+		case CertificateTypesPublickey:
 			prop.CertType = to.Ptr(datamodel.CertificateTypePublicKey)
 		}
 	}
@@ -251,22 +251,22 @@ func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateOb
 	if dm.Format != nil {
 		switch *dm.Format {
 		case datamodel.CertificateFormatPEM:
-			prop.Format = to.Ptr(FormatPem)
+			prop.Format = to.Ptr(CertificateFormatsPem)
 		case datamodel.CertificateFormatPFX:
-			prop.Format = to.Ptr(FormatPfx)
+			prop.Format = to.Ptr(CertificateFormatsPfx)
 		default:
-			prop.Format = to.Ptr(FormatPem)
+			prop.Format = to.Ptr(CertificateFormatsPem)
 		}
 	}
 
 	if dm.CertType != nil {
 		switch *dm.CertType {
 		case datamodel.CertificateTypeCertificate:
-			prop.CertType = to.Ptr(CertTypeCertificate)
+			prop.CertType = to.Ptr(CertificateTypesCertificate)
 		case datamodel.CertificateTypePrivateKey:
-			prop.CertType = to.Ptr(CertTypePrivatekey)
+			prop.CertType = to.Ptr(CertificateTypesPrivatekey)
 		case datamodel.CertificateTypePublicKey:
-			prop.CertType = to.Ptr(CertTypePublickey)
+			prop.CertType = to.Ptr(CertificateTypesPublickey)
 		}
 	}
 

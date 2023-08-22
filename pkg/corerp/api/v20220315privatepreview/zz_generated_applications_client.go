@@ -27,7 +27,9 @@ type ApplicationsClient struct {
 }
 
 // NewApplicationsClient creates a new instance of ApplicationsClient with the specified values.
-//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
 func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*ApplicationsClient, error) {
@@ -42,34 +44,33 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 	return client, nil
 }
 
-// CreateOrUpdate - Create or update an Application.
+// Create - Create a ApplicationResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - applicationName - The name of the application.
-//   - applicationResource - application details
-//   - options - ApplicationsClientCreateOrUpdateOptions contains the optional parameters for the ApplicationsClient.CreateOrUpdate
-//     method.
-func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsClientCreateOrUpdateOptions) (ApplicationsClientCreateOrUpdateResponse, error) {
+//   - applicationName - The application name
+//   - resource - Resource create parameters.
+//   - options - ApplicationsClientCreateOptions contains the optional parameters for the ApplicationsClient.Create method.
+func (client *ApplicationsClient) Create(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (ApplicationsClientCreateResponse, error) {
 	var err error
-	req, err := client.createOrUpdateCreateRequest(ctx, applicationName, applicationResource, options)
+	req, err := client.createCreateRequest(ctx, applicationName, resource, options)
 	if err != nil {
-		return ApplicationsClientCreateOrUpdateResponse{}, err
+		return ApplicationsClientCreateResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return ApplicationsClientCreateOrUpdateResponse{}, err
+		return ApplicationsClientCreateResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return ApplicationsClientCreateOrUpdateResponse{}, err
+		return ApplicationsClientCreateResponse{}, err
 	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
+	resp, err := client.createHandleResponse(httpResp)
 	return resp, err
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsClientCreateOrUpdateOptions) (*policy.Request, error) {
+// createCreateRequest creates the Create request.
+func (client *ApplicationsClient) createCreateRequest(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
@@ -84,26 +85,26 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, applicationResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, resource); err != nil {
 	return nil, err
 }
 	return req, nil
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Response) (ApplicationsClientCreateOrUpdateResponse, error) {
-	result := ApplicationsClientCreateOrUpdateResponse{}
+// createHandleResponse handles the Create response.
+func (client *ApplicationsClient) createHandleResponse(resp *http.Response) (ApplicationsClientCreateResponse, error) {
+	result := ApplicationsClientCreateResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResource); err != nil {
-		return ApplicationsClientCreateOrUpdateResponse{}, err
+		return ApplicationsClientCreateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Delete an Application.
+// Delete - Delete a ApplicationResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - applicationName - The name of the application.
+//   - applicationName - The application name
 //   - options - ApplicationsClientDeleteOptions contains the optional parameters for the ApplicationsClient.Delete method.
 func (client *ApplicationsClient) Delete(ctx context.Context, applicationName string, options *ApplicationsClientDeleteOptions) (ApplicationsClientDeleteResponse, error) {
 	var err error
@@ -115,7 +116,7 @@ func (client *ApplicationsClient) Delete(ctx context.Context, applicationName st
 	if err != nil {
 		return ApplicationsClientDeleteResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
 		return ApplicationsClientDeleteResponse{}, err
 	}
@@ -141,11 +142,11 @@ func (client *ApplicationsClient) deleteCreateRequest(ctx context.Context, appli
 	return req, nil
 }
 
-// Get - Gets the properties of an Application.
+// Get - Get a ApplicationResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - applicationName - The name of the application.
+//   - applicationName - The application name
 //   - options - ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
 func (client *ApplicationsClient) Get(ctx context.Context, applicationName string, options *ApplicationsClientGetOptions) (ApplicationsClientGetResponse, error) {
 	var err error
@@ -193,7 +194,7 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 	return result, nil
 }
 
-// NewListByScopePager - List all applications in the given scope.
+// NewListByScopePager - List ApplicationResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - options - ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.NewListByScopePager
@@ -244,22 +245,22 @@ func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, 
 // listByScopeHandleResponse handles the ListByScope response.
 func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response) (ApplicationsClientListByScopeResponse, error) {
 	result := ApplicationsClientListByScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResourceList); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResourceListResult); err != nil {
 		return ApplicationsClientListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// Update - Update the properties of an existing Application.
+// Update - Update a ApplicationResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - applicationName - The name of the application.
-//   - applicationResource - application details
+//   - applicationName - The application name
+//   - properties - The resource properties to be updated.
 //   - options - ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
-func (client *ApplicationsClient) Update(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsClientUpdateOptions) (ApplicationsClientUpdateResponse, error) {
+func (client *ApplicationsClient) Update(ctx context.Context, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (ApplicationsClientUpdateResponse, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, applicationName, applicationResource, options)
+	req, err := client.updateCreateRequest(ctx, applicationName, properties, options)
 	if err != nil {
 		return ApplicationsClientUpdateResponse{}, err
 	}
@@ -267,7 +268,7 @@ func (client *ApplicationsClient) Update(ctx context.Context, applicationName st
 	if err != nil {
 		return ApplicationsClientUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
 		err = runtime.NewResponseError(httpResp)
 		return ApplicationsClientUpdateResponse{}, err
 	}
@@ -276,7 +277,7 @@ func (client *ApplicationsClient) Update(ctx context.Context, applicationName st
 }
 
 // updateCreateRequest creates the Update request.
-func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, applicationName string, applicationResource ApplicationResource, options *ApplicationsClientUpdateOptions) (*policy.Request, error) {
+func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, applicationName string, properties ApplicationResourceUpdate, options *ApplicationsClientUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
@@ -291,7 +292,7 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, appli
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, applicationResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
 	return nil, err
 }
 	return req, nil
