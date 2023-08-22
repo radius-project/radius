@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
@@ -266,7 +266,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: v1.CodeInternal,
+				Code: recipes.RecipeDeploymentFailed,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -312,7 +312,7 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code:            v1.CodeInternal,
+				Code:            recipes.InvalidRecipeOutputs,
 				MessageContains: "failed to read the recipe output \"result\": json: unknown field \"error\"",
 			},
 		},
@@ -353,7 +353,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: v1.CodeInternal,
+				Code: recipes.RecipeLanguageFailure,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -399,7 +399,7 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: v1.CodeInternal,
+				Code: recipes.RecipeDeploymentFailed,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
