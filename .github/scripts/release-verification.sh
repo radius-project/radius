@@ -38,7 +38,7 @@ echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
 echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
-curl https://get.radapp.dev/tools/rad/$RELEASE_VERSION_NUMBER/macos-x64/rad --output rad
+curl https://get.radapp.dev/tools/rad/$RELEASE_VERSION_NUMBER/linux-x64/rad --output rad
 chmod +x ./rad
 
 RELEASE_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.release')
