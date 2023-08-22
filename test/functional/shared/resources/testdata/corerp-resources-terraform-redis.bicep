@@ -18,7 +18,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-resources-terraform-redis-env'
     }
     recipes: {
-      'Applications.Core/extenders': {
+      'Applications.Link/extenders': {
         default: {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/kubernetes-redis.zip'
@@ -41,7 +41,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
   name: 'corerp-resources-terraform-redis'
   properties: {
     application: app.id

@@ -18,7 +18,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Core/extenders': {
+      'Applications.Link/extenders': {
         default: {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/k8ssecret-context.zip'
@@ -41,7 +41,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
   name: 'corerp-resources-terraform-context'
   properties: {
     application: app.id

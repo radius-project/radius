@@ -29,7 +29,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
   name: basename
   properties: {
     application: app.id
