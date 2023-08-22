@@ -113,7 +113,7 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 		},
 	}
 
-	resourceId = ucpresources.MakeUCPID(scopes, types...)
+	resourceId = ucpresources.MakeUCPID(scopes, types, nil)
 	providerConfig := dc.GetProviderConfigs(options)
 
 	poller, err := dc.Client.CreateOrUpdate(ctx,
@@ -290,12 +290,14 @@ func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name str
 		{Type: "radius", Name: "local"},
 		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
-	types := ucpresources.TypeSegment{
-		Type: "Microsoft.Resources/deployments",
-		Name: name,
+	types := []ucpresources.TypeSegment{
+		{
+			Type: "Microsoft.Resources/deployments",
+			Name: name,
+		},
 	}
 
-	resourceId = ucpresources.MakeUCPID(scopes, types)
+	resourceId = ucpresources.MakeUCPID(scopes, types, nil)
 
 	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, sdkclients.DeploymentOperationsClientAPIVersion, nil)
 	if err != nil {
