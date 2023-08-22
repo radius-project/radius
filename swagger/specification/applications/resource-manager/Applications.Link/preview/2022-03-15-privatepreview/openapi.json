@@ -4,9 +4,9 @@
     "title": "Applications.Link Management APIs",
     "version": "2022-03-15-privatepreview",
     "description": "REST APIs for Applications.Link DaprPubSubBroker Resource",
-    "x-cadl-generated": [
+    "x-typespec-generated": [
       {
-        "emitter": "@azure-tools/cadl-autorest"
+        "emitter": "@azure-tools/typespec-autorest"
       }
     ]
   },
@@ -40,10 +40,10 @@
   },
   "tags": [
     {
-      "name": "MongoDatabases"
+      "name": "Operations"
     },
     {
-      "name": "Operations"
+      "name": "MongoDatabases"
     },
     {
       "name": "SqlDatabases"
@@ -55,7 +55,7 @@
       "name": "RabbitMQMessageQueues"
     },
     {
-      "name": "DaprSecretStore"
+      "name": "DaprSecretStores"
     },
     {
       "name": "DaprStateStore"
@@ -67,17 +67,17 @@
   "paths": {
     "/{rootScope}/providers/Applications.Link/daprPubSubBrokers": {
       "get": {
+        "operationId": "DaprPubSubBroker_ListByScope",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_ListByRootScope",
-        "description": "Lists information about all DaprPubSubBrokerResources in the given root scope",
+        "description": "List DaprPubSubBrokerResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -94,6 +94,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "DaprPubSubBrokersListByRootScope": {
+            "$ref": "./examples/DaprPubSubBrokersListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -101,27 +106,26 @@
     },
     "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}": {
       "get": {
+        "operationId": "DaprPubSubBroker_Get",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_Get",
-        "description": "Retrieves information about a DaprPubSubBrokerResource",
+        "description": "Get a DaprPubSubBrokerResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprPubSubBrokerName",
             "in": "path",
-            "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -137,36 +141,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "DaprPubSubBrokersGet": {
+            "$ref": "./examples/DaprPubSubBrokersGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "DaprPubSubBroker_Create",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_CreateOrUpdate",
-        "description": "Creates or updates a DaprPubSubBrokerResource",
+        "description": "Create a DaprPubSubBrokerResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprPubSubBrokerName",
             "in": "path",
-            "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
@@ -174,22 +182,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'DaprPubSubBrokerResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'DaprPubSubBrokerResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/DaprPubSubBrokerResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -198,30 +206,111 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "DaprPubSubBrokerPut": {
+            "$ref": "./examples/DaprPubSubBrokersPut.json"
+          },
+          "DaprPubSubBrokerPutWithRecipe": {
+            "$ref": "./examples/DaprPubSubBrokersPutWithRecipe.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "DaprPubSubBroker_Update",
         "tags": [
           "DaprPubSubBroker"
         ],
-        "operationId": "DaprPubSubBroker_Delete",
-        "description": "Deletes an existing DaprPubSubBrokerResource",
+        "description": "Update a DaprPubSubBrokerResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprPubSubBrokerName",
             "in": "path",
-            "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "DaprPubSubBrokersPatch": {
+            "$ref": "./examples/DaprPubSubBrokersPatch.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "DaprPubSubBroker_Delete",
+        "tags": [
+          "DaprPubSubBroker"
+        ],
+        "description": "Delete a DaprPubSubBrokerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "daprPubSubBrokerName",
+            "in": "path",
+            "description": "DaprPubSubBroker name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -232,9 +321,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -248,25 +341,30 @@
             }
           }
         },
+        "x-ms-examples": {
+          "DaprPubSubBrokersDelete": {
+            "$ref": "./examples/DaprPubSubBrokersDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
+          "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/daprSecretStores": {
       "get": {
+        "operationId": "DaprSecretStores_ListByScope",
         "tags": [
-          "DaprSecretStore"
+          "DaprSecretStores"
         ],
-        "operationId": "DaprSecretStore_ListByRootScope",
-        "description": "Lists information about all DaprSecretStoreResources in the given root scope",
+        "description": "List DaprSecretStoreResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -283,6 +381,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "DaprSecretStoresListByRootScope": {
+            "$ref": "./examples/DaprSecretStoresListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -290,27 +393,26 @@
     },
     "/{rootScope}/providers/Applications.Link/daprSecretStores/{daprSecretStoreName}": {
       "get": {
+        "operationId": "DaprSecretStores_Get",
         "tags": [
-          "DaprSecretStore"
+          "DaprSecretStores"
         ],
-        "operationId": "DaprSecretStore_Get",
-        "description": "Retrieves information about a DaprSecretStoreResource",
+        "description": "Get a DaprSecretStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprSecretStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -326,36 +428,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "DaprSecretStoresGet": {
+            "$ref": "./examples/DaprSecretStoresGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "DaprSecretStores_Create",
         "tags": [
-          "DaprSecretStore"
+          "DaprSecretStores"
         ],
-        "operationId": "DaprSecretStore_CreateOrUpdate",
-        "description": "Creates or updates a DaprSecretStoreResource",
+        "description": "Create a DaprSecretStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprSecretStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
@@ -363,22 +469,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'DaprSecretStoreResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'DaprSecretStoreResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/DaprSecretStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -387,30 +493,108 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "DaprSecretStoresPut": {
+            "$ref": "./examples/DaprSecretStoresPut.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "DaprSecretStores_Update",
         "tags": [
-          "DaprSecretStore"
+          "DaprSecretStores"
         ],
-        "operationId": "DaprSecretStore_Delete",
-        "description": "Deletes an existing DaprSecretStoreResource",
+        "description": "Update a DaprSecretStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprSecretStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "DaprSecretStoresPatch": {
+            "$ref": "./examples/DaprSecretStoresPatch.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "DaprSecretStores_Delete",
+        "tags": [
+          "DaprSecretStores"
+        ],
+        "description": "Delete a DaprSecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "daprSecretStoreName",
+            "in": "path",
+            "description": "DaprSecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -421,9 +605,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -436,22 +624,31 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "DaprSecretStoresDelete": {
+            "$ref": "./examples/DaprSecretStoresDelete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/daprStateStores": {
       "get": {
+        "operationId": "DaprStateStore_ListByScope",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_ListByRootScope",
-        "description": "Lists information about all DaprStateStoreResources in the given root scope",
+        "description": "List DaprStateStoreResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -468,6 +665,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "DaprStateStoresListByRootScope": {
+            "$ref": "./examples/DaprStateStoresListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -475,27 +677,26 @@
     },
     "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}": {
       "get": {
+        "operationId": "DaprStateStore_Get",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_Get",
-        "description": "Retrieves information about a DaprStateStoreResource",
+        "description": "Get a DaprStateStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprStateStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -511,36 +712,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "DaprStateStoresGet": {
+            "$ref": "./examples/DaprStateStoresGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "DaprStateStore_Create",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_CreateOrUpdate",
-        "description": "Creates or updates a DaprStateStoreResource",
+        "description": "Create a DaprStateStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprStateStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
             }
@@ -548,22 +753,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'DaprStateStoreResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'DaprStateStoreResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/DaprStateStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -572,30 +777,108 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "DaprStateStoresPut": {
+            "$ref": "./examples/DaprStateStoresPut.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "DaprStateStore_Update",
         "tags": [
           "DaprStateStore"
         ],
-        "operationId": "DaprStateStore_Delete",
-        "description": "Deletes an existing DaprStateStoreResource",
+        "description": "Update a DaprStateStoreResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "daprStateStoreName",
             "in": "path",
-            "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9\\.]*[A-Za-z0-9\\.])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "DaprStateStoresPatch": {
+            "$ref": "./examples/DaprStateStoresPatch.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "DaprStateStore_Delete",
+        "tags": [
+          "DaprStateStore"
+        ],
+        "description": "Delete a DaprStateStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "daprStateStoreName",
+            "in": "path",
+            "description": "DaprStateStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -606,9 +889,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -622,25 +909,30 @@
             }
           }
         },
+        "x-ms-examples": {
+          "DaprStateStoresDelete": {
+            "$ref": "./examples/DaprStateStoresDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
+          "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases": {
       "get": {
+        "operationId": "MongoDatabases_ListByScope",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_ListByRootScope",
-        "description": "Lists information about all MongoDatabaseResources in the given root scope",
+        "description": "List MongoDatabaseResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -657,6 +949,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "MongoDatabasesListByRootScope": {
+            "$ref": "./examples/MongoDatabasesListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -664,27 +961,26 @@
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}": {
       "get": {
+        "operationId": "MongoDatabases_Get",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_Get",
-        "description": "Retrieves information about a MongoDatabaseResource",
+        "description": "Get a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -700,36 +996,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "MongoDatabasesGet": {
+            "$ref": "./examples/MongoDatabasesGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "MongoDatabases_Create",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_CreateOrUpdate",
-        "description": "Creates or updates a MongoDatabaseResource",
+        "description": "Create a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResource"
             }
@@ -737,22 +1037,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'MongoDatabaseResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'MongoDatabaseResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -761,30 +1061,111 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "MongoDatabasesPutRecipe": {
+            "$ref": "./examples/MongoDatabasesPutRecipe.json"
+          },
+          "MongoDatabasesPutValue": {
+            "$ref": "./examples/MongoDatabasesPutValues.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "MongoDatabases_Update",
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_Delete",
-        "description": "Deletes an existing MongoDatabaseResource",
+        "description": "Update a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "MongoDatabasesPatchValues": {
+            "$ref": "./examples/MongoDatabasesPatchValues.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "MongoDatabases_Delete",
+        "tags": [
+          "MongoDatabases"
+        ],
+        "description": "Delete a MongoDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "description": "The name of the MongoDatabase link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -795,9 +1176,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -811,8 +1196,13 @@
             }
           }
         },
+        "x-ms-examples": {
+          "MongoDatabasesDelete": {
+            "$ref": "./examples/MongoDatabasesDelete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
+          "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
       }
@@ -820,23 +1210,35 @@
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets": {
       "post": {
         "operationId": "MongoDatabases_ListSecrets",
-        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "tags": [
+          "MongoDatabases"
+        ],
+        "description": "Lists secrets values for the specified MongoDatabases resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "mongoDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -852,22 +1254,27 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "MongoDatabasesListSecrets": {
+            "$ref": "./examples/MongoDatabasesListSecrets.json"
+          }
         }
       }
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues": {
       "get": {
+        "operationId": "RabbitMqMessageQueues_ListByScope",
         "tags": [
           "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitMqMessageQueues_ListByRootScope",
-        "description": "Lists information about all RabbitMQMessageQueueResources in the given root scope",
+        "description": "List RabbitMQMessageQueueResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -884,6 +1291,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesListByRootScope": {
+            "$ref": "./examples/RabbitMQMessageQueuesListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -891,26 +1303,26 @@
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
       "get": {
+        "operationId": "RabbitMqMessageQueues_Get",
         "tags": [
           "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitMqMessageQueues_Get",
-        "description": "Retrieves information about a RabbitMQMessageQueueResource",
+        "description": "Get a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -926,35 +1338,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesGet": {
+            "$ref": "./examples/RabbitMQMessageQueuesGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "RabbitMqMessageQueues_Create",
         "tags": [
           "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitMqMessageQueues_CreateOrUpdate",
-        "description": "Creates or updates a RabbitMQMessageQueueResource",
+        "description": "Create a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
@@ -962,22 +1379,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'RabbitMQMessageQueueResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'RabbitMQMessageQueueResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -986,29 +1403,108 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesPut": {
+            "$ref": "./examples/RabbitMQMessageQueuesPut.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "RabbitMqMessageQueues_Update",
         "tags": [
           "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitMqMessageQueues_Delete",
-        "description": "Deletes an existing RabbitMQMessageQueueResource",
+        "description": "Update a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesPatch": {
+            "$ref": "./examples/RabbitMQMessageQueuesPatch.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "RabbitMqMessageQueues_Delete",
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "description": "Delete a RabbitMQMessageQueueResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "rabbitMQMessageQueueName",
+            "in": "path",
+            "description": "The name of the RabbitMQMessageQueue link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1019,9 +1515,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1034,29 +1534,50 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesDelete": {
+            "$ref": "./examples/RabbitMQMessageQueuesDelete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
       "post": {
         "operationId": "RabbitMqMessageQueues_ListSecrets",
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
         "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQMessageQueueName",
             "in": "path",
-            "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -1072,22 +1593,27 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RabbitMQMessageQueuesListSecrets": {
+            "$ref": "./examples/RabbitMQMessageQueuesListSecrets.json"
+          }
         }
       }
     },
     "/{rootScope}/providers/Applications.Link/redisCaches": {
       "get": {
+        "operationId": "RedisCaches_ListByScope",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_ListByRootScope",
-        "description": "Lists information about all RedisCacheResources in the given root scope",
+        "description": "List RedisCacheResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -1104,6 +1630,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "RedisCachesListByRootScope": {
+            "$ref": "./examples/RedisCachesListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -1111,26 +1642,26 @@
     },
     "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}": {
       "get": {
+        "operationId": "RedisCaches_Get",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_Get",
-        "description": "Retrieves information about a RedisCacheResource",
+        "description": "Get a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1146,35 +1677,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RedisCachesGet": {
+            "$ref": "./examples/RedisCachesGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "RedisCaches_Create",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_CreateOrUpdate",
-        "description": "Creates or updates a RedisCacheResource",
+        "description": "Create a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/RedisCacheResource"
             }
@@ -1182,22 +1718,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'RedisCacheResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/RedisCacheResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'RedisCacheResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/RedisCacheResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -1206,29 +1742,114 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "RedisCachesPutValues": {
+            "$ref": "./examples/RedisCachesPutValues.json"
+          },
+          "RedisCachesPutResource": {
+            "$ref": "./examples/RedisCachesPutResource.json"
+          },
+          "RedisCachesPutRecipe": {
+            "$ref": "./examples/RedisCachesPutRecipe.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "RedisCaches_Update",
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_Delete",
-        "description": "Deletes an existing RedisCacheResource",
+        "description": "Update a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "RedisCachesPatch": {
+            "$ref": "./examples/RedisCachesPatch.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "RedisCaches_Delete",
+        "tags": [
+          "RedisCaches"
+        ],
+        "description": "Delete a RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "description": "The name of the RedisCache link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1239,9 +1860,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1254,29 +1879,50 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "RedisCachesDelete": {
+            "$ref": "./examples/RedisCachesDelete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
       "post": {
         "operationId": "RedisCaches_ListSecrets",
+        "tags": [
+          "RedisCaches"
+        ],
         "description": "Lists secrets values for the specified RedisCache resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "redisCacheName",
             "in": "path",
-            "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -1292,22 +1938,27 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "RedisCachesListSecrets": {
+            "$ref": "./examples/RedisCachesListSecrets.json"
+          }
         }
       }
     },
     "/{rootScope}/providers/Applications.Link/sqlDatabases": {
       "get": {
+        "operationId": "SqlDatabases_ListByScope",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_ListByRootScope",
-        "description": "Lists information about all SqlDatabaseResources in the given root scope",
+        "description": "List SqlDatabaseResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -1324,6 +1975,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "SQLDatabasesListByRootScope": {
+            "$ref": "./examples/SQLDatabasesListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -1331,27 +1987,26 @@
     },
     "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}": {
       "get": {
+        "operationId": "SqlDatabases_Get",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_Get",
-        "description": "Retrieves information about a SqlDatabaseResource",
+        "description": "Get a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1367,36 +2022,40 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "SQLDatabasesGet": {
+            "$ref": "./examples/SQLDatabasesGet.json"
+          }
         }
       },
       "put": {
+        "operationId": "SqlDatabases_Create",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_CreateOrUpdate",
-        "description": "Creates or updates a SqlDatabaseResource",
+        "description": "Create a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResource"
             }
@@ -1404,22 +2063,22 @@
         ],
         "responses": {
           "200": {
-            "description": "ARM operation completed successfully.",
+            "description": "Resource 'SqlDatabaseResource' update operation succeeded",
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResource"
             }
           },
           "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
+            "description": "Resource 'SqlDatabaseResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/SqlDatabaseResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
             }
           },
           "default": {
@@ -1428,30 +2087,108 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "SQLDatabasesPut": {
+            "$ref": "./examples/SQLDatabasesPut.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
       },
-      "delete": {
+      "patch": {
+        "operationId": "SqlDatabases_Update",
         "tags": [
           "SqlDatabases"
         ],
-        "operationId": "SqlDatabases_Delete",
-        "description": "Deletes an existing SqlDatabaseResource",
+        "description": "Update a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "SQLDatabasesPatch": {
+            "$ref": "./examples/SQLDatabasesPatch.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "SqlDatabases_Delete",
+        "tags": [
+          "SqlDatabases"
+        ],
+        "description": "Delete a SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "description": "The name of the SqlDatabase link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -1462,9 +2199,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -1477,29 +2218,50 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-examples": {
+          "SQLDatabasesDelete": {
+            "$ref": "./examples/SQLDatabasesDelete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}/listSecrets": {
       "post": {
         "operationId": "SqlDatabases_ListSecrets",
+        "tags": [
+          "SqlDatabases"
+        ],
         "description": "Lists secrets values for the specified SqlDatabase resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "sqlDatabaseName",
             "in": "path",
-            "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "required": true,
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -1520,10 +2282,10 @@
     },
     "/providers/Applications.Link/operations": {
       "get": {
+        "operationId": "Operations_List",
         "tags": [
           "Operations"
         ],
-        "operationId": "Operations_List",
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -1551,94 +2313,69 @@
     }
   },
   "definitions": {
-    "Application": {
-      "type": "string",
-      "description": "Fully qualified resource ID for the application that the link is consumed by"
-    },
-    "BasicDaprResourceProperties": {
+    "DaprPubSubBrokerProperties": {
       "type": "object",
+      "description": "DaprPubSubBroker link properties",
       "properties": {
-        "componentName": {
+        "environment": {
           "type": "string",
-          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
-          "readOnly": true
-        }
-      },
-      "description": "Basic properties of a Dapr component object.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
-      ]
-    },
-    "BasicResourceProperties": {
-      "type": "object",
-      "properties": {
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
           "readOnly": true
         },
-        "environment": {
+        "componentName": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
         },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
-        }
-      },
-      "description": "Basic properties of a Radius resource.",
-      "required": [
-        "environment"
-      ]
-    },
-    "DaprPubSubBrokerProperties": {
-      "type": "object",
-      "properties": {
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker resource at the time the operation was called",
           "readOnly": true
         },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        },
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec"
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the daprPubSubBroker",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
         },
-        "resources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "A collection of references to resources associated with the daprPubSubBroker"
-        },
-        "type": {
-          "type": "string",
-          "description": "DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "DaprPubSubBroker link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicDaprResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "DaprPubSubBrokerResource": {
       "type": "object",
+      "description": "DaprPubSubBroker link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprPubSubBrokerProperties",
@@ -1650,7 +2387,6 @@
           ]
         }
       },
-      "description": "DaprPubSubBroker link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1659,65 +2395,140 @@
     },
     "DaprPubSubBrokerResourceListResult": {
       "type": "object",
+      "description": "The response of a DaprPubSubBrokerResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The DaprPubSubBrokerResource items on this page",
           "items": {
             "$ref": "#/definitions/DaprPubSubBrokerResource"
-          },
-          "x-cadl-name": "DaprPubSubBrokerResource[]",
-          "description": "The DaprPubSubBrokerResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a DaprPubSubBrokerResource list operation.",
       "required": [
         "value"
       ]
     },
-    "DaprSecretStoreProperties": {
+    "DaprPubSubBrokerResourceUpdate": {
       "type": "object",
+      "description": "The type used for update operations of the DaprPubSubBrokerResource.",
       "properties": {
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the dapr secret store link at the time the operation was called",
-          "readOnly": true
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubBrokerResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprPubSubBrokerResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprPubSubBrokerResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
         },
         "type": {
           "type": "string",
-          "description": "Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/"
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
         },
         "version": {
           "type": "string",
           "description": "Dapr component version"
         },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the daprPubSubBroker",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "DaprSecretStoreProperties": {
+      "type": "object",
+      "description": "DaprSecretStore link properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
         "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "Provisioning state of the dapr secret store link at the time the operation was called",
+          "readOnly": true
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "DaprSecretStore link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicDaprResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "DaprSecretStoreResource": {
       "type": "object",
+      "description": "DaprSecretStore link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprSecretStoreProperties",
@@ -1729,7 +2540,6 @@
           ]
         }
       },
-      "description": "DaprSecretStore link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1738,73 +2548,140 @@
     },
     "DaprSecretStoreResourceListResult": {
       "type": "object",
+      "description": "The response of a DaprSecretStoreResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The DaprSecretStoreResource items on this page",
           "items": {
             "$ref": "#/definitions/DaprSecretStoreResource"
-          },
-          "x-cadl-name": "DaprSecretStoreResource[]",
-          "description": "The DaprSecretStoreResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a DaprSecretStoreResource list operation.",
       "required": [
         "value"
       ]
     },
+    "DaprSecretStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprSecretStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprSecretStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprSecretStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprSecretStoreResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "DaprStateStoreProperties": {
       "type": "object",
+      "description": "DaprStateStore link properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the DaprStateStore link at the time the operation was called",
           "readOnly": true
         },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        },
-        "metadata": {
-          "$ref": "#/definitions/object",
-          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec"
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the state store",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
         },
-        "resources": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "A collection of references to resources associated with the state store"
-        },
-        "type": {
-          "type": "string",
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format."
-        },
-        "version": {
-          "type": "string",
-          "description": "Dapr component version"
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "DaprStateStore link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicDaprResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "DaprStateStoreResource": {
       "type": "object",
+      "description": "DaprStateStore link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprStateStoreProperties",
@@ -1816,7 +2693,6 @@
           ]
         }
       },
-      "description": "DaprStateStore link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1825,29 +2701,173 @@
     },
     "DaprStateStoreResourceListResult": {
       "type": "object",
+      "description": "The response of a DaprStateStoreResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The DaprStateStoreResource items on this page",
           "items": {
             "$ref": "#/definitions/DaprStateStoreResource"
-          },
-          "x-cadl-name": "DaprStateStoreResource[]",
-          "description": "The DaprStateStoreResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a DaprStateStoreResource list operation.",
       "required": [
         "value"
       ]
     },
+    "DaprStateStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprStateStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprStateStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprStateStoreResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the state store",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "EnvironmentCompute": {
+      "type": "object",
+      "description": "Represents backing compute resource",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "IdentitySettingKind": {
+      "type": "string",
+      "description": "IdentitySettingKind is the kind of supported external identity setting",
+      "enum": [
+        "undefined",
+        "azure.com.workload"
+      ],
+      "x-ms-enum": {
+        "name": "IdentitySettingKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "undefined",
+            "value": "undefined",
+            "description": "undefined identity"
+          },
+          {
+            "name": "azure.com.workload",
+            "value": "azure.com.workload",
+            "description": "azure ad workload identity"
+          }
+        ]
+      }
+    },
+    "IdentitySettings": {
+      "type": "object",
+      "description": "IdentitySettings is the external identity setting.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IdentitySettingKind",
+          "description": "kind of identity setting"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "description": "The URI for your compute platform's OIDC issuer"
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource ID of the provisioned identity"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "KubernetesCompute": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
     "MongoDatabaseListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given MongoDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -1857,12 +2877,25 @@
           "type": "string",
           "description": "Connection string used to connect to the target Mongo database"
         }
-      },
-      "description": "The secret values for the given MongoDatabase resource"
+      }
     },
     "MongoDatabaseProperties": {
       "type": "object",
+      "description": "MongoDatabase link properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the mongo database link at the time the operation was called",
@@ -1885,36 +2918,33 @@
           "type": "string",
           "description": "Database name of the target Mongo database"
         },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the MongoDB link"
-        },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the MongoDB resource",
           "items": {
             "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the MongoDB resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
+          }
         },
         "username": {
           "type": "string",
           "description": "Username to use when connecting to the target Mongo database"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "MongoDatabase link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "MongoDatabaseResource": {
       "type": "object",
+      "description": "MongoDatabase link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/MongoDatabaseProperties",
@@ -1926,7 +2956,6 @@
           ]
         }
       },
-      "description": "MongoDatabase link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1935,29 +2964,95 @@
     },
     "MongoDatabaseResourceListResult": {
       "type": "object",
+      "description": "The response of a MongoDatabaseResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The MongoDatabaseResource items on this page",
           "items": {
             "$ref": "#/definitions/MongoDatabaseResource"
-          },
-          "x-cadl-name": "MongoDatabaseResource[]",
-          "description": "The MongoDatabaseResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a MongoDatabaseResource list operation.",
       "required": [
         "value"
       ]
     },
+    "MongoDatabaseResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the MongoDatabaseResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/MongoDatabaseResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "MongoDatabaseResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the MongoDatabaseResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "secrets": {
+          "$ref": "#/definitions/MongoDatabaseSecrets",
+          "description": "Secret values provided for the resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "Host name of the target Mongo database"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Mongo database"
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name of the target Mongo database"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the MongoDB resource",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Mongo database"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "MongoDatabaseSecrets": {
       "type": "object",
+      "description": "The secret values for the given MongoDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -1967,22 +3062,16 @@
           "type": "string",
           "description": "Connection string used to connect to the target Mongo database"
         }
-      },
-      "description": "The secret values for the given MongoDatabase resource"
+      }
     },
     "OutputResource": {
       "type": "object",
-      "properties": {},
-      "description": "Properties of an output resource."
-    },
-    "Parameters": {
-      "type": "object",
-      "properties": {},
-      "description": "Key/value parameters to pass into the recipe at deployment"
+      "description": "Properties of an output resource.",
+      "properties": {}
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the link at the time the operation was called",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -1994,11 +3083,50 @@
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true
-      }
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
     },
     "RabbitMQListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given RabbitMQMessageQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2008,12 +3136,25 @@
           "type": "string",
           "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
-      },
-      "description": "The secret values for the given RabbitMQMessageQueue resource"
+      }
     },
     "RabbitMQMessageQueueProperties": {
       "type": "object",
+      "description": "RabbitMQMessageQueue link properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the rabbitMQ message queue link at the time the operation was called",
@@ -2046,34 +3187,31 @@
         },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the rabbitMQ resource",
           "items": {
             "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the rabbitMQ resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
+          }
         },
         "tls": {
           "type": "boolean",
           "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "RabbitMQMessageQueue link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "RabbitMQMessageQueueResource": {
       "type": "object",
+      "description": "RabbitMQMessageQueue link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/RabbitMQMessageQueueProperties",
@@ -2085,7 +3223,6 @@
           ]
         }
       },
-      "description": "RabbitMQMessageQueue link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2094,29 +3231,103 @@
     },
     "RabbitMQMessageQueueResourceListResult": {
       "type": "object",
+      "description": "The response of a RabbitMQMessageQueueResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The RabbitMQMessageQueueResource items on this page",
           "items": {
             "$ref": "#/definitions/RabbitMQMessageQueueResource"
-          },
-          "x-cadl-name": "RabbitMQMessageQueueResource[]",
-          "description": "The RabbitMQMessageQueueResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a RabbitMQMessageQueueResource list operation.",
       "required": [
         "value"
       ]
     },
+    "RabbitMQMessageQueueResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the RabbitMQMessageQueueResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/RabbitMQMessageQueueResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "RabbitMQMessageQueueResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the RabbitMQMessageQueueResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "secrets": {
+          "$ref": "#/definitions/RabbitMQSecrets",
+          "description": "Secrets provided by resources,"
+        },
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        },
+        "host": {
+          "type": "string",
+          "description": "The hostname of the RabbitMQ instance"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port of the RabbitMQ instance. Defaults to 5672"
+        },
+        "vHost": {
+          "type": "string",
+          "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username to use when connecting to the RabbitMQ instance"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the rabbitMQ resource",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "RabbitMQSecrets": {
       "type": "object",
+      "description": "The secret values for the given RabbitMQMessageQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2126,28 +3337,44 @@
           "type": "string",
           "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
-      },
-      "description": "The secret values for the given RabbitMQMessageQueue resource"
+      }
     },
     "Recipe": {
       "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "properties": {
         "name": {
           "type": "string",
           "description": "The name of the recipe within the environment to use"
         },
         "parameters": {
-          "$ref": "#/definitions/Parameters",
-          "description": "Key/value parameters to pass into the recipe at deployment"
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
         }
       },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "required": [
         "name"
       ]
     },
+    "RecipeUpdate": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      }
+    },
     "RedisCacheListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given RedisCache resource",
       "properties": {
         "connectionString": {
           "type": "string",
@@ -2161,12 +3388,25 @@
           "type": "string",
           "description": "The URL used to connect to the Redis cache"
         }
-      },
-      "description": "The secret values for the given RedisCache resource"
+      }
     },
     "RedisCacheProperties": {
       "type": "object",
+      "description": "RedisCache link properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the redis cache link at the time the operation was called",
@@ -2193,32 +3433,29 @@
           "type": "boolean",
           "description": "Specifies whether to enable SSL connections to the Redis cache"
         },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the Redis caches link"
-        },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the Redis resource",
           "items": {
             "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the Redis resource"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "RedisCache link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "RedisCacheResource": {
       "type": "object",
+      "description": "RedisCache link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/RedisCacheProperties",
@@ -2230,7 +3467,6 @@
           ]
         }
       },
-      "description": "RedisCache link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2239,29 +3475,95 @@
     },
     "RedisCacheResourceListResult": {
       "type": "object",
+      "description": "The response of a RedisCacheResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The RedisCacheResource items on this page",
           "items": {
             "$ref": "#/definitions/RedisCacheResource"
-          },
-          "x-cadl-name": "RedisCacheResource[]",
-          "description": "The RedisCacheResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a RedisCacheResource list operation.",
       "required": [
         "value"
       ]
     },
+    "RedisCacheResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the RedisCacheResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/RedisCacheResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "RedisCacheResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the RedisCacheResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "secrets": {
+          "$ref": "#/definitions/RedisCacheSecrets",
+          "description": "Secrets provided by resource"
+        },
+        "host": {
+          "type": "string",
+          "description": "The host name of the target Redis cache"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port value of the target Redis cache"
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for Redis cache"
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to enable SSL connections to the Redis cache"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the Redis resource",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "RedisCacheSecrets": {
       "type": "object",
+      "description": "The secret values for the given RedisCache resource",
       "properties": {
         "connectionString": {
           "type": "string",
@@ -2275,8 +3577,7 @@
           "type": "string",
           "description": "The URL used to connect to the Redis cache"
         }
-      },
-      "description": "The secret values for the given RedisCache resource"
+      }
     },
     "ResourceProvisioning": {
       "type": "string",
@@ -2287,39 +3588,55 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "recipe",
+            "value": "recipe",
+            "description": "The resource lifecycle will be managed by Radius"
+          },
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
       }
     },
     "ResourceReference": {
       "type": "object",
+      "description": "Describes a reference to an existing resource",
       "properties": {
         "id": {
           "type": "string",
           "description": "Resource id of an existing resource"
         }
       },
-      "description": "Describes a reference to an existing resource",
       "required": [
         "id"
       ]
     },
     "ResourceStatus": {
       "type": "object",
+      "description": "Status of a resource.",
       "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource associated with the resource."
+        },
         "outputResources": {
           "type": "array",
+          "description": "Properties of an output resource",
           "items": {
             "$ref": "#/definitions/OutputResource"
           },
-          "x-ms-identifiers": [],
-          "x-cadl-name": "OutputResource[]",
-          "description": "Properties of an output resource"
+          "x-ms-identifiers": []
         }
-      },
-      "description": "Status of a resource."
+      }
     },
     "SqlDatabaseListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given SqlDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2329,12 +3646,25 @@
           "type": "string",
           "description": "Connection string used to connect to the target Sql database"
         }
-      },
-      "description": "The secret values for the given SqlDatabase resource"
+      }
     },
     "SqlDatabaseProperties": {
       "type": "object",
+      "description": "SqlDatabase properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the Sql database link at the time the operation was called",
@@ -2357,36 +3687,33 @@
           "type": "string",
           "description": "Username to use when connecting to the target Sql database"
         },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
-        },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the SqlDatabase resource",
           "items": {
             "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the SqlDatabase resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
+          }
         },
         "secrets": {
           "$ref": "#/definitions/SqlDatabaseSecrets",
           "description": "Secret values provided for the resource"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "SqlDatabase properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "SqlDatabaseResource": {
       "type": "object",
+      "description": "SqlDatabase link",
       "properties": {
         "properties": {
           "$ref": "#/definitions/SqlDatabaseProperties",
@@ -2398,7 +3725,6 @@
           ]
         }
       },
-      "description": "SqlDatabase link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2407,29 +3733,95 @@
     },
     "SqlDatabaseResourceListResult": {
       "type": "object",
+      "description": "The response of a SqlDatabaseResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The SqlDatabaseResource items on this page",
           "items": {
             "$ref": "#/definitions/SqlDatabaseResource"
-          },
-          "x-cadl-name": "SqlDatabaseResource[]",
-          "description": "The SqlDatabaseResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a SqlDatabaseResource list operation.",
       "required": [
         "value"
       ]
     },
+    "SqlDatabaseResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the SqlDatabaseResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/SqlDatabaseResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "SqlDatabaseResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the SqlDatabaseResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "database": {
+          "type": "string",
+          "description": "The name of the Sql database."
+        },
+        "server": {
+          "type": "string",
+          "description": "The fully qualified domain name of the Sql database."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Port value of the target Sql database"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username to use when connecting to the target Sql database"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the SqlDatabase resource",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "secrets": {
+          "$ref": "#/definitions/SqlDatabaseSecrets",
+          "description": "Secret values provided for the resource"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "SqlDatabaseSecrets": {
       "type": "object",
+      "description": "The secret values for the given SqlDatabase resource",
       "properties": {
         "password": {
           "type": "string",
@@ -2439,24 +3831,21 @@
           "type": "string",
           "description": "Connection string used to connect to the target Sql database"
         }
-      },
-      "description": "The secret values for the given SqlDatabase resource"
-    },
-    "object": {
-      "type": "object",
-      "properties": {}
+      }
     }
   },
   "parameters": {
-    "RootScopeParam": {
+    "RootScopeParameter": {
       "name": "rootScope",
       "in": "path",
+      "description": "The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
       "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "type": "string",
       "minLength": 1,
+      "maxLength": 90,
+      "pattern": "^[-\\w\\._\\(\\)]+$",
       "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
+      "x-ms-skip-url-encoding": true
     }
   }
 }

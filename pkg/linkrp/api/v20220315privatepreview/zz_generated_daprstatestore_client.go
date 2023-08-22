@@ -19,7 +19,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -32,7 +31,9 @@ type DaprStateStoreClient struct {
 }
 
 // NewDaprStateStoreClient creates a new instance of DaprStateStoreClient with the specified values.
-// rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+// and Azure resource scope is
+// /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
 func NewDaprStateStoreClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprStateStoreClient, error) {
@@ -55,30 +56,47 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a DaprStateStoreResource
+// BeginCreate - Create a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprStateStoreName - DaprStateStore name
 // resource - Resource create parameters.
-// options - DaprStateStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoreClient.CreateOrUpdate
+// options - DaprStateStoreClientBeginCreateOptions contains the optional parameters for the DaprStateStoreClient.BeginCreate
 // method.
-func (client *DaprStateStoreClient) CreateOrUpdate(ctx context.Context, daprStateStoreName string, resource DaprStateStoreResource, options *DaprStateStoreClientCreateOrUpdateOptions) (DaprStateStoreClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, daprStateStoreName, resource, options)
+func (client *DaprStateStoreClient) BeginCreate(ctx context.Context, daprStateStoreName string, resource DaprStateStoreResource, options *DaprStateStoreClientBeginCreateOptions) (*runtime.Poller[DaprStateStoreClientCreateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.create(ctx, daprStateStoreName, resource, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[DaprStateStoreClientCreateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[DaprStateStoreClientCreateResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// Create - Create a DaprStateStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+func (client *DaprStateStoreClient) create(ctx context.Context, daprStateStoreName string, resource DaprStateStoreResource, options *DaprStateStoreClientBeginCreateOptions) (*http.Response, error) {
+	req, err := client.createCreateRequest(ctx, daprStateStoreName, resource, options)
 	if err != nil {
-		return DaprStateStoreClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprStateStoreClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return DaprStateStoreClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return nil, runtime.NewResponseError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprStateStoreClient) createOrUpdateCreateRequest(ctx context.Context, daprStateStoreName string, resource DaprStateStoreResource, options *DaprStateStoreClientCreateOrUpdateOptions) (*policy.Request, error) {
+// createCreateRequest creates the Create request.
+func (client *DaprStateStoreClient) createCreateRequest(ctx context.Context, daprStateStoreName string, resource DaprStateStoreResource, options *DaprStateStoreClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
@@ -96,24 +114,7 @@ func (client *DaprStateStoreClient) createOrUpdateCreateRequest(ctx context.Cont
 	return req, runtime.MarshalAsJSON(req, resource)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprStateStoreClient) createOrUpdateHandleResponse(resp *http.Response) (DaprStateStoreClientCreateOrUpdateResponse, error) {
-	result := DaprStateStoreClientCreateOrUpdateResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return DaprStateStoreClientCreateOrUpdateResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprStateStoreResource); err != nil {
-		return DaprStateStoreClientCreateOrUpdateResponse{}, err
-	}
-	return result, nil
-}
-
-// BeginDelete - Deletes an existing DaprStateStoreResource
+// BeginDelete - Delete a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprStateStoreName - DaprStateStore name
@@ -126,14 +127,14 @@ func (client *DaprStateStoreClient) BeginDelete(ctx context.Context, daprStateSt
 			return nil, err
 		}
 		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[DaprStateStoreClientDeleteResponse]{
-			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+			FinalStateVia: runtime.FinalStateViaLocation,
 		})
 	} else {
 		return runtime.NewPollerFromResumeToken[DaprStateStoreClientDeleteResponse](options.ResumeToken, client.pl, nil)
 	}
 }
 
-// Delete - Deletes an existing DaprStateStoreResource
+// Delete - Delete a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 func (client *DaprStateStoreClient) deleteOperation(ctx context.Context, daprStateStoreName string, options *DaprStateStoreClientBeginDeleteOptions) (*http.Response, error) {
@@ -170,7 +171,7 @@ func (client *DaprStateStoreClient) deleteCreateRequest(ctx context.Context, dap
 	return req, nil
 }
 
-// Get - Retrieves information about a DaprStateStoreResource
+// Get - Get a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprStateStoreName - DaprStateStore name
@@ -218,40 +219,40 @@ func (client *DaprStateStoreClient) getHandleResponse(resp *http.Response) (Dapr
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all DaprStateStoreResources in the given root scope
+// NewListByScopePager - List DaprStateStoreResource resources by Scope
 // Generated from API version 2022-03-15-privatepreview
-// options - DaprStateStoreClientListByRootScopeOptions contains the optional parameters for the DaprStateStoreClient.ListByRootScope
+// options - DaprStateStoreClientListByScopeOptions contains the optional parameters for the DaprStateStoreClient.ListByScope
 // method.
-func (client *DaprStateStoreClient) NewListByRootScopePager(options *DaprStateStoreClientListByRootScopeOptions) (*runtime.Pager[DaprStateStoreClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[DaprStateStoreClientListByRootScopeResponse]{
-		More: func(page DaprStateStoreClientListByRootScopeResponse) bool {
+func (client *DaprStateStoreClient) NewListByScopePager(options *DaprStateStoreClientListByScopeOptions) (*runtime.Pager[DaprStateStoreClientListByScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[DaprStateStoreClientListByScopeResponse]{
+		More: func(page DaprStateStoreClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *DaprStateStoreClientListByRootScopeResponse) (DaprStateStoreClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *DaprStateStoreClientListByScopeResponse) (DaprStateStoreClientListByScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, options)
+				req, err = client.listByScopeCreateRequest(ctx, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return DaprStateStoreClientListByRootScopeResponse{}, err
+				return DaprStateStoreClientListByScopeResponse{}, err
 			}
 			resp, err := client.pl.Do(req)
 			if err != nil {
-				return DaprStateStoreClientListByRootScopeResponse{}, err
+				return DaprStateStoreClientListByScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return DaprStateStoreClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return DaprStateStoreClientListByScopeResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listByRootScopeHandleResponse(resp)
+			return client.listByScopeHandleResponse(resp)
 		},
 	})
 }
 
-// listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *DaprStateStoreClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprStateStoreClientListByRootScopeOptions) (*policy.Request, error) {
+// listByScopeCreateRequest creates the ListByScope request.
+func (client *DaprStateStoreClient) listByScopeCreateRequest(ctx context.Context, options *DaprStateStoreClientListByScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
@@ -265,12 +266,70 @@ func (client *DaprStateStoreClient) listByRootScopeCreateRequest(ctx context.Con
 	return req, nil
 }
 
-// listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *DaprStateStoreClient) listByRootScopeHandleResponse(resp *http.Response) (DaprStateStoreClientListByRootScopeResponse, error) {
-	result := DaprStateStoreClientListByRootScopeResponse{}
+// listByScopeHandleResponse handles the ListByScope response.
+func (client *DaprStateStoreClient) listByScopeHandleResponse(resp *http.Response) (DaprStateStoreClientListByScopeResponse, error) {
+	result := DaprStateStoreClientListByScopeResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprStateStoreResourceListResult); err != nil {
-		return DaprStateStoreClientListByRootScopeResponse{}, err
+		return DaprStateStoreClientListByScopeResponse{}, err
 	}
 	return result, nil
+}
+
+// BeginUpdate - Update a DaprStateStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// daprStateStoreName - DaprStateStore name
+// properties - The resource properties to be updated.
+// options - DaprStateStoreClientBeginUpdateOptions contains the optional parameters for the DaprStateStoreClient.BeginUpdate
+// method.
+func (client *DaprStateStoreClient) BeginUpdate(ctx context.Context, daprStateStoreName string, properties DaprStateStoreResourceUpdate, options *DaprStateStoreClientBeginUpdateOptions) (*runtime.Poller[DaprStateStoreClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, daprStateStoreName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[DaprStateStoreClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[DaprStateStoreClientUpdateResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// Update - Update a DaprStateStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+func (client *DaprStateStoreClient) update(ctx context.Context, daprStateStoreName string, properties DaprStateStoreResourceUpdate, options *DaprStateStoreClientBeginUpdateOptions) (*http.Response, error) {
+	req, err := client.updateCreateRequest(ctx, daprStateStoreName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(resp)
+	}
+	 return resp, nil
+}
+
+// updateCreateRequest creates the Update request.
+func (client *DaprStateStoreClient) updateCreateRequest(ctx context.Context, daprStateStoreName string, properties DaprStateStoreResourceUpdate, options *DaprStateStoreClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if daprStateStoreName == "" {
+		return nil, errors.New("parameter daprStateStoreName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{daprStateStoreName}", url.PathEscape(daprStateStoreName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, runtime.MarshalAsJSON(req, properties)
 }
 

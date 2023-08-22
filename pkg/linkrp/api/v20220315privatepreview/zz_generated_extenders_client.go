@@ -31,7 +31,9 @@ type ExtendersClient struct {
 }
 
 // NewExtendersClient creates a new instance of ExtendersClient with the specified values.
-// rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+// and Azure resource scope is
+// /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
 func NewExtendersClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*ExtendersClient, error) {

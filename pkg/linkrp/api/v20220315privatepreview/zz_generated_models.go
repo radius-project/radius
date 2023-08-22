@@ -10,22 +10,6 @@ package v20220315privatepreview
 
 import "time"
 
-// BasicDaprResourceProperties - Basic properties of a Dapr component object.
-type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
@@ -38,16 +22,22 @@ type BasicResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// DaprPubSubBrokerClientBeginCreateOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginCreate method.
+type DaprPubSubBrokerClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // DaprPubSubBrokerClientBeginDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginDelete method.
 type DaprPubSubBrokerClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// DaprPubSubBrokerClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokerClient.CreateOrUpdate
-// method.
-type DaprPubSubBrokerClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// DaprPubSubBrokerClientBeginUpdateOptions contains the optional parameters for the DaprPubSubBrokerClient.BeginUpdate method.
+type DaprPubSubBrokerClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // DaprPubSubBrokerClientGetOptions contains the optional parameters for the DaprPubSubBrokerClient.Get method.
@@ -55,24 +45,23 @@ type DaprPubSubBrokerClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprPubSubBrokerClientListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokerClient.ListByRootScope
-// method.
-type DaprPubSubBrokerClientListByRootScopeOptions struct {
+// DaprPubSubBrokerClientListByScopeOptions contains the optional parameters for the DaprPubSubBrokerClient.ListByScope method.
+type DaprPubSubBrokerClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
 // DaprPubSubBrokerProperties - DaprPubSubBroker link properties
 type DaprPubSubBrokerProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Metadata for the daprPubSubBroker resource. This should match the values specified in Dapr component spec
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -81,7 +70,7 @@ type DaprPubSubBrokerProperties struct {
 	// A collection of references to resources associated with the daprPubSubBroker
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// DaprPubSubBroker type. These strings match the format used by Dapr Kubernetes configuration format.
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string `json:"type,omitempty"`
 
 	// Dapr component version
@@ -131,46 +120,60 @@ type DaprPubSubBrokerResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// DaprSecretStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprSecretStoreClient.CreateOrUpdate
-// method.
-type DaprSecretStoreClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// DaprPubSubBrokerResourceUpdate - The type used for update operations of the DaprPubSubBrokerResource.
+type DaprPubSubBrokerResourceUpdate struct {
+	// The updatable properties of the DaprPubSubBrokerResource.
+	Properties *DaprPubSubBrokerResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
 }
 
-// DaprSecretStoreClientDeleteOptions contains the optional parameters for the DaprSecretStoreClient.Delete method.
-type DaprSecretStoreClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
+// DaprPubSubBrokerResourceUpdateProperties - The updatable properties of the DaprPubSubBrokerResource.
+type DaprPubSubBrokerResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
 
-// DaprSecretStoreClientGetOptions contains the optional parameters for the DaprSecretStoreClient.Get method.
-type DaprSecretStoreClientGetOptions struct {
-	// placeholder for future optional parameters
-}
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
 
-// DaprSecretStoreClientListByRootScopeOptions contains the optional parameters for the DaprSecretStoreClient.ListByRootScope
-// method.
-type DaprSecretStoreClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// A collection of references to resources associated with the daprPubSubBroker
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
 }
 
 // DaprSecretStoreProperties - DaprSecretStore link properties
 type DaprSecretStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string `json:"type,omitempty"`
 
 	// Dapr component version
@@ -220,16 +223,83 @@ type DaprSecretStoreResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// DaprSecretStoreResourceUpdate - The type used for update operations of the DaprSecretStoreResource.
+type DaprSecretStoreResourceUpdate struct {
+	// The updatable properties of the DaprSecretStoreResource.
+	Properties *DaprSecretStoreResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// DaprSecretStoreResourceUpdateProperties - The updatable properties of the DaprSecretStoreResource.
+type DaprSecretStoreResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+}
+
+// DaprSecretStoresClientBeginCreateOptions contains the optional parameters for the DaprSecretStoresClient.BeginCreate method.
+type DaprSecretStoresClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// DaprSecretStoresClientBeginDeleteOptions contains the optional parameters for the DaprSecretStoresClient.BeginDelete method.
+type DaprSecretStoresClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// DaprSecretStoresClientBeginUpdateOptions contains the optional parameters for the DaprSecretStoresClient.BeginUpdate method.
+type DaprSecretStoresClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// DaprSecretStoresClientGetOptions contains the optional parameters for the DaprSecretStoresClient.Get method.
+type DaprSecretStoresClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoresClientListByScopeOptions contains the optional parameters for the DaprSecretStoresClient.ListByScope method.
+type DaprSecretStoresClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprStateStoreClientBeginCreateOptions contains the optional parameters for the DaprStateStoreClient.BeginCreate method.
+type DaprStateStoreClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // DaprStateStoreClientBeginDeleteOptions contains the optional parameters for the DaprStateStoreClient.BeginDelete method.
 type DaprStateStoreClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// DaprStateStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoreClient.CreateOrUpdate
-// method.
-type DaprStateStoreClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// DaprStateStoreClientBeginUpdateOptions contains the optional parameters for the DaprStateStoreClient.BeginUpdate method.
+type DaprStateStoreClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // DaprStateStoreClientGetOptions contains the optional parameters for the DaprStateStoreClient.Get method.
@@ -237,24 +307,23 @@ type DaprStateStoreClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// DaprStateStoreClientListByRootScopeOptions contains the optional parameters for the DaprStateStoreClient.ListByRootScope
-// method.
-type DaprStateStoreClientListByRootScopeOptions struct {
+// DaprStateStoreClientListByScopeOptions contains the optional parameters for the DaprStateStoreClient.ListByScope method.
+type DaprStateStoreClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
 // DaprStateStoreProperties - DaprStateStore link properties
 type DaprStateStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Metadata for the state store resource. This should match the values specified in Dapr component spec
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -263,7 +332,7 @@ type DaprStateStoreProperties struct {
 	// A collection of references to resources associated with the state store
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
 	Type *string `json:"type,omitempty"`
 
 	// Dapr component version
@@ -312,6 +381,66 @@ type DaprStateStoreResourceListResult struct {
 	// The link to the next page of items
 	NextLink *string `json:"nextLink,omitempty"`
 }
+
+// DaprStateStoreResourceUpdate - The type used for update operations of the DaprStateStoreResource.
+type DaprStateStoreResourceUpdate struct {
+	// The updatable properties of the DaprStateStoreResource.
+	Properties *DaprStateStoreResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// DaprStateStoreResourceUpdateProperties - The updatable properties of the DaprStateStoreResource.
+type DaprStateStoreResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The metadata for Dapr resource which must match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// A collection of references to resources associated with the state store
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Dapr component type which must matches the format used by Dapr Kubernetes configuration format
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+}
+
+// EnvironmentComputeClassification provides polymorphic access to related types.
+// Call the interface's GetEnvironmentCompute() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *EnvironmentCompute, *KubernetesCompute
+type EnvironmentComputeClassification interface {
+	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
+	GetEnvironmentCompute() *EnvironmentCompute
+}
+
+// EnvironmentCompute - Represents backing compute resource
+type EnvironmentCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string `json:"kind,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string `json:"resourceId,omitempty"`
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
@@ -432,6 +561,42 @@ type ExtendersClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
+// IdentitySettings is the external identity setting.
+type IdentitySettings struct {
+	// REQUIRED; kind of identity setting
+	Kind *IdentitySettingKind `json:"kind,omitempty"`
+
+	// The URI for your compute platform's OIDC issuer
+	OidcIssuer *string `json:"oidcIssuer,omitempty"`
+
+	// The resource ID of the provisioned identity
+	Resource *string `json:"resource,omitempty"`
+}
+
+// KubernetesCompute - The Kubernetes compute configuration
+type KubernetesCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The namespace to use for the environment.
+	Namespace *string `json:"namespace,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string `json:"resourceId,omitempty"`
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
+func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Kind: k.Kind,
+		ResourceID: k.ResourceID,
+		Identity: k.Identity,
+	}
+}
+
 // MongoDatabaseListSecretsResult - The secret values for the given MongoDatabase resource
 type MongoDatabaseListSecretsResult struct {
 	// Connection string used to connect to the target Mongo database
@@ -443,10 +608,10 @@ type MongoDatabaseListSecretsResult struct {
 
 // MongoDatabaseProperties - MongoDatabase link properties
 type MongoDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// Database name of the target Mongo database
@@ -458,7 +623,7 @@ type MongoDatabaseProperties struct {
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the MongoDB link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -513,6 +678,48 @@ type MongoDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// MongoDatabaseResourceUpdate - The type used for update operations of the MongoDatabaseResource.
+type MongoDatabaseResourceUpdate struct {
+	// The updatable properties of the MongoDatabaseResource.
+	Properties *MongoDatabaseResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// MongoDatabaseResourceUpdateProperties - The updatable properties of the MongoDatabaseResource.
+type MongoDatabaseResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Database name of the target Mongo database
+	Database *string `json:"database,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the MongoDB resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
+}
+
 // MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
@@ -522,16 +729,22 @@ type MongoDatabaseSecrets struct {
 	Password *string `json:"password,omitempty"`
 }
 
+// MongoDatabasesClientBeginCreateOptions contains the optional parameters for the MongoDatabasesClient.BeginCreate method.
+type MongoDatabasesClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.
 type MongoDatabasesClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// MongoDatabasesClientCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.CreateOrUpdate
-// method.
-type MongoDatabasesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// MongoDatabasesClientBeginUpdateOptions contains the optional parameters for the MongoDatabasesClient.BeginUpdate method.
+type MongoDatabasesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // MongoDatabasesClientGetOptions contains the optional parameters for the MongoDatabasesClient.Get method.
@@ -539,9 +752,8 @@ type MongoDatabasesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabasesClientListByRootScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByRootScope
-// method.
-type MongoDatabasesClientListByRootScopeOptions struct {
+// MongoDatabasesClientListByScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByScope method.
+type MongoDatabasesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -616,10 +828,10 @@ type RabbitMQListSecretsResult struct {
 
 // RabbitMQMessageQueueProperties - RabbitMQMessageQueue link properties
 type RabbitMQMessageQueueProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The hostname of the RabbitMQ instance
@@ -631,7 +843,7 @@ type RabbitMQMessageQueueProperties struct {
 	// The name of the queue
 	Queue *string `json:"queue,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -692,6 +904,54 @@ type RabbitMQMessageQueueResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// RabbitMQMessageQueueResourceUpdate - The type used for update operations of the RabbitMQMessageQueueResource.
+type RabbitMQMessageQueueResourceUpdate struct {
+	// The updatable properties of the RabbitMQMessageQueueResource.
+	Properties *RabbitMQMessageQueueResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// RabbitMQMessageQueueResourceUpdateProperties - The updatable properties of the RabbitMQMessageQueueResource.
+type RabbitMQMessageQueueResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The hostname of the RabbitMQ instance
+	Host *string `json:"host,omitempty"`
+
+	// The port of the RabbitMQ instance. Defaults to 5672
+	Port *int32 `json:"port,omitempty"`
+
+	// The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the rabbitMQ resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secrets provided by resources,
+	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to use SSL when connecting to the RabbitMQ instance
+	TLS *bool `json:"tls,omitempty"`
+
+	// The username to use when connecting to the RabbitMQ instance
+	Username *string `json:"username,omitempty"`
+
+	// The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
+	VHost *string `json:"vHost,omitempty"`
+}
+
 // RabbitMQSecrets - The secret values for the given RabbitMQMessageQueue resource
 type RabbitMQSecrets struct {
 	// The password used to connect to the RabbitMQ instance
@@ -702,15 +962,25 @@ type RabbitMQSecrets struct {
 	URI *string `json:"uri,omitempty"`
 }
 
-// RabbitMqMessageQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitMqMessageQueuesClient.CreateOrUpdate
+// RabbitMqMessageQueuesClientBeginCreateOptions contains the optional parameters for the RabbitMqMessageQueuesClient.BeginCreate
 // method.
-type RabbitMqMessageQueuesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+type RabbitMqMessageQueuesClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// RabbitMqMessageQueuesClientDeleteOptions contains the optional parameters for the RabbitMqMessageQueuesClient.Delete method.
-type RabbitMqMessageQueuesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// RabbitMqMessageQueuesClientBeginDeleteOptions contains the optional parameters for the RabbitMqMessageQueuesClient.BeginDelete
+// method.
+type RabbitMqMessageQueuesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RabbitMqMessageQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMqMessageQueuesClient.BeginUpdate
+// method.
+type RabbitMqMessageQueuesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // RabbitMqMessageQueuesClientGetOptions contains the optional parameters for the RabbitMqMessageQueuesClient.Get method.
@@ -718,9 +988,9 @@ type RabbitMqMessageQueuesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMqMessageQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitMqMessageQueuesClient.ListByRootScope
+// RabbitMqMessageQueuesClientListByScopeOptions contains the optional parameters for the RabbitMqMessageQueuesClient.ListByScope
 // method.
-type RabbitMqMessageQueuesClientListByRootScopeOptions struct {
+type RabbitMqMessageQueuesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -733,6 +1003,15 @@ type RabbitMqMessageQueuesClientListSecretsOptions struct {
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a link
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a link
+type RecipeUpdate struct {
+	// The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
 	// Key/value parameters to pass into the recipe at deployment
@@ -753,10 +1032,10 @@ type RedisCacheListSecretsResult struct {
 
 // RedisCacheProperties - RedisCache link properties
 type RedisCacheProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The host name of the target Redis cache
@@ -765,7 +1044,7 @@ type RedisCacheProperties struct {
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -823,6 +1102,48 @@ type RedisCacheResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// RedisCacheResourceUpdate - The type used for update operations of the RedisCacheResource.
+type RedisCacheResourceUpdate struct {
+	// The updatable properties of the RedisCacheResource.
+	Properties *RedisCacheResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// RedisCacheResourceUpdateProperties - The updatable properties of the RedisCacheResource.
+type RedisCacheResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The host name of the target Redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target Redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the Redis resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secrets provided by resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to enable SSL connections to the Redis cache
+	TLS *bool `json:"tls,omitempty"`
+
+	// The username for Redis cache
+	Username *string `json:"username,omitempty"`
+}
+
 // RedisCacheSecrets - The secret values for the given RedisCache resource
 type RedisCacheSecrets struct {
 	// The connection string used to connect to the Redis cache
@@ -835,14 +1156,22 @@ type RedisCacheSecrets struct {
 	URL *string `json:"url,omitempty"`
 }
 
-// RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate method.
-type RedisCachesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// RedisCachesClientBeginCreateOptions contains the optional parameters for the RedisCachesClient.BeginCreate method.
+type RedisCachesClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// RedisCachesClientDeleteOptions contains the optional parameters for the RedisCachesClient.Delete method.
-type RedisCachesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// RedisCachesClientBeginDeleteOptions contains the optional parameters for the RedisCachesClient.BeginDelete method.
+type RedisCachesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RedisCachesClientBeginUpdateOptions contains the optional parameters for the RedisCachesClient.BeginUpdate method.
+type RedisCachesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // RedisCachesClientGetOptions contains the optional parameters for the RedisCachesClient.Get method.
@@ -850,8 +1179,8 @@ type RedisCachesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisCachesClientListByRootScopeOptions contains the optional parameters for the RedisCachesClient.ListByRootScope method.
-type RedisCachesClientListByRootScopeOptions struct {
+// RedisCachesClientListByScopeOptions contains the optional parameters for the RedisCachesClient.ListByScope method.
+type RedisCachesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -883,6 +1212,9 @@ type ResourceReference struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// The compute resource associated with the resource.
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
+
 	// Properties of an output resource
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
@@ -898,10 +1230,10 @@ type SQLDatabaseListSecretsResult struct {
 
 // SQLDatabaseProperties - SqlDatabase properties
 type SQLDatabaseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The name of the Sql database.
@@ -910,7 +1242,7 @@ type SQLDatabaseProperties struct {
 	// Port value of the target Sql database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the sqldatabases link
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -968,6 +1300,48 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
+// SQLDatabaseResourceUpdate - The type used for update operations of the SqlDatabaseResource.
+type SQLDatabaseResourceUpdate struct {
+	// The updatable properties of the SqlDatabaseResource.
+	Properties *SQLDatabaseResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// SQLDatabaseResourceUpdateProperties - The updatable properties of the SqlDatabaseResource.
+type SQLDatabaseResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The name of the Sql database.
+	Database *string `json:"database,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Port value of the target Sql database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the SqlDatabase resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
+	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
+
+	// The fully qualified domain name of the Sql database.
+	Server *string `json:"server,omitempty"`
+
+	// Username to use when connecting to the target Sql database
+	Username *string `json:"username,omitempty"`
+}
+
 // SQLDatabaseSecrets - The secret values for the given SqlDatabase resource
 type SQLDatabaseSecrets struct {
 	// Connection string used to connect to the target Sql database
@@ -977,14 +1351,22 @@ type SQLDatabaseSecrets struct {
 	Password *string `json:"password,omitempty"`
 }
 
-// SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
-type SQLDatabasesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// SQLDatabasesClientBeginCreateOptions contains the optional parameters for the SQLDatabasesClient.BeginCreate method.
+type SQLDatabasesClientBeginCreateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// SQLDatabasesClientDeleteOptions contains the optional parameters for the SQLDatabasesClient.Delete method.
-type SQLDatabasesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// SQLDatabasesClientBeginDeleteOptions contains the optional parameters for the SQLDatabasesClient.BeginDelete method.
+type SQLDatabasesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// SQLDatabasesClientBeginUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginUpdate method.
+type SQLDatabasesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // SQLDatabasesClientGetOptions contains the optional parameters for the SQLDatabasesClient.Get method.
@@ -992,8 +1374,8 @@ type SQLDatabasesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
-type SQLDatabasesClientListByRootScopeOptions struct {
+// SQLDatabasesClientListByScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByScope method.
+type SQLDatabasesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 

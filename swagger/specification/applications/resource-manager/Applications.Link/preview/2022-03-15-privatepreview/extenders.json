@@ -54,7 +54,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "openapi.json#/parameters/RootScopeParam"
+            "$ref": "openapi.json#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -97,7 +97,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "openapi.json#/parameters/RootScopeParam"
+            "$ref": "openapi.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -137,7 +137,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "openapi.json#/parameters/RootScopeParam"
+            "$ref": "openapi.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -192,7 +192,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "openapi.json#/parameters/RootScopeParam"
+            "$ref": "openapi.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -237,7 +237,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "openapi.json#/parameters/RootScopeParam"
+            "$ref": "openapi.json#/parameters/RootScopeParameter"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -261,34 +261,10 @@
     }
   },
   "definitions": {
-    "Recipe": {
+    "Parameters": {
       "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the recipe within the environment to use"
-        },
-        "parameters": {
-          "$ref": "openapi.json#/definitions/Parameters",
-          "description": "Key/value parameters to pass into the recipe at deployment"
-        }
-      },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
-      "required": [
-        "name"
-      ]
-    },
-    "ResourceProvisioning": {
-      "type": "string",
-      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
-      "enum": [
-        "recipe",
-        "manual"
-      ],
-      "x-ms-enum": {
-        "name": "ResourceProvisioning",
-        "modelAsString": true
-      }
+      "properties": {},
+      "description": "Key/value parameters to pass into the recipe at deployment"
     },
     "ExtenderList": {
       "description": "Object that includes an array of Extender and a possible link for next set",
@@ -337,12 +313,34 @@
       "additionalProperties": true,
       "properties": {}
     },
+    "BasicResourceProperties": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "openapi.json#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the link is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the link is consumed by"
+        }
+      },
+      "description": "Basic properties of a Radius resource.",
+      "required": [
+        "environment"
+      ]
+    },
     "ExtenderProperties": {
       "description": "Extender link properties",
       "type": "object",
       "allOf": [
         {
-          "$ref": "openapi.json#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/BasicResourceProperties"
         }
       ],
       "additionalProperties": true,
@@ -357,11 +355,11 @@
           "$ref": "#/definitions/ExtenderSecrets"
         },
         "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
+          "$ref": "openapi.json#/definitions/ResourceProvisioning",
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         },
         "recipe": {
-          "$ref": "#/definitions/Recipe",
+          "$ref": "openapi.json#/definitions/Recipe",
           "description": "The recipe used to automatically deploy underlying infrastructure for the Extender link"
         }
       },
