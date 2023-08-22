@@ -29,14 +29,22 @@ import (
 func Test_ParseInvalidIDs(t *testing.T) {
 	values := []string{
 		"",
+		"invalid",
+		"//",
+		"//example.com",
+		"subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/",
 		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/",
 		"//subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders//",
 		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders//",
 		"/subscriptions/{%s}/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups/providers/Microsoft.CustomProviders/resourceProviders",
-		"/planes/radius",
-		"/planes/radius/local/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
+		"/subscriptions/{%s}/resourceGroups/providers",
+		"planes/radius/local/resourceGroups/test-rg/providers/Applications.Test/testType",
+
+		// Missing extension type
+		"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Test/testType/testResource/providers",
+		"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Test/testType/testResource/providers/Some.Extension",
 	}
 
 	for i, v := range values {
@@ -50,21 +58,30 @@ func Test_ParseInvalidIDs(t *testing.T) {
 type idkind string
 
 const (
-	kindnone               idkind = "none"
-	kindscope              idkind = "scope"
-	kindscopecollection    idkind = "scopecollection"
-	kindresource           idkind = "resource"
-	kindresourcecollection idkind = "resourcecollection"
+	kindnone                idkind = "none"
+	kindscope               idkind = "scope"
+	kindscopecollection     idkind = "scopecollection"
+	kindresource            idkind = "resource"
+	kindresourcecollection  idkind = "resourcecollection"
+	kindextension           idkind = "extension"
+	kindextensioncollection idkind = "extensioncollection"
 )
 
 func Test_ParseValidIDs(t *testing.T) {
 	values := []struct {
-		id       string
-		expected string
-		scopes   []ScopeSegment
-		types    []TypeSegment
-		kind     idkind
-		provider string
+		id             string
+		expected       string
+		rootScope      string
+		routingScope   string
+		parentResource string
+		scopes         []ScopeSegment
+		types          []TypeSegment
+		extensions     []TypeSegment
+		kind           idkind
+		provider       string
+		typeName       string
+		name           string
+		qualifiedName  string
 	}{
 		{
 			id:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",
@@ -76,30 +93,24 @@ func Test_ParseValidIDs(t *testing.T) {
 			types: []TypeSegment{
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/planes",
 			expected: "/planes",
-			scopes:   []ScopeSegment{},
-			types:    []TypeSegment{},
 			provider: "",
 			kind:     kindscope,
 		},
 		{
 			id:       "/planes/",
 			expected: "/planes",
-			scopes:   []ScopeSegment{},
-			types:    []TypeSegment{},
 			provider: "",
 			kind:     kindscope,
 		},
 		{
 			id:       "/",
 			expected: "/",
-			scopes:   []ScopeSegment{},
-			types:    []TypeSegment{},
 			provider: "",
 			kind:     kindscope,
 		},
@@ -113,20 +124,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			types: []TypeSegment{
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
-			kind:     kindresourcecollection,
-		},
-		{
-			id:       "subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",
-			expected: "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",
-			scopes: []ScopeSegment{
-				{Type: "subscriptions", Name: "s1"},
-				{Type: "resourceGroups", Name: "r1"},
-			},
-			types: []TypeSegment{
-				{Type: "Microsoft.CustomProviders/resourceProviders"},
-			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresourcecollection,
 		},
 		{
@@ -139,7 +137,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			types: []TypeSegment{
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresourcecollection,
 		},
 		{
@@ -165,7 +163,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			types: []TypeSegment{
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresource,
 		},
 		{
@@ -178,7 +176,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			types: []TypeSegment{
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresource,
 		},
 		{
@@ -191,7 +189,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			types: []TypeSegment{
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresource,
 		},
 		{
@@ -205,7 +203,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 				{Type: "Applications"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresourcecollection,
 		},
 		{
@@ -219,8 +217,11 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 				{Type: "Applications", Name: "test-app"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
-			kind:     kindresource,
+			provider:      "Microsoft.CustomProviders",
+			kind:          kindresource,
+			typeName:      "Microsoft.CustomProviders/resourceProviders/Applications",
+			name:          "test-app",
+			qualifiedName: "radius/test-app",
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers",
@@ -234,7 +235,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications", Name: "test-app"},
 				{Type: "Containers"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresourcecollection,
 		},
 		{
@@ -249,7 +250,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications", Name: "test-app"},
 				{Type: "Containers", Name: "test"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresource,
 		},
 		{
@@ -265,7 +266,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications", Name: "test-app"},
 				{Type: "Containers", Name: "test"},
 			},
-			provider: "Microsoft.CustomProviders/resourceProviders",
+			provider: "Microsoft.CustomProviders",
 			kind:     kindresource,
 		},
 		{
@@ -282,12 +283,28 @@ func Test_ParseValidIDs(t *testing.T) {
 			kind:     kindresource,
 		},
 		{
+			id:       "/planes",
+			expected: "/planes",
+			provider: "",
+			kind:     kindscope,
+		},
+		{
+			id:       "/planes/test",
+			expected: "/planes/test",
+			scopes: []ScopeSegment{
+				{
+					Type: "test",
+				},
+			},
+			provider: "",
+			kind:     kindscopecollection,
+		},
+		{
 			id:       "/planes/radius/local/",
 			expected: "/planes/radius/local",
 			scopes: []ScopeSegment{
 				{Type: "radius", Name: "local"},
 			},
-			types:    []TypeSegment{},
 			provider: "",
 			kind:     kindscope,
 		},
@@ -298,9 +315,11 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "radius", Name: "local"},
 				{Type: "resourceGroups", Name: "r1"},
 			},
-			types:    []TypeSegment{},
-			provider: "",
-			kind:     kindscope,
+			provider:      "",
+			kind:          kindscope,
+			typeName:      "System.Resources/resourceGroups",
+			name:          "r1",
+			qualifiedName: "local/r1",
 		},
 		{
 			id:       "/planes/radius/local/resourceGroups/r1/resources",
@@ -310,7 +329,6 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "resourceGroups", Name: "r1"},
 				{Type: "resources", Name: ""},
 			},
-			types:    []TypeSegment{},
 			provider: "",
 			kind:     kindscopecollection,
 		},
@@ -327,7 +345,104 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "Applications.Core",
 			kind:     kindresource,
 		},
-
+		{
+			id:             "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType",
+			expected:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType",
+			rootScope:      "/planes/radius/local/resourceGroups/r1",
+			routingScope:   "Some.Extension/extensionType",
+			parentResource: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			scopes: []ScopeSegment{
+				{Type: "radius", Name: "local"},
+				{Type: "resourceGroups", Name: "r1"},
+			},
+			types: []TypeSegment{{
+				Type: "Applications.Core/environments", Name: "env"},
+			},
+			extensions: []TypeSegment{{
+				Type: "Some.Extension/extensionType", Name: "",
+			}},
+			provider:      "Some.Extension",
+			kind:          kindextensioncollection,
+			typeName:      "Some.Extension/extensionType",
+			name:          "",
+			qualifiedName: "",
+		},
+		{
+			id:             "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType/extensionResource",
+			expected:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType/extensionResource",
+			rootScope:      "/planes/radius/local/resourceGroups/r1",
+			routingScope:   "Some.Extension/extensionType/extensionResource",
+			parentResource: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			scopes: []ScopeSegment{
+				{Type: "radius", Name: "local"},
+				{Type: "resourceGroups", Name: "r1"},
+			},
+			types: []TypeSegment{{
+				Type: "Applications.Core/environments", Name: "env"},
+			},
+			extensions: []TypeSegment{{
+				Type: "Some.Extension/extensionType", Name: "extensionResource",
+			}},
+			provider:      "Some.Extension",
+			kind:          kindextension,
+			typeName:      "Some.Extension/extensionType",
+			name:          "extensionResource",
+			qualifiedName: "extensionResource",
+		},
+		{
+			id:             "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType/extensionResource/anotherType",
+			expected:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType/extensionResource/anotherType",
+			rootScope:      "/planes/radius/local/resourceGroups/r1",
+			routingScope:   "Some.Extension/extensionType/extensionResource/anotherType",
+			parentResource: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			scopes: []ScopeSegment{
+				{Type: "radius", Name: "local"},
+				{Type: "resourceGroups", Name: "r1"},
+			},
+			types: []TypeSegment{{
+				Type: "Applications.Core/environments", Name: "env"},
+			},
+			extensions: []TypeSegment{
+				{
+					Type: "Some.Extension/extensionType", Name: "extensionResource",
+				},
+				{
+					Type: "anotherType", Name: "",
+				},
+			},
+			provider:      "Some.Extension",
+			kind:          kindextensioncollection,
+			typeName:      "Some.Extension/extensionType/anotherType",
+			name:          "",
+			qualifiedName: "extensionResource",
+		},
+		{
+			id:             "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType/extensionResource/anotherType/anotherName",
+			expected:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/providers/Some.Extension/extensionType/extensionResource/anotherType/anotherName",
+			rootScope:      "/planes/radius/local/resourceGroups/r1",
+			routingScope:   "Some.Extension/extensionType/extensionResource/anotherType/anotherName",
+			parentResource: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			scopes: []ScopeSegment{
+				{Type: "radius", Name: "local"},
+				{Type: "resourceGroups", Name: "r1"},
+			},
+			types: []TypeSegment{{
+				Type: "Applications.Core/environments", Name: "env"},
+			},
+			extensions: []TypeSegment{
+				{
+					Type: "Some.Extension/extensionType", Name: "extensionResource",
+				},
+				{
+					Type: "anotherType", Name: "anotherName",
+				},
+			},
+			provider:      "Some.Extension",
+			kind:          kindextension,
+			typeName:      "Some.Extension/extensionType/anotherType",
+			name:          "anotherName",
+			qualifiedName: "extensionResource/anotherName",
+		},
 		// NOTE: this is NOT actually invalid, just confusing.
 		{
 			id:       "/planes/radius/local/resourceGroups/r1/Applications.Core/environments/env",
@@ -338,7 +453,6 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications.Core", Name: "environments"},
 				{Type: "env", Name: ""},
 			},
-			types:    []TypeSegment{},
 			provider: "",
 			kind:     kindscopecollection,
 		},
@@ -346,22 +460,40 @@ func Test_ParseValidIDs(t *testing.T) {
 
 	for i, v := range values {
 		t.Run(fmt.Sprintf("%d: %v", i, v.id), func(t *testing.T) {
+			t.Logf("parsing %q", v.id)
 			id, err := Parse(v.id)
 			require.NoError(t, err)
 
 			require.Equalf(t, v.expected, id.id, "id comparison failed for %s", v.id)
 			require.Equalf(t, v.scopes, id.scopeSegments, "scope comparison failed for %s", v.id)
+			require.Equalf(t, v.types, id.typeSegments, "type comparison failed for %s", v.id)
+			require.Equalf(t, v.extensions, id.extensionSegments, "extension comparison failed for %s", v.id)
+			require.Equal(t, v.provider, id.ProviderNamespace(), "Provider")
+			if v.rootScope != "" {
+				require.Equal(t, v.rootScope, id.RootScope(), "RootScope")
+			}
+			if v.routingScope != "" {
+				require.Equal(t, v.routingScope, id.RoutingScope(), "RoutingScope")
+			}
+			require.Equal(t, v.parentResource, id.ParentResource(), "ParentResource")
+
+			if v.typeName != "" {
+				require.Equal(t, v.typeName, id.Type(), "Type")
+			}
+			if v.name != "" {
+				require.Equal(t, v.name, id.Name(), "Name")
+			}
+			if v.qualifiedName != "" {
+				require.Equal(t, v.qualifiedName, id.QualifiedName(), "QualifiedName")
+			}
 
 			require.NotEqual(t, kindnone, v.kind, "test must specify id kind")
-			require.Equal(t, v.kind == kindresource, id.IsResource(), "IsResource")
 			require.Equal(t, v.kind == kindscope, id.IsScope(), "IsScope")
-			require.Equal(t, v.kind == kindresourcecollection, id.IsResourceCollection(), "IsResourceCollection")
 			require.Equal(t, v.kind == kindscopecollection, id.IsScopeCollection(), "IsScopeCollection")
-
-			require.Lenf(t, id.typeSegments, len(v.types), "types comparison failed for %s", v.id)
-			for i := range id.typeSegments {
-				require.Equalf(t, v.types[i], id.typeSegments[i], "types comparison failed for %s", v.id)
-			}
+			require.Equal(t, (v.kind == kindresource || v.kind == kindextension), id.IsResource(), "IsResource")
+			require.Equal(t, (v.kind == kindresourcecollection || v.kind == kindextensioncollection), id.IsResourceCollection(), "IsResourceCollection")
+			require.Equal(t, v.kind == kindextension, id.IsExtensionResource(), "IsExtensionResource")
+			require.Equal(t, v.kind == kindextensioncollection, id.IsExtensionCollection(), "IsExtensionCollection")
 		})
 	}
 }
@@ -471,7 +603,7 @@ func Test_MakeRelativeID(t *testing.T) {
 			{Type: "resourceGroups", Name: "r1"},
 		}
 		t.Run(fmt.Sprintf("%d: %v", i, v.expected), func(t *testing.T) {
-			actual := MakeRelativeID(scopes, v.types...)
+			actual := MakeRelativeID(scopes, v.types, nil)
 			require.Equal(t, v.expected, actual)
 		})
 	}
@@ -553,6 +685,14 @@ func Test_Append_NamedResource_UCP(t *testing.T) {
 	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource/test-name", appended.id)
 }
 
+func Test_Append_Extension(t *testing.T) {
+	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.Storage/storageAccounts/test-account/providers/Some.Extension/extensionType/extensionResource")
+	require.NoError(t, err)
+
+	appended := id.Append(TypeSegment{Name: "test-name", Type: "test-resource"})
+	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.Storage/storageAccounts/test-account/providers/Some.Extension/extensionType/extensionResource/test-resource/test-name", appended.id)
+}
+
 func Test_Truncate_Success(t *testing.T) {
 	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
@@ -569,12 +709,28 @@ func Test_Truncate_Success_Scope(t *testing.T) {
 	require.Equal(t, "/subscriptions/s1", truncated.id)
 }
 
+func Test_Truncate_Success_Extension(t *testing.T) {
+	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.Storage/storageAccounts/test-account/providers/Some.Extension/extensionType/extensionResource/anotherType/anotherName")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.Storage/storageAccounts/test-account/providers/Some.Extension/extensionType/extensionResource", truncated.id)
+}
+
 func Test_Truncate_Success_Scope_UCP(t *testing.T) {
 	id, err := Parse("/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/")
 	require.NoError(t, err)
 
 	truncated := id.Truncate()
 	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1", truncated.id)
+}
+
+func Test_Truncate_Success_Scope_Empty(t *testing.T) {
+	id, err := Parse("/planes/azure/azurecloud")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/planes", truncated.id)
 }
 
 func Test_Truncate_Success_UCP(t *testing.T) {
@@ -607,6 +763,14 @@ func Test_Truncate_ReturnsSelfForTopLevelScope_UCP(t *testing.T) {
 
 	truncated := id.Truncate()
 	require.Equal(t, "/planes", truncated.id)
+}
+
+func Test_Truncate_ReturnsSelfForTopLevelExtension(t *testing.T) {
+	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.Storage/storageAccounts/test-account/providers/Some.Extension/extensionType/extensionResource")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.Storage/storageAccounts/test-account/providers/Some.Extension/extensionType/extensionResource", truncated.id)
 }
 
 func Test_Truncate_WithCustomAction(t *testing.T) {
@@ -678,12 +842,6 @@ func TestPlaneNamespace(t *testing.T) {
 			"arm-container-resource",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/test-container-0",
 			false,
-			"",
-		},
-		{
-			"ucp-invalid-resource",
-			"/planes/radius",
-			true,
 			"",
 		},
 		{

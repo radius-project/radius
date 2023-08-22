@@ -98,7 +98,7 @@ func (c *resourceClient) wrapError(id resources.ID, err error) error {
 func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.ID, apiVersion string) error {
 	var err error
 	if id.IsUCPQualfied() {
-		id, err = resources.ParseResource(resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments()...))
+		id, err = resources.ParseResource(resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments()))
 		if err != nil {
 			return err
 		}
