@@ -134,6 +134,15 @@ enum ProvisioningState {
   Accepted,
 }
 
+@doc("The base properties of Recipe")
+model RecipeBaseProperties {
+  @doc("The recipe used to automatically deploy underlying infrastructure for the resource")
+  recipe?: Recipe;
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+}
+
 @doc("Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.")
 enum ResourceProvisioning {
   @doc("The resource lifecycle will be managed by Radius")
