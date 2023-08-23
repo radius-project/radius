@@ -209,9 +209,9 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 						"id": "/planes/kubernetes/local/namespaces/" + name + "-app/providers/core/Secret/" + name,
 					},
 					map[string]any{
-						"id": scope + "/providers/Applications.Link/extenders/" + name + "-created",
+						"id": scope + "/providers/Applications.Core/extenders/" + name + "-created",
 					}, map[string]interface{}{
-						"id": scope + "/providers/Applications.Link/extenders/" + name + "-module",
+						"id": scope + "/providers/Applications.Core/extenders/" + name + "-module",
 					},
 				}
 				actual := resource.Properties["status"].(map[string]any)["outputResources"].([]any)
