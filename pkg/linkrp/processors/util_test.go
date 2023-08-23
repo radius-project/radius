@@ -21,9 +21,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,22 +33,15 @@ func Test_GetOutputResourcesFromResourcesField(t *testing.T) {
 		{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Cache/redis/test-resource2"},
 	}
 
-	redisType := resourcemodel.ResourceType{
-		Type:     "Microsoft.Cache/redis",
-		Provider: resourcemodel.ProviderAzure,
-	}
-
 	expected := []rpv1.OutputResource{
 		{
-			LocalID:       "Resource0",
-			ResourceType:  redisType,
-			Identity:      resourcemodel.NewARMIdentity(&redisType, resourcesField[0].ID, "unknown"),
+			LocalID:       "",
+			ID:            resources.MustParse(resourcesField[0].ID),
 			RadiusManaged: to.Ptr(false),
 		},
 		{
-			LocalID:       "Resource1",
-			ResourceType:  redisType,
-			Identity:      resourcemodel.NewARMIdentity(&redisType, resourcesField[1].ID, "unknown"),
+			LocalID:       "",
+			ID:            resources.MustParse(resourcesField[1].ID),
 			RadiusManaged: to.Ptr(false),
 		},
 	}
@@ -78,22 +71,15 @@ func Test_GetOutputResourcesFromRecipe(t *testing.T) {
 		},
 	}
 
-	redisType := resourcemodel.ResourceType{
-		Type:     "Microsoft.Cache/redis",
-		Provider: resourcemodel.ProviderAzure,
-	}
-
 	expected := []rpv1.OutputResource{
 		{
-			LocalID:       "RecipeResource0",
-			ResourceType:  redisType,
-			Identity:      resourcemodel.NewARMIdentity(&redisType, output.Resources[0], "unknown"),
+			LocalID:       "",
+			ID:            resources.MustParse(output.Resources[0]),
 			RadiusManaged: to.Ptr(true),
 		},
 		{
-			LocalID:       "RecipeResource1",
-			ResourceType:  redisType,
-			Identity:      resourcemodel.NewARMIdentity(&redisType, output.Resources[1], "unknown"),
+			LocalID:       "",
+			ID:            resources.MustParse(output.Resources[1]),
 			RadiusManaged: to.Ptr(true),
 		},
 	}

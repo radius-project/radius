@@ -1,64 +1,59 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0",
-    "name": "test-container-0",
-    "type": "applications.core/containers",
-    "location": "West US",
-    "subscriptionId": "00000000-0000-0000-0000-000000000000",
-    "resourceGroup": "radius-test-rg",
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "test@microsoft.com",
-        "createdByType": "Test",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "test@microsoft.com",
-        "lastModifiedByType": "Test"
-    },
-    "tags": {},
-    "properties": {
-        "application": "test-application",
-        "connections": {
-            "test-connection": {
-                "source": "test",
-                "disableDefaultEnvVars": false,
-                "iam": {
-                    "kind": "azure",
-                    "roles": [
-                        "admin"
-                    ]
-                }
-            }
-        },
-        "container": {
-            "image": "test-image",
-            "env": {
-                "env-variable-0": "test-env-variable-0",
-                "env-variable-1": "test-env-variable-1"
-            },
-            "ports": {
-                "default": {
-                    "containerPort": 80,
-                    "protocol": "http",
-                    "provides": "/"
-                }
-            },
-            "livenessProbe": {
-                "containerPort": 8080,
-                "initialDelaySeconds": 5,
-                "kind": "tcp"
-            }
-        },
-        "provisioningState": "Updating",
-        "status": {
-            "outputResources": [
-                {
-                    "LocalID": "Deployment",
-                    "Provider": "azure",
-                    "Identity": {
-                        "apiVersion": "",
-                        "id": ""
-                    }
-                }
-            ]
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0",
+  "name": "test-container-0",
+  "type": "applications.core/containers",
+  "location": "West US",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "radius-test-rg",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "test@microsoft.com",
+    "createdByType": "Test",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "test@microsoft.com",
+    "lastModifiedByType": "Test"
+  },
+  "tags": {},
+  "properties": {
+    "application": "test-application",
+    "connections": {
+      "test-connection": {
+        "source": "test",
+        "disableDefaultEnvVars": false,
+        "iam": {
+          "kind": "azure",
+          "roles": [
+            "admin"
+          ]
         }
+      }
+    },
+    "container": {
+      "image": "test-image",
+      "env": {
+        "env-variable-0": "test-env-variable-0",
+        "env-variable-1": "test-env-variable-1"
+      },
+      "ports": {
+        "default": {
+          "containerPort": 80,
+          "protocol": "http",
+          "provides": "/"
+        }
+      },
+      "livenessProbe": {
+        "containerPort": 8080,
+        "initialDelaySeconds": 5,
+        "kind": "tcp"
+      }
+    },
+    "provisioningState": "Updating",
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
     }
+  }
 }

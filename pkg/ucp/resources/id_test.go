@@ -619,17 +619,17 @@ func Test_FindScope(t *testing.T) {
 	cases := []testcase{
 		{
 			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
-			Segment:  SubscriptionsSegment,
+			Segment:  "subscriptions",
 			Expected: "s1",
 		},
 		{
 			ID:       "/subscriPtions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
-			Segment:  SubscriptionsSegment,
+			Segment:  "Subscriptions",
 			Expected: "s1",
 		},
 		{
 			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
-			Segment:  ResourceGroupsSegment,
+			Segment:  "resourcegroups",
 			Expected: "r1",
 		},
 		{
@@ -639,7 +639,7 @@ func Test_FindScope(t *testing.T) {
 		},
 		{
 			ID:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
-			Segment:  ResourceGroupsSegment,
+			Segment:  "resourcegroups",
 			Expected: "r1",
 		},
 	}
@@ -1112,60 +1112,6 @@ func Test_ParseByMethod(t *testing.T) {
 	}
 }
 
-func Test_RadiusRPResource(t *testing.T) {
-	values := []struct {
-		testID   ID
-		expected bool
-	}{
-		{
-			testID: ID{
-				id: "/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/containers/test-container",
-				scopeSegments: []ScopeSegment{
-					{Type: "subscriptions", Name: "s1"},
-					{Type: "resourceGroups", Name: "r1"},
-				},
-				typeSegments: []TypeSegment{
-					{Type: "Applications.Core/containers", Name: "test-container"},
-				},
-			},
-			expected: true,
-		},
-		{
-			testID: ID{
-				id: "/subscriptions/s1/resourceGroups/r1/providers/Applications.Link/mongoDatabases/test-mongo",
-				scopeSegments: []ScopeSegment{
-					{Type: "subscriptions", Name: "s1"},
-					{Type: "resourceGroups", Name: "r1"},
-				},
-				typeSegments: []TypeSegment{
-					{Type: linkrp.MongoDatabasesResourceType, Name: "test-mongo"},
-				},
-			},
-			expected: true,
-		},
-		{
-			testID: ID{
-				id: "/subscriptions/s1/resourceGroups/r1/providers/Applications.foo/containers/test-container",
-				scopeSegments: []ScopeSegment{
-					{Type: "subscriptions", Name: "s1"},
-					{Type: "resourceGroups", Name: "r1"},
-				},
-				typeSegments: []TypeSegment{
-					{Type: "Applications.foo/containers", Name: "test-container"},
-				},
-			},
-			expected: false,
-		},
-	}
-
-	for i, v := range values {
-		t.Run(fmt.Sprintf("%d: %v", i, v.testID.id), func(t *testing.T) {
-			radiusResource := v.testID.IsRadiusRPResource()
-			require.Equal(t, v.expected, radiusResource)
-		})
-	}
-}
-
 func Test_Type(t *testing.T) {
 	values := []struct {
 		desc     string
@@ -1227,8 +1173,8 @@ func Test_ParseProviderScope(t *testing.T) {
 			desc:  "Azure provider resource group",
 			scope: "/subscriptions/test-sub/resourcegroups/test-rg",
 			expectedScopeSegments: []ScopeSegment{
-				{Type: SubscriptionsSegment, Name: "test-sub"},
-				{Type: ResourceGroupsSegment, Name: "test-rg"},
+				{Type: "subscriptions", Name: "test-sub"},
+				{Type: "resourcegroups", Name: "test-rg"},
 			},
 		},
 		{
@@ -1236,8 +1182,8 @@ func Test_ParseProviderScope(t *testing.T) {
 			scope: "/planes/aws/aws/accounts/000/regions/us-east-1",
 			expectedScopeSegments: []ScopeSegment{
 				{Type: "aws", Name: "aws"},
-				{Type: AccountsSegment, Name: "000"},
-				{Type: RegionsSegment, Name: "us-east-1"},
+				{Type: "accounts", Name: "000"},
+				{Type: "regions", Name: "us-east-1"},
 			},
 		},
 	}

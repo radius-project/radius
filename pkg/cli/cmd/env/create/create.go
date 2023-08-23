@@ -35,6 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env create` command.
@@ -131,7 +132,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	r.ResourceGroupName = scopeId.FindScope(resources.ResourceGroupsSegment)
+	r.ResourceGroupName = scopeId.FindScope(resources_radius.ScopeResourceGroups)
 
 	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.ResourceGroupName)
 	if clients.Is404Error(err) {

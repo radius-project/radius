@@ -40,9 +40,7 @@ In general you should ask for guidance before creating a new top-level folder in
 | `metrics/`        | Code generating Radius metrics                                                          |
 | `profiler/`       | Code and configs for Radius profiler                                                    |
 | `recipes/`        | Implementation for Radius Recipes                                                       |
-| `resourcekinds/`  | Definition of Radius resources                                                          |
-| `resourcemodels/` | Code for identifying Radius resources in underlying system                              |
-| `rp/`             | Code shared by multiple rps                                |
+| `rp/`             | Code shared by multiple rps                                                             |
 | `sdk/`            | Code for interfacing with Radius as a client                                            |
 | `to/`             | Code for pointer to value conversions                                                   |
 | `trace/`          | Utility code for generating Radius traces                                               |

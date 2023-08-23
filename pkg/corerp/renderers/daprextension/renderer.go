@@ -72,12 +72,13 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	// the desired annotations.
 
 	for i := range output.Resources {
-		if output.Resources[i].ResourceType.Provider != resourcemodel.ProviderKubernetes {
+		resourceType := output.Resources[i].GetResourceType()
+		if resourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		o, ok := output.Resources[i].Resource.(runtime.Object)
+		o, ok := output.Resources[i].CreateResource.Data.(runtime.Object)
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}

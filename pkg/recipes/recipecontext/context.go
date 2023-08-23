@@ -22,6 +22,8 @@ import (
 	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 )
 
 var (
@@ -78,8 +80,8 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 			return nil, fmt.Errorf(ErrParseFormat, "Azure scope", providers.Azure.Scope, err)
 		}
 
-		subID := p.FindScope(resources.SubscriptionsSegment)
-		rgName := p.FindScope(resources.ResourceGroupsSegment)
+		subID := p.FindScope(resources_azure.ScopeSubscriptions)
+		rgName := p.FindScope(resources_azure.ScopeResourceGroups)
 		recipeContext.Azure = &ProviderAzure{
 			ResourceGroup: AzureResourceGroup{
 				Name: rgName,
@@ -98,8 +100,8 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 			return nil, fmt.Errorf(ErrParseFormat, "AWS scope", providers.AWS.Scope, err)
 		}
 		recipeContext.AWS = &ProviderAWS{
-			Region:  p.FindScope(resources.RegionsSegment),
-			Account: p.FindScope(resources.AccountsSegment),
+			Region:  p.FindScope(resources_aws.ScopeRegions),
+			Account: p.FindScope(resources_aws.ScopeAccounts),
 		}
 	}
 

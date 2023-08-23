@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/k8sutil"
@@ -188,9 +187,8 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		component := rpv1.NewKubernetesOutputResource(resourcekinds.DaprComponent, "Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
+		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
 		component.RadiusManaged = to.Ptr(true)
-		component.Resource = generated
 		expectedOutputResources = append(expectedOutputResources, component)
 		require.NoError(t, err)
 

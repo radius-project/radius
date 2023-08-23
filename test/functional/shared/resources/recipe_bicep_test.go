@@ -206,27 +206,12 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 				scope := strings.ReplaceAll(parsed.RootScope(), "resourcegroups", "resourceGroups")
 				expected := []any{
 					map[string]any{
-						"Identity": map[string]any{
-							"apiVersion": "unknown",
-							"kind":       "Secret",
-							"name":       name,
-							"namespace":  name + "-app",
-						},
-						"LocalID":  "RecipeResource0",
-						"Provider": "kubernetes",
+						"id": "/planes/kubernetes/local/namespaces/" + name + "-app/providers/core/Secret/" + name,
 					},
 					map[string]any{
-						"Identity": map[string]interface{}{
-							"id": scope + "/providers/Applications.Link/extenders/" + name + "-created",
-						},
-						"LocalID":  "RecipeResource1",
-						"Provider": "radius",
+						"id": scope + "/providers/Applications.Link/extenders/" + name + "-created",
 					}, map[string]interface{}{
-						"Identity": map[string]interface{}{
-							"id": scope + "/providers/Applications.Link/extenders/" + name + "-module",
-						},
-						"LocalID":  "RecipeResource2",
-						"Provider": "radius",
+						"id": scope + "/providers/Applications.Link/extenders/" + name + "-module",
 					},
 				}
 				actual := resource.Properties["status"].(map[string]any)["outputResources"].([]any)

@@ -59,11 +59,12 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 		switch e.Kind {
 		case datamodel.ManualScaling:
 			for _, ores := range output.Resources {
-				if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
+				resourceType := ores.GetResourceType()
+				if resourceType.Provider != resourcemodel.ProviderKubernetes {
 					// Not a Kubernetes resource
 					continue
 				}
-				o, ok := ores.Resource.(runtime.Object)
+				o, ok := ores.CreateResource.Data.(runtime.Object)
 				if !ok {
 					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 				}

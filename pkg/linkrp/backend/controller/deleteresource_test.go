@@ -28,25 +28,16 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
 var outputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/mongoDatabases"
 var outputResource = rpv1.OutputResource{
-	Identity: resourcemodel.ResourceIdentity{
-		ResourceType: &resourcemodel.ResourceType{
-			Type:     "Microsoft.DocumentDB/databaseAccounts/mongoDatabases",
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Data: map[string]any{
-			"id":         outputResourceResourceID,
-			"apiVersion": "2022-01-01",
-		},
-	},
+	ID:            resources.MustParse(outputResourceResourceID),
 	RadiusManaged: to.Ptr(true),
 }
 

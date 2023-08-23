@@ -20,10 +20,8 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,23 +39,7 @@ func TestDaprStateStore_ApplyDeploymentOutput(t *testing.T) {
 				DeployedOutputResources: []rpv1.OutputResource{
 					{
 						LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
-						ResourceType: resourcemodel.ResourceType{
-							Type:     resourcekinds.DaprStateStoreAzureStorage,
-							Provider: resourcemodel.ProviderAzure,
-						},
-						Identity: resourcemodel.ResourceIdentity{
-							ResourceType: &resourcemodel.ResourceType{
-								Type:     resourcekinds.DaprStateStoreAzureStorage,
-								Provider: resourcemodel.ProviderAzure,
-							},
-							Data: resourcemodel.ARMIdentity{},
-						},
-						RadiusManaged: to.Ptr(true),
-						Dependencies: []rpv1.Dependency{
-							{
-								LocalID: "",
-							},
-						},
+						ID:      resources.MustParse("/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-sa"),
 					},
 				},
 				ComputedValues: map[string]any{
@@ -73,23 +55,7 @@ func TestDaprStateStore_ApplyDeploymentOutput(t *testing.T) {
 				DeployedOutputResources: []rpv1.OutputResource{
 					{
 						LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
-						ResourceType: resourcemodel.ResourceType{
-							Type:     resourcekinds.DaprStateStoreAzureStorage,
-							Provider: resourcemodel.ProviderAzure,
-						},
-						Identity: resourcemodel.ResourceIdentity{
-							ResourceType: &resourcemodel.ResourceType{
-								Type:     resourcekinds.DaprStateStoreAzureStorage,
-								Provider: resourcemodel.ProviderAzure,
-							},
-							Data: resourcemodel.ARMIdentity{},
-						},
-						RadiusManaged: to.Ptr(true),
-						Dependencies: []rpv1.Dependency{
-							{
-								LocalID: "",
-							},
-						},
+						ID:      resources.MustParse("/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-sa"),
 					},
 				},
 				ComputedValues: map[string]any{},

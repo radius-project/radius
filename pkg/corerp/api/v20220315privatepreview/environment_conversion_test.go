@@ -28,6 +28,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -409,36 +410,12 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
 }
 
-type fakeResource struct{}
-
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
-func (f *fakeResource) GetSystemData() *v1.SystemData {
-	return nil
-}
-
-func (f *fakeResource) GetBaseResource() *v1.BaseResource {
-	return nil
-}
-
-func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
-	return v1.ProvisioningStateAccepted
-}
-
-func (f *fakeResource) SetProvisioningState(state v1.ProvisioningState) {
-}
-
-func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
-}
-
 func TestConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

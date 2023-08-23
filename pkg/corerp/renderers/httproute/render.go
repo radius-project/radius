@@ -29,7 +29,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -117,5 +116,5 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 		},
 	}
 
-	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
 }

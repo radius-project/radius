@@ -1,21 +1,19 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/route0",
-    "name": "route0",
-    "type": "Applications.Core/httpRoutes",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "HttpRoute",
-                "Provider": "kubernetes"
-              }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostname": "localhost",
-        "port":8080,
-        "scheme": "http",
-        "url": "http://testapplications.com/httproute/"
-    }
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/httpRoutes/route0",
+  "name": "route0",
+  "type": "Applications.Core/httpRoutes",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "hostname": "localhost",
+    "port": 8080,
+    "scheme": "http",
+    "url": "http://testapplications.com/httproute/"
+  }
 }

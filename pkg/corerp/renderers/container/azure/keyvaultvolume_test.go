@@ -120,7 +120,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 			if tc.err != nil {
 				require.ErrorIs(t, tc.err, err)
 			} else {
-				r := or.Resource.(*csiv1.SecretProviderClass)
+				r := or.CreateResource.Data.(*csiv1.SecretProviderClass)
 				require.Equal(t, string(tc.identityKind), r.Annotations[kubernetes.AnnotationIdentityType])
 				require.Equal(t, tc.beforeParams, r.Spec.Parameters)
 

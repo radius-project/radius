@@ -1,34 +1,30 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/httproutes/hrt0",
-    "location": "West US",
-    "name": "hrt0",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "Provider": "aks",
-              "Identity": {
-                "aksClusterName": "",
-                "name": "",
-                "namespace": ""
-              }
-            }]
-          },
-        "provisioningState": "Succeeded",
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostname": "foo.example.com",
-        "port": 8080,
-        "scheme": "https",
-        "url": "https://foo.example.com"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/httproutes/hrt0",
+  "location": "West US",
+  "name": "hrt0",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
     },
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "fake@hotmail.com",
-        "createdByType": "User",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "fake@hotmail.com",
-        "lastModifiedByType": "User"
-    },
-    "tags": {},
-    "type": "applications.core/httproutes"
+    "provisioningState": "Succeeded",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "hostname": "foo.example.com",
+    "port": 8080,
+    "scheme": "https",
+    "url": "https://foo.example.com"
+  },
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "tags": {},
+  "type": "applications.core/httproutes"
 }

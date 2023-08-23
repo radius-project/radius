@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -96,16 +95,6 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 						Name: "dpsb-recipe-old",
 						Type: validation.O_DaprPubSubBrokersResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderKubernetes,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderKubernetes,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},

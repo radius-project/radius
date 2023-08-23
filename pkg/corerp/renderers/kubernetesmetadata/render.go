@@ -66,12 +66,13 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	}
 
 	for _, ores := range output.Resources {
-		if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
+		resourceType := ores.GetResourceType()
+		if resourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		dep, ok := ores.Resource.(*appsv1.Deployment)
+		dep, ok := ores.CreateResource.Data.(*appsv1.Deployment)
 		if !ok {
 			continue
 		}

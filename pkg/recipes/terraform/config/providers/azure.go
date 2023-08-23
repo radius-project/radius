@@ -27,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -100,7 +101,7 @@ func (p *azureProvider) parseScope(ctx context.Context, envConfig *recipes.Confi
 		return "", fmt.Errorf("invalid Azure provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error())
 	}
 
-	subscription := parsedScope.FindScope(resources.SubscriptionsSegment)
+	subscription := parsedScope.FindScope(resources_azure.ScopeSubscriptions)
 	if subscription == "" {
 		return "", fmt.Errorf("invalid Azure provider scope %q is configured on the Environment, subscription is required in the scope", scope)
 	}

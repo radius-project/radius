@@ -34,6 +34,7 @@ import (
 	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 )
 
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
@@ -95,7 +96,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	return &deployment.ResourceDeploymentClient{
 		Client:              dc,
 		OperationsClient:    doc,
-		RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
+		RadiusResourceGroup: id.FindScope(resources_radius.ScopeResourceGroups),
 	}, nil
 }
 
