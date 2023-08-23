@@ -28,33 +28,38 @@ using Azure.ResourceManager;
 @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
 scalar ResourceNameString extends string;
 
-@doc("Base properties of a Radius resource.")
-model RadiusResourceBase {
+@doc("Base properties of a Environment-scoped resource")
+model EnvironmentScopedResource {
   @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
   environment: string;
 
-  @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
+  @doc("Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)")
   application?: string;
+
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
 
   @doc("Status of a resource.")
   @visibility("read")
   status?: ResourceStatus;
 }
 
-@doc("The base resource properties definition for Radius top-level resource properties")
-model RadiusResource<TProperties extends {}> {
-  ...RadiusResourceBase;
-  ...TProperties;
-}
+@doc("Base properties of a Application-scoped resource")
+model ApplicationScopedResource {
+  @doc("Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)")
+  environment?: string;
 
-// ExtenderResoruce allows to get the additional properties. To ensure that `additionalProperties` is true,
-// we need to extend `Record<unknown>`.
-// Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
-@doc("The base resource properties definition for Radius top=level resource properties with additional properties")
-model RadiusResourceWithAdditionalProperties<TProperties extends {}>
-  extends Record<unknown> {
-  ...RadiusResourceBase;
-  ...TProperties;
+  @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
+  application: string;
+
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("Status of a resource.")
+  @visibility("read")
+  status?: ResourceStatus;
 }
 
 @doc("IdentitySettings is the external identity setting.")
@@ -108,7 +113,16 @@ model ResourceStatus {
 }
 
 @doc("Properties of an output resource.")
-model OutputResource {}
+model OutputResource {
+  @doc("The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships.")
+  localId?: string;
+
+  @doc("The UCP resource ID of the underlying resource.")
+  id?: string;
+
+  @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
+  radiusManaged?: boolean;
+}
 
 @doc("Describes a reference to an existing resource")
 model ResourceReference {

@@ -26,8 +26,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/test/radcli"
@@ -68,13 +66,10 @@ type RPResource struct {
 	OutputResources []OutputResourceResponse
 }
 
-// Output resource fields returned as a part of get/list response payload for Radius resources
-// https://github.com/project-radius/radius/blob/main/pkg/rp/types.go#L173
+// Output resource fields returned as a part of get/list response payload for Radius resources.
 type OutputResourceResponse struct {
-	LocalID  string
-	Provider string
-	Identity any
-	Name     string // Name of the underlying resource within its platform (Azure/AWS/Kubernetes)
+	// ID is the resource ID of the output resource.
+	ID string
 }
 
 type RPResourceSet struct {
@@ -91,12 +86,15 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
 		_, err := client.DeleteEnv(ctxWithResp, resource.Name)
+		if err != nil {
+			return err
+		}
 
 		if respFromCtx.StatusCode == 204 {
 			output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
 		}
 
-		return err
+		return nil
 
 		// TODO: this should probably call the CLI, but if you create an
 		// environment via bicep deployment, it will not be reflected in the
@@ -152,6 +150,7 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 
 			// Validate expected output resources are present in the response
 			if len(expectedResource.OutputResources) > 0 {
+				t.Log("validating output resources")
 				bytes, err := json.Marshal(res.Properties["status"])
 				require.NoError(t, err)
 
@@ -159,27 +158,15 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 				err = json.Unmarshal(bytes, &outputResourcesMap)
 				require.NoError(t, err)
 				outputResources := outputResourcesMap["outputResources"]
+				for _, outputResource := range outputResources {
+					t.Logf("Found output resource: %+v", outputResource)
+				}
 				require.Equalf(t, len(expectedResource.OutputResources), len(outputResources), "expected output resources: %v, actual: %v", expectedResource.OutputResources, outputResources)
 				for _, expectedOutputResource := range expectedResource.OutputResources {
 					found := false
 					for _, actualOutputResource := range outputResources {
-						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
+						if strings.EqualFold(expectedOutputResource.ID, actualOutputResource.ID) {
 							found = true
-							// if the test has the OutputResourceResponse.Name set then validate
-							// the actual outputresource name with the expected resource name based on the provider type.
-							if expectedOutputResource.Name != "" {
-								if expectedOutputResource.Provider == resourcemodel.ProviderAzure {
-									identity := actualOutputResource.Identity.(map[string]interface{})
-									actualID := identity["id"].(string)
-									actualResource, err := resources.ParseResource(actualID)
-									require.NoError(t, err)
-									require.Equal(t, expectedOutputResource.Name, actualResource.Name())
-								}
-								if expectedOutputResource.Provider == resourcemodel.ProviderKubernetes {
-									identity := actualOutputResource.Identity.(map[string]interface{})
-									require.Equal(t, expectedOutputResource.Name, identity["name"].(string))
-								}
-							}
 							break
 						}
 					}

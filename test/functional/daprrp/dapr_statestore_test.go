@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -98,16 +97,6 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 						Name: "dapr-sts-recipe",
 						Type: validation.DaprStateStoresResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderKubernetes,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderKubernetes,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},

@@ -32,11 +32,11 @@ import (
 	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -73,7 +73,9 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	downloadStartTime := time.Now()
 	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
 	if err != nil {
-		return nil, err
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.FailedOperationState))
+		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.SuccessfulOperationState))
@@ -81,7 +83,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&recipe, &configuration)
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	// get the parameters after resolving the conflict between developer and operator parameters
@@ -92,11 +94,11 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := newProviderConfig(deploymentID.FindScope(resources.ResourceGroupsSegment), configuration.Providers)
+	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), configuration.Providers)
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -120,17 +122,17 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 		clients.DeploymentsClientAPIVersion,
 	)
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	recipeResponse, err := d.prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read the recipe output %q: %w", recipes.ResultPropertyName, err)
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
 
 	return recipeResponse, nil
@@ -143,26 +145,24 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 
 	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
 	if err != nil {
-		return err
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	// Loop over each output resource and delete in reverse dependency order
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
-		id := outputResource.Identity.GetID()
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
+
+		resourceType := outputResource.GetResourceType()
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID.String(), outputResource.LocalID, resourceType.Type))
 		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
 			continue
 		}
 
-		err = d.ResourceClient.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		err = d.ResourceClient.Delete(ctx, outputResource.ID.String())
 		if err != nil {
-			return err
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", outputResource.ID.String()), ucplog.LogFieldTargetResourceID, outputResource.ID.String())
 
 	}
 
@@ -212,7 +212,7 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 		return resources.ID{}, err
 	}
 
-	resourceGroup := parsed.FindScope(resources.ResourceGroupsSegment)
+	resourceGroup := parsed.FindScope(resources_radius.ScopeResourceGroups)
 	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 

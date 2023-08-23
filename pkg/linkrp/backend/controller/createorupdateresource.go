@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -75,6 +74,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	// Now we're ready to process recipes (if needed).
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data)
 	if err != nil {
+		if recipeError, ok := err.(*recipes.RecipeError); ok {
+			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -92,7 +94,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	// Now we need to clean up any obsolete output resources.
 	diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
-	err = c.garbageCollectResources(ctx, req.ResourceID, diff)
+	err = c.garbageCollectResources(ctx, diff)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -149,16 +151,15 @@ func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Cont
 	return &config.Runtime, nil
 }
 
-func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, id string, diff []rpv1.OutputResource) error {
+func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	for _, resource := range diff {
-		id := resource.Identity.GetID()
-		logger.Info(fmt.Sprintf("Deleting output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
-		err := c.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
+		logger.Info(fmt.Sprintf("Deleting output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
+		err := c.client.Delete(ctx, resource.ID.String())
 		if err != nil {
 			return err
 		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
 	}
 
 	return nil

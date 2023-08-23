@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -77,8 +78,7 @@ func TestGatewayConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
-	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 }
 
 func TestGatewaySSLPassthroughConvertVersionedToDataModel(t *testing.T) {
@@ -132,8 +132,7 @@ func TestGatewaySSLPassthroughConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
-	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, true, *versioned.Properties.TLS.SSLPassthrough)
 }
 
@@ -189,8 +188,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
-	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
 	require.Equal(t, TLSMinVersionTls13, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
@@ -247,8 +245,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned_NoMinProtocolVersion(t
 	require.Equal(t, "mypath", *versioned.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", *versioned.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
-	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
 	require.Equal(t, TLSMinVersionTls12, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
@@ -258,7 +255,7 @@ func TestGatewayConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

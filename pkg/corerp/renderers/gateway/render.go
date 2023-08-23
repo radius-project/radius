@@ -32,9 +32,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 )
 
 type Renderer struct {
@@ -180,19 +180,14 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretResource := secretStoreResource.OutputResources[rpv1.LocalIDSecret].Data
-			secretResourceData, ok := secretResource.(map[string]any)
+			secretResourceID, ok := secretStoreResource.OutputResources[rpv1.LocalIDSecret]
 			if !ok {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretName, ok := secretResourceData["name"]
-			if !ok {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
-			}
-
-			secretNamespace, ok := secretResourceData["namespace"]
-			if !ok {
+			secretName := secretResourceID.Name()
+			secretNamespace := secretResourceID.FindScope(resources_kubernetes.ScopeNamespaces)
+			if secretNamespace == "" {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
@@ -294,7 +289,7 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 
-	return rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
 // MakeHttpRoutes creates HTTPProxy objects for each route in the gateway and returns them as OutputResources. It returns
@@ -396,7 +391,7 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 
 	var outputResources []rpv1.OutputResource
 	for localID, object := range objects {
-		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
+		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(localID, object, object.ObjectMeta))
 	}
 
 	return outputResources, nil

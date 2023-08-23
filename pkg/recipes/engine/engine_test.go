@@ -26,8 +26,8 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -274,7 +274,7 @@ func Test_Engine_Delete_Error(t *testing.T) {
 	engine, configLoader, driver := setup(t)
 
 	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
-	driver.EXPECT().Delete(ctx, outputResources).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+	driver.EXPECT().Delete(ctx, outputResources).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].ID))
 
 	err := engine.Delete(ctx, recipeMetadata, outputResources)
 	require.Error(t, err)
@@ -308,7 +308,7 @@ func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/test-db",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -322,13 +322,7 @@ func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 
 	outputResources := []rpv1.OutputResource{
 		{
-			LocalID: "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Microsoft.Resources/deployments",
-					Provider: "azure",
-				},
-			},
+			ID: resources.MustParse("/subscriptions/test-sub/resourcegroups/test-rg/providers/Microsoft.DocumentDB/accounts/test-account"),
 		},
 	}
 	return recipeMetadata, recipeDefinition, outputResources

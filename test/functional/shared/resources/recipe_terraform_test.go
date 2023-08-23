@@ -33,8 +33,8 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -123,7 +123,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 				r, err := resources.ParseResource(string(decoded))
 				require.NoError(t, err)
 
-				rgName := r.FindScope(resources.ResourceGroupsSegment)
+				rgName := r.FindScope(resources_radius.ScopeResourceGroups)
 
 				tests := []struct {
 					key      string
@@ -180,13 +180,6 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 						Name: "corerp-resources-terraform-azstorage",
 						Type: validation.ExtendersResource,
 						App:  appName,
-						OutputResources: []validation.OutputResourceResponse{
-							// Azure storage account.
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource0",
-							},
-						},
 					},
 				},
 			},

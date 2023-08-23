@@ -26,11 +26,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/test/testcontext"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
@@ -150,7 +149,7 @@ func Test_Render_WithIPAndNoHostname(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_WithIPAndPrefix(t *testing.T) {
@@ -185,7 +184,7 @@ func Test_Render_WithIPAndPrefix(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_WithIPAndFQHostname(t *testing.T) {
@@ -218,7 +217,7 @@ func Test_Render_WithIPAndFQHostname(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
@@ -253,7 +252,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_PublicEndpointOverride(t *testing.T) {
@@ -281,7 +280,7 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
@@ -314,7 +313,7 @@ func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
@@ -344,7 +343,7 @@ func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
@@ -374,7 +373,7 @@ func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_Hostname(t *testing.T) {
@@ -403,7 +402,7 @@ func Test_Render_Hostname(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_Hostname_WithPort(t *testing.T) {
@@ -433,7 +432,7 @@ func Test_Render_Hostname_WithPort(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_Hostname_WithPrefix(t *testing.T) {
@@ -467,7 +466,7 @@ func Test_Render_Hostname_WithPrefix(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
@@ -501,7 +500,7 @@ func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_WithMissingPublicIP(t *testing.T) {
@@ -532,7 +531,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_Fails_SSLPassthroughWithRoutePath(t *testing.T) {
@@ -659,7 +658,7 @@ func Test_Render_FQDNOverride(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
@@ -731,7 +730,7 @@ func Test_Render_Single_Route(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateHttpRoute(t, output.Resources, routeName, 80, nil, "")
 }
 
@@ -804,7 +803,7 @@ func Test_Render_SSLPassthrough(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateHttpRoute(t, output.Resources, routeName, 80, nil, "")
 }
 
@@ -872,7 +871,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateHttpRoute(t, output.Resources, routeAName, 80, nil, "")
 	validateHttpRoute(t, output.Resources, routeBName, 80, nil, "")
 }
@@ -927,7 +926,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 
 	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
 		ReplacePrefix: []contourv1.ReplacePrefix{
@@ -1036,7 +1035,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 
 	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
 		ReplacePrefix: []contourv1.ReplacePrefix{
@@ -1115,7 +1114,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 	validateHttpRoute(t, output.Resources, routeName, httpRoutePort, nil, "")
 }
 
@@ -1167,7 +1166,7 @@ func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, envKubeMetadata)
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, envKubeMetadata)
 	validateHttpRoute(t, output.Resources, routeName, 80, nil, envKubeMetadata)
 }
 
@@ -1220,7 +1219,7 @@ func Test_Render_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, envAppKubeMetadata)
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, envAppKubeMetadata)
 	validateHttpRoute(t, output.Resources, routeName, 80, nil, envAppKubeMetadata)
 }
 
@@ -1275,7 +1274,7 @@ func Test_RenderDNS_WithEnvironmentApplication_KubernetesMetadata(t *testing.T) 
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, envAppKubeMetadata)
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, envAppKubeMetadata)
 }
 
 func Test_RenderDNS_WithEnvironment_KubernetesMetadata(t *testing.T) {
@@ -1328,7 +1327,7 @@ func Test_RenderDNS_WithEnvironment_KubernetesMetadata(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, envKubeMetadata)
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, envKubeMetadata)
 }
 
 func Test_Render_With_TLSTermination(t *testing.T) {
@@ -1365,19 +1364,13 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 					},
 				},
 			},
-			OutputResources: map[string]resourcemodel.ResourceIdentity{
-				"Secret": {
-					ResourceType: &resourcemodel.ResourceType{
-						Type:     "Secret",
-						Provider: "kubernetes",
-					},
-					Data: map[string]any{
-						"kind":       "Secret",
-						"apiVersion": "v1",
-						"name":       secretName,
-						"namespace":  environmentOptions.Namespace,
-					},
-				},
+			OutputResources: map[string]resources.ID{
+				"Secret": resources_kubernetes.IDFromParts(
+					resources_kubernetes.PlaneNameTODO,
+					"",
+					"Secret",
+					environmentOptions.Namespace,
+					secretName),
 			},
 		},
 	}
@@ -1403,7 +1396,7 @@ func Test_Render_With_TLSTermination(t *testing.T) {
 		Includes: expectedIncludes,
 	}
 
-	validateGateway(t, output.Resources, expectedGatewaySpec, "")
+	validateHTTPProxy(t, output.Resources, expectedGatewaySpec, "")
 }
 
 func Test_ParseURL(t *testing.T) {
@@ -1469,27 +1462,27 @@ func Test_IsURL(t *testing.T) {
 	require.True(t, isURL(valid_default_https_url))
 }
 
-func validateGateway(t *testing.T, outputResources []rpv1.OutputResource, expectedGatewaySpec *contourv1.HTTPProxySpec, kmeOption string) {
-	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
+func validateHTTPProxy(t *testing.T, outputResources []rpv1.OutputResource, expectedHTTPProxySpec *contourv1.HTTPProxySpec, kmeOption string) {
+	httpProxy, httpProxyOutputResource := kubernetes.FindContourHTTPProxy(outputResources)
 
-	expectedGatewayOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, gateway, gateway.ObjectMeta)
-	require.Equal(t, expectedGatewayOutputResource, gatewayOutputResource)
-	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), gateway.Name)
-	require.Equal(t, applicationName, gateway.Namespace)
+	expectedHTTPProxyOutputResource := rpv1.NewKubernetesOutputResource(rpv1.LocalIDGateway, httpProxy, httpProxy.ObjectMeta)
+	require.Equal(t, expectedHTTPProxyOutputResource, httpProxyOutputResource)
+	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), httpProxy.Name)
+	require.Equal(t, applicationName, httpProxy.Namespace)
 	if !(kmeOption == envKubeMetadata || kmeOption == envAppKubeMetadata) {
-		require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType), gateway.Labels)
+		require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType), httpProxy.Labels)
 	} else {
-		require.Equal(t, getExpectedMaps(true, kmeOption).metaAnn, gateway.Annotations)
-		require.Equal(t, getExpectedMaps(true, kmeOption).metaLbl, gateway.Labels)
+		require.Equal(t, getExpectedMaps(true, kmeOption).metaAnn, httpProxy.Annotations)
+		require.Equal(t, getExpectedMaps(true, kmeOption).metaLbl, httpProxy.Labels)
 	}
 
-	require.Equal(t, expectedGatewaySpec, &gateway.Spec)
+	require.Equal(t, expectedHTTPProxySpec, &httpProxy.Spec)
 }
 
 func validateHttpRoute(t *testing.T, outputResources []rpv1.OutputResource, expectedRouteName string, expectedPort int32, expectedRewrite *contourv1.PathRewritePolicy, kmeOption string) {
 	expectedLocalID := fmt.Sprintf("%s-%s", rpv1.LocalIDHttpRoute, expectedRouteName)
-	httpRoute, httpRouteOutputResource := kubernetes.FindHttpRouteByLocalID(outputResources, expectedLocalID)
-	expectedHttpRouteOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
+	httpRoute, httpRouteOutputResource := kubernetes.FindContourHTTPProxyByLocalID(outputResources, expectedLocalID)
+	expectedHttpRouteOutputResource := rpv1.NewKubernetesOutputResource(expectedLocalID, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedHttpRouteOutputResource, httpRouteOutputResource)
 	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)
 	require.Equal(t, applicationName, httpRoute.Namespace)

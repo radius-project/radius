@@ -22,15 +22,16 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -368,39 +369,27 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	outputResources := []rpv1.OutputResource{
 		{
 			LocalID: "RecipeResource0",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Service",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "apps/unknown",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
 			RadiusManaged: to.Ptr(true),
 		},
 		{
 			LocalID: "RecipeResource1",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Service",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "apps/unknown",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"",
+				"Service",
+				"recipe-app",
+				"redis"),
 			// We don't expect a call to delete to be made when RadiusManaged is false.
 			RadiusManaged: to.Ptr(false),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(nil)
+	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
 	err := driver.Delete(ctx, outputResources)
 	require.NoError(t, err)
@@ -411,24 +400,27 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
-			LocalID: "RecipeResource0",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "KubernetesService",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "invalid api versionn",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
 			RadiusManaged: to.Ptr(true),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+		},
+	}
+	client.EXPECT().
+		Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
+		Times(1)
 
 	err := driver.Delete(ctx, outputResources)
 	require.Error(t, err)
+	require.Equal(t, err, &recipeError)
 }

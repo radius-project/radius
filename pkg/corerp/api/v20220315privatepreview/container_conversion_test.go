@@ -25,6 +25,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -147,8 +148,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "azure", string(val.IAM.Kind))
 				require.Equal(t, "read", val.IAM.Roles[0])
 				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", r.Properties.Container.Image)
-				require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-				require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
+				require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
 				require.Equal(t, 3, len(versioned.Properties.Extensions))
 				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
@@ -200,7 +200,7 @@ func TestContainerConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

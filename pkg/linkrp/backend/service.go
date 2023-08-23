@@ -32,7 +32,6 @@ import (
 	mongo_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/mongodatabases"
 	redis_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/rediscaches"
 	sql_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/sqldatabases"
-	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
@@ -54,7 +53,6 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
-	"k8s.io/client-go/discovery"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
@@ -87,21 +85,7 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	runtimeClient, err := kubeutil.NewRuntimeClient(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
-	// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
-	discoveryClient.UseLegacyDiscovery = true
-
-	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
+	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, s.KubeClient, s.KubeDiscoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
 
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
@@ -148,15 +132,15 @@ func (s *Service) Run(ctx context.Context) error {
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &daprstatestores.Processor{Client: runtimeClient}
+			processor := &daprstatestores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &daprsecretstores.Processor{Client: runtimeClient}
+			processor := &daprsecretstores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &daprpubsubbrokers.Processor{Client: runtimeClient}
+			processor := &daprpubsubbrokers.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.ExtendersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
@@ -170,15 +154,15 @@ func (s *Service) Run(ctx context.Context) error {
 			return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &statestores.Processor{Client: runtimeClient}
+			processor := &statestores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &secretstores.Processor{Client: runtimeClient}
+			processor := &secretstores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &pubsubbrokers.Processor{Client: runtimeClient}
+			processor := &pubsubbrokers.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {

@@ -141,11 +141,14 @@ func NewRecipeAttributes(operationType, recipeName string, definition *recipes.E
 
 	if definition != nil && definition.TemplatePath != "" {
 		attrs = append(attrs, recipeTemplatePathAttrKey.String(strings.ToLower(definition.TemplatePath)))
+	}
 
+	if definition != nil && definition.ResourceType != "" {
+		attrs = append(attrs, resourceTypeAttrKey.String(strings.ToLower(definition.ResourceType)))
 	}
 
 	if state != "" {
-		attrs = append(attrs, operationStateAttrKey.String(strings.ToLower(state)))
+		attrs = append(attrs, OperationStateAttrKey.String(strings.ToLower(state)))
 	}
 
 	return attrs

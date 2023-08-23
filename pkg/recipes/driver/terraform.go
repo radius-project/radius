@@ -66,7 +66,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if d.options.Path == "" {
-		return nil, errors.New("path is a required option for Terraform driver")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, "path is a required option for Terraform driver", nil)
 	}
 
 	// We need a unique directory per execution of terraform. We generate this using the unique operation id of the async request so that names are always unique,
@@ -85,7 +85,7 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 
 	logger.Info(fmt.Sprintf("Deploying terraform recipe: %q, template: %q, execution directory: %q", recipe.Name, definition.TemplatePath, requestDirPath))
 	if err := os.MkdirAll(requestDirPath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create directory %q to execute terraform: %w", requestDirPath, err)
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to create directory %q to execute terraform: %s", requestDirPath, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
@@ -100,12 +100,12 @@ func (d *terraformDriver) Execute(ctx context.Context, configuration recipes.Con
 		EnvRecipe:      &definition,
 	})
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
-		return nil, err
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 
 	return recipeOutputs, nil

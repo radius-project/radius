@@ -87,6 +87,9 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 
 		err = c.engine.Delete(ctx, recipeData, resourceDataModel.OutputResources())
 		if err != nil {
+			if recipeError, ok := err.(*recipes.RecipeError); ok {
+				return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+			}
 			return ctrl.Result{}, err
 		}
 	}
