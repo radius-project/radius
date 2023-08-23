@@ -1,0 +1,62 @@
+{
+  "operationId": "Applications_Update",
+  "title": "Update (Patch) an application resource",
+  "parameters": {
+    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "applicationName": "app0",
+    "api-version": "2022-03-15-privatepreview",
+    "ApplicationResource": {
+      "location": "West US",
+      "properties": {
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "extensions": [
+          {
+            "kind": "kubernetesMetadata",
+            "annotations": {
+              "prometheus.io/scrape": "true",
+              "prometheus.io/port": "80"
+            },
+            "labels": {
+              "foo/bar/team": "credit",
+              "foo/bar/contact": "radiususer"
+            }
+          },
+          {
+            "kind": "kubernetesNamespace",
+            "namespace": "app-ns"
+          }
+        ]
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+        "name": "app0",
+        "type": "Applications.Core/applications",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "extensions": [
+            {
+              "kind": "kubernetesMetadata",
+              "annotations": {
+                "prometheus.io/scrape": "true",
+                "prometheus.io/port": "80"
+              },
+              "labels": {
+                "foo/bar/team": "credit",
+                "foo/bar/contact": "radiususer"
+              }
+            },
+            {
+              "kind": "kubernetesNamespace",
+              "namespace": "app-ns"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "operationId": "Applications_Delete",
+  "title": "Delete an application resource",
+  "parameters": {
+    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "applicationName": "app0",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}

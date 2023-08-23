@@ -3,6 +3,7 @@
   "info": {
     "title": "Applications.Core Management APIs",
     "version": "2022-03-15-privatepreview",
+    "description": "REST API for Applications.Core",
     "x-typespec-generated": [
       {
         "emitter": "@azure-tools/typespec-autorest"
@@ -97,8 +98,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationsListByScope": {
-            "$ref": "./examples/ApplicationsListByScope.json"
+          "Get applications by resource group": {
+            "$ref": "./examples/Applications_List.json"
+          },
+          "Get applications at scope": {
+            "$ref": "./examples/Applications_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -145,13 +149,13 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationGet": {
-            "$ref": "./examples/ApplicationsGet.json"
+          "Get an application resource": {
+            "$ref": "./examples/Applications_Get.json"
           }
         }
       },
       "put": {
-        "operationId": "Applications_Create",
+        "operationId": "Applications_CreateOrUpdate",
         "tags": [
           "Applications"
         ],
@@ -203,8 +207,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationPut": {
-            "$ref": "./examples/ApplicationsPut.json"
+          "Create or update an application resource": {
+            "$ref": "./examples/Applications_CreateOrUpdate.json"
           }
         }
       },
@@ -255,8 +259,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationPatch": {
-            "$ref": "./examples/ApplicationsPatch.json"
+          "Update (Patch) an application resource": {
+            "$ref": "./examples/Applications_Update.json"
           }
         }
       },
@@ -298,8 +302,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationDelete": {
-            "$ref": "./examples/ApplicationsDelete.json"
+          "Delete an application resource": {
+            "$ref": "./examples/Applications_Delete.json"
           }
         }
       }
@@ -334,8 +338,11 @@
           }
         },
         "x-ms-examples": {
-          "ContainersListByScope": {
-            "$ref": "./examples/ContainersListByScope.json"
+          "List containers at resource group": {
+            "$ref": "./examples/Containers_List.json"
+          },
+          "List containers at root scope": {
+            "$ref": "./examples/Containers_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -382,8 +389,8 @@
           }
         },
         "x-ms-examples": {
-          "ContainersGet": {
-            "$ref": "./examples/ContainersGet.json"
+          "Get an container resource": {
+            "$ref": "./examples/Containers_Get.json"
           }
         }
       },
@@ -444,11 +451,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "ContainersPut": {
-            "$ref": "./examples/ContainersPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -516,11 +518,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "ContainersPatch": {
-            "$ref": "./examples/ContainersPatch.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -578,8 +575,8 @@
           }
         },
         "x-ms-examples": {
-          "ContainersDelete": {
-            "$ref": "./examples/ContainersDelete.json"
+          "Delete an container resource": {
+            "$ref": "./examples/Containers_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -615,11 +612,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "RadiusEnvironmentsListByScope": {
-            "$ref": "./examples/EnvironmentsListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -666,8 +658,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsGet": {
-            "$ref": "./examples/EnvironmentsGetEnv0.json"
+          "Get an environment resource": {
+            "$ref": "./examples/Environments_GetEnv0.json"
           }
         }
       },
@@ -722,11 +714,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "RadiusEnvironmentsPut": {
-            "$ref": "./examples/EnvironmentsPutEnv0.json"
-          }
         }
       },
       "patch": {
@@ -776,8 +763,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsPatch": {
-            "$ref": "./examples/EnvironmentsPatchEnv0.json"
+          "Update an environment resource": {
+            "$ref": "./examples/Environments_PatchEnv0.json"
           }
         }
       },
@@ -819,8 +806,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsDelete": {
-            "$ref": "./examples/EnvironmentsDeleteEnv0.json"
+          "Delete an environment resource": {
+            "$ref": "./examples/Environments_DeleteEnv0.json"
           }
         }
       }
@@ -871,11 +858,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "RadiusEnvironmentsGetRecipeMetadata": {
-            "$ref": "./examples/EnvironmentsGetRecipeMetadata.json"
-          }
         }
       }
     },
@@ -909,8 +891,11 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersListByRootScope": {
-            "$ref": "./examples/ExtendersListByRootScope.json"
+          "List extender resources by resource group": {
+            "$ref": "./examples/Extenders_List.json"
+          },
+          "List extender resources at scope": {
+            "$ref": "./examples/Extenders_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -957,8 +942,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersGet": {
-            "$ref": "./examples/ExtendersGet.json"
+          "Get an extender resource": {
+            "$ref": "./examples/Extenders_Get.json"
           }
         }
       },
@@ -1019,11 +1004,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "ExtendersPut": {
-            "$ref": "./examples/ExtendersPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1092,8 +1072,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersPatch": {
-            "$ref": "./examples/ExtendersPatch.json"
+          "Update an extender resource": {
+            "$ref": "./examples/Extenders_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1153,8 +1133,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersDelete": {
-            "$ref": "./examples/ExtendersDelete.json"
+          "Delete an extender resource": {
+            "$ref": "./examples/Extenders_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1212,8 +1192,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersListSecrets": {
-            "$ref": "./examples/ExtendersListSecrets.json"
+          "List the secrets from extender resources": {
+            "$ref": "./examples/Extenders_ListSecrets.json"
           }
         }
       }
@@ -1248,8 +1228,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysListByScope": {
-            "$ref": "./examples/GatewaysListByScope.json"
+          "List gateway resources": {
+            "$ref": "./examples/Gateways_List.json"
+          },
+          "List gateway resources at scope": {
+            "$ref": "./examples/Gateways_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1296,8 +1279,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysGet": {
-            "$ref": "./examples/GatewaysGet.json"
+          "Get an gateway resource": {
+            "$ref": "./examples/Gateways_Get.json"
           }
         }
       },
@@ -1358,11 +1341,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "RadiusGatewaysPut": {
-            "$ref": "./examples/GatewaysPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1431,8 +1409,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysPatch": {
-            "$ref": "./examples/GatewaysPatch.json"
+          "Update a gateway resource": {
+            "$ref": "./examples/Gateways_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1492,8 +1470,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysDelete": {
-            "$ref": "./examples/GatewaysDelete.json"
+          "Delete an gateway resource": {
+            "$ref": "./examples/Gateways_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1532,8 +1510,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesListByScope": {
-            "$ref": "./examples/HttpRoutesListByScope.json"
+          "List httpRoutes resources by resource group": {
+            "$ref": "./examples/HttpRoutes_List.json"
+          },
+          "List httpRoutes resources at scope": {
+            "$ref": "./examples/HttpRoutes_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1580,8 +1561,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesGet": {
-            "$ref": "./examples/HttpRoutesGet.json"
+          "Get a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Get.json"
           }
         }
       },
@@ -1642,11 +1623,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "RadiusHttpRoutesPut": {
-            "$ref": "./examples/HttpRoutesPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1715,8 +1691,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesPatch": {
-            "$ref": "./examples/HttpRoutesPatch.json"
+          "Update a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1776,8 +1752,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesDelete": {
-            "$ref": "./examples/HttpRoutesDelete.json"
+          "Delete a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1816,8 +1792,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresList": {
-            "$ref": "./examples/SecretStoresList.json"
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_List.json"
           }
         },
         "x-ms-pageable": {
@@ -1864,11 +1840,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresGet": {
-            "$ref": "./examples/SecretStoresGet.json"
+          "Get a secret store": {
+            "$ref": "./examples/SecretStores_Get.json"
           },
-          "RadiusSecretStoresAzureKeyVaultGet": {
-            "$ref": "./examples/SecretStoresGet_AzureKeyVault.json"
+          "Get a secret store for Azure Keyvault": {
+            "$ref": "./examples/SecretStores_Get_AzureKeyVault.json"
           }
         }
       },
@@ -1929,14 +1905,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "RadiusSecretStoresPutValueFrom": {
-            "$ref": "./examples/SecretStoresPutValueFrom.json"
-          },
-          "RadiusSecretStoresPutValue": {
-            "$ref": "./examples/SecretStoresPutValue.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2005,8 +1973,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresPatch": {
-            "$ref": "./examples/SecretStoresPatch.json"
+          "Update a secret store resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
+          },
+          "Update a secret store": {
+            "$ref": "./examples/SecretStores_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2065,11 +2036,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "RadiusSecretStoresDelete": {
-            "$ref": "./examples/SecretStoresDelete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -2125,8 +2091,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresPostListSecret": {
-            "$ref": "./examples/SecretStoresListSecrets.json"
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_ListSecrets.json"
           }
         }
       }
@@ -2161,8 +2127,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesListByScope": {
-            "$ref": "./examples/VolumesListByScope.json"
+          "List volumes by resource group": {
+            "$ref": "./examples/Volumes_List.json"
+          },
+          "List volumes at scope": {
+            "$ref": "./examples/Volumes_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -2209,8 +2178,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesGet": {
-            "$ref": "./examples/VolumesGet.json"
+          "Get a volume": {
+            "$ref": "./examples/Volumes_Get.json"
           }
         }
       },
@@ -2271,11 +2240,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "RadiusVolumesPut": {
-            "$ref": "./examples/VolumesPut.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2344,8 +2308,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesPatch": {
-            "$ref": "./examples/VolumesPatch.json"
+          "Update a volume": {
+            "$ref": "./examples/Volumes_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2405,8 +2369,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesDelete": {
-            "$ref": "./examples/VolumesDelete.json"
+          "Delete a volume": {
+            "$ref": "./examples/Volumes_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2439,6 +2403,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get the operations for the Applications.Core resource provider": {
+            "$ref": "./examples/Operations_List.json"
           }
         },
         "x-ms-pageable": {
@@ -3578,6 +3547,19 @@
       "type": "object",
       "description": "Gateway properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the Gateway at the time the operation was called.",
@@ -3611,31 +3593,8 @@
         }
       },
       "required": [
+        "environment",
         "routes"
-      ],
-      "allOf": [
-        {
-          "type": "object",
-          "description": "The base resource properties definition for Radius top-level resource properties",
-          "properties": {
-            "environment": {
-              "type": "string",
-              "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-            },
-            "application": {
-              "type": "string",
-              "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-            },
-            "status": {
-              "$ref": "#/definitions/ResourceStatus",
-              "description": "Status of a resource.",
-              "readOnly": true
-            }
-          },
-          "required": [
-            "environment"
-          ]
-        }
       ]
     },
     "GatewayResource": {
@@ -3700,6 +3659,14 @@
       "type": "object",
       "description": "The updatable properties of the GatewayResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "internal": {
           "type": "boolean",
           "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
@@ -3720,14 +3687,6 @@
         "tls": {
           "$ref": "#/definitions/GatewayTls",
           "description": "TLS configuration for the Gateway."
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -4950,6 +4909,24 @@
       "required": [
         "name"
       ]
+    },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for the Applications.Core resource provider.",
+      "enum": [
+        "2022-03-15-privatepreview"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2022_03_15_privatepreview",
+            "value": "2022-03-15-privatepreview",
+            "description": "2022-03-15-privatepreview"
+          }
+        ]
+      }
     },
     "Volume": {
       "type": "object",
