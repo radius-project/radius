@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -175,7 +176,7 @@ func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, er
 		return "", err
 	}
 
-	resourceType := resources.ToAWSResourceType(resourceID)
+	resourceType := resources_aws.ToAWSResourceType(resourceID)
 	return resourceType, nil
 }
 

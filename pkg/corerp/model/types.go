@@ -63,11 +63,17 @@ func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*Radiu
 // or an error if the resourceType is unsupported.
 func (m ApplicationModel) LookupOutputResourceModel(resourceType resourcemodel.ResourceType) (*OutputResourceModel, error) {
 	resource, ok := m.outputResourceLookup[resourceType]
-	if !ok {
-		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
+	if ok {
+		return &resource, nil
 	}
 
-	return &resource, nil
+	// As a fallback, see if there is a handler for any resource type that belongs to the provider.
+	resource, ok = m.outputResourceLookup[resourcemodel.ResourceType{Provider: resourceType.Provider, Type: AnyResourceType}]
+	if ok {
+		return &resource, nil
+	}
+
+	return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
 }
 
 // IsProviderSupported checks if the given provider is supported by the application model.

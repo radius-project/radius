@@ -1,44 +1,40 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
-    "name": "test-dpsb",
-    "type": "Applications.Dapr/pubSubBrokers",
-    "location": "global",
-    "tags": {
-        "env": "dev"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
+  "name": "test-dpsb",
+  "type": "Applications.Dapr/pubSubBrokers",
+  "location": "global",
+  "tags": {
+    "env": "dev"
+  },
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "properties": {
+    "componentName": "test-dpsb",
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
     },
-    "systemData": {
-        "createdBy": "fakeid@live.com",
-        "createdByType": "User",
-        "createdAt": "2021-09-24T19:09:54.2403864Z",
-        "lastModifiedBy": "fakeid@live.com",
-        "lastModifiedByType": "User",
-        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+    "resourceProvisioning": "manual",
+    "type": "pubsub.azure.servicebus",
+    "version": "v1",
+    "metadata": {
+      "foo": "bar"
     },
-    "properties": {
-        "componentName": "test-dpsb",
-        "status": {
-            "outputResources": [
-                {
-                    "LocalID": "Deployment",
-                    "ResourceType": {
-                        "Type": "daprPubSubProvider",
-                        "Provider": "kubernetes"
-                    }
-                }
-            ]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
-        "resourceProvisioning": "manual",
-        "type": "pubsub.azure.servicebus",
-        "version": "v1",
-        "metadata": {
-            "foo": "bar"
-        },
-        "resources": [
-            {
-                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"
-            }
-        ]
-    }
+    "resources": [
+      {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"
+      }
+    ]
+  }
 }

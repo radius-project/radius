@@ -4,26 +4,24 @@
   "type": "Applications.Messaging/rabbitMQQueues",
   "location": "global",
   "tags": {
-      "env": "dev"
+    "env": "dev"
   },
   "properties": {
-      "status": {
-          "outputResources": [{
-            "LocalID": "Deployment",
-            "ResourceType": {
-              "Type": "rabbitmq",
-              "Provider": "rabbitmqProvider"
-            }
-          }]
-      },
-      "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
-      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
-      "tls": false,
-      "recipe": {
-          "name": "rabbitmq",
-          "parameters":{
-            "foo":"bar"
-          }
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+    "tls": false,
+    "recipe": {
+      "name": "rabbitmq",
+      "parameters": {
+        "foo": "bar"
       }
+    }
   }
 }

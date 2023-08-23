@@ -22,12 +22,11 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/azure/roleassignment"
 	"github.com/project-radius/radius/pkg/logging"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -52,7 +51,7 @@ type azureRoleAssignmentHandler struct {
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	properties, ok := options.Resource.Resource.(map[string]string)
+	properties, ok := options.Resource.CreateResource.Data.(map[string]string)
 	if !ok {
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
@@ -79,7 +78,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 
 	// Assign Key Vault Secrets User role to grant managed identity read-only access to the keyvault for secrets.
 	// Assign Key Vault Crypto User role to grant managed identity permissions to perform operations using encryption keys.
-	roleAssignment, err := roleassignment.Create(ctx, handler.arm, parsedScope.FindScope(resources.SubscriptionsSegment), principalID, scope, roleName)
+	roleAssignment, err := roleassignment.Create(ctx, handler.arm, parsedScope.FindScope(resources_azure.ScopeSubscriptions), principalID, scope, roleName)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
@@ -87,16 +86,17 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	}
 	logger.Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope), logging.LogFieldLocalID, rpv1.LocalIDRoleAssignmentKVKeys)
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clientv2.RoleAssignmentClientAPIVersion)
+	id, err := resources.ParseResource(*roleAssignment.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	options.Resource.ID = id
 	return properties, nil
 }
 
 // Delete deletes an Azure role assignment using the provided DeleteOptions. It returns an error if the role assignment
 // cannot be deleted.
 func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	roleID, _, err := options.Resource.Identity.RequireARM()
-	if err != nil {
-		return err
-	}
-	return roleassignment.Delete(ctx, handler.arm, roleID)
+	return roleassignment.Delete(ctx, handler.arm, options.Resource.ID.String())
 }

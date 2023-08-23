@@ -14,17 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
-
-import "strings"
-
-// ToAWSResourceType takes an ID and returns a string representing the AWS resource type.
-func ToAWSResourceType(id ID) string {
-	parts := []string{}
-	// AWS ARNs use :: as separator.
-	for _, segment := range id.TypeSegments() {
-		parts = append(parts, strings.ReplaceAll(strings.ReplaceAll(segment.Type, ".", "::"), "/", "::"))
-	}
-	resourceType := strings.Join(parts, "::")
-	return resourceType
-}
+// package radius defines utility functions and constants for working with Radius types and UCP resource IDs.
+package radius

@@ -32,6 +32,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 )
 
 type UCPApplicationsManagementClient struct {
@@ -460,7 +461,7 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 	//
 	// - /planes/radius/local
 	// - /planes/radius/local/resourceGroups/my-group
-	if scope.FindScope(resources.ResourceGroupsSegment) != "" {
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
 		scope = scope.Truncate()
 	}
 

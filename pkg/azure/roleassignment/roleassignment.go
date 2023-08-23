@@ -31,6 +31,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -127,7 +128,7 @@ func Delete(ctx context.Context, armConfig *armauth.ArmConfig, roleID string) er
 		return err
 	}
 
-	subscriptionID := rID.FindScope(resources.SubscriptionsSegment)
+	subscriptionID := rID.FindScope(resources_azure.ScopeSubscriptions)
 	if subscriptionID == "" {
 		return fmt.Errorf("invalid role id: %s", roleID)
 	}

@@ -22,7 +22,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -49,11 +48,7 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 		},
 	}
 
-	or := rpv1.NewKubernetesOutputResource(
-		resourcekinds.KubernetesRole,
-		rpv1.LocalIDKubernetesRole,
-		role,
-		role.ObjectMeta)
+	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDKubernetesRole, role, role.ObjectMeta)
 
 	return &or
 }
@@ -84,16 +79,8 @@ func makeRBACRoleBinding(appName, name, saName, namespace string, resource *data
 		},
 	}
 
-	or := rpv1.NewKubernetesOutputResource(
-		resourcekinds.KubernetesRoleBinding,
-		rpv1.LocalIDKubernetesRoleBinding,
-		bindings,
-		bindings.ObjectMeta)
+	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDKubernetesRoleBinding, bindings, bindings.ObjectMeta)
 
-	or.Dependencies = []rpv1.Dependency{
-		{
-			LocalID: rpv1.LocalIDKubernetesRole,
-		},
-	}
+	or.CreateResource.Dependencies = []string{rpv1.LocalIDKubernetesRole}
 	return &or
 }

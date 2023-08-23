@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testcontext"
 
@@ -155,7 +154,7 @@ func TestHTTPRouteRenderer(t *testing.T) {
 			require.Equal(t, expectedValues, output.ComputedValues)
 
 			service, outputResource := kubernetes.FindService(output.Resources)
-			expectedOutputResource := rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta)
+			expectedOutputResource := rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta)
 
 			require.Equal(t, expectedOutputResource, outputResource)
 			require.Equal(t, kubernetes.NormalizeResourceName(resource.Name), service.Name)

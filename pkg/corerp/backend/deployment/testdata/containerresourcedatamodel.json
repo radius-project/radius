@@ -17,11 +17,7 @@
     "status": {
       "outputResources": [
         {
-          "LocalID": "Service",
-          "ResourceType": {
-            "Type": "Service",
-            "Provider": "kubernetes"
-          }
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
       ]
     },

@@ -241,6 +241,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			if err := recover(); err != nil {
 				msg := fmt.Errorf("recovering from panic %v: %s", err, debug.Stack())
 				logger.Error(msg, "recovering from panic")
+
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
 				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and
