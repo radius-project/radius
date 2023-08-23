@@ -96,7 +96,16 @@ model ResourceStatus {
 }
 
 @doc("Properties of an output resource.")
-model OutputResource {}
+model OutputResource {
+  @doc("The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships.")
+  localId?: string;
+
+  @doc("The UCP resource ID of the underlying resource.")
+  id?:string;
+
+  @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
+  radiusManaged?: boolean;
+}
 
 @doc("Describes a reference to an existing resource")
 model ResourceReference {
