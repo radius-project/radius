@@ -101,7 +101,7 @@ model OutputResource {
   localId?: string;
 
   @doc("The UCP resource ID of the underlying resource.")
-  id?:string;
+  id?: string;
 
   @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
   radiusManaged?: boolean;
