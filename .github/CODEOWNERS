@@ -6,4 +6,4 @@
 # All of the people (and only those people) from the matching rule will be notified
 
 # Default rule: anything that doesn't match a more specific rule goes here
-* @project-radius/Radius-Eng
+* @project-radius/maintainers-radius @project-radius/approvers-radius
