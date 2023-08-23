@@ -68,9 +68,7 @@ tag: package-messaging-2022-03-15-privatepreview
 ``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
 output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/core/src/Generated
 input-file:
-- Applications.Core/preview/2022-03-15-privatepreview/global.json
-- Applications.Core/preview/2022-03-15-privatepreview/environments.json
-- Applications.Core/preview/2022-03-15-privatepreview/applications.json
+- Applications.Dapr/preview/2022-03-15-privatepreview/openapi.json
 ```
 
 ### Tag: package-link-2022-03-15-privatepreview
