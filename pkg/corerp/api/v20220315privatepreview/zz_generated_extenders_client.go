@@ -280,7 +280,7 @@ func (client *ExtendersClient) listByScopeHandleResponse(resp *http.Response) (E
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified RedisCache resource
+// ListSecrets - Lists secrets values for the specified Extender resource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview

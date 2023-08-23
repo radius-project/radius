@@ -36,7 +36,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Response for list secrets API call")
-model ExtenderListSecretResponse {};
+model ExtenderListSecretResponse {}
 
 @doc("ExtenderResource link")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
@@ -92,7 +92,7 @@ interface Extenders {
     "Scope"
   >;
 
-  @doc("Lists secrets values for the specified RedisCache resource")
+  @doc("Lists secrets values for the specified Extender resource")
   @action("listSecrets")
   listSecrets is ArmResourceActionSync<
     ExtenderResource,

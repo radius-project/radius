@@ -1180,7 +1180,7 @@
         "tags": [
           "Extenders"
         ],
-        "description": "Lists secrets values for the specified RedisCache resource",
+        "description": "Lists secrets values for the specified Extender resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -5155,8 +5155,6 @@
       "required": true,
       "type": "string",
       "minLength": 1,
-      "maxLength": 90,
-      "pattern": "^[-\\w\\._\\(\\)]+$",
       "x-ms-parameter-location": "client",
       "x-ms-skip-url-encoding": true
     }
