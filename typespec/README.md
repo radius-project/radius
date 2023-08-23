@@ -55,7 +55,7 @@ tsp format **/*.tsp
 1. Copy the entire [Test.Resource](./Test.Resource/) directory to new directory with the new namespace name under [typespec](./).
 1. Open [main.tsp](./Test.Resource/main.tsp) and update `Versions` enum to support new API version for your namespace.
 1. Create new `ResourceTypeName.tsp` file to define new resource type based on [testasyncresources.tsp](./Test.Resource/testasyncresources.tsp) or [testsyncresources.tsp](./Test.Resource/testsyncresources.tsp).
-1. Add `import ResourceTypeName.tsp` in `main.tsp` and remove the sample resource type tsp imports.
+1. Add `import "ResourceTypeName.tsp";` in `main.tsp` and remove the sample resource type tsp imports.
 1. Run the formatter and compiler
    ```bash
    tsp format **/*.tsp
