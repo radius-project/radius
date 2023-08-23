@@ -2,7 +2,7 @@
   "operationId": "Extenders_ListByScope",
   "title": "List extender resources by resource group",
   "parameters": {
-    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
@@ -10,14 +10,14 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/extenders/extender0",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/extenders/extender0",
             "name": "extender0",
             "type": "Applications.Core/extenders",
             "location": "global",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
               "fromNumber": "222-222-2222",
               "secrets": {
                 "accountSid": "sid",
@@ -27,7 +27,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/extenders?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/extenders?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
       }
     }
   }

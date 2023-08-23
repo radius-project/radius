@@ -2,7 +2,7 @@
   "operationId": "Environments_GetMetadata",
   "title": "Get recipe metadata from environment",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview",
     "environmentName": "env0",
     "recipeName": "mongotest"

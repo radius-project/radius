@@ -2,19 +2,19 @@
   "operationId": "Volumes_ListByScope",
   "title": "List volumes by resource group",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
     "200": {
       "body": {
         "value": [{
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault0",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault0",
             "name": "keyvault0",
             "type": "Applications.Core/volumes",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "kind": "azure.com.keyvault",
               "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
               "secrets": {
@@ -51,12 +51,12 @@
             }
           },
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault1",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault1",
             "name": "keyvault1",
             "type": "Applications.Core/volumes",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "kind": "azure.com.keyvault",
               "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
               "secrets": {
@@ -93,7 +93,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/volumes?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
       }
     }
   }

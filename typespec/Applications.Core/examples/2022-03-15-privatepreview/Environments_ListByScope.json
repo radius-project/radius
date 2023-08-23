@@ -1,8 +1,8 @@
 {
   "operationId": "Environments_ListByScope",
-  "title": "Get environments at scope",
+  "title": "Get environments by rootScope",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
+    "rootScope": "/planes/radius/local",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
@@ -10,7 +10,7 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
             "name": "env0",
             "type": "Applications.Core/environments",
             "properties": {
@@ -40,7 +40,7 @@
             }
           },
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
             "name": "env1",
             "type": "Applications.Core/environments",
             "properties": {
@@ -58,7 +58,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/environments?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Core/environments?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
       }
     }
   }

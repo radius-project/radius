@@ -2,8 +2,7 @@
   "operationId": "Applications_ListByScope",
   "title": "Get applications by resource group",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
-    "resourceGroupName": "testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
@@ -11,12 +10,12 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
             "name": "app0",
             "type": "Applications.Core/applications",
             "properties": {
               "provisioningState": "Succeeded",
-              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
               "extensions": [
                 {
                   "kind": "kubernetesMetadata",
@@ -37,16 +36,16 @@
             }
           },
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/app1",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/app1",
             "name": "app1",
             "type": "Applications.Core/applications",
             "properties": {
               "provisioningState": "Succeeded",
-              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1"
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env1"
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/applications?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
       }
     }
   }

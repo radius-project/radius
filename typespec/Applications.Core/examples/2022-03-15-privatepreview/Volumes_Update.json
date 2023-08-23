@@ -2,25 +2,25 @@
   "operationId": "Volumes_Update",
   "title": "Update a volume",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "volumeName": "keyvault0",
     "api-version": "2022-03-15-privatepreview",
     "HttpRouteResource": {
       "location": "West US",
       "properties": {
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
       }
     }
   },
   "responses": {
     "200": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/volumes/routes0",
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes/routes0",
         "name": "keyvault0",
         "type": "Applications.Core/volumes",
         "properties": {
           "provisioningState": "Succeeded",
-          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
           "kind": "azure.com.keyvault",
           "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
           "secrets": {

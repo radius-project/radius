@@ -2,7 +2,7 @@
   "operationId": "Environments_Delete",
   "title": "Delete an environment resource",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "environmentName": "env0",
     "api-version": "2022-03-15-privatepreview"
   },

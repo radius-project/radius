@@ -2,7 +2,7 @@
   "operationId": "Gateways_Delete",
   "title": "Delete an gateway resource",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "gatewayName": "gateway0",
     "api-version": "2022-03-15-privatepreview"
   },

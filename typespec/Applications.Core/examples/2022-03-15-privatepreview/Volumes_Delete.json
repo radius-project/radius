@@ -2,7 +2,7 @@
   "operationId": "Volumes_Delete",
   "title": "Delete a volume",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "volumeName": "keyvault0",
     "api-version": "2022-03-15-privatepreview"
   },

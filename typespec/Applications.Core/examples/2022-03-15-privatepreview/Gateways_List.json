@@ -2,7 +2,7 @@
   "operationId": "Gateways_ListByScope",
   "title": "List gateway resources",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
@@ -10,12 +10,12 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/gateways/gateway0",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/gateways/gateway0",
             "name": "gateway0",
             "type": "Applications.Core/gateways",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "routes":[
                 {
                   "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-front-rte"
@@ -30,7 +30,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/gateways?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/gateways?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
       }
     }
   }
