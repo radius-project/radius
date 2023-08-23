@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
-	"github.com/project-radius/radius/pkg/recipes/driver"
+	recipedriver "github.com/project-radius/radius/pkg/recipes/driver"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -38,7 +38,7 @@ var _ Engine = (*engine)(nil)
 // Options represents the configuration loader and type of driver used to deploy recipe.
 type Options struct {
 	ConfigurationLoader configloader.ConfigurationLoader
-	Drivers             map[string]driver.Driver
+	Drivers             map[string]recipedriver.Driver
 }
 
 type engine struct {
@@ -83,7 +83,13 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		return nil, definition, err
 	}
 
-	res, err := driver.Execute(ctx, *configuration, recipe, *definition)
+	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
+		BaseOptions: recipedriver.BaseOptions{
+			Configuration: *configuration,
+			Recipe:        recipe,
+			Definition:    *definition,
+		},
+	})
 	if err != nil {
 		return nil, definition, err
 	}
@@ -123,7 +129,19 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 		return definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	err = driver.Delete(ctx, outputResources)
+	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
+	if err != nil {
+		return definition, err
+	}
+
+	err = driver.Delete(ctx, recipedriver.DeleteOptions{
+		BaseOptions: recipedriver.BaseOptions{
+			Configuration: *configuration,
+			Recipe:        recipe,
+			Definition:    *definition,
+		},
+		OutputResources: outputResources,
+	})
 	if err != nil {
 		return definition, err
 	}

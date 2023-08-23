@@ -31,6 +31,10 @@ import (
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
 	Deploy(ctx context.Context, options Options) (*tfjson.State, error)
+
+	// Delete installs terraform and runs terraform destroy on the terraform module referenced by the recipe using terraform-exec,
+	// and deletes the Kubernetes secret created for terraform state store.
+	Delete(ctx context.Context, options Options) error
 }
 
 // Options represents the options required to build inputs to interact with Terraform.
