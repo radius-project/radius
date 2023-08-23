@@ -44,35 +44,36 @@ func NewVolumesClient(rootScope string, credential azcore.TokenCredential, optio
 	return client, nil
 }
 
-// BeginCreate - Create a VolumeResource
+// BeginCreateOrUpdate - Create a VolumeResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - volumeName - Volume name
 //   - resource - Resource create parameters.
-//   - options - VolumesClientBeginCreateOptions contains the optional parameters for the VolumesClient.BeginCreate method.
-func (client *VolumesClient) BeginCreate(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*runtime.Poller[VolumesClientCreateResponse], error) {
+//   - options - VolumesClientBeginCreateOrUpdateOptions contains the optional parameters for the VolumesClient.BeginCreateOrUpdate
+//     method.
+func (client *VolumesClient) BeginCreateOrUpdate(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOrUpdateOptions) (*runtime.Poller[VolumesClientCreateOrUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, volumeName, resource, options)
+		resp, err := client.createOrUpdate(ctx, volumeName, resource, options)
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[VolumesClientCreateResponse]{
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[VolumesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
 		})
 		return poller, err
 	} else {
-		return runtime.NewPollerFromResumeToken[VolumesClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+		return runtime.NewPollerFromResumeToken[VolumesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
 	}
 }
 
-// Create - Create a VolumeResource
+// CreateOrUpdate - Create a VolumeResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *VolumesClient) create(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*http.Response, error) {
+func (client *VolumesClient) createOrUpdate(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, volumeName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, volumeName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,8 @@ func (client *VolumesClient) create(ctx context.Context, volumeName string, reso
 	return httpResp, nil
 }
 
-// createCreateRequest creates the Create request.
-func (client *VolumesClient) createCreateRequest(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *VolumesClient) createOrUpdateCreateRequest(ctx context.Context, volumeName string, resource VolumeResource, options *VolumesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/volumes/{volumeName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if volumeName == "" {

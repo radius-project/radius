@@ -7,8 +7,8 @@
 
 package v20220315privatepreview
 
-// ApplicationsClientCreateResponse contains the response from method ApplicationsClient.Create.
-type ApplicationsClientCreateResponse struct {
+// ApplicationsClientCreateOrUpdateResponse contains the response from method ApplicationsClient.CreateOrUpdate.
+type ApplicationsClientCreateOrUpdateResponse struct {
 	// Radius Application resource
 	ApplicationResource
 }
@@ -36,8 +36,8 @@ type ApplicationsClientUpdateResponse struct {
 	ApplicationResource
 }
 
-// ContainersClientCreateResponse contains the response from method ContainersClient.BeginCreate.
-type ContainersClientCreateResponse struct {
+// ContainersClientCreateOrUpdateResponse contains the response from method ContainersClient.BeginCreateOrUpdate.
+type ContainersClientCreateOrUpdateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	ContainerResource
 }
@@ -65,8 +65,8 @@ type ContainersClientUpdateResponse struct {
 	ContainerResource
 }
 
-// EnvironmentsClientCreateResponse contains the response from method EnvironmentsClient.Create.
-type EnvironmentsClientCreateResponse struct {
+// EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
+type EnvironmentsClientCreateOrUpdateResponse struct {
 	// The environment resource
 	EnvironmentResource
 }
@@ -76,16 +76,16 @@ type EnvironmentsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
+// EnvironmentsClientGetMetadataResponse contains the response from method EnvironmentsClient.GetMetadata.
+type EnvironmentsClientGetMetadataResponse struct {
+	// The properties of a Recipe linked to an Environment.
+	RecipeGetMetadataResponse
+}
+
 // EnvironmentsClientGetResponse contains the response from method EnvironmentsClient.Get.
 type EnvironmentsClientGetResponse struct {
 	// The environment resource
 	EnvironmentResource
-}
-
-// EnvironmentsClientGetmetadataResponse contains the response from method EnvironmentsClient.Getmetadata.
-type EnvironmentsClientGetmetadataResponse struct {
-	// The properties of a Recipe linked to an Environment.
-	RecipeGetMetadataResponse
 }
 
 // EnvironmentsClientListByScopeResponse contains the response from method EnvironmentsClient.NewListByScopePager.
@@ -100,8 +100,8 @@ type EnvironmentsClientUpdateResponse struct {
 	EnvironmentResource
 }
 
-// ExtendersClientCreateResponse contains the response from method ExtendersClient.BeginCreate.
-type ExtendersClientCreateResponse struct {
+// ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.BeginCreateOrUpdate.
+type ExtendersClientCreateOrUpdateResponse struct {
 	// ExtenderResource link
 	ExtenderResource
 }
@@ -135,6 +135,12 @@ type ExtendersClientUpdateResponse struct {
 	ExtenderResource
 }
 
+// GatewaysClientCreateOrUpdateResponse contains the response from method GatewaysClient.BeginCreateOrUpdate.
+type GatewaysClientCreateOrUpdateResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
+	GatewayResource
+}
+
 // GatewaysClientCreateResponse contains the response from method GatewaysClient.BeginCreate.
 type GatewaysClientCreateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
@@ -158,14 +164,8 @@ type GatewaysClientListByScopeResponse struct {
 	GatewayResourceListResult
 }
 
-// GatewaysClientUpdateResponse contains the response from method GatewaysClient.BeginUpdate.
-type GatewaysClientUpdateResponse struct {
-	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
-	GatewayResource
-}
-
-// HTTPRoutesClientCreateResponse contains the response from method HTTPRoutesClient.BeginCreate.
-type HTTPRoutesClientCreateResponse struct {
+// HTTPRoutesClientCreateOrUpdateResponse contains the response from method HTTPRoutesClient.BeginCreateOrUpdate.
+type HTTPRoutesClientCreateOrUpdateResponse struct {
 	// Radius HTTPRoute Resource.
 	HTTPRouteResource
 }
@@ -199,8 +199,8 @@ type OperationsClientListResponse struct {
 	OperationListResult
 }
 
-// SecretStoresClientCreateResponse contains the response from method SecretStoresClient.BeginCreate.
-type SecretStoresClientCreateResponse struct {
+// SecretStoresClientCreateOrUpdateResponse contains the response from method SecretStoresClient.BeginCreateOrUpdate.
+type SecretStoresClientCreateOrUpdateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
 	SecretStoreResource
 }
@@ -234,8 +234,8 @@ type SecretStoresClientUpdateResponse struct {
 	SecretStoreResource
 }
 
-// VolumesClientCreateResponse contains the response from method VolumesClient.BeginCreate.
-type VolumesClientCreateResponse struct {
+// VolumesClientCreateOrUpdateResponse contains the response from method VolumesClient.BeginCreateOrUpdate.
+type VolumesClientCreateOrUpdateResponse struct {
 	// Radius Volume resource.
 	VolumeResource
 }

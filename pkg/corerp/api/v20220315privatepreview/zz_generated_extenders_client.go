@@ -44,35 +44,36 @@ func NewExtendersClient(rootScope string, credential azcore.TokenCredential, opt
 	return client, nil
 }
 
-// BeginCreate - Create a ExtenderResource
+// BeginCreateOrUpdate - Create a ExtenderResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - extenderName - The name of the ExtenderResource link resource
 //   - resource - Resource create parameters.
-//   - options - ExtendersClientBeginCreateOptions contains the optional parameters for the ExtendersClient.BeginCreate method.
-func (client *ExtendersClient) BeginCreate(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOptions) (*runtime.Poller[ExtendersClientCreateResponse], error) {
+//   - options - ExtendersClientBeginCreateOrUpdateOptions contains the optional parameters for the ExtendersClient.BeginCreateOrUpdate
+//     method.
+func (client *ExtendersClient) BeginCreateOrUpdate(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOrUpdateOptions) (*runtime.Poller[ExtendersClientCreateOrUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, extenderName, resource, options)
+		resp, err := client.createOrUpdate(ctx, extenderName, resource, options)
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientCreateResponse]{
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
 		})
 		return poller, err
 	} else {
-		return runtime.NewPollerFromResumeToken[ExtendersClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+		return runtime.NewPollerFromResumeToken[ExtendersClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
 	}
 }
 
-// Create - Create a ExtenderResource
+// CreateOrUpdate - Create a ExtenderResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *ExtendersClient) create(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOptions) (*http.Response, error) {
+func (client *ExtendersClient) createOrUpdate(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, extenderName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, extenderName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,8 @@ func (client *ExtendersClient) create(ctx context.Context, extenderName string, 
 	return httpResp, nil
 }
 
-// createCreateRequest creates the Create request.
-func (client *ExtendersClient) createCreateRequest(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if extenderName == "" {

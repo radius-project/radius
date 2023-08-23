@@ -44,35 +44,36 @@ func NewHTTPRoutesClient(rootScope string, credential azcore.TokenCredential, op
 	return client, nil
 }
 
-// BeginCreate - Create a HttpRouteResource
+// BeginCreateOrUpdate - Create a HttpRouteResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - httpRouteName - HTTPRoute name
 //   - resource - Resource create parameters.
-//   - options - HTTPRoutesClientBeginCreateOptions contains the optional parameters for the HTTPRoutesClient.BeginCreate method.
-func (client *HTTPRoutesClient) BeginCreate(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*runtime.Poller[HTTPRoutesClientCreateResponse], error) {
+//   - options - HTTPRoutesClientBeginCreateOrUpdateOptions contains the optional parameters for the HTTPRoutesClient.BeginCreateOrUpdate
+//     method.
+func (client *HTTPRoutesClient) BeginCreateOrUpdate(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOrUpdateOptions) (*runtime.Poller[HTTPRoutesClientCreateOrUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, httpRouteName, resource, options)
+		resp, err := client.createOrUpdate(ctx, httpRouteName, resource, options)
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[HTTPRoutesClientCreateResponse]{
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[HTTPRoutesClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
 		})
 		return poller, err
 	} else {
-		return runtime.NewPollerFromResumeToken[HTTPRoutesClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+		return runtime.NewPollerFromResumeToken[HTTPRoutesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
 	}
 }
 
-// Create - Create a HttpRouteResource
+// CreateOrUpdate - Create a HttpRouteResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *HTTPRoutesClient) create(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*http.Response, error) {
+func (client *HTTPRoutesClient) createOrUpdate(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, httpRouteName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, httpRouteName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,8 @@ func (client *HTTPRoutesClient) create(ctx context.Context, httpRouteName string
 	return httpResp, nil
 }
 
-// createCreateRequest creates the Create request.
-func (client *HTTPRoutesClient) createCreateRequest(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *HTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, httpRouteName string, resource HTTPRouteResource, options *HTTPRoutesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if httpRouteName == "" {

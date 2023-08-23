@@ -319,7 +319,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx contex
 		return err
 	}
 
-	_, err = client.Create(ctx, applicationName, resource, nil)
+	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
 	if err != nil {
 		return err
 	}
@@ -348,7 +348,7 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 		return nil
 	}
 
-	_, err = client.Create(ctx, applicationName, resource, nil)
+	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
 	if err != nil {
 		return err
 	}
@@ -367,7 +367,7 @@ func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Contex
 		return err
 	}
 
-	_, err = client.Create(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOptions{})
+	_, err = client.CreateOrUpdate(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -625,7 +625,7 @@ func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, envi
 		return corerpv20220315.RecipeGetMetadataResponse{}, err
 	}
 
-	resp, err := client.Getmetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetmetadataOptions{})
+	resp, err := client.GetMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetMetadataOptions{})
 	if err != nil {
 		return corerpv20220315.RecipeGetMetadataResponse{}, err
 	}

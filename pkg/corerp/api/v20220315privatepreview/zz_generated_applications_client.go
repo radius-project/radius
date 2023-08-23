@@ -44,33 +44,34 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 	return client, nil
 }
 
-// Create - Create a ApplicationResource
+// CreateOrUpdate - Create a ApplicationResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - applicationName - The application name
 //   - resource - Resource create parameters.
-//   - options - ApplicationsClientCreateOptions contains the optional parameters for the ApplicationsClient.Create method.
-func (client *ApplicationsClient) Create(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (ApplicationsClientCreateResponse, error) {
+//   - options - ApplicationsClientCreateOrUpdateOptions contains the optional parameters for the ApplicationsClient.CreateOrUpdate
+//     method.
+func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOrUpdateOptions) (ApplicationsClientCreateOrUpdateResponse, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, applicationName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, applicationName, resource, options)
 	if err != nil {
-		return ApplicationsClientCreateResponse{}, err
+		return ApplicationsClientCreateOrUpdateResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return ApplicationsClientCreateResponse{}, err
+		return ApplicationsClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return ApplicationsClientCreateResponse{}, err
+		return ApplicationsClientCreateOrUpdateResponse{}, err
 	}
-	resp, err := client.createHandleResponse(httpResp)
+	resp, err := client.createOrUpdateHandleResponse(httpResp)
 	return resp, err
 }
 
-// createCreateRequest creates the Create request.
-func (client *ApplicationsClient) createCreateRequest(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Context, applicationName string, resource ApplicationResource, options *ApplicationsClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if applicationName == "" {
@@ -91,11 +92,11 @@ func (client *ApplicationsClient) createCreateRequest(ctx context.Context, appli
 	return req, nil
 }
 
-// createHandleResponse handles the Create response.
-func (client *ApplicationsClient) createHandleResponse(resp *http.Response) (ApplicationsClientCreateResponse, error) {
-	result := ApplicationsClientCreateResponse{}
+// createOrUpdateHandleResponse handles the CreateOrUpdate response.
+func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Response) (ApplicationsClientCreateOrUpdateResponse, error) {
+	result := ApplicationsClientCreateOrUpdateResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResource); err != nil {
-		return ApplicationsClientCreateResponse{}, err
+		return ApplicationsClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }

@@ -17,10 +17,7 @@ type ApplicationProperties struct {
 	// REQUIRED; The application extension.
 	Extensions []ExtensionClassification
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
-	// READ-ONLY; The status of the last operation.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -71,14 +68,8 @@ type ApplicationResourceUpdate struct {
 
 // ApplicationResourceUpdateProperties - The updatable properties of the ApplicationResource.
 type ApplicationResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
 	// The compute resource used by application environment.
 	Compute EnvironmentComputeUpdateClassification
-
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
 
 	// The environment extension.
 	Extensions []ExtensionClassification
@@ -92,8 +83,8 @@ type ApplicationResourceUpdateProperties struct {
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
 type AzureKeyVaultVolumeProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
 
 	// REQUIRED; Discriminator property for VolumeProperties.
 	Kind *string
@@ -101,11 +92,11 @@ type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; The ID of the keyvault to use for this volume resource
 	Resource *string
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]*CertificateObjectProperties
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// The KeyVault keys that this volume exposes
 	Keys map[string]*KeyObjectProperties
@@ -113,7 +104,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// The KeyVault secrets that this volume exposes
 	Secrets map[string]*SecretObjectProperties
 
-	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -192,19 +183,6 @@ type CertificateObjectProperties struct {
 
 	// Certificate version
 	Version *string
-}
-
-// Components1Btn3DqSchemasGatewaypropertiesAllof0 - The base resource properties definition for Radius top-level resource
-// properties
-type Components1Btn3DqSchemasGatewaypropertiesAllof0 struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus
 }
 
 // ConnectionProperties - Connection Properties
@@ -301,17 +279,17 @@ type ContainerPortPropertiesUpdate struct {
 
 // ContainerProperties - Container properties
 type ContainerProperties struct {
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
 	// REQUIRED; Definition of a container.
 	Container *Container
 
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
 	// Specifies a connection to another resource.
 	Connections map[string]*ConnectionProperties
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification
@@ -319,7 +297,7 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
-	// READ-ONLY; The status of the last operation.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -379,7 +357,7 @@ type ContainerResourceUpdateProperties struct {
 	// Definition of a container.
 	Container *ContainerUpdate
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// Extensions spec of the resource
@@ -387,9 +365,6 @@ type ContainerResourceUpdateProperties struct {
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettingsUpdate
-
-	// READ-ONLY; The status of the last operation.
-	ProvisioningState *ProvisioningState
 }
 
 // ContainerUpdate - Definition of a container
@@ -482,12 +457,6 @@ type EnvironmentProperties struct {
 	// REQUIRED; The compute resource used by application environment.
 	Compute EnvironmentComputeClassification
 
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
 	// The environment extension.
 	Extensions []ExtensionClassification
 
@@ -497,11 +466,8 @@ type EnvironmentProperties struct {
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
-	// READ-ONLY; The status of the last operation.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus
 }
 
 // EnvironmentResource - The environment resource
@@ -548,14 +514,8 @@ type EnvironmentResourceUpdate struct {
 
 // EnvironmentResourceUpdateProperties - The updatable properties of the EnvironmentResource.
 type EnvironmentResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
-
 	// The compute resource used by application environment.
 	Compute EnvironmentComputeUpdateClassification
-
-	// Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
 
 	// The environment extension.
 	Extensions []ExtensionClassification
@@ -681,7 +641,7 @@ type ExtenderProperties struct {
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
 	// The recipe used to automatically deploy underlying infrastructure for the extender link
@@ -693,7 +653,7 @@ type ExtenderProperties struct {
 	// The secrets for referenced resource
 	Secrets map[string]any
 
-	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -744,7 +704,7 @@ type ExtenderResourceUpdate struct {
 
 // ExtenderResourceUpdateProperties - The updatable properties of the ExtenderResource.
 type ExtenderResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
 	// Fully qualified resource ID for the environment that the portable resource is linked to
@@ -782,14 +742,14 @@ type GatewayHostname struct {
 
 // GatewayProperties - Gateway properties
 type GatewayProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
 
 	// REQUIRED; Routes attached to this Gateway
 	Routes []*GatewayRoute
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayHostname
@@ -800,7 +760,7 @@ type GatewayProperties struct {
 	// TLS configuration for the Gateway.
 	TLS *GatewayTLS
 
-	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -857,7 +817,7 @@ type GatewayResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
@@ -938,11 +898,11 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 
 // HTTPRouteProperties - HTTPRoute properties
 type HTTPRouteProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
 	Hostname *string
@@ -950,7 +910,7 @@ type HTTPRouteProperties struct {
 	// The port number for the HTTP Route. Defaults to 80. Readonly.
 	Port *int32
 
-	// READ-ONLY; Provisioning state of the HTTPRoute at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; The scheme used for traffic. Readonly.
@@ -1010,7 +970,7 @@ type HTTPRouteResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
@@ -1243,6 +1203,20 @@ type OperationListResult struct {
 	Value []*Operation
 }
 
+// OutputResource - Properties of an output resource.
+type OutputResource struct {
+	// The UCP resource ID of the underlying resource.
+	ID *string
+
+	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
+// relationship. LocalIDs do not have any particular format or meaning beyond
+// being compared to determine dependency relationships.
+	LocalID *string
+
+	// Determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool
+}
+
 // PersistentVolume - Specifies a persistent volume for a container
 type PersistentVolume struct {
 	// REQUIRED; Discriminator property for Volume.
@@ -1425,7 +1399,7 @@ type ResourceStatus struct {
 	Compute EnvironmentComputeClassification
 
 	// Properties of an output resource
-	OutputResources []map[string]any
+	OutputResources []*OutputResource
 }
 
 // SecretObjectProperties - Represents secret object properties
@@ -1454,14 +1428,14 @@ type SecretStoreListSecretsResult struct {
 
 // SecretStoreProperties - SecretStore properties
 type SecretStoreProperties struct {
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
 	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
 
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
 
 	// The resource id of external secret store.
 	Resource *string
@@ -1469,7 +1443,7 @@ type SecretStoreProperties struct {
 	// The type of secret store data
 	Type *SecretStoreDataType
 
-	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -1526,7 +1500,7 @@ type SecretStoreResourceUpdateProperties struct {
 	// An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The resource id of external secret store.
@@ -1696,16 +1670,16 @@ func (v *Volume) GetVolume() *Volume { return v }
 
 // VolumeProperties - Volume properties
 type VolumeProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
 
 	// REQUIRED; Discriminator property for VolumeProperties.
 	Kind *string
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
-	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -1762,7 +1736,7 @@ type VolumeResourceUpdateProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 }
 

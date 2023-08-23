@@ -298,6 +298,21 @@ func PossibleTLSMinVersionValues() []TLSMinVersion {
 	}
 }
 
+// Versions - Supported API versions for the Applications.Core resource provider.
+type Versions string
+
+const (
+	// VersionsV20220315Privatepreview - 2022-03-15-privatepreview
+	VersionsV20220315Privatepreview Versions = "2022-03-15-privatepreview"
+)
+
+// PossibleVersionsValues returns the possible values for the Versions const type.
+func PossibleVersionsValues() []Versions {
+	return []Versions{	
+		VersionsV20220315Privatepreview,
+	}
+}
+
 // VolumePermission - The persistent volume permission
 type VolumePermission string
 

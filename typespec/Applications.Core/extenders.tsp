@@ -36,7 +36,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Response for list secrets API call")
-model ExtenderListSecretResponse is Record<string>;
+model ExtenderListSecretResponse {};
 
 @doc("ExtenderResource link")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
@@ -56,7 +56,7 @@ model ExtenderProperties extends Record<unknown> {
   ...EnvironmentScopedResource;
 
   @doc("The secrets for referenced resource")
-  secrets?: Record<string>;
+  secrets?: {};
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the extender link")
   recipe?: Recipe;

@@ -44,36 +44,36 @@ func NewSecretStoresClient(rootScope string, credential azcore.TokenCredential, 
 	return client, nil
 }
 
-// BeginCreate - Create a SecretStoreResource
+// BeginCreateOrUpdate - Create a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - secretStoreName - SecretStore name
 //   - resource - Resource create parameters.
-//   - options - SecretStoresClientBeginCreateOptions contains the optional parameters for the SecretStoresClient.BeginCreate
+//   - options - SecretStoresClientBeginCreateOrUpdateOptions contains the optional parameters for the SecretStoresClient.BeginCreateOrUpdate
 //     method.
-func (client *SecretStoresClient) BeginCreate(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOptions) (*runtime.Poller[SecretStoresClientCreateResponse], error) {
+func (client *SecretStoresClient) BeginCreateOrUpdate(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOrUpdateOptions) (*runtime.Poller[SecretStoresClientCreateOrUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, secretStoreName, resource, options)
+		resp, err := client.createOrUpdate(ctx, secretStoreName, resource, options)
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientCreateResponse]{
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
 		})
 		return poller, err
 	} else {
-		return runtime.NewPollerFromResumeToken[SecretStoresClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+		return runtime.NewPollerFromResumeToken[SecretStoresClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
 	}
 }
 
-// Create - Create a SecretStoreResource
+// CreateOrUpdate - Create a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *SecretStoresClient) create(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOptions) (*http.Response, error) {
+func (client *SecretStoresClient) createOrUpdate(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, secretStoreName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, secretStoreName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +88,8 @@ func (client *SecretStoresClient) create(ctx context.Context, secretStoreName st
 	return httpResp, nil
 }
 
-// createCreateRequest creates the Create request.
-func (client *SecretStoresClient) createCreateRequest(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Context, secretStoreName string, resource SecretStoreResource, options *SecretStoresClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if secretStoreName == "" {

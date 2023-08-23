@@ -78,7 +78,7 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(extender.Properties.Environment),

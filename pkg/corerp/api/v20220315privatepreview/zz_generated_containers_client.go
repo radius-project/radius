@@ -44,35 +44,36 @@ func NewContainersClient(rootScope string, credential azcore.TokenCredential, op
 	return client, nil
 }
 
-// BeginCreate - Create a ContainerResource
+// BeginCreateOrUpdate - Create a ContainerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - containerName - Container name
 //   - resource - Resource create parameters.
-//   - options - ContainersClientBeginCreateOptions contains the optional parameters for the ContainersClient.BeginCreate method.
-func (client *ContainersClient) BeginCreate(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOptions) (*runtime.Poller[ContainersClientCreateResponse], error) {
+//   - options - ContainersClientBeginCreateOrUpdateOptions contains the optional parameters for the ContainersClient.BeginCreateOrUpdate
+//     method.
+func (client *ContainersClient) BeginCreateOrUpdate(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOrUpdateOptions) (*runtime.Poller[ContainersClientCreateOrUpdateResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.create(ctx, containerName, resource, options)
+		resp, err := client.createOrUpdate(ctx, containerName, resource, options)
 		if err != nil {
 			return nil, err
 		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientCreateResponse]{
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientCreateOrUpdateResponse]{
 			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
 		})
 		return poller, err
 	} else {
-		return runtime.NewPollerFromResumeToken[ContainersClientCreateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+		return runtime.NewPollerFromResumeToken[ContainersClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
 	}
 }
 
-// Create - Create a ContainerResource
+// CreateOrUpdate - Create a ContainerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-func (client *ContainersClient) create(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOptions) (*http.Response, error) {
+func (client *ContainersClient) createOrUpdate(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, containerName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, containerName, resource, options)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,8 @@ func (client *ContainersClient) create(ctx context.Context, containerName string
 	return httpResp, nil
 }
 
-// createCreateRequest creates the Create request.
-func (client *ContainersClient) createCreateRequest(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if containerName == "" {

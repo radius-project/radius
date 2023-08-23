@@ -3,6 +3,7 @@
   "info": {
     "title": "Applications.Core Management APIs",
     "version": "2022-03-15-privatepreview",
+    "description": "REST API for Applications.Core",
     "x-typespec-generated": [
       {
         "emitter": "@azure-tools/typespec-autorest"
@@ -97,8 +98,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationsListByScope": {
-            "$ref": "./examples/ApplicationsListByScope.json"
+          "Get applications by resource group": {
+            "$ref": "./examples/Applications_List.json"
+          },
+          "Get applications by rootScope": {
+            "$ref": "./examples/Applications_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -145,13 +149,13 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationGet": {
-            "$ref": "./examples/ApplicationsGet.json"
+          "Get an application resource": {
+            "$ref": "./examples/Applications_Get.json"
           }
         }
       },
       "put": {
-        "operationId": "Applications_Create",
+        "operationId": "Applications_CreateOrUpdate",
         "tags": [
           "Applications"
         ],
@@ -203,8 +207,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationPut": {
-            "$ref": "./examples/ApplicationsPut.json"
+          "Create or update an application resource": {
+            "$ref": "./examples/Applications_CreateOrUpdate.json"
           }
         }
       },
@@ -255,8 +259,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationPatch": {
-            "$ref": "./examples/ApplicationsPatch.json"
+          "Update (Patch) an application resource": {
+            "$ref": "./examples/Applications_Update.json"
           }
         }
       },
@@ -298,8 +302,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusApplicationDelete": {
-            "$ref": "./examples/ApplicationsDelete.json"
+          "Delete an application resource": {
+            "$ref": "./examples/Applications_Delete.json"
           }
         }
       }
@@ -334,8 +338,11 @@
           }
         },
         "x-ms-examples": {
-          "ContainersListByScope": {
-            "$ref": "./examples/ContainersListByScope.json"
+          "List containers at resource group": {
+            "$ref": "./examples/Containers_List.json"
+          },
+          "List containers at root scope": {
+            "$ref": "./examples/Containers_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -382,13 +389,13 @@
           }
         },
         "x-ms-examples": {
-          "ContainersGet": {
-            "$ref": "./examples/ContainersGet.json"
+          "Get an container resource": {
+            "$ref": "./examples/Containers_Get.json"
           }
         }
       },
       "put": {
-        "operationId": "Containers_Create",
+        "operationId": "Containers_CreateOrUpdate",
         "tags": [
           "Containers"
         ],
@@ -447,8 +454,8 @@
           }
         },
         "x-ms-examples": {
-          "ContainersPut": {
-            "$ref": "./examples/ContainersPut.json"
+          "Create or update an container resource": {
+            "$ref": "./examples/Containers_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -516,11 +523,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "ContainersPatch": {
-            "$ref": "./examples/ContainersPatch.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -578,8 +580,8 @@
           }
         },
         "x-ms-examples": {
-          "ContainersDelete": {
-            "$ref": "./examples/ContainersDelete.json"
+          "Delete an container resource": {
+            "$ref": "./examples/Containers_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -618,8 +620,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsListByScope": {
-            "$ref": "./examples/EnvironmentsListByScope.json"
+          "Get environments by resource group": {
+            "$ref": "./examples/Environments_List.json"
+          },
+          "Get environments by rootScope": {
+            "$ref": "./examples/Environments_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -666,13 +671,13 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsGet": {
-            "$ref": "./examples/EnvironmentsGetEnv0.json"
+          "Get an environment resource": {
+            "$ref": "./examples/Environments_GetEnv0.json"
           }
         }
       },
       "put": {
-        "operationId": "Environments_Create",
+        "operationId": "Environments_CreateOrUpdate",
         "tags": [
           "Environments"
         ],
@@ -724,8 +729,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsPut": {
-            "$ref": "./examples/EnvironmentsPutEnv0.json"
+          "Create or Update an environment resource": {
+            "$ref": "./examples/Environments_CreateOrUpdate.json"
           }
         }
       },
@@ -776,8 +781,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsPatch": {
-            "$ref": "./examples/EnvironmentsPatchEnv0.json"
+          "Update an environment resource": {
+            "$ref": "./examples/Environments_PatchEnv0.json"
           }
         }
       },
@@ -819,15 +824,15 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsDelete": {
-            "$ref": "./examples/EnvironmentsDeleteEnv0.json"
+          "Delete an environment resource": {
+            "$ref": "./examples/Environments_DeleteEnv0.json"
           }
         }
       }
     },
-    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getmetadata": {
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getMetadata": {
       "post": {
-        "operationId": "Environments_Getmetadata",
+        "operationId": "Environments_GetMetadata",
         "tags": [
           "Environments"
         ],
@@ -873,8 +878,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusEnvironmentsGetRecipeMetadata": {
-            "$ref": "./examples/EnvironmentsGetRecipeMetadata.json"
+          "Get recipe metadata from environment": {
+            "$ref": "./examples/Environments_GetRecipeMetadata.json"
           }
         }
       }
@@ -909,8 +914,11 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersListByRootScope": {
-            "$ref": "./examples/ExtendersListByRootScope.json"
+          "List extender resources by resource group": {
+            "$ref": "./examples/Extenders_List.json"
+          },
+          "List extender resources by rootScope": {
+            "$ref": "./examples/Extenders_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -957,13 +965,13 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersGet": {
-            "$ref": "./examples/ExtendersGet.json"
+          "Get an extender resource": {
+            "$ref": "./examples/Extenders_Get.json"
           }
         }
       },
       "put": {
-        "operationId": "Extenders_Create",
+        "operationId": "Extenders_CreateOrUpdate",
         "tags": [
           "Extenders"
         ],
@@ -1022,8 +1030,11 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersPut": {
-            "$ref": "./examples/ExtendersPut.json"
+          "Create or Update an extender resource": {
+            "$ref": "./examples/Extenders_CreateOrUpdate.json"
+          },
+          "Create or Update an extender resource with recipe": {
+            "$ref": "./examples/Extenders_CreateOrUpdateWithRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1092,8 +1103,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersPatch": {
-            "$ref": "./examples/ExtendersPatch.json"
+          "Update an extender resource": {
+            "$ref": "./examples/Extenders_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1153,8 +1164,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersDelete": {
-            "$ref": "./examples/ExtendersDelete.json"
+          "Delete an extender resource": {
+            "$ref": "./examples/Extenders_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1212,8 +1223,8 @@
           }
         },
         "x-ms-examples": {
-          "ExtendersListSecrets": {
-            "$ref": "./examples/ExtendersListSecrets.json"
+          "List the secrets from extender resources": {
+            "$ref": "./examples/Extenders_ListSecrets.json"
           }
         }
       }
@@ -1248,8 +1259,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysListByScope": {
-            "$ref": "./examples/GatewaysListByScope.json"
+          "List gateway resources": {
+            "$ref": "./examples/Gateways_List.json"
+          },
+          "List gateway resources by rootScope": {
+            "$ref": "./examples/Gateways_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1296,8 +1310,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysGet": {
-            "$ref": "./examples/GatewaysGet.json"
+          "Get an gateway resource": {
+            "$ref": "./examples/Gateways_Get.json"
           }
         }
       },
@@ -1360,18 +1374,13 @@
             }
           }
         },
-        "x-ms-examples": {
-          "RadiusGatewaysPut": {
-            "$ref": "./examples/GatewaysPut.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "azure-async-operation"
         },
         "x-ms-long-running-operation": true
       },
       "patch": {
-        "operationId": "Gateways_Update",
+        "operationId": "Gateways_CreateOrUpdate",
         "tags": [
           "Gateways"
         ],
@@ -1431,8 +1440,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysPatch": {
-            "$ref": "./examples/GatewaysPatch.json"
+          "Create or update a gateway resource": {
+            "$ref": "./examples/Gateways_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1492,8 +1501,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusGatewaysDelete": {
-            "$ref": "./examples/GatewaysDelete.json"
+          "Delete an gateway resource": {
+            "$ref": "./examples/Gateways_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1532,8 +1541,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesListByScope": {
-            "$ref": "./examples/HttpRoutesListByScope.json"
+          "List httpRoutes resources by resource group": {
+            "$ref": "./examples/HttpRoutes_List.json"
+          },
+          "List httpRoutes resources by rootScope": {
+            "$ref": "./examples/HttpRoutes_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1580,13 +1592,13 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesGet": {
-            "$ref": "./examples/HttpRoutesGet.json"
+          "Get a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Get.json"
           }
         }
       },
       "put": {
-        "operationId": "HttpRoutes_Create",
+        "operationId": "HttpRoutes_CreateOrUpdate",
         "tags": [
           "HttpRoutes"
         ],
@@ -1645,8 +1657,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesPut": {
-            "$ref": "./examples/HttpRoutesPut.json"
+          "Create or Update httpRoutes resources": {
+            "$ref": "./examples/HttpRoutes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1715,8 +1727,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesPatch": {
-            "$ref": "./examples/HttpRoutesPatch.json"
+          "Update a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1776,8 +1788,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusHttpRoutesDelete": {
-            "$ref": "./examples/HttpRoutesDelete.json"
+          "Delete a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1816,8 +1828,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresList": {
-            "$ref": "./examples/SecretStoresList.json"
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_List.json"
           }
         },
         "x-ms-pageable": {
@@ -1864,16 +1876,16 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresGet": {
-            "$ref": "./examples/SecretStoresGet.json"
+          "Get a secret store": {
+            "$ref": "./examples/SecretStores_Get.json"
           },
-          "RadiusSecretStoresAzureKeyVaultGet": {
-            "$ref": "./examples/SecretStoresGet_AzureKeyVault.json"
+          "Get a secret store for Azure Keyvault": {
+            "$ref": "./examples/SecretStores_Get_AzureKeyVault.json"
           }
         }
       },
       "put": {
-        "operationId": "SecretStores_Create",
+        "operationId": "SecretStores_CreateOrUpdate",
         "tags": [
           "SecretStores"
         ],
@@ -1932,11 +1944,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresPutValueFrom": {
-            "$ref": "./examples/SecretStoresPutValueFrom.json"
+          "Create or Update a secret store resource with azure keyvault": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate.json"
           },
-          "RadiusSecretStoresPutValue": {
-            "$ref": "./examples/SecretStoresPutValue.json"
+          "Create or Update a secret store resource with valueFrom": {
+            "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2005,8 +2017,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresPatch": {
-            "$ref": "./examples/SecretStoresPatch.json"
+          "Update a secret store resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
+          },
+          "Update a secret store": {
+            "$ref": "./examples/SecretStores_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2065,11 +2080,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "RadiusSecretStoresDelete": {
-            "$ref": "./examples/SecretStoresDelete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -2125,8 +2135,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusSecretStoresPostListSecret": {
-            "$ref": "./examples/SecretStoresListSecrets.json"
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_ListSecrets.json"
           }
         }
       }
@@ -2161,8 +2171,11 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesListByScope": {
-            "$ref": "./examples/VolumesListByScope.json"
+          "List volumes by resource group": {
+            "$ref": "./examples/Volumes_List.json"
+          },
+          "List volumes by rootScope": {
+            "$ref": "./examples/Volumes_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -2209,13 +2222,13 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesGet": {
-            "$ref": "./examples/VolumesGet.json"
+          "Get a volume": {
+            "$ref": "./examples/Volumes_Get.json"
           }
         }
       },
       "put": {
-        "operationId": "Volumes_Create",
+        "operationId": "Volumes_CreateOrUpdate",
         "tags": [
           "Volumes"
         ],
@@ -2274,8 +2287,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesPut": {
-            "$ref": "./examples/VolumesPut.json"
+          "Create or update a volume": {
+            "$ref": "./examples/Volumes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2344,8 +2357,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesPatch": {
-            "$ref": "./examples/VolumesPatch.json"
+          "Update a volume": {
+            "$ref": "./examples/Volumes_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2405,8 +2418,8 @@
           }
         },
         "x-ms-examples": {
-          "RadiusVolumesDelete": {
-            "$ref": "./examples/VolumesDelete.json"
+          "Delete a volume": {
+            "$ref": "./examples/Volumes_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2441,6 +2454,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Get the operations for the Applications.Core resource provider": {
+            "$ref": "./examples/Operations_List.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -2452,23 +2470,14 @@
       "type": "object",
       "description": "Application properties",
       "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
         "environment": {
           "type": "string",
           "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        },
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "The status of the last operation.",
-          "readOnly": true
         },
         "extensions": {
           "type": "array",
@@ -2477,6 +2486,11 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
         }
       },
       "required": [
@@ -2546,14 +2560,6 @@
       "type": "object",
       "description": "The updatable properties of the ApplicationResource.",
       "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        },
         "compute": {
           "$ref": "#/definitions/EnvironmentComputeUpdate",
           "description": "The compute resource used by application environment."
@@ -2900,20 +2906,21 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
           "readOnly": true
-        },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "The status of the last operation."
         },
         "container": {
           "$ref": "#/definitions/Container",
@@ -2940,7 +2947,7 @@
         }
       },
       "required": [
-        "environment",
+        "application",
         "container"
       ]
     },
@@ -3008,15 +3015,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "The status of the last operation."
         },
         "container": {
           "$ref": "#/definitions/ContainerUpdate",
@@ -3204,22 +3207,9 @@
       "type": "object",
       "description": "Environment properties",
       "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        },
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "The status of the last operation.",
+          "description": "The status of the asynchronous operation.",
           "readOnly": true
         },
         "compute": {
@@ -3250,7 +3240,6 @@
         }
       },
       "required": [
-        "environment",
         "compute"
       ]
     },
@@ -3316,14 +3305,6 @@
       "type": "object",
       "description": "The updatable properties of the EnvironmentResource.",
       "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        },
         "compute": {
           "$ref": "#/definitions/EnvironmentComputeUpdate",
           "description": "The compute resource used by application environment."
@@ -3421,21 +3402,22 @@
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
         },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
           "readOnly": true
         },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the extender link at the time the operation was called",
-          "readOnly": true
-        },
         "secrets": {
-          "$ref": "#/definitions/ExtenderSecretObject",
-          "description": "The secrets for referenced resource"
+          "type": "object",
+          "description": "The secrets for referenced resource",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -3525,11 +3507,12 @@
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
         },
         "secrets": {
-          "$ref": "#/definitions/ExtenderSecretObject",
-          "description": "The secrets for referenced resource"
+          "type": "object",
+          "description": "The secrets for referenced resource",
+          "properties": {}
         },
         "recipe": {
           "$ref": "#/definitions/RecipeUpdate",
@@ -3540,11 +3523,6 @@
           "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       }
-    },
-    "ExtenderSecretObject": {
-      "type": "object",
-      "description": "Key/value pair secret object",
-      "properties": {}
     },
     "Extension": {
       "type": "object",
@@ -3578,9 +3556,22 @@
       "type": "object",
       "description": "Gateway properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the Gateway at the time the operation was called.",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
           "readOnly": true
         },
         "internal": {
@@ -3611,31 +3602,8 @@
         }
       },
       "required": [
+        "application",
         "routes"
-      ],
-      "allOf": [
-        {
-          "type": "object",
-          "description": "The base resource properties definition for Radius top-level resource properties",
-          "properties": {
-            "environment": {
-              "type": "string",
-              "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-            },
-            "application": {
-              "type": "string",
-              "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-            },
-            "status": {
-              "$ref": "#/definitions/ResourceStatus",
-              "description": "Status of a resource.",
-              "readOnly": true
-            }
-          },
-          "required": [
-            "environment"
-          ]
-        }
       ]
     },
     "GatewayResource": {
@@ -3700,6 +3668,14 @@
       "type": "object",
       "description": "The updatable properties of the GatewayResource.",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
         "internal": {
           "type": "boolean",
           "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
@@ -3720,14 +3696,6 @@
         "tls": {
           "$ref": "#/definitions/GatewayTls",
           "description": "TLS configuration for the Gateway."
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         }
       }
     },
@@ -3846,20 +3814,20 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the HTTPRoute at the time the operation was called.",
           "readOnly": true
         },
         "hostname": {
@@ -3883,7 +3851,7 @@
         }
       },
       "required": [
-        "environment"
+        "application"
       ]
     },
     "HttpRouteResource": {
@@ -3950,7 +3918,7 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
@@ -4237,7 +4205,20 @@
     "OutputResource": {
       "type": "object",
       "description": "Properties of an output resource.",
-      "properties": {}
+      "properties": {
+        "localId": {
+          "type": "string",
+          "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+        },
+        "id": {
+          "type": "string",
+          "description": "The UCP resource ID of the underlying resource."
+        },
+        "radiusManaged": {
+          "type": "boolean",
+          "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        }
+      }
     },
     "PersistentVolume": {
       "type": "object",
@@ -4681,20 +4662,20 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the Gateway at the time the operation was called.",
           "readOnly": true
         },
         "type": {
@@ -4715,7 +4696,7 @@
         }
       },
       "required": [
-        "environment",
+        "application",
         "data"
       ]
     },
@@ -4783,7 +4764,7 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
@@ -4951,6 +4932,24 @@
         "name"
       ]
     },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for the Applications.Core resource provider.",
+      "enum": [
+        "2022-03-15-privatepreview"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2022_03_15_privatepreview",
+            "value": "2022-03-15-privatepreview",
+            "description": "2022-03-15-privatepreview"
+          }
+        ]
+      }
+    },
     "Volume": {
       "type": "object",
       "description": "Specifies a volume for a container",
@@ -5004,27 +5003,27 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
           "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
         "status": {
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the Volume at the time the operation was called.",
           "readOnly": true
         }
       },
       "discriminator": "kind",
       "required": [
         "kind",
-        "environment"
+        "application"
       ]
     },
     "VolumeResource": {
@@ -5091,7 +5090,7 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",

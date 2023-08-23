@@ -148,3 +148,15 @@ func isValidLinkType(link string) bool {
 func isValidTemplateKind(templateKind string) bool {
 	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
 }
+
+func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource {
+	var outResources []*OutputResource
+	for _, or := range outputResources {
+		outResources = append(outResources, &OutputResource{
+			ID:            to.Ptr(or.ID.String()),
+			LocalID:       to.Ptr(or.LocalID),
+			RadiusManaged: or.RadiusManaged,
+		})
+	}
+	return outResources
+}

@@ -44,33 +44,34 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 	return client, nil
 }
 
-// Create - Create a EnvironmentResource
+// CreateOrUpdate - Create a EnvironmentResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - environmentName - environment name
 //   - resource - Resource create parameters.
-//   - options - EnvironmentsClientCreateOptions contains the optional parameters for the EnvironmentsClient.Create method.
-func (client *EnvironmentsClient) Create(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOptions) (EnvironmentsClientCreateResponse, error) {
+//   - options - EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate
+//     method.
+func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (EnvironmentsClientCreateOrUpdateResponse, error) {
 	var err error
-	req, err := client.createCreateRequest(ctx, environmentName, resource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, environmentName, resource, options)
 	if err != nil {
-		return EnvironmentsClientCreateResponse{}, err
+		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return EnvironmentsClientCreateResponse{}, err
+		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientCreateResponse{}, err
+		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
-	resp, err := client.createHandleResponse(httpResp)
+	resp, err := client.createOrUpdateHandleResponse(httpResp)
 	return resp, err
 }
 
-// createCreateRequest creates the Create request.
-func (client *EnvironmentsClient) createCreateRequest(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOptions) (*policy.Request, error) {
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
@@ -91,11 +92,11 @@ func (client *EnvironmentsClient) createCreateRequest(ctx context.Context, envir
 	return req, nil
 }
 
-// createHandleResponse handles the Create response.
-func (client *EnvironmentsClient) createHandleResponse(resp *http.Response) (EnvironmentsClientCreateResponse, error) {
-	result := EnvironmentsClientCreateResponse{}
+// createOrUpdateHandleResponse handles the CreateOrUpdate response.
+func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Response) (EnvironmentsClientCreateOrUpdateResponse, error) {
+	result := EnvironmentsClientCreateOrUpdateResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResource); err != nil {
-		return EnvironmentsClientCreateResponse{}, err
+		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
@@ -194,35 +195,35 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 	return result, nil
 }
 
-// Getmetadata - Gets recipe metadata including parameters and any constraints on the parameters.
+// GetMetadata - Gets recipe metadata including parameters and any constraints on the parameters.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - environmentName - environment name
 //   - body - The content of the action request
-//   - options - EnvironmentsClientGetmetadataOptions contains the optional parameters for the EnvironmentsClient.Getmetadata
+//   - options - EnvironmentsClientGetMetadataOptions contains the optional parameters for the EnvironmentsClient.GetMetadata
 //     method.
-func (client *EnvironmentsClient) Getmetadata(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetmetadataOptions) (EnvironmentsClientGetmetadataResponse, error) {
+func (client *EnvironmentsClient) GetMetadata(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetMetadataOptions) (EnvironmentsClientGetMetadataResponse, error) {
 	var err error
-	req, err := client.getmetadataCreateRequest(ctx, environmentName, body, options)
+	req, err := client.getMetadataCreateRequest(ctx, environmentName, body, options)
 	if err != nil {
-		return EnvironmentsClientGetmetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return EnvironmentsClientGetmetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
 		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientGetmetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
-	resp, err := client.getmetadataHandleResponse(httpResp)
+	resp, err := client.getMetadataHandleResponse(httpResp)
 	return resp, err
 }
 
-// getmetadataCreateRequest creates the Getmetadata request.
-func (client *EnvironmentsClient) getmetadataCreateRequest(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetmetadataOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getmetadata"
+// getMetadataCreateRequest creates the GetMetadata request.
+func (client *EnvironmentsClient) getMetadataCreateRequest(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetMetadataOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getMetadata"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
@@ -242,11 +243,11 @@ func (client *EnvironmentsClient) getmetadataCreateRequest(ctx context.Context, 
 	return req, nil
 }
 
-// getmetadataHandleResponse handles the Getmetadata response.
-func (client *EnvironmentsClient) getmetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetmetadataResponse, error) {
-	result := EnvironmentsClientGetmetadataResponse{}
+// getMetadataHandleResponse handles the GetMetadata response.
+func (client *EnvironmentsClient) getMetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetMetadataResponse, error) {
+	result := EnvironmentsClientGetMetadataResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RecipeGetMetadataResponse); err != nil {
-		return EnvironmentsClientGetmetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
 	return result, nil
 }

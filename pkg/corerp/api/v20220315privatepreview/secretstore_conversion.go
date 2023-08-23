@@ -66,7 +66,7 @@ func (dst *SecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(ss.Tags)
 	dst.Properties = &SecretStoreProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(ss.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(ss.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(ss.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(ss.Properties.Application),

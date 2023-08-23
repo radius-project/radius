@@ -134,7 +134,7 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(g.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(g.Properties.Application),

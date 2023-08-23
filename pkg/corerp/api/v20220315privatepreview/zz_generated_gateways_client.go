@@ -109,6 +109,72 @@ func (client *GatewaysClient) createCreateRequest(ctx context.Context, gatewayNa
 	return req, nil
 }
 
+// BeginCreateOrUpdate - Update a GatewayResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+//   - gatewayName - Gateway name
+//   - properties - The resource properties to be updated.
+//   - options - GatewaysClientBeginCreateOrUpdateOptions contains the optional parameters for the GatewaysClient.BeginCreateOrUpdate
+//     method.
+func (client *GatewaysClient) BeginCreateOrUpdate(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginCreateOrUpdateOptions) (*runtime.Poller[GatewaysClientCreateOrUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.createOrUpdate(ctx, gatewayName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[GatewaysClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// CreateOrUpdate - Update a GatewayResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-03-15-privatepreview
+func (client *GatewaysClient) createOrUpdate(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginCreateOrUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.createOrUpdateCreateRequest(ctx, gatewayName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		err = runtime.NewResponseError(httpResp)
+		return nil, err
+	}
+	return httpResp, nil
+}
+
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if gatewayName == "" {
+		return nil, errors.New("parameter gatewayName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{gatewayName}", url.PathEscape(gatewayName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+	return nil, err
+}
+	return req, nil
+}
+
 // BeginDelete - Delete a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
@@ -277,70 +343,5 @@ func (client *GatewaysClient) listByScopeHandleResponse(resp *http.Response) (Ga
 		return GatewaysClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a GatewayResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//
-// Generated from API version 2022-03-15-privatepreview
-//   - gatewayName - Gateway name
-//   - properties - The resource properties to be updated.
-//   - options - GatewaysClientBeginUpdateOptions contains the optional parameters for the GatewaysClient.BeginUpdate method.
-func (client *GatewaysClient) BeginUpdate(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*runtime.Poller[GatewaysClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, gatewayName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[GatewaysClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[GatewaysClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a GatewayResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//
-// Generated from API version 2022-03-15-privatepreview
-func (client *GatewaysClient) update(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, gatewayName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *GatewaysClient) updateCreateRequest(ctx context.Context, gatewayName string, properties GatewayResourceUpdate, options *GatewaysClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if gatewayName == "" {
-		return nil, errors.New("parameter gatewayName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{gatewayName}", url.PathEscape(gatewayName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
-	req.Raw().URL.RawQuery = reqQP.Encode()
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-	return nil, err
-}
-	return req, nil
 }
 
