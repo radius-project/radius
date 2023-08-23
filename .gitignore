@@ -55,7 +55,7 @@ default.profraw
 pkg/handlers/gomock_*
 
 # node modules
-cadl/node_modules
+node_modules
 
 # terraform state
 .terraform/

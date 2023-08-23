@@ -1,0 +1,14 @@
+{
+  "operationId": "Extenders_Delete",
+  "title": "Delete an extender resource",
+  "parameters": {
+    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "extenderName": "extender0",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}
