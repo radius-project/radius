@@ -24,7 +24,7 @@ Once you compile your typespec files, the default output OpenAPIv2 spec file wil
 
 ## Build TypeSpec to OpenAPI swagger.
 
-Radius uses [OpenAPI2 specifications](../swagger/) for defining API and validating the API request. You can compile and emit swagger spec files by following steps.
+Radius uses [OpenAPIv2 specifications](../swagger/) for defining API and validating the API request. You can compile and emit swagger spec files by following steps.
 
 1. Install dependencies
    ```bash
