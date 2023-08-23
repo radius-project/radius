@@ -22,7 +22,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       }
     }
     recipes: {
-      'Applications.Link/extenders': {
+      'Applications.Core/extenders': {
         default: {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/azure-storage.zip'
@@ -50,7 +50,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/extenders@2022-03-15-privatepreview' = {
   name: 'corerp-resources-terraform-azstorage'
   properties: {
     application: app.id
