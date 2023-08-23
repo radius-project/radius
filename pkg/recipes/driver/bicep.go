@@ -53,7 +53,11 @@ var _ Driver = (*bicepDriver)(nil)
 
 // NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client and resource client.
 func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
-	return &bicepDriver{ArmClientOptions: armOptions, DeploymentClient: deploymentClient, ResourceClient: client}
+	return &bicepDriver{
+		ArmClientOptions: armOptions,
+		DeploymentClient: deploymentClient,
+		ResourceClient:   client,
+	}
 }
 
 type bicepDriver struct {
@@ -65,23 +69,23 @@ type bicepDriver struct {
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
 // a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
 // is done and prepares the recipe response.
-func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", definition.Name, definition.TemplatePath))
+	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", opts.Definition.Name, opts.Definition.TemplatePath))
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	err := util.ReadFromRegistry(ctx, definition.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.FailedOperationState))
+			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.FailedOperationState))
 		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipe.Name, &definition, metrics.SuccessfulOperationState))
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
 
 	// create the context object to be passed to the recipe deployment
-	recipeContext, err := recipecontext.New(&recipe, &configuration)
+	recipeContext, err := recipecontext.New(&opts.Recipe, &opts.Configuration)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
@@ -89,7 +93,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	isContextParameterDefined := hasContextParameter(recipeData)
-	parameters := createRecipeParameters(recipe.Parameters, definition.Parameters, isContextParameterDefined, recipeContext)
+	parameters := createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, isContextParameterDefined, recipeContext)
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
@@ -98,7 +102,7 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), configuration.Providers)
+	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), opts.Configuration.Providers)
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -140,10 +144,10 @@ func (d *bicepDriver) Execute(ctx context.Context, configuration recipes.Configu
 
 // Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
 // resources that are not managed by Radius. It returns an error if any of the resources fail to delete.
-func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputResource) error {
+func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	orderedOutputResources, err := rpv1.OrderOutputResources(outputResources)
+	orderedOutputResources, err := rpv1.OrderOutputResources(opts.OutputResources)
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
