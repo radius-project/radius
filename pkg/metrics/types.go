@@ -27,8 +27,8 @@ const (
 	// operationTypeAttrKey is the attribute name for the operation type.
 	operationTypeAttrKey = attribute.Key("operation_type")
 
-	// operationStateAttrKey is the attribute name for the operation state.
-	operationStateAttrKey = attribute.Key("operation_state")
+	// OperationStateAttrKey is the attribute name for the operation state.
+	OperationStateAttrKey = attribute.Key("operation_state")
 
 	// operationErrorCodeAttrKey is the attribute name for the operation error code.
 	operationErrorCodeAttrKey = attribute.Key("operation_error_code")

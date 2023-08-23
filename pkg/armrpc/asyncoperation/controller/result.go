@@ -53,10 +53,7 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 	}
 	r.Requeue = requeue
 	r.SetProvisioningState(v1.ProvisioningStateFailed)
-	r.Error = &v1.ErrorDetails{
-		Code:    err.Code,
-		Message: err.Message,
-	}
+	r.Error = &err
 }
 
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field

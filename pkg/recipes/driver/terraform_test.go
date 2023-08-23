@@ -139,12 +139,17 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 		ResourceRecipe: &recipeMetadata,
 		EnvRecipe:      &envRecipe,
 	}
-
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "Failed to deploy terraform module",
+		},
+	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
 	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
-	require.Equal(t, "Failed to deploy terraform module", err.Error())
+	require.Equal(t, err, &recipeError)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
@@ -182,12 +187,17 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 			},
 		},
 	}
-
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: "json: unknown field \"invalid\"",
+		},
+	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
 	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
-	require.Equal(t, "json: unknown field \"invalid\"", err.Error())
+	require.Equal(t, err, &recipeError)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
@@ -197,10 +207,16 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
 	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
 	require.Error(t, err)
-	require.Equal(t, "path is a required option for Terraform driver", err.Error())
+	require.Equal(t, err, &expErr)
+
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {

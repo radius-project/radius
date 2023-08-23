@@ -75,6 +75,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	// Now we're ready to process recipes (if needed).
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data)
 	if err != nil {
+		if recipeError, ok := err.(*recipes.RecipeError); ok {
+			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+		}
 		return ctrl.Result{}, err
 	}
 

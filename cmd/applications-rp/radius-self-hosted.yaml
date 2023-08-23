@@ -24,7 +24,7 @@ secretProvider:
   provider: "kubernetes"
 metricsProvider:
   prometheus:
-    enabled: false
+    enabled: true
     path: "/metrics"
     port: 9092
 profilerProvider:
