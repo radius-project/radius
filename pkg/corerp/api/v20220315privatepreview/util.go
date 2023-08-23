@@ -152,11 +152,19 @@ func isValidTemplateKind(templateKind string) bool {
 func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource {
 	var outResources []*OutputResource
 	for _, or := range outputResources {
-		outResources = append(outResources, &OutputResource{
-			ID:            to.Ptr(or.ID.String()),
-			LocalID:       to.Ptr(or.LocalID),
-			RadiusManaged: or.RadiusManaged,
-		})
+		r := &OutputResource{
+			ID: to.Ptr(or.ID.String()),
+		}
+
+		// We will not serialize the following fields if they are empty or nil.
+		if or.LocalID != "" {
+			r.LocalID = to.Ptr(or.LocalID)
+		}
+		if or.RadiusManaged != nil {
+			r.RadiusManaged = or.RadiusManaged
+		}
+
+		outResources = append(outResources, r)
 	}
 	return outResources
 }
