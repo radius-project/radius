@@ -60,7 +60,7 @@ interface TestAsyncResources {
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  create is ArmResourceCreateOrReplaceAsync<
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;

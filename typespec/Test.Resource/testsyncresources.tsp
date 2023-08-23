@@ -58,7 +58,7 @@ model TestSyncResourceProperties {
 interface TestSyncResources {
   get is ArmResourceRead<TestSyncResource, UCPBaseParameters<TestSyncResource>>;
 
-  create is ArmResourceCreateOrReplaceSync<
+  createOrUpdate is ArmResourceCreateOrReplaceSync<
     TestSyncResource,
     UCPBaseParameters<TestSyncResource>
   >;
