@@ -18,6 +18,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -104,6 +105,7 @@ func (a *asyncOperationMetrics) RecordQueuedAsyncOperation(ctx context.Context) 
 func (a *asyncOperationMetrics) RecordAsyncOperation(ctx context.Context, req *ctrl.Request, res *ctrl.Result) {
 	if a.counters[AsyncOperationCount] != nil {
 		a.counters[AsyncOperationCount].Add(ctx, 1, metric.WithAttributes(newAsyncOperationCommonAttributes(req, res)...))
+		fmt.Println("@@@@ Added counters")
 	}
 }
 
