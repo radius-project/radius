@@ -111,7 +111,7 @@
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
-* **extensions**: [Extension](#extension)[] (Required): The application extension.
+* **extensions**: [Extension](#extension)[]: The application extension.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -234,7 +234,7 @@
 * **ports**: [ContainerPorts](#containerports): container ports
 * **readinessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
 * **volumes**: [ContainerVolumes](#containervolumes): container volumes
-* **workingDir**: string (Required): Working directory for the container
+* **workingDir**: string: Working directory for the container
 
 ## ContainerEnv
 ### Properties

@@ -2494,8 +2494,7 @@
         }
       },
       "required": [
-        "environment",
-        "extensions"
+        "environment"
       ]
     },
     "ApplicationResource": {
@@ -2837,8 +2836,7 @@
         }
       },
       "required": [
-        "image",
-        "workingDir"
+        "image"
       ]
     },
     "ContainerPortProperties": {

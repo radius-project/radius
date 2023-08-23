@@ -14,7 +14,7 @@ type ApplicationProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
-	// REQUIRED; The application extension.
+	// The application extension.
 	Extensions []ExtensionClassification
 
 	// READ-ONLY; The status of the asynchronous operation.
@@ -214,9 +214,6 @@ type Container struct {
 	// REQUIRED; The registry and image to download and run in your container
 	Image *string
 
-	// REQUIRED; Working directory for the container
-	WorkingDir *string
-
 	// Arguments to the entrypoint. Overrides the container image's CMD
 	Args []*string
 
@@ -237,6 +234,9 @@ type Container struct {
 
 	// container volumes
 	Volumes map[string]VolumeClassification
+
+	// Working directory for the container
+	WorkingDir *string
 }
 
 // ContainerPortProperties - Specifies a listening port for the container
