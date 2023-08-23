@@ -6,7 +6,7 @@ var basename = context.resource.name
 
 // This is not a realistic user scenario (creating a Radius resource in a recipe). We're
 // doing things this way to test the UCP functionality without using cloud resources.
-resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
   name: '${basename}-created'
   properties: {
     application: context.application.id
@@ -17,7 +17,7 @@ resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
 }
 
 #disable-next-line no-unused-existing-resources
-resource existing 'Applications.Link/extenders@2022-03-15-privatepreview' existing = {
+resource existing 'Applications.Core/extenders@2022-03-15-privatepreview' existing = {
   name: '${basename}-existing'
 }
 
