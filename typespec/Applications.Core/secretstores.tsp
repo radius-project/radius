@@ -93,7 +93,7 @@ model SecretValueProperties {
 
   @doc("The value of secret.")
   @secret
-  value: string;
+  value?: string;
 
   @doc("The referenced secret in properties.resource")
   valueFrom?: ValueFromProperties;
