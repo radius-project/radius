@@ -1,0 +1,92 @@
+{
+  "operationId": "StateStores_ListByScope",
+  "title": "List StateStore resources by resource group",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/stateStore0",
+            "name": "stateStore0",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
+                }
+              ],
+              "type": "state.zookeeper",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/stateStore1",
+            "name": "stateStore1",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
+                }
+              ],
+              "type": "state.zookeeper",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/stateStore2",
+            "name": "stateStore2",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resourceProvisioning": "manual",
+              "type": "state.zookeeper",
+              "version": "v1",
+              "metadata": {
+                "foo": "bar"
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/stateStore3",
+            "name": "stateStore3",
+            "type": "Applications.Dapr/stateStores",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "recipe": {
+                "name": "recipe-test"
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Dapr/stateStores?api-version=2022-01-25-privatepreview&$skipToken=X'12345'"
+      }
+    }
+  }
+}
