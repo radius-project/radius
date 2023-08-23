@@ -729,6 +729,25 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "kubernetesMetadata"
     },
+    "ContainerRuntimesKubernetes": {
+      "properties": {
+        "base": {
+          "description": "The Kubernetes resource definition in YAML format",
+          "type": "string"
+        }
+      }
+    },
+    "ContainerRuntimes": {
+      "properties": {
+        "kubernetes": {
+          "description": "Specifies Kubernetes specific functionalities for the container resource.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerRuntimesKubernetes"
+          }
+        }
+      }
+    },
     "ContainerProperties": {
       "allOf": [
         {
@@ -764,6 +783,13 @@
             "$ref": "#/definitions/ContainerExtension"
           },
           "description": "Extensions spec of the resource"
+        },
+        "runtimes": {
+          "type": "object",
+          "description": "Specifies runtime-specific functionality for the container resource.",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerRuntimes"
+          }
         }
       },
       "required": [

@@ -335,6 +335,9 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
+	// Specifies runtime-specific functionality for the container resource.
+	Runtimes map[string]*ContainerRuntimes
+
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState
 
@@ -373,6 +376,16 @@ type ContainerResourceList struct {
 
 	// The list of containers.
 	Value []*ContainerResource
+}
+
+type ContainerRuntimes struct {
+	// Specifies Kubernetes specific functionalities for the container resource.
+	Kubernetes map[string]*ContainerRuntimesKubernetes
+}
+
+type ContainerRuntimesKubernetes struct {
+	// The Kubernetes resource definition in YAML format
+	Base *string
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
