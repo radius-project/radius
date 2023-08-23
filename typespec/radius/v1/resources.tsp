@@ -28,16 +28,33 @@ using Azure.ResourceManager;
 @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
 scalar ResourceNameString extends string;
 
-@doc("Base properties of a Radius resource.")
-model RadiusResourceBase {
+@doc("Base properties of a Environment-scoped resource")
+model EnvironmentScopedResource {
+  @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
+  environment: string;
+
+  @doc("Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)")
+  application?: string;
+
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("Status of a resource.")
+  @visibility("read")
+  status?: ResourceStatus;
+}
+
+@doc("Base properties of a Application-scoped resource")
+model ApplicationScopedResource {
   @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
   environment: string;
 
   @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
-  application?: string;
+  application: string;
 
-  @visibility("read")
   @doc("The status of the asynchronous operation.")
+  @visibility("read")
   provisioningState?: ProvisioningState;
 
   @doc("Status of a resource.")

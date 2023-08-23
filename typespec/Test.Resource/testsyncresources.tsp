@@ -47,7 +47,7 @@ model TestSyncResource is TrackedResource<TestSyncResourceProperties> {
 
 @doc("TestSyncResource properties")
 model TestSyncResourceProperties {
-  ...RadiusResourceBase;
+  ...ApplicationScopedResource;
 
   @doc("The property1 of TestSyncResource")
   property1: string;

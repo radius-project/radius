@@ -48,7 +48,7 @@ model ApplicationResource is TrackedResource<ApplicationProperties> {
 
 @doc("Application properties")
 model ApplicationProperties {
-  ...RadiusResourceBase;
+  ...EnvironmentScopedResource;
 
   @doc("The application extension.")
   @extension("x-ms-identifiers", [])

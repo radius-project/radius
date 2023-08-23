@@ -47,7 +47,7 @@ model HttpRouteResource is TrackedResource<HttpRouteProperties> {
 
 @doc("HTTPRoute properties")
 model HttpRouteProperties {
-  ...RadiusResourceBase;
+  ...ApplicationScopedResource;
 
   @doc("The internal hostname accepting traffic for the HTTP Route. Readonly.")
   hostname?: string;

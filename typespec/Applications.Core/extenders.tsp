@@ -53,7 +53,7 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
 @doc("ExtenderResource link properties")
 model ExtenderProperties extends Record<unknown> {
-  ...RadiusResourceBase;
+  ...EnvironmentScopedResource;
 
   @doc("The secrets for referenced resource")
   secrets?: Record<string>;

@@ -47,7 +47,7 @@ model ContainerResource is TrackedResource<ContainerProperties> {
 
 @doc("Container properties")
 model ContainerProperties {
-  ...RadiusResourceBase;
+  ...ApplicationScopedResource;
 
   @doc("Definition of a container.")
   container: Container;

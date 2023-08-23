@@ -48,7 +48,7 @@ model VolumeResource is TrackedResource<VolumeProperties> {
 @doc("Volume properties")
 @discriminator("kind")
 model VolumeProperties {
-  ...RadiusResourceBase;
+  ...EnvironmentScopedResource;
 }
 
 @doc("Represents Azure Key Vault Volume properties")

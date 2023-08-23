@@ -46,7 +46,7 @@ model GatewayResource is TrackedResource<GatewayProperties> {
 
 @doc("Gateway properties")
 model GatewayProperties {
-  ...RadiusResourceBase;
+  ...ApplicationScopedResource;
 
   @doc("Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).")
   internal?: boolean = false;

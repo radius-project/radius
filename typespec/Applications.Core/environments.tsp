@@ -48,7 +48,7 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
 
 @doc("Environment properties")
 model EnvironmentProperties {
-  ...RadiusResourceBase;
+  ...EnvironmentScopedResource;
 
   @doc("The compute resource used by application environment.")
   compute: EnvironmentCompute;
