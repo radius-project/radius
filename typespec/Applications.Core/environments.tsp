@@ -48,7 +48,9 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
 
 @doc("Environment properties")
 model EnvironmentProperties {
-  ...EnvironmentScopedResource;
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
 
   @doc("The compute resource used by application environment.")
   compute: EnvironmentCompute;

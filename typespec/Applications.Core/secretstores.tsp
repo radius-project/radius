@@ -46,7 +46,7 @@ model SecretStoreResource is TrackedResource<SecretStoreProperties> {
 
 @doc("SecretStore properties")
 model SecretStoreProperties {
-  ...EnvironmentScopedResource;
+  ...ApplicationScopedResource;
 
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("The type of secret store data")

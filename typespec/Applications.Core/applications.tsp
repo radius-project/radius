@@ -48,7 +48,12 @@ model ApplicationResource is TrackedResource<ApplicationProperties> {
 
 @doc("Application properties")
 model ApplicationProperties {
-  ...EnvironmentScopedResource;
+  @doc("The status of the asynchronous operation.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
+  environment: string;
 
   @doc("The application extension.")
   @extension("x-ms-identifiers", [])

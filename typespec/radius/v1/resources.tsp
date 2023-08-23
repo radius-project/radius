@@ -47,8 +47,8 @@ model EnvironmentScopedResource {
 
 @doc("Base properties of a Application-scoped resource")
 model ApplicationScopedResource {
-  @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
-  environment: string;
+  @doc("Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)")
+  environment?: string;
 
   @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
   application: string;
