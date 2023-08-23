@@ -206,12 +206,15 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 				scope := strings.ReplaceAll(parsed.RootScope(), "resourcegroups", "resourceGroups")
 				expected := []any{
 					map[string]any{
-						"id": "/planes/kubernetes/local/namespaces/" + name + "-app/providers/core/Secret/" + name,
+						"id":            "/planes/kubernetes/local/namespaces/" + name + "-app/providers/core/Secret/" + name,
+						"radiusManaged": true,
 					},
 					map[string]any{
-						"id": scope + "/providers/Applications.Core/extenders/" + name + "-created",
+						"id":            scope + "/providers/Applications.Core/extenders/" + name + "-created",
+						"radiusManaged": true,
 					}, map[string]interface{}{
-						"id": scope + "/providers/Applications.Core/extenders/" + name + "-module",
+						"id":            scope + "/providers/Applications.Core/extenders/" + name + "-module",
+						"radiusManaged": true,
 					},
 				}
 				actual := resource.Properties["status"].(map[string]any)["outputResources"].([]any)
