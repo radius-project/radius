@@ -158,7 +158,7 @@ model KeyObjectProperties {
 interface Volumes {
   get is ArmResourceRead<VolumeResource, UCPBaseParameters<VolumeResource>>;
 
-  create is ArmResourceCreateOrReplaceAsync<
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<
     VolumeResource,
     UCPBaseParameters<VolumeResource>
   >;

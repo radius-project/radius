@@ -145,7 +145,7 @@ interface Environments {
     UCPBaseParameters<EnvironmentResource>
   >;
 
-  create is ArmResourceCreateOrReplaceSync<
+  createOrUpdate is ArmResourceCreateOrReplaceSync<
     EnvironmentResource,
     UCPBaseParameters<EnvironmentResource>
   >;

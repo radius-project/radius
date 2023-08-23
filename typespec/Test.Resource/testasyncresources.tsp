@@ -59,35 +59,27 @@ model TestAsyncResourceProperties {
 
 @armResourceOperations
 interface TestAsyncResources {
-  @example("./example/TestAsyncResourceGet.json", "Get TestAsyncResource")
   get is ArmResourceRead<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  @example("./example/TestAsyncResourcePut.json", "Put TestAsyncResource")
   create is ArmResourceCreateOrReplaceAsync<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  @example("./example/TestAsyncResourcePatch.json", "Patch TestAsyncResource")
   update is ArmResourcePatchAsync<
     TestAsyncResource,
     TestAsyncResourceProperties,
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  @example("./example/TestAsyncResourceDelete.json", "Delete TestAsyncResource")
   delete is ArmResourceDeleteAsync<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>
   >;
 
-  @example(
-    "./example/TestAsyncResourceListByScope.json",
-    "List TestAsyncResource by scope"
-  )
   listByScope is ArmResourceListByParent<
     TestAsyncResource,
     UCPBaseParameters<TestAsyncResource>,

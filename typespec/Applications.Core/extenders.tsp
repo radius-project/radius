@@ -76,7 +76,7 @@ model ExtenderProperties extends Record<unknown> {
 interface Extenders {
   get is ArmResourceRead<ExtenderResource, UCPBaseParameters<ExtenderResource>>;
 
-  create is ArmResourceCreateOrReplaceAsync<
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<
     ExtenderResource,
     UCPBaseParameters<ExtenderResource>
   >;

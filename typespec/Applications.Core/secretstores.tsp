@@ -119,7 +119,7 @@ interface SecretStores {
     UCPBaseParameters<SecretStoreResource>
   >;
 
-  create is ArmResourceCreateOrReplaceAsync<
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<
     SecretStoreResource,
     UCPBaseParameters<SecretStoreResource>
   >;

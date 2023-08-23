@@ -121,7 +121,7 @@ interface Gateways {
     UCPBaseParameters<GatewayResource>
   >;
 
-  update is ArmResourcePatchAsync<
+  createOrUpdate is ArmResourcePatchAsync<
     GatewayResource,
     GatewayProperties,
     UCPBaseParameters<GatewayResource>

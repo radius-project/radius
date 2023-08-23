@@ -252,7 +252,7 @@ interface Containers {
     UCPBaseParameters<ContainerResource>
   >;
 
-  create is ArmResourceCreateOrReplaceAsync<
+  createOrUpdate is ArmResourceCreateOrReplaceAsync<
     ContainerResource,
     UCPBaseParameters<ContainerResource>
   >;

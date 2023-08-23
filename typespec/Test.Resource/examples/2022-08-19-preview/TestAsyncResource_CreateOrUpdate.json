@@ -1,0 +1,30 @@
+{
+  "operationId": "TestAsyncResources_CreateOrUpdate",
+  "title": "Create or Update TestAsyncResource resources",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "testAsyncResourceName": "resource0",
+    "api-version": "2022-08-19-preview",
+    "TestAsyncResource": {
+      "location": "global",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+        "property1": "test"
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Test.Resource/testAsyncResources/resource0",
+        "name": "resource0",
+        "type": "Test.Resource/testAsyncResources",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "property1": "test"
+        }
+      }
+    }
+  }
+}

@@ -395,7 +395,7 @@
         }
       },
       "put": {
-        "operationId": "Containers_Create",
+        "operationId": "Containers_CreateOrUpdate",
         "tags": [
           "Containers"
         ],
@@ -451,6 +451,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an container resource": {
+            "$ref": "./examples/Containers_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -664,7 +669,7 @@
         }
       },
       "put": {
-        "operationId": "Environments_Create",
+        "operationId": "Environments_CreateOrUpdate",
         "tags": [
           "Environments"
         ],
@@ -713,6 +718,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update an environment resource": {
+            "$ref": "./examples/Environments_CreateOrUpdate.json"
           }
         }
       },
@@ -948,7 +958,7 @@
         }
       },
       "put": {
-        "operationId": "Extenders_Create",
+        "operationId": "Extenders_CreateOrUpdate",
         "tags": [
           "Extenders"
         ],
@@ -1004,6 +1014,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update an extender resource": {
+            "$ref": "./examples/Extenders_CreateOrUpdate.json"
+          },
+          "Create or Update an extender resource with recipe": {
+            "$ref": "./examples/Extenders_CreateOrUpdateWithRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1349,7 +1367,7 @@
         "x-ms-long-running-operation": true
       },
       "patch": {
-        "operationId": "Gateways_Update",
+        "operationId": "Gateways_CreateOrUpdate",
         "tags": [
           "Gateways"
         ],
@@ -1409,8 +1427,8 @@
           }
         },
         "x-ms-examples": {
-          "Update a gateway resource": {
-            "$ref": "./examples/Gateways_Update.json"
+          "Create or update a gateway resource": {
+            "$ref": "./examples/Gateways_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1567,7 +1585,7 @@
         }
       },
       "put": {
-        "operationId": "HttpRoutes_Create",
+        "operationId": "HttpRoutes_CreateOrUpdate",
         "tags": [
           "HttpRoutes"
         ],
@@ -1623,6 +1641,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update httpRoutes resources": {
+            "$ref": "./examples/HttpRoutes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1849,7 +1872,7 @@
         }
       },
       "put": {
-        "operationId": "SecretStores_Create",
+        "operationId": "SecretStores_CreateOrUpdate",
         "tags": [
           "SecretStores"
         ],
@@ -1905,6 +1928,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update a secret store resource with azure keyvault": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate.json"
+          },
+          "Create or Update a secret store resource with valueFrom": {
+            "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2184,7 +2215,7 @@
         }
       },
       "put": {
-        "operationId": "Volumes_Create",
+        "operationId": "Volumes_CreateOrUpdate",
         "tags": [
           "Volumes"
         ],
@@ -2240,6 +2271,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a volume": {
+            "$ref": "./examples/Volumes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
