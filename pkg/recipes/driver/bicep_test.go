@@ -22,6 +22,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
@@ -427,8 +428,15 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 			RadiusManaged: to.Ptr(true),
 		},
 	}
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type),
+		},
+	}
 	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
 
 	err := driver.Delete(ctx, outputResources)
 	require.Error(t, err)
+	require.Equal(t, err, &recipeError)
 }

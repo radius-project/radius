@@ -28,6 +28,7 @@ import (
 	install "github.com/hashicorp/hc-install"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
@@ -163,7 +164,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, metrics.FailedOperationState))
-		return "", err
+		return "", recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
