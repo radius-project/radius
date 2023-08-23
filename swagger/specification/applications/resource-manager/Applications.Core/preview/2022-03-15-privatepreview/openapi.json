@@ -3713,11 +3713,7 @@
           "type": "string",
           "description": "Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'"
         }
-      },
-      "required": [
-        "path",
-        "destination"
-      ]
+      }
     },
     "GatewayTls": {
       "type": "object",
@@ -4061,11 +4057,11 @@
         },
         "name": {
           "type": "string",
-          "description": "The name of the certificate"
+          "description": "The name of the key"
         },
         "version": {
           "type": "string",
-          "description": "Certificate version"
+          "description": "Key version"
         }
       },
       "required": [
@@ -4598,11 +4594,11 @@
         },
         "name": {
           "type": "string",
-          "description": "The name of the certificate"
+          "description": "The name of the secret"
         },
         "version": {
           "type": "string",
-          "description": "Certificate version"
+          "description": "secret version"
         }
       },
       "required": [
@@ -4611,7 +4607,7 @@
     },
     "SecretStoreDataType": {
       "type": "string",
-      "description": "SecretStore data type",
+      "description": "The type of SecretStore data",
       "enum": [
         "generic",
         "certificate"
@@ -4656,7 +4652,7 @@
     },
     "SecretStoreProperties": {
       "type": "object",
-      "description": "SecretStore properties",
+      "description": "The properties of SecretStore",
       "properties": {
         "environment": {
           "type": "string",
@@ -4788,7 +4784,7 @@
     },
     "SecretValueEncoding": {
       "type": "string",
-      "description": "SecretValue Encoding type",
+      "description": "The type of SecretValue Encoding",
       "enum": [
         "raw",
         "base64"
@@ -4812,7 +4808,7 @@
     },
     "SecretValueProperties": {
       "type": "object",
-      "description": "SecretValue properties",
+      "description": "The properties of SecretValue",
       "properties": {
         "encoding": {
           "$ref": "#/definitions/SecretValueEncoding",
@@ -4829,10 +4825,7 @@
           "$ref": "#/definitions/ValueFromProperties",
           "description": "The referenced secret in properties.resource"
         }
-      },
-      "required": [
-        "value"
-      ]
+      }
     },
     "TcpHealthProbeProperties": {
       "type": "object",

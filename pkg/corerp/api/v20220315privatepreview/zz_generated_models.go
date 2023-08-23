@@ -835,10 +835,10 @@ type GatewayResourceUpdateProperties struct {
 
 // GatewayRoute - Route attached to Gateway
 type GatewayRoute struct {
-	// REQUIRED; The HttpRoute to route to. Ex - myserviceroute.id.
+	// The HttpRoute to route to. Ex - myserviceroute.id.
 	Destination *string
 
-	// REQUIRED; The path to match the incoming request path on. Ex - /myservice.
+	// The path to match the incoming request path on. Ex - /myservice.
 	Path *string
 
 	// Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will
@@ -1045,13 +1045,13 @@ type IdentitySettingsUpdate struct {
 
 // KeyObjectProperties - Represents key object properties
 type KeyObjectProperties struct {
-	// REQUIRED; The name of the certificate
+	// REQUIRED; The name of the key
 	Name *string
 
 	// File name when written to disk
 	Alias *string
 
-	// Certificate version
+	// Key version
 	Version *string
 }
 
@@ -1404,7 +1404,7 @@ type ResourceStatus struct {
 
 // SecretObjectProperties - Represents secret object properties
 type SecretObjectProperties struct {
-	// REQUIRED; The name of the certificate
+	// REQUIRED; The name of the secret
 	Name *string
 
 	// File name when written to disk
@@ -1413,7 +1413,7 @@ type SecretObjectProperties struct {
 	// Encoding format. Default utf-8
 	Encoding *VolumeSecretEncodings
 
-	// Certificate version
+	// secret version
 	Version *string
 }
 
@@ -1426,7 +1426,7 @@ type SecretStoreListSecretsResult struct {
 	Type *SecretStoreDataType
 }
 
-// SecretStoreProperties - SecretStore properties
+// SecretStoreProperties - The properties of SecretStore
 type SecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
@@ -1510,13 +1510,13 @@ type SecretStoreResourceUpdateProperties struct {
 	Type *SecretStoreDataType
 }
 
-// SecretValueProperties - SecretValue properties
+// SecretValueProperties - The properties of SecretValue
 type SecretValueProperties struct {
-	// REQUIRED; The value of secret.
-	Value *string
-
 	// The encoding of value
 	Encoding *SecretValueEncoding
+
+	// The value of secret.
+	Value *string
 
 	// The referenced secret in properties.resource
 	ValueFrom *ValueFromProperties

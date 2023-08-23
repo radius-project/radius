@@ -244,7 +244,7 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 	}
 }
 
-// SecretStoreDataType - SecretStore data type
+// SecretStoreDataType - The type of SecretStore data
 type SecretStoreDataType string
 
 const (
@@ -262,7 +262,7 @@ func PossibleSecretStoreDataTypeValues() []SecretStoreDataType {
 	}
 }
 
-// SecretValueEncoding - SecretValue Encoding type
+// SecretValueEncoding - The type of SecretValue Encoding
 type SecretValueEncoding string
 
 const (

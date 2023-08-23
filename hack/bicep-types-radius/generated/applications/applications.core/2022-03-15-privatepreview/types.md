@@ -79,7 +79,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [SecretStoreProperties](#secretstoreproperties): SecretStore properties
+* **properties**: [SecretStoreProperties](#secretstoreproperties): The properties of SecretStore
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/secretStores' (ReadOnly, DeployTimeConstant): The resource type
@@ -405,8 +405,8 @@
 
 ## GatewayRoute
 ### Properties
-* **destination**: string (Required): The HttpRoute to route to. Ex - myserviceroute.id.
-* **path**: string (Required): The path to match the incoming request path on. Ex - /myservice.
+* **destination**: string: The HttpRoute to route to. Ex - myserviceroute.id.
+* **path**: string: The path to match the incoming request path on. Ex - /myservice.
 * **replacePrefix**: string: Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'
 
 ## GatewayTls
@@ -444,7 +444,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **resource**: string: The resource id of external secret store.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **type**: 'certificate' | 'generic': SecretStore data type
+* **type**: 'certificate' | 'generic': The type of SecretStore data
 
 ## SecretStorePropertiesData
 ### Properties
@@ -453,8 +453,8 @@
 
 ## SecretValueProperties
 ### Properties
-* **encoding**: 'base64' | 'raw': SecretValue Encoding type
-* **value**: string (Required): The value of secret.
+* **encoding**: 'base64' | 'raw': The type of SecretValue Encoding
+* **value**: string: The value of secret.
 * **valueFrom**: [ValueFromProperties](#valuefromproperties): The Secret value source properties
 
 ## ValueFromProperties
@@ -506,8 +506,8 @@
 ## KeyObjectProperties
 ### Properties
 * **alias**: string: File name when written to disk
-* **name**: string (Required): The name of the certificate
-* **version**: string: Certificate version
+* **name**: string (Required): The name of the key
+* **version**: string: Key version
 
 ## AzureKeyVaultVolumePropertiesSecrets
 ### Properties
@@ -518,8 +518,8 @@
 ### Properties
 * **alias**: string: File name when written to disk
 * **encoding**: 'base64' | 'hex' | 'utf-8': Represents secret encodings
-* **name**: string (Required): The name of the certificate
-* **version**: string: Certificate version
+* **name**: string (Required): The name of the secret
+* **version**: string: secret version
 
 ## TrackedResourceTags
 ### Properties
@@ -529,7 +529,7 @@
 ## SecretStoreListSecretsResult
 ### Properties
 * **data**: [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) (ReadOnly): An object to represent key-value type secrets
-* **type**: 'certificate' | 'generic' (ReadOnly): SecretStore data type
+* **type**: 'certificate' | 'generic' (ReadOnly): The type of SecretStore data
 
 ## SecretStoreListSecretsResultData
 ### Properties
