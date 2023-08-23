@@ -49,10 +49,6 @@ model HttpRouteResource is TrackedResource<HttpRouteProperties> {
 model HttpRouteProperties {
   ...RadiusResourceBase;
 
-  @doc("Provisioning state of the HTTPRoute at the time the operation was called.")
-  @visibility("read")
-  provisioningState?: ProvisioningState;
-
   @doc("The internal hostname accepting traffic for the HTTP Route. Readonly.")
   hostname?: string;
 

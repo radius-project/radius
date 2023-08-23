@@ -49,11 +49,7 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
 @doc("Environment properties")
 model EnvironmentProperties {
   ...RadiusResourceBase;
-
-  @visibility("read")
-  @doc("The status of the last operation.")
-  provisioningState?: ProvisioningState;
-
+  
   @doc("The compute resource used by application environment.")
   compute: EnvironmentCompute;
 

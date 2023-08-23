@@ -48,10 +48,6 @@ model GatewayResource is TrackedResource<GatewayProperties> {
 model GatewayProperties {
   ...RadiusResourceBase;
 
-  @doc("Provisioning state of the Gateway at the time the operation was called.")
-  @visibility("read")
-  provisioningState?: ProvisioningState;
-
   @doc("Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).")
   internal?: boolean = false;
 

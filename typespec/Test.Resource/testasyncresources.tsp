@@ -49,10 +49,6 @@ model TestAsyncResource is TrackedResource<TestAsyncResourceProperties> {
 model TestAsyncResourceProperties {
   ...RadiusResourceBase;
 
-  @visibility("read")
-  @doc("The status of the last operation.")
-  provisioningState?: ProvisioningState;
-
   @doc("The property1 of TestASyncResource")
   property1: string;
 }

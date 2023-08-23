@@ -49,10 +49,6 @@ model VolumeResource is TrackedResource<VolumeProperties> {
 @discriminator("kind")
 model VolumeProperties {
   ...RadiusResourceBase;
-
-  @doc("Provisioning state of the Volume at the time the operation was called.")
-  @visibility("read")
-  provisioningState?: ProvisioningState;
 }
 
 @doc("Represents Azure Key Vault Volume properties")

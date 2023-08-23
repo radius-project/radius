@@ -50,10 +50,6 @@ model ApplicationResource is TrackedResource<ApplicationProperties> {
 model ApplicationProperties {
   ...RadiusResourceBase;
 
-  @visibility("read")
-  @doc("The status of the last operation.")
-  provisioningState?: ProvisioningState;
-
   @doc("The application extension.")
   @extension("x-ms-identifiers", [])
   extensions: Array<Extension>;

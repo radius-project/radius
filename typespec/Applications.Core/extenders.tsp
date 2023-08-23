@@ -58,10 +58,6 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
 model ExtenderProperties extends Record<unknown> {
   ...RadiusResourceBase;
 
-  @doc("Provisioning state of the extender link at the time the operation was called")
-  @visibility("read")
-  provisioningState?: ProvisioningState;
-
   @doc("The secrets for referenced resource")
   secrets?: ExtenderSecretObject;
 

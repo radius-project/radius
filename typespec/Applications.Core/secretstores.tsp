@@ -48,10 +48,6 @@ model SecretStoreResource is TrackedResource<SecretStoreProperties> {
 model SecretStoreProperties {
   ...RadiusResourceBase;
 
-  @doc("Provisioning state of the Gateway at the time the operation was called.")
-  @visibility("read")
-  provisioningState?: ProvisioningState;
-
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
   @doc("The type of secret store data")
   type?: SecretStoreDataType = SecretStoreDataType.generic;

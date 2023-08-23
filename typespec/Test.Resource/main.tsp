@@ -17,7 +17,8 @@ limitations under the License.
 import "@typespec/versioning";
 import "@azure-tools/typespec-azure-resource-manager";
 
-// TODO: import the multiple type spec files.
+// TODO: after creating a copy of this file, create individual .tsp files for each of your resources and
+// use the 'import' keyword to import them here.
 import "./testsyncresources.tsp";
 import "./testasyncresources.tsp";
 

@@ -36,6 +36,10 @@ model RadiusResourceBase {
   @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
   application?: string;
 
+  @visibility("read")
+  @doc("The status of the asynchronous operation.")
+  provisioningState?: ProvisioningState;
+
   @doc("Status of a resource.")
   @visibility("read")
   status?: ResourceStatus;
