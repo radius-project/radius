@@ -51,6 +51,12 @@ jobs:
           pushd cadl
           npm ci
           popd
+      - name: Install TypeSpec
+        run: |
+          pushd typespec
+          npm install -g @typespec/compiler
+          tsp install
+          popd
       - name: Install autorest
         run: npm install -g autorest@3.6.1
       - name: Install oav

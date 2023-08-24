@@ -29,7 +29,7 @@ generate: generate-genericcliclient generate-rad-corerp-client generate-rad-link
 generate-cadl-installed:
 	@echo "$(ARROW) Detecting cadl..."
 	npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
-	npx$(CMD_EXT) -q tsp --help > /dev/null || { echo "run 'npm install -g typespec' to install typespec"; exit 1; }
+	npx$(CMD_EXT) -q tsp --help > /dev/null || { echo "run 'npm install -g @typespec/compiler' to install typespec"; exit 1; }
 	@echo "$(ARROW) OK"
 
 
