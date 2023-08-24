@@ -2,19 +2,19 @@
   "operationId": "Containers_Get",
   "title": "Get an container resource",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview",
     "containerName": "container0"
   },
   "responses": {
     "200": {
       "body": {
-        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
         "name": "container0",
         "type": "Applications.Core/containers",
         "properties": {
           "provisioningState": "Succeeded",
-          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
           "connections": {
             "inventory": {
               "kind": "dapr.io/InvokeHttp",

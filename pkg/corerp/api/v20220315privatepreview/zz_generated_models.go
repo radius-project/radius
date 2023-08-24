@@ -9,92 +9,27 @@ package v20220315privatepreview
 
 import "time"
 
-type ApplicationExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
-	Kind *string
-}
-
-// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationExtension.
-func (a *ApplicationExtension) GetApplicationExtension() *ApplicationExtension { return a }
-
-// GetExtension implements the ExtensionClassification interface for type ApplicationExtension.
-func (a *ApplicationExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: a.Kind,
-	}
-}
-
-// ApplicationKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created
-// by all Containers in this Application.
-type ApplicationKubernetesMetadataExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
-	Kind *string
-
-	// Annotations to be applied to the Kubernetes resources output by the resource
-	Annotations map[string]*string
-
-	// Labels to be applied to the Kubernetes resources output by the resource
-	Labels map[string]*string
-}
-
-// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
-func (a *ApplicationKubernetesMetadataExtension) GetApplicationExtension() *ApplicationExtension {
-	return &ApplicationExtension{
-		Kind: a.Kind,
-	}
-}
-
-// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
-func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: a.Kind,
-	}
-}
-
-// ApplicationKubernetesNamespaceExtension - Specifies application-scoped namespace.
-type ApplicationKubernetesNamespaceExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
-	Kind *string
-
-	// REQUIRED; The Kubernetes namespace to use for this application.
-	Namespace *string
-}
-
-// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
-func (a *ApplicationKubernetesNamespaceExtension) GetApplicationExtension() *ApplicationExtension {
-	return &ApplicationExtension{
-		Kind: a.Kind,
-	}
-}
-
-// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
-func (a *ApplicationKubernetesNamespaceExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: a.Kind,
-	}
-}
-
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
-	// REQUIRED; The resource id of the environment linked to application.
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
-	// Extensions spec of the resource
-	Extensions []ApplicationExtensionClassification
+	// The application extension.
+	Extensions []ExtensionClassification
 
-	// READ-ONLY; Provisioning state of the application at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
-// ApplicationResource - Radius Application.
+// ApplicationResource - Radius Application resource
 type ApplicationResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Application properties
+	// The resource-specific properties for this resource.
 	Properties *ApplicationProperties
 
 	// Resource tags.
@@ -106,27 +41,52 @@ type ApplicationResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// ApplicationResourceList - The list of applications.
-type ApplicationResourceList struct {
-	// The link used to get the next page of applications list.
-	NextLink *string
-
-	// The list of applications.
+// ApplicationResourceListResult - The response of a ApplicationResource list operation.
+type ApplicationResourceListResult struct {
+	// REQUIRED; The ApplicationResource items on this page
 	Value []*ApplicationResource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
+// ApplicationResourceUpdate - The type used for update operations of the ApplicationResource.
+type ApplicationResourceUpdate struct {
+	// The updatable properties of the ApplicationResource.
+	Properties *ApplicationResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// ApplicationResourceUpdateProperties - The updatable properties of the ApplicationResource.
+type ApplicationResourceUpdateProperties struct {
+	// The compute resource used by application environment.
+	Compute EnvironmentComputeUpdateClassification
+
+	// The environment extension.
+	Extensions []ExtensionClassification
+
+	// Cloud providers configuration for the environment.
+	Providers *ProvidersUpdate
+
+	// Specifies Recipes linked to the Environment.
+	Recipes map[string]map[string]RecipePropertiesUpdateClassification
+}
+
+// AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
 type AzureKeyVaultVolumeProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// REQUIRED; The volume kind
+	// REQUIRED; Discriminator property for VolumeProperties.
 	Kind *string
 
 	// REQUIRED; The ID of the keyvault to use for this volume resource
@@ -135,7 +95,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]*CertificateObjectProperties
 
-	// The resource id of the environment linked to the resource
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The KeyVault keys that this volume exposes
@@ -144,10 +104,10 @@ type AzureKeyVaultVolumeProperties struct {
 	// The KeyVault secrets that this volume exposes
 	Secrets map[string]*SecretObjectProperties
 
-	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
@@ -162,21 +122,9 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	}
 }
 
-// BasicResourceProperties - Basic properties of a Radius resource.
-type BasicResourceProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string
-
-	// The resource id of the environment linked to the resource
-	Environment *string
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus
-}
-
-// BicepRecipeProperties - Properties of a Recipe linked to an Environment.
+// BicepRecipeProperties - Represents Bicep recipe properties.
 type BicepRecipeProperties struct {
-	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
+	// REQUIRED; Discriminator property for RecipeProperties.
 	TemplateKind *string
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
@@ -186,45 +134,82 @@ type BicepRecipeProperties struct {
 	Parameters map[string]any
 }
 
-// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type BicepRecipeProperties.
-func (b *BicepRecipeProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties {
-	return &EnvironmentRecipeProperties{
+// GetRecipeProperties implements the RecipePropertiesClassification interface for type BicepRecipeProperties.
+func (b *BicepRecipeProperties) GetRecipeProperties() *RecipeProperties {
+	return &RecipeProperties{
 		Parameters: b.Parameters,
 		TemplateKind: b.TemplateKind,
 		TemplatePath: b.TemplatePath,
 	}
 }
 
+// BicepRecipePropertiesUpdate - Represents Bicep recipe properties.
+type BicepRecipePropertiesUpdate struct {
+	// REQUIRED; Discriminator property for RecipeProperties.
+	TemplateKind *string
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]any
+
+	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
+}
+
+// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type BicepRecipePropertiesUpdate.
+func (b *BicepRecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate {
+	return &RecipePropertiesUpdate{
+		Parameters: b.Parameters,
+		TemplateKind: b.TemplateKind,
+		TemplatePath: b.TemplatePath,
+	}
+}
+
+// CertificateObjectProperties - Represents certificate object properties
 type CertificateObjectProperties struct {
 	// REQUIRED; The name of the certificate
 	Name *string
 
-	// File name when written to disk.
+	// File name when written to disk
 	Alias *string
 
 	// Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
-	CertType *CertType
+	CertType *CertificateTypes
 
 	// Encoding format. Default utf-8
-	Encoding *Encoding
+	Encoding *VolumeSecretEncodings
 
 	// Certificate format. Default pem
-	Format *Format
+	Format *CertificateFormats
 
 	// Certificate version
 	Version *string
 }
 
+// ConnectionProperties - Connection Properties
 type ConnectionProperties struct {
 	// REQUIRED; The source of the connection
 	Source *string
+
+	// default environment variable override
 	DisableDefaultEnvVars *bool
 
-	// The properties of IAM
+	// iam properties
 	Iam *IamProperties
 }
 
-// Container - Definition of a container.
+// ConnectionPropertiesUpdate - Connection Properties
+type ConnectionPropertiesUpdate struct {
+	// default environment variable override
+	DisableDefaultEnvVars *bool
+
+	// iam properties
+	Iam *IamPropertiesUpdate
+
+	// The source of the connection
+	Source *string
+}
+
+// Container - Definition of a container
 type Container struct {
 	// REQUIRED; The registry and image to download and run in your container
 	Image *string
@@ -235,122 +220,103 @@ type Container struct {
 	// Entrypoint array. Overrides the container image's ENTRYPOINT
 	Command []*string
 
-	// Dictionary of
+	// environment
 	Env map[string]*string
 
-	// Properties for readiness/liveness probe
+	// liveness probe properties
 	LivenessProbe HealthProbePropertiesClassification
 
-	// Dictionary of
-	Ports map[string]*ContainerPort
+	// container ports
+	Ports map[string]*ContainerPortProperties
 
-	// Properties for readiness/liveness probe
+	// readiness probe properties
 	ReadinessProbe HealthProbePropertiesClassification
 
-	// Dictionary of
+	// container volumes
 	Volumes map[string]VolumeClassification
 
 	// Working directory for the container
 	WorkingDir *string
 }
 
-type ContainerExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
-	Kind *string
-}
-
-// GetContainerExtension implements the ContainerExtensionClassification interface for type ContainerExtension.
-func (c *ContainerExtension) GetContainerExtension() *ContainerExtension { return c }
-
-// GetExtension implements the ExtensionClassification interface for type ContainerExtension.
-func (c *ContainerExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: c.Kind,
-	}
-}
-
-// ContainerKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created for
-// the Container resource
-type ContainerKubernetesMetadataExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
-	Kind *string
-
-	// Annotations to be applied to the Kubernetes resources output by the resource
-	Annotations map[string]*string
-
-	// Labels to be applied to the Kubernetes resources output by the resource
-	Labels map[string]*string
-}
-
-// GetContainerExtension implements the ContainerExtensionClassification interface for type ContainerKubernetesMetadataExtension.
-func (c *ContainerKubernetesMetadataExtension) GetContainerExtension() *ContainerExtension {
-	return &ContainerExtension{
-		Kind: c.Kind,
-	}
-}
-
-// GetExtension implements the ExtensionClassification interface for type ContainerKubernetesMetadataExtension.
-func (c *ContainerKubernetesMetadataExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: c.Kind,
-	}
-}
-
-// ContainerPort - Specifies a listening port for the container
-type ContainerPort struct {
+// ContainerPortProperties - Specifies a listening port for the container
+type ContainerPortProperties struct {
 	// REQUIRED; The listening port number
 	ContainerPort *int32
 
-	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired.
+	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired
 	Port *int32
 
 	// Protocol in use by the port
-	Protocol *Protocol
+	Protocol *PortProtocol
 
 	// Specifies a route provided by this port
 	Provides *string
 
 	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
-// to 'http' or 'https' depending on the port value.
+// to 'http' or 'https' depending on the port value
+	Scheme *string
+}
+
+// ContainerPortPropertiesUpdate - Specifies a listening port for the container
+type ContainerPortPropertiesUpdate struct {
+	// The listening port number
+	ContainerPort *int32
+
+	// Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired
+	Port *int32
+
+	// Protocol in use by the port
+	Protocol *PortProtocol
+
+	// Specifies a route provided by this port
+	Provides *string
+
+	// Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults
+// to 'http' or 'https' depending on the port value
 	Scheme *string
 }
 
 // ContainerProperties - Container properties
 type ContainerProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
 	// REQUIRED; Definition of a container.
 	Container *Container
 
-	// Dictionary of
+	// Specifies a connection to another resource.
 	Connections map[string]*ConnectionProperties
 
-	// The resource id of the environment linked to the resource
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// Extensions spec of the resource
-	Extensions []ContainerExtensionClassification
+	Extensions []ExtensionClassification
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
+<<<<<<< HEAD
 	// Specifies runtime-specific functionality for the container resource.
 	Runtimes *RuntimeProperties
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
+=======
+	// READ-ONLY; The status of the asynchronous operation.
+>>>>>>> main
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
-// ContainerResource - Container
+// ContainerResource - Concrete tracked resource types can be created by aliasing this type using a specific property type.
 type ContainerResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Container properties
+	// The resource-specific properties for this resource.
 	Properties *ContainerProperties
 
 	// Resource tags.
@@ -362,20 +328,80 @@ type ContainerResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// ContainerResourceList - The list of containers.
-type ContainerResourceList struct {
-	// The link used to get the next page of containers list.
-	NextLink *string
-
-	// The list of containers.
+// ContainerResourceListResult - The response of a ContainerResource list operation.
+type ContainerResourceListResult struct {
+	// REQUIRED; The ContainerResource items on this page
 	Value []*ContainerResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// ContainerResourceUpdate - The type used for update operations of the ContainerResource.
+type ContainerResourceUpdate struct {
+	// The updatable properties of the ContainerResource.
+	Properties *ContainerResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// ContainerResourceUpdateProperties - The updatable properties of the ContainerResource.
+type ContainerResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// Specifies a connection to another resource.
+	Connections map[string]*ConnectionPropertiesUpdate
+
+	// Definition of a container.
+	Container *ContainerUpdate
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
+
+	// Extensions spec of the resource
+	Extensions []ExtensionClassification
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettingsUpdate
+}
+
+// ContainerUpdate - Definition of a container
+type ContainerUpdate struct {
+	// Arguments to the entrypoint. Overrides the container image's CMD
+	Args []*string
+
+	// Entrypoint array. Overrides the container image's ENTRYPOINT
+	Command []*string
+
+	// environment
+	Env map[string]*string
+
+	// The registry and image to download and run in your container
+	Image *string
+
+	// liveness probe properties
+	LivenessProbe HealthProbePropertiesClassification
+
+	// container ports
+	Ports map[string]*ContainerPortPropertiesUpdate
+
+	// readiness probe properties
+	ReadinessProbe HealthProbePropertiesClassification
+
+	// container volumes
+	Volumes map[string]VolumeUpdateClassification
+
+	// Working directory for the container
+	WorkingDir *string
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
@@ -383,7 +409,7 @@ type DaprSidecarExtension struct {
 	// REQUIRED; The Dapr appId. Specifies the identifier used by Dapr for service invocation.
 	AppID *string
 
-	// REQUIRED; Specifies the extensions of a resource.
+	// REQUIRED; Discriminator property for Extension.
 	Kind *string
 
 	// The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
@@ -393,14 +419,7 @@ type DaprSidecarExtension struct {
 	Config *string
 
 	// Specifies the Dapr app-protocol to use for the resource.
-	Protocol *Protocol
-}
-
-// GetContainerExtension implements the ContainerExtensionClassification interface for type DaprSidecarExtension.
-func (d *DaprSidecarExtension) GetContainerExtension() *ContainerExtension {
-	return &ContainerExtension{
-		Kind: d.Kind,
-	}
+	Protocol *DaprSidecarExtensionProtocol
 }
 
 // GetExtension implements the ExtensionClassification interface for type DaprSidecarExtension.
@@ -410,9 +429,9 @@ func (d *DaprSidecarExtension) GetExtension() *Extension {
 	}
 }
 
-// EnvironmentCompute - Compute resource used by application environment resource.
+// EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
-	// REQUIRED; Type of compute resource.
+	// REQUIRED; Discriminator property for EnvironmentCompute.
 	Kind *string
 
 	// Configuration for supported external identity providers
@@ -425,87 +444,45 @@ type EnvironmentCompute struct {
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
 func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
-type EnvironmentExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
-	Kind *string
-}
-
-// GetEnvironmentExtension implements the EnvironmentExtensionClassification interface for type EnvironmentExtension.
-func (e *EnvironmentExtension) GetEnvironmentExtension() *EnvironmentExtension { return e }
-
-// GetExtension implements the ExtensionClassification interface for type EnvironmentExtension.
-func (e *EnvironmentExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: e.Kind,
-	}
-}
-
-// EnvironmentKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created
-// by all Containers in this Environment.
-type EnvironmentKubernetesMetadataExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
+// EnvironmentComputeUpdate - Represents backing compute resource
+type EnvironmentComputeUpdate struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
 	Kind *string
 
-	// Annotations to be applied to the Kubernetes resources output by the resource
-	Annotations map[string]*string
+	// Configuration for supported external identity providers
+	Identity *IdentitySettingsUpdate
 
-	// Labels to be applied to the Kubernetes resources output by the resource
-	Labels map[string]*string
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
 }
 
-// GetEnvironmentExtension implements the EnvironmentExtensionClassification interface for type EnvironmentKubernetesMetadataExtension.
-func (e *EnvironmentKubernetesMetadataExtension) GetEnvironmentExtension() *EnvironmentExtension {
-	return &EnvironmentExtension{
-		Kind: e.Kind,
-	}
-}
+// GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type EnvironmentComputeUpdate.
+func (e *EnvironmentComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate { return e }
 
-// GetExtension implements the ExtensionClassification interface for type EnvironmentKubernetesMetadataExtension.
-func (e *EnvironmentKubernetesMetadataExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: e.Kind,
-	}
-}
-
-// EnvironmentProperties - Application environment properties
+// EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
-	// REQUIRED; Compute resource used by application environment resource.
+	// REQUIRED; The compute resource used by application environment.
 	Compute EnvironmentComputeClassification
 
-	// Extensions spec of the resource
-	Extensions []EnvironmentExtensionClassification
+	// The environment extension.
+	Extensions []ExtensionClassification
 
 	// Cloud providers configuration for the environment.
 	Providers *Providers
 
 	// Specifies Recipes linked to the Environment.
-	Recipes map[string]map[string]EnvironmentRecipePropertiesClassification
+	Recipes map[string]map[string]RecipePropertiesClassification
 
-	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
-// EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
-type EnvironmentRecipeProperties struct {
-	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
-	TemplateKind *string
-
-	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
-	TemplatePath *string
-
-	// Key/value parameters to pass to the recipe template at deployment
-	Parameters map[string]any
-}
-
-// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type EnvironmentRecipeProperties.
-func (e *EnvironmentRecipeProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties { return e }
-
-// EnvironmentResource - Application environment.
+// EnvironmentResource - The environment resource
 type EnvironmentResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Application environment properties
+	// The resource-specific properties for this resource.
 	Properties *EnvironmentProperties
 
 	// Resource tags.
@@ -517,37 +494,81 @@ type EnvironmentResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// EnvironmentResourceList - The list of environments.
-type EnvironmentResourceList struct {
-	// The link used to get the next page of environments list.
-	NextLink *string
-
-	// The list of environments.
+// EnvironmentResourceListResult - The response of a EnvironmentResource list operation.
+type EnvironmentResourceListResult struct {
+	// REQUIRED; The EnvironmentResource items on this page
 	Value []*EnvironmentResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// EnvironmentResourceUpdate - The type used for update operations of the EnvironmentResource.
+type EnvironmentResourceUpdate struct {
+	// The updatable properties of the EnvironmentResource.
+	Properties *EnvironmentResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// EnvironmentResourceUpdateProperties - The updatable properties of the EnvironmentResource.
+type EnvironmentResourceUpdateProperties struct {
+	// The compute resource used by application environment.
+	Compute EnvironmentComputeUpdateClassification
+
+	// The environment extension.
+	Extensions []ExtensionClassification
+
+	// Cloud providers configuration for the environment.
+	Providers *ProvidersUpdate
+
+	// Specifies Recipes linked to the Environment.
+	Recipes map[string]map[string]RecipePropertiesUpdateClassification
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container
 type EphemeralVolume struct {
-	// REQUIRED; The Volume kind
+	// REQUIRED; Discriminator property for Volume.
 	Kind *string
 
 	// REQUIRED; Backing store for the ephemeral volume
 	ManagedStore *ManagedStore
 
-	// The path where the volume is mounted
+	// REQUIRED; The path where the volume is mounted
 	MountPath *string
 }
 
 // GetVolume implements the VolumeClassification interface for type EphemeralVolume.
 func (e *EphemeralVolume) GetVolume() *Volume {
 	return &Volume{
+		Kind: e.Kind,
+		MountPath: e.MountPath,
+	}
+}
+
+// EphemeralVolumeUpdate - Specifies an ephemeral volume for a container
+type EphemeralVolumeUpdate struct {
+	// REQUIRED; Discriminator property for Volume.
+	Kind *string
+
+	// Backing store for the ephemeral volume
+	ManagedStore *ManagedStore
+
+	// The path where the volume is mounted
+	MountPath *string
+}
+
+// GetVolumeUpdate implements the VolumeUpdateClassification interface for type EphemeralVolumeUpdate.
+func (e *EphemeralVolumeUpdate) GetVolumeUpdate() *VolumeUpdate {
+	return &VolumeUpdate{
 		Kind: e.Kind,
 		MountPath: e.MountPath,
 	}
@@ -592,7 +613,7 @@ type ExecHealthProbeProperties struct {
 	// REQUIRED; Command to execute to probe readiness/liveness
 	Command *string
 
-	// REQUIRED; The HealthProbeProperties kind
+	// REQUIRED; Discriminator property for HealthProbeProperties.
 	Kind *string
 
 	// Threshold number of times the probe fails after which a failure would be reported
@@ -619,48 +640,39 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
-// ExtenderList - Object that includes an array of Extender and a possible portable resource for next set.
-type ExtenderList struct {
-	// The link used to fetch the next page of Extender list.
-	NextLink *string
-
-	// List of Extender portable resources.
-	Value []*ExtenderResource
-}
-
-// ExtenderProperties - Extender portable resource properties.
+// ExtenderProperties - ExtenderResource link properties
 type ExtenderProperties struct {
-	// REQUIRED; The resource id of the environment linked to the resource
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]any
 
-	// Specifies the resource id of the application
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
-	// The recipe used to automatically deploy underlying infrastructure for the Extender portable resource.
-	Recipe *ResourceRecipe
+	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	Recipe *Recipe
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning
 
-	// The secret values for the given Extender portable resource.
+	// The secrets for referenced resource
 	Secrets map[string]any
 
-	// READ-ONLY; Provisioning state of the Extender portable resource at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of a Portable resource.
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
-// ExtenderResource - Extender portable resource.
+// ExtenderResource link
 type ExtenderResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Extender portable resource properties.
+	// The resource-specific properties for this resource.
 	Properties *ExtenderProperties
 
 	// Resource tags.
@@ -672,55 +684,60 @@ type ExtenderResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// Extension of a resource.
+// ExtenderResourceListResult - The response of a ExtenderResource list operation.
+type ExtenderResourceListResult struct {
+	// REQUIRED; The ExtenderResource items on this page
+	Value []*ExtenderResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// ExtenderResourceUpdate - The type used for update operations of the ExtenderResource.
+type ExtenderResourceUpdate struct {
+	// The updatable properties of the ExtenderResource.
+	Properties *ExtenderResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// ExtenderResourceUpdateProperties - The updatable properties of the ExtenderResource.
+type ExtenderResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string
+
+	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	Recipe *RecipeUpdate
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning
+
+	// The secrets for referenced resource
+	Secrets map[string]any
+}
+
+// Extension of a environment/application resource.
 type Extension struct {
-	// REQUIRED; Specifies the extensions of a resource.
+	// REQUIRED; Discriminator property for Extension.
 	Kind *string
 }
 
 // GetExtension implements the ExtensionClassification interface for type Extension.
 func (e *Extension) GetExtension() *Extension { return e }
 
-// GatewayProperties - Gateway properties
-type GatewayProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string
-
-	// REQUIRED; Routes attached to this Gateway
-	Routes []*GatewayRoute
-
-	// The resource id of the environment linked to the resource
-	Environment *string
-
-	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
-	Hostname *GatewayPropertiesHostname
-
-	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
-	Internal *bool
-
-	// TLS configuration for the Gateway.
-	TLS *GatewayPropertiesTLS
-
-	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
-	ProvisioningState *ProvisioningState
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus
-
-	// READ-ONLY; URL of the gateway resource. Readonly.
-	URL *string
-}
-
-// GatewayPropertiesHostname - Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one:
-// mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
-type GatewayPropertiesHostname struct {
+// GatewayHostname - Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+type GatewayHostname struct {
 	// Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both
 // are defined.
 	FullyQualifiedHostname *string
@@ -730,24 +747,42 @@ type GatewayPropertiesHostname struct {
 	Prefix *string
 }
 
-// GatewayPropertiesTLS - TLS configuration for the Gateway.
-type GatewayPropertiesTLS struct {
-	// Declares which Kubernetes TLS secret will be used.
-	CertificateFrom *string
+// GatewayProperties - Gateway properties
+type GatewayProperties struct {
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
 
-	// TLS minimum protocol version (defaults to 1.2).
-	MinimumProtocolVersion *TLSMinVersion
+	// REQUIRED; Routes attached to this Gateway
+	Routes []*GatewayRoute
 
-	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
-	SSLPassthrough *bool
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
+
+	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+	Hostname *GatewayHostname
+
+	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
+	Internal *bool
+
+	// TLS configuration for the Gateway.
+	TLS *GatewayTLS
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus
+
+	// READ-ONLY; URL of the gateway resource. Readonly
+	URL *string
 }
 
-// GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.
+// GatewayResource - Concrete tracked resource types can be created by aliasing this type using a specific property type.
 type GatewayResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; Gateway properties
+	// The resource-specific properties for this resource.
 	Properties *GatewayProperties
 
 	// Resource tags.
@@ -759,22 +794,53 @@ type GatewayResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// GatewayResourceList - The list of Gateways.
-type GatewayResourceList struct {
-	// The link used to get the next page of Gateways list.
-	NextLink *string
-
-	// The list of Gateways.
+// GatewayResourceListResult - The response of a GatewayResource list operation.
+type GatewayResourceListResult struct {
+	// REQUIRED; The GatewayResource items on this page
 	Value []*GatewayResource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
+// GatewayResourceUpdate - The type used for update operations of the GatewayResource.
+type GatewayResourceUpdate struct {
+	// The updatable properties of the GatewayResource.
+	Properties *GatewayResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// GatewayResourceUpdateProperties - The updatable properties of the GatewayResource.
+type GatewayResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
+
+	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
+	Hostname *GatewayHostname
+
+	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
+	Internal *bool
+
+	// Routes attached to this Gateway
+	Routes []*GatewayRoute
+
+	// TLS configuration for the Gateway.
+	TLS *GatewayTLS
+}
+
+// GatewayRoute - Route attached to Gateway
 type GatewayRoute struct {
 	// The HttpRoute to route to. Ex - myserviceroute.id.
 	Destination *string
@@ -787,12 +853,24 @@ type GatewayRoute struct {
 	ReplacePrefix *string
 }
 
+// GatewayTLS - TLS configuration definition for Gateway resource.
+type GatewayTLS struct {
+	// The resource id for the secret containing the TLS certificate and key for the gateway.
+	CertificateFrom *string
+
+	// TLS minimum protocol version (defaults to 1.2).
+	MinimumProtocolVersion *TLSMinVersion
+
+	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
+	SSLPassthrough *bool
+}
+
 // HTTPGetHealthProbeProperties - Specifies the properties for readiness/liveness probe using HTTP Get
 type HTTPGetHealthProbeProperties struct {
 	// REQUIRED; The listening port number
 	ContainerPort *int32
 
-	// REQUIRED; The HealthProbeProperties kind
+	// REQUIRED; Discriminator property for HealthProbeProperties.
 	Kind *string
 
 	// REQUIRED; The route to make the HTTP request on
@@ -825,12 +903,12 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 	}
 }
 
-// HTTPRouteProperties - HTTP Route properties
+// HTTPRouteProperties - HTTPRoute properties
 type HTTPRouteProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// The resource id of the environment linked to the resource
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
@@ -839,25 +917,25 @@ type HTTPRouteProperties struct {
 	// The port number for the HTTP Route. Defaults to 80. Readonly.
 	Port *int32
 
-	// The scheme used for traffic. Readonly.
-	Scheme *string
-
-	// A stable URL that that can be used to route traffic to a resource. Readonly.
-	URL *string
-
-	// READ-ONLY; Provisioning state of the HTTP Route at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; The scheme used for traffic. Readonly.
+	Scheme *string
+
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
+
+	// READ-ONLY; A stable URL that that can be used to route traffic to a resource. Readonly.
+	URL *string
 }
 
-// HTTPRouteResource - Radius HTTP Route Resource.
+// HTTPRouteResource - Radius HTTPRoute Resource.
 type HTTPRouteResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; HTTP Route properties
+	// The resource-specific properties for this resource.
 	Properties *HTTPRouteProperties
 
 	// Resource tags.
@@ -869,25 +947,49 @@ type HTTPRouteResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// HTTPRouteResourceList - The list of HTTP Routes.
-type HTTPRouteResourceList struct {
-	// The link used to get the next page of HTTP Routes list.
-	NextLink *string
-
-	// The list of HTTP Route.
+// HTTPRouteResourceListResult - The response of a HttpRouteResource list operation.
+type HTTPRouteResourceListResult struct {
+	// REQUIRED; The HttpRouteResource items on this page
 	Value []*HTTPRouteResource
+
+	// The link to the next page of items
+	NextLink *string
+}
+
+// HTTPRouteResourceUpdate - The type used for update operations of the HttpRouteResource.
+type HTTPRouteResourceUpdate struct {
+	// The updatable properties of the HttpRouteResource.
+	Properties *HTTPRouteResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// HTTPRouteResourceUpdateProperties - The updatable properties of the HttpRouteResource.
+type HTTPRouteResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
+
+	// The internal hostname accepting traffic for the HTTP Route. Readonly.
+	Hostname *string
+
+	// The port number for the HTTP Route. Defaults to 80. Readonly.
+	Port *int32
 }
 
 // HealthProbeProperties - Properties for readiness/liveness probe
 type HealthProbeProperties struct {
-	// REQUIRED; The HealthProbeProperties kind
+	// REQUIRED; Discriminator property for HealthProbeProperties.
 	Kind *string
 
 	// Threshold number of times the probe fails after which a failure would be reported
@@ -906,17 +1008,27 @@ type HealthProbeProperties struct {
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HealthProbeProperties.
 func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties { return h }
 
-// IamProperties - The properties of IAM
+// IamProperties - IAM properties
 type IamProperties struct {
 	// REQUIRED; The kind of IAM provider to configure
-	Kind *Kind
+	Kind *IAMKind
 
 	// RBAC permissions to be assigned on the source resource
 	Roles []*string
 }
 
+// IamPropertiesUpdate - IAM properties
+type IamPropertiesUpdate struct {
+	// The kind of IAM provider to configure
+	Kind *IAMKind
+
+	// RBAC permissions to be assigned on the source resource
+	Roles []*string
+}
+
+// IdentitySettings is the external identity setting.
 type IdentitySettings struct {
-	// REQUIRED; Configuration for supported external identity providers
+	// REQUIRED; kind of identity setting
 	Kind *IdentitySettingKind
 
 	// The URI for your compute platform's OIDC issuer
@@ -926,20 +1038,33 @@ type IdentitySettings struct {
 	Resource *string
 }
 
+// IdentitySettingsUpdate - IdentitySettings is the external identity setting.
+type IdentitySettingsUpdate struct {
+	// kind of identity setting
+	Kind *IdentitySettingKind
+
+	// The URI for your compute platform's OIDC issuer
+	OidcIssuer *string
+
+	// The resource ID of the provisioned identity
+	Resource *string
+}
+
+// KeyObjectProperties - Represents key object properties
 type KeyObjectProperties struct {
 	// REQUIRED; The name of the key
 	Name *string
 
-	// File name when written to disk.
+	// File name when written to disk
 	Alias *string
 
 	// Key version
 	Version *string
 }
 
-// KubernetesCompute - Specifies the properties for Kubernetes compute environment
+// KubernetesCompute - The Kubernetes compute configuration
 type KubernetesCompute struct {
-	// REQUIRED; Type of compute resource.
+	// REQUIRED; Discriminator property for EnvironmentCompute.
 	Kind *string
 
 	// REQUIRED; The namespace to use for the environment.
@@ -961,20 +1086,72 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	}
 }
 
-// ManualScalingExtension - ManualScaling Extension
-type ManualScalingExtension struct {
-	// REQUIRED; Specifies the extensions of a resource.
+// KubernetesComputeUpdate - The Kubernetes compute configuration
+type KubernetesComputeUpdate struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
 	Kind *string
 
-	// Replica count.
-	Replicas *int32
+	// Configuration for supported external identity providers
+	Identity *IdentitySettingsUpdate
+
+	// The namespace to use for the environment.
+	Namespace *string
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
 }
 
-// GetContainerExtension implements the ContainerExtensionClassification interface for type ManualScalingExtension.
-func (m *ManualScalingExtension) GetContainerExtension() *ContainerExtension {
-	return &ContainerExtension{
-		Kind: m.Kind,
+// GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type KubernetesComputeUpdate.
+func (k *KubernetesComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate {
+	return &EnvironmentComputeUpdate{
+		Identity: k.Identity,
+		Kind: k.Kind,
+		ResourceID: k.ResourceID,
 	}
+}
+
+// KubernetesMetadataExtension - Kubernetes metadata extension of a environment/application resource.
+type KubernetesMetadataExtension struct {
+	// REQUIRED; Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string
+
+	// REQUIRED; Discriminator property for Extension.
+	Kind *string
+
+	// REQUIRED; Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string
+}
+
+// GetExtension implements the ExtensionClassification interface for type KubernetesMetadataExtension.
+func (k *KubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: k.Kind,
+	}
+}
+
+// KubernetesNamespaceExtension - Kubernetes namespace extension of a environment/application resource.
+type KubernetesNamespaceExtension struct {
+	// REQUIRED; Discriminator property for Extension.
+	Kind *string
+
+	// REQUIRED; The namespace of the application environment.
+	Namespace *string
+}
+
+// GetExtension implements the ExtensionClassification interface for type KubernetesNamespaceExtension.
+func (k *KubernetesNamespaceExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: k.Kind,
+	}
+}
+
+// ManualScalingExtension - ManualScaling Extension
+type ManualScalingExtension struct {
+	// REQUIRED; Discriminator property for Extension.
+	Kind *string
+
+	// REQUIRED; Replica count.
+	Replicas *int32
 }
 
 // GetExtension implements the ExtensionClassification interface for type ManualScalingExtension.
@@ -984,16 +1161,79 @@ func (m *ManualScalingExtension) GetExtension() *Extension {
 	}
 }
 
+// Operation - Details of a REST API operation, returned from the Resource Provider Operations API
+type Operation struct {
+	// Localized display information for this particular operation.
+	Display *OperationDisplay
+
+	// READ-ONLY; Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
+	ActionType *ActionType
+
+	// READ-ONLY; Whether the operation applies to data-plane. This is "true" for data-plane operations and "false" for ARM/control-plane
+// operations.
+	IsDataAction *bool
+
+	// READ-ONLY; The name of the operation, as per Resource-Based Access Control (RBAC). Examples: "Microsoft.Compute/virtualMachines/write",
+// "Microsoft.Compute/virtualMachines/capture/action"
+	Name *string
+
+	// READ-ONLY; The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
+// value is "user,system"
+	Origin *Origin
+}
+
+// OperationDisplay - Localized display information for this particular operation.
+type OperationDisplay struct {
+	// READ-ONLY; The short, localized friendly description of the operation; suitable for tool tips and detailed views.
+	Description *string
+
+	// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual
+// Machine", "Restart Virtual Machine".
+	Operation *string
+
+	// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft
+// Compute".
+	Provider *string
+
+	// READ-ONLY; The localized friendly name of the resource type related to this operation. E.g. "Virtual Machines" or "Job
+// Schedule Collections".
+	Resource *string
+}
+
+// OperationListResult - A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to
+// get the next set of results.
+type OperationListResult struct {
+	// READ-ONLY; URL to get the next set of operation list results (if there are any).
+	NextLink *string
+
+	// READ-ONLY; List of operations supported by the resource provider
+	Value []*Operation
+}
+
+// OutputResource - Properties of an output resource.
+type OutputResource struct {
+	// The UCP resource ID of the underlying resource.
+	ID *string
+
+	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
+// relationship. LocalIDs do not have any particular format or meaning beyond
+// being compared to determine dependency relationships.
+	LocalID *string
+
+	// Determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool
+}
+
 // PersistentVolume - Specifies a persistent volume for a container
 type PersistentVolume struct {
-	// REQUIRED; The Volume kind
+	// REQUIRED; Discriminator property for Volume.
 	Kind *string
+
+	// REQUIRED; The path where the volume is mounted
+	MountPath *string
 
 	// REQUIRED; The source of the volume
 	Source *string
-
-	// The path where the volume is mounted
-	MountPath *string
 
 	// Container read/write access to the volume
 	Permission *VolumePermission
@@ -1007,62 +1247,142 @@ func (p *PersistentVolume) GetVolume() *Volume {
 	}
 }
 
-// PortableResourceBasicProperties - Basic properties of a Portable resource.
-type PortableResourceBasicProperties struct {
-	// REQUIRED; The resource id of the environment linked to the resource
-	Environment *string
+// PersistentVolumeUpdate - Specifies a persistent volume for a container
+type PersistentVolumeUpdate struct {
+	// REQUIRED; Discriminator property for Volume.
+	Kind *string
 
-	// Specifies the resource id of the application
-	Application *string
+	// The path where the volume is mounted
+	MountPath *string
 
-	// READ-ONLY; Status of a Portable resource.
-	Status *ResourceStatus
+	// Container read/write access to the volume
+	Permission *VolumePermission
+
+	// The source of the volume
+	Source *string
 }
 
-// Providers - Cloud providers configuration
+// GetVolumeUpdate implements the VolumeUpdateClassification interface for type PersistentVolumeUpdate.
+func (p *PersistentVolumeUpdate) GetVolumeUpdate() *VolumeUpdate {
+	return &VolumeUpdate{
+		Kind: p.Kind,
+		MountPath: p.MountPath,
+	}
+}
+
+// Providers - The Cloud providers configuration
 type Providers struct {
-	// AWS cloud provider configuration
+	// The AWS cloud provider configuration
 	Aws *ProvidersAws
 
-	// Azure cloud provider configuration
+	// The Azure cloud provider configuration
 	Azure *ProvidersAzure
 }
 
-// ProvidersAws - AWS cloud provider configuration
+// ProvidersAws - The AWS cloud provider definition
 type ProvidersAws struct {
+	// REQUIRED; Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'
+	Scope *string
+}
+
+// ProvidersAwsUpdate - The AWS cloud provider definition
+type ProvidersAwsUpdate struct {
 	// Target scope for AWS resources to be deployed into. For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'
 	Scope *string
 }
 
-// ProvidersAzure - Azure cloud provider configuration
+// ProvidersAzure - The Azure cloud provider definition
 type ProvidersAzure struct {
+	// REQUIRED; Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+	Scope *string
+}
+
+// ProvidersAzureUpdate - The Azure cloud provider definition
+type ProvidersAzureUpdate struct {
 	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 	Scope *string
 }
 
-// Recipe properties.
+// ProvidersUpdate - The Cloud providers configuration
+type ProvidersUpdate struct {
+	// The AWS cloud provider configuration
+	Aws *ProvidersAwsUpdate
+
+	// The Azure cloud provider configuration
+	Azure *ProvidersAzureUpdate
+}
+
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
 type Recipe struct {
-	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	// REQUIRED; The name of the recipe within the environment to use
+	Name *string
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]any
+}
+
+// RecipeGetMetadata - Represents the request body of the getmetadata action.
+type RecipeGetMetadata struct {
+	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 	LinkType *string
 
-	// Name of the recipe registered to the environment.
+	// REQUIRED; The name of the recipe registered to the environment
 	Name *string
 }
 
-// RecipeMetadataProperties - Properties of a Recipe linked to an Environment.
-type RecipeMetadataProperties struct {
+// RecipeGetMetadataResponse - The properties of a Recipe linked to an Environment.
+type RecipeGetMetadataResponse struct {
+	// REQUIRED; The key/value parameters to pass to the recipe template at deployment.
+	Parameters map[string]any
+
+	// REQUIRED; The format of the template provided by the recipe. Allowed values: bicep, terraform.
+	TemplateKind *string
+
+	// REQUIRED; The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
+
+	// REQUIRED; The version of the template to deploy. For Terraform recipes using a module registry this is required, but must
+// be omitted for other module sources.
+	TemplateVersion *string
+}
+
+// RecipeProperties - Format of the template provided by the recipe. Allowed values: bicep, terraform.
+type RecipeProperties struct {
+	// REQUIRED; Discriminator property for RecipeProperties.
+	TemplateKind *string
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]any
+}
+
+// GetRecipeProperties implements the RecipePropertiesClassification interface for type RecipeProperties.
+func (r *RecipeProperties) GetRecipeProperties() *RecipeProperties { return r }
+
+// RecipePropertiesUpdate - Format of the template provided by the recipe. Allowed values: bicep, terraform.
+type RecipePropertiesUpdate struct {
+	// REQUIRED; Discriminator property for RecipeProperties.
+	TemplateKind *string
+
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
 
-	// Format of the template provided by the recipe. Allowed values: bicep, terraform.
-	TemplateKind *string
-
 	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
+}
 
-	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
-// for other module sources.
-	TemplateVersion *string
+// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type RecipePropertiesUpdate.
+func (r *RecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate { return r }
+
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a link
+type RecipeUpdate struct {
+	// The name of the recipe within the environment to use
+	Name *string
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]any
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
@@ -1073,26 +1393,23 @@ type Resource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// ResourceRecipe - The recipe used to automatically deploy underlying infrastructure for a portable resource.
-type ResourceRecipe struct {
-	// REQUIRED; The name of the recipe within the environment to use.
-	Name *string
-
-	// Key/value parameters to pass into the recipe at deployment.
-	Parameters map[string]any
-}
-
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
-	// Compute resource used by application environment resource.
+	// The compute resource associated with the resource.
 	Compute EnvironmentComputeClassification
-	OutputResources []map[string]any
+
+	// Properties of an output resource
+	OutputResources []*OutputResource
 }
 
+<<<<<<< HEAD
 type RuntimeProperties struct {
 	// Represents the runtime configuration for the platform-specific functionalities
 	Kubernetes *RuntimePropertiesKubernetes
@@ -1104,37 +1421,41 @@ type RuntimePropertiesKubernetes struct {
 	Base *string
 }
 
+=======
+// SecretObjectProperties - Represents secret object properties
+>>>>>>> main
 type SecretObjectProperties struct {
 	// REQUIRED; The name of the secret
 	Name *string
 
-	// File name when written to disk.
+	// File name when written to disk
 	Alias *string
 
 	// Encoding format. Default utf-8
-	Encoding *Encoding
+	Encoding *VolumeSecretEncodings
 
-	// Secret version
+	// secret version
 	Version *string
 }
 
 // SecretStoreListSecretsResult - The list of secrets
 type SecretStoreListSecretsResult struct {
-	// An object to represent key-value type secrets
+	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
 
-	// The type of secret store data
+	// REQUIRED; The type of secret store data
 	Type *SecretStoreDataType
 }
 
+// SecretStoreProperties - The properties of SecretStore
 type SecretStoreProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
 	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
 
-	// The resource id of the environment linked to the resource
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The resource id of external secret store.
@@ -1143,19 +1464,19 @@ type SecretStoreProperties struct {
 	// The type of secret store data
 	Type *SecretStoreDataType
 
-	// READ-ONLY; Provisioning state of the SecretStore at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
-// SecretStoreResource - Radius SecretStore Resource.
+// SecretStoreResource - Concrete tracked resource types can be created by aliasing this type using a specific property type.
 type SecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; The resource-specific properties for this resource.
+	// The resource-specific properties for this resource.
 	Properties *SecretStoreProperties
 
 	// Resource tags.
@@ -1167,22 +1488,50 @@ type SecretStoreResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// SecretStoreResourceList - The list of SecretStores.
-type SecretStoreResourceList struct {
-	// The link used to get the next page of SecretStores list.
-	NextLink *string
-
-	// The list of SecretStore.
+// SecretStoreResourceListResult - The response of a SecretStoreResource list operation.
+type SecretStoreResourceListResult struct {
+	// REQUIRED; The SecretStoreResource items on this page
 	Value []*SecretStoreResource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
+// SecretStoreResourceUpdate - The type used for update operations of the SecretStoreResource.
+type SecretStoreResourceUpdate struct {
+	// The updatable properties of the SecretStoreResource.
+	Properties *SecretStoreResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// SecretStoreResourceUpdateProperties - The updatable properties of the SecretStoreResource.
+type SecretStoreResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// An object to represent key-value type secrets
+	Data map[string]*SecretValueProperties
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
+
+	// The resource id of external secret store.
+	Resource *string
+
+	// The type of secret store data
+	Type *SecretStoreDataType
+}
+
+// SecretValueProperties - The properties of SecretValue
 type SecretValueProperties struct {
 	// The encoding of value
 	Encoding *SecretValueEncoding
@@ -1220,7 +1569,7 @@ type TCPHealthProbeProperties struct {
 	// REQUIRED; The listening port number
 	ContainerPort *int32
 
-	// REQUIRED; The HealthProbeProperties kind
+	// REQUIRED; Discriminator property for HealthProbeProperties.
 	Kind *string
 
 	// Threshold number of times the probe fails after which a failure would be reported
@@ -1247,25 +1596,50 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 	}
 }
 
-// TerraformRecipeProperties - Properties of a Recipe linked to an Environment.
+// TerraformRecipeProperties - Represents Terraform recipe properties.
 type TerraformRecipeProperties struct {
-	// REQUIRED; Format of the template provided by the recipe. Allowed values: bicep, terraform.
+	// REQUIRED; Discriminator property for RecipeProperties.
 	TemplateKind *string
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
+	// REQUIRED; Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be
+// omitted for other module sources.
+	TemplateVersion *string
+
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+}
+
+// GetRecipeProperties implements the RecipePropertiesClassification interface for type TerraformRecipeProperties.
+func (t *TerraformRecipeProperties) GetRecipeProperties() *RecipeProperties {
+	return &RecipeProperties{
+		Parameters: t.Parameters,
+		TemplateKind: t.TemplateKind,
+		TemplatePath: t.TemplatePath,
+	}
+}
+
+// TerraformRecipePropertiesUpdate - Represents Terraform recipe properties.
+type TerraformRecipePropertiesUpdate struct {
+	// REQUIRED; Discriminator property for RecipeProperties.
+	TemplateKind *string
+
+	// Key/value parameters to pass to the recipe template at deployment
+	Parameters map[string]any
+
+	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string
 
 	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
 // for other module sources.
 	TemplateVersion *string
 }
 
-// GetEnvironmentRecipeProperties implements the EnvironmentRecipePropertiesClassification interface for type TerraformRecipeProperties.
-func (t *TerraformRecipeProperties) GetEnvironmentRecipeProperties() *EnvironmentRecipeProperties {
-	return &EnvironmentRecipeProperties{
+// GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type TerraformRecipePropertiesUpdate.
+func (t *TerraformRecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate {
+	return &RecipePropertiesUpdate{
 		Parameters: t.Parameters,
 		TemplateKind: t.TemplateKind,
 		TemplatePath: t.TemplatePath,
@@ -1287,10 +1661,14 @@ type TrackedResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
+// ValueFromProperties - The Secret value source properties
 type ValueFromProperties struct {
 	// REQUIRED; The name of the referenced secret.
 	Name *string
@@ -1301,42 +1679,43 @@ type ValueFromProperties struct {
 
 // Volume - Specifies a volume for a container
 type Volume struct {
-	// REQUIRED; The Volume kind
+	// REQUIRED; Discriminator property for Volume.
 	Kind *string
 
-	// The path where the volume is mounted
+	// REQUIRED; The path where the volume is mounted
 	MountPath *string
 }
 
 // GetVolume implements the VolumeClassification interface for type Volume.
 func (v *Volume) GetVolume() *Volume { return v }
 
+// VolumeProperties - Volume properties
 type VolumeProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// REQUIRED; The volume kind
+	// REQUIRED; Discriminator property for VolumeProperties.
 	Kind *string
 
-	// The resource id of the environment linked to the resource
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
-	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus
 }
 
 // GetVolumeProperties implements the VolumePropertiesClassification interface for type VolumeProperties.
 func (v *VolumeProperties) GetVolumeProperties() *VolumeProperties { return v }
 
-// VolumeResource - Radius Volume Resource.
+// VolumeResource - Radius Volume resource.
 type VolumeResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED
+	// The resource-specific properties for this resource.
 	Properties VolumePropertiesClassification
 
 	// Resource tags.
@@ -1348,19 +1727,49 @@ type VolumeResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
 }
 
-// VolumeResourceList - The list of Volumes.
-type VolumeResourceList struct {
-	// The link used to get the next page of Volumes list.
-	NextLink *string
-
-	// The list of Volume.
+// VolumeResourceListResult - The response of a VolumeResource list operation.
+type VolumeResourceListResult struct {
+	// REQUIRED; The VolumeResource items on this page
 	Value []*VolumeResource
+
+	// The link to the next page of items
+	NextLink *string
 }
+
+// VolumeResourceUpdate - The type used for update operations of the VolumeResource.
+type VolumeResourceUpdate struct {
+	// The updatable properties of the VolumeResource.
+	Properties *VolumeResourceUpdateProperties
+
+	// Resource tags.
+	Tags map[string]*string
+}
+
+// VolumeResourceUpdateProperties - The updatable properties of the VolumeResource.
+type VolumeResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by
+	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
+}
+
+// VolumeUpdate - Specifies a volume for a container
+type VolumeUpdate struct {
+	// REQUIRED; Discriminator property for Volume.
+	Kind *string
+
+	// The path where the volume is mounted
+	MountPath *string
+}
+
+// GetVolumeUpdate implements the VolumeUpdateClassification interface for type VolumeUpdate.
+func (v *VolumeUpdate) GetVolumeUpdate() *VolumeUpdate { return v }
 

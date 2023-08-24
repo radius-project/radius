@@ -190,7 +190,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
 	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
-	require.Equal(t, TLSMinVersionOne3, *versioned.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, TLSMinVersionTls13, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayTLSTerminationConvertVersionedToDataModel_NoMinProtocolVersion(t *testing.T) {
@@ -247,7 +247,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned_NoMinProtocolVersion(t
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
 	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
-	require.Equal(t, TLSMinVersionOne2, *versioned.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, TLSMinVersionTls12, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayConvertFromValidation(t *testing.T) {

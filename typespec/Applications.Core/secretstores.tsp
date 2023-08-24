@@ -44,7 +44,7 @@ model SecretStoreResource is TrackedResource<SecretStoreProperties> {
   name: ResourceNameString;
 }
 
-@doc("SecretStore properties")
+@doc("The properties of SecretStore")
 model SecretStoreProperties {
   ...ApplicationScopedResource;
 
@@ -59,7 +59,7 @@ model SecretStoreProperties {
   resource?: string;
 }
 
-@doc("SecretStore data type")
+@doc("The type of SecretStore data")
 enum SecretStoreDataType {
   @doc("Generic secret data type")
   generic,
@@ -68,7 +68,7 @@ enum SecretStoreDataType {
   certificate,
 }
 
-@doc("SecretValue Encoding type")
+@doc("The type of SecretValue Encoding")
 enum SecretValueEncoding {
   @doc("The raw secret value")
   raw,
@@ -86,14 +86,14 @@ model ValueFromProperties {
   version?: string;
 }
 
-@doc("SecretValue properties")
+@doc("The properties of SecretValue")
 model SecretValueProperties {
   @doc("The encoding of value")
   encoding?: SecretValueEncoding = SecretValueEncoding.raw;
 
   @doc("The value of secret.")
   @secret
-  value: string;
+  value?: string;
 
   @doc("The referenced secret in properties.resource")
   valueFrom?: ValueFromProperties;

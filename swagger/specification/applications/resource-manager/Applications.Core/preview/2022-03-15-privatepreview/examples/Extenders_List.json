@@ -1,0 +1,34 @@
+{
+  "operationId": "Extenders_ListByScope",
+  "title": "List extender resources by resource group",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/extenders/extender0",
+            "name": "extender0",
+            "type": "Applications.Core/extenders",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "fromNumber": "222-222-2222",
+              "secrets": {
+                "accountSid": "sid",
+                "authToken:": "token"
+              },
+              "resourceProvisioning": "manual"
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/extenders?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

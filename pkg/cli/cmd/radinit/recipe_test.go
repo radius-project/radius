@@ -134,7 +134,7 @@ func Test_processRepositories(t *testing.T) {
 		name  string
 		repos []string
 		tag   string
-		want  map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
+		want  map[string]map[string]corerp.RecipePropertiesClassification
 	}{
 		{
 			"Valid Repository with Redis Cache",
@@ -142,7 +142,7 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/local-dev/rediscaches",
 			},
 			"0.20",
-			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
+			map[string]map[string]corerp.RecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
@@ -158,7 +158,7 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/local-dev/mongodatabases",
 			},
 			"0.20",
-			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
+			map[string]map[string]corerp.RecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
@@ -183,7 +183,7 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/unsupported/unsupported",
 			},
 			"latest",
-			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
+			map[string]map[string]corerp.RecipePropertiesClassification{
 				"Applications.Link/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),

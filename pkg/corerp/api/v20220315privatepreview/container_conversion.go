@@ -70,7 +70,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	for key, val := range src.Properties.Container.Ports {
 		port := datamodel.ContainerPort{
 			ContainerPort: to.Int32(val.ContainerPort),
-			Protocol:      toProtocolDataModel(val.Protocol),
+			Protocol:      toPortProtocolDataModel(val.Protocol),
 			Provides:      to.String(val.Provides),
 		}
 
@@ -156,7 +156,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	connections := make(map[string]*ConnectionProperties)
 	for key, val := range c.Properties.Connections {
 		roles := []*string{}
-		var kind *Kind
+		var kind *IAMKind
 
 		for _, r := range val.IAM.Roles {
 			roles = append(roles, to.Ptr(r))
@@ -189,11 +189,11 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		readinessProbe = fromHealthProbePropertiesDataModel(c.Properties.Container.ReadinessProbe)
 	}
 
-	ports := make(map[string]*ContainerPort)
+	ports := make(map[string]*ContainerPortProperties)
 	for key, val := range c.Properties.Container.Ports {
-		ports[key] = &ContainerPort{
+		ports[key] = &ContainerPortProperties{
 			ContainerPort: to.Ptr(val.ContainerPort),
-			Protocol:      fromProtocolDataModel(val.Protocol),
+			Protocol:      fromPortProtocolDataModel(val.Protocol),
 			Provides:      to.Ptr(val.Provides),
 		}
 
@@ -214,7 +214,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 	}
 
-	var extensions []ContainerExtensionClassification
+	var extensions []ExtensionClassification
 	if c.Properties.Extensions != nil {
 		for _, e := range c.Properties.Extensions {
 			extensions = append(extensions, fromExtensionClassificationDataModel(e))
@@ -238,7 +238,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(c.Properties.Application),
@@ -331,57 +331,73 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 	return nil
 }
 
-func toKindDataModel(kind *Kind) datamodel.IAMKind {
+func toKindDataModel(kind *IAMKind) datamodel.IAMKind {
 	switch *kind {
-	case KindAzure:
+	case IAMKindAzure:
 		return datamodel.KindAzure
 	default:
 		return datamodel.KindAzure
 	}
 }
 
-func fromKindDataModel(kind datamodel.IAMKind) *Kind {
-	var k Kind
+func fromKindDataModel(kind datamodel.IAMKind) *IAMKind {
+	var k IAMKind
 	switch kind {
 	case datamodel.KindAzure:
-		k = KindAzure
+		k = IAMKindAzure
 	default:
-		k = KindAzure
+		k = IAMKindAzure
 	}
 	return &k
 }
 
-func toProtocolDataModel(protocol *Protocol) datamodel.Protocol {
+func toPortProtocolDataModel(protocol *PortProtocol) datamodel.Protocol {
+	if protocol == nil {
+		return datamodel.ProtocolTCP
+	}
+	switch *protocol {
+	case PortProtocolTCP:
+		return datamodel.ProtocolTCP
+	case PortProtocolUDP:
+		return datamodel.ProtocolUDP
+	default:
+		return datamodel.ProtocolTCP
+	}
+}
+
+func toDaprProtocolDataModel(protocol *DaprSidecarExtensionProtocol) datamodel.Protocol {
 	if protocol == nil {
 		return datamodel.ProtocolHTTP
 	}
 	switch *protocol {
-	case ProtocolHTTP:
+	case DaprSidecarExtensionProtocolHTTP:
 		return datamodel.ProtocolHTTP
-	case ProtocolGrpc:
+	case DaprSidecarExtensionProtocolGrpc:
 		return datamodel.ProtocolGrpc
-	case ProtocolTCP:
-		return datamodel.ProtocolTCP
-	case ProtocolUDP:
-		return datamodel.ProtocolUDP
 	default:
 		return datamodel.ProtocolHTTP
 	}
 }
-
-func fromProtocolDataModel(protocol datamodel.Protocol) *Protocol {
-	var p Protocol
+func fromPortProtocolDataModel(protocol datamodel.Protocol) *PortProtocol {
+	var p PortProtocol
 	switch protocol {
-	case datamodel.ProtocolHTTP:
-		p = ProtocolHTTP
-	case datamodel.ProtocolGrpc:
-		p = ProtocolGrpc
 	case datamodel.ProtocolTCP:
-		p = ProtocolTCP
+		p = PortProtocolTCP
 	case datamodel.ProtocolUDP:
-		p = ProtocolUDP
+		p = PortProtocolUDP
 	default:
-		p = ProtocolHTTP
+		p = PortProtocolTCP
+	}
+	return &p
+}
+
+func fromProtocolDataModel(protocol datamodel.Protocol) *DaprSidecarExtensionProtocol {
+	var p DaprSidecarExtensionProtocol
+	switch protocol {
+	case datamodel.ProtocolGrpc:
+		p = DaprSidecarExtensionProtocolGrpc
+	default:
+		p = DaprSidecarExtensionProtocolHTTP
 	}
 	return &p
 }
@@ -511,7 +527,7 @@ func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission 
 }
 
 // toExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extension {
+func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *ManualScalingExtension:
 		return datamodel.Extension{
@@ -527,10 +543,10 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 				AppID:    to.String(c.AppID),
 				AppPort:  to.Int32(c.AppPort),
 				Config:   to.String(c.Config),
-				Protocol: toProtocolDataModel(c.Protocol),
+				Protocol: toDaprProtocolDataModel(c.Protocol),
 			},
 		}
-	case *ContainerKubernetesMetadataExtension:
+	case *KubernetesMetadataExtension:
 		return datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.KubeMetadataExtension{
@@ -544,7 +560,7 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 }
 
 // fromExtensionClassificationDataModel: Converts from base datamodel to versioned datamodel
-func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtensionClassification {
+func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
 	switch e.Kind {
 	case datamodel.ManualScaling:
 		return &ManualScalingExtension{
@@ -561,7 +577,7 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 		}
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
-		return &ContainerKubernetesMetadataExtension{
+		return &KubernetesMetadataExtension{
 			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),

@@ -1,0 +1,5153 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Core Management APIs",
+    "version": "2022-03-15-privatepreview",
+    "description": "REST API for Applications.Core",
+    "x-typespec-generated": [
+      {
+        "emitter": "@azure-tools/typespec-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "management.azure.com",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "Environments"
+    },
+    {
+      "name": "Applications"
+    },
+    {
+      "name": "Containers"
+    },
+    {
+      "name": "Gateways"
+    },
+    {
+      "name": "HttpRoutes"
+    },
+    {
+      "name": "SecretStores"
+    },
+    {
+      "name": "Volumes"
+    },
+    {
+      "name": "Extenders"
+    }
+  ],
+  "paths": {
+    "/{rootScope}/providers/Applications.Core/applications": {
+      "get": {
+        "operationId": "Applications_ListByScope",
+        "tags": [
+          "Applications"
+        ],
+        "description": "List ApplicationResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get applications by resource group": {
+            "$ref": "./examples/Applications_List.json"
+          },
+          "Get applications by rootScope": {
+            "$ref": "./examples/Applications_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/applications/{applicationName}": {
+      "get": {
+        "operationId": "Applications_Get",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Get a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an application resource": {
+            "$ref": "./examples/Applications_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Applications_CreateOrUpdate",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Create a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ApplicationResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ApplicationResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an application resource": {
+            "$ref": "./examples/Applications_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "Applications_Update",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Update a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApplicationResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update (Patch) an application resource": {
+            "$ref": "./examples/Applications_Update.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Applications_Delete",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Delete a ApplicationResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an application resource": {
+            "$ref": "./examples/Applications_Delete.json"
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/containers": {
+      "get": {
+        "operationId": "Containers_ListByScope",
+        "tags": [
+          "Containers"
+        ],
+        "description": "List ContainerResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List containers at resource group": {
+            "$ref": "./examples/Containers_List.json"
+          },
+          "List containers at root scope": {
+            "$ref": "./examples/Containers_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/containers/{containerName}": {
+      "get": {
+        "operationId": "Containers_Get",
+        "tags": [
+          "Containers"
+        ],
+        "description": "Get a ContainerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "containerName",
+            "in": "path",
+            "description": "Container name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an container resource": {
+            "$ref": "./examples/Containers_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Containers_CreateOrUpdate",
+        "tags": [
+          "Containers"
+        ],
+        "description": "Create a ContainerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "containerName",
+            "in": "path",
+            "description": "Container name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ContainerResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ContainerResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an container resource": {
+            "$ref": "./examples/Containers_CreateOrUpdate.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "Containers_Update",
+        "tags": [
+          "Containers"
+        ],
+        "description": "Update a ContainerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "containerName",
+            "in": "path",
+            "description": "Container name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ContainerResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ContainerResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "Containers_Delete",
+        "tags": [
+          "Containers"
+        ],
+        "description": "Delete a ContainerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "containerName",
+            "in": "path",
+            "description": "Container name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an container resource": {
+            "$ref": "./examples/Containers_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/environments": {
+      "get": {
+        "operationId": "Environments_ListByScope",
+        "tags": [
+          "Environments"
+        ],
+        "description": "List EnvironmentResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get environments by resource group": {
+            "$ref": "./examples/Environments_List.json"
+          },
+          "Get environments by rootScope": {
+            "$ref": "./examples/Environments_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}": {
+      "get": {
+        "operationId": "Environments_Get",
+        "tags": [
+          "Environments"
+        ],
+        "description": "Get a EnvironmentResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "description": "environment name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an environment resource": {
+            "$ref": "./examples/Environments_GetEnv0.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Environments_CreateOrUpdate",
+        "tags": [
+          "Environments"
+        ],
+        "description": "Create a EnvironmentResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "description": "environment name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'EnvironmentResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'EnvironmentResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update an environment resource": {
+            "$ref": "./examples/Environments_CreateOrUpdate.json"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "Environments_Update",
+        "tags": [
+          "Environments"
+        ],
+        "description": "Update a EnvironmentResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "description": "environment name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/EnvironmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update an environment resource": {
+            "$ref": "./examples/Environments_PatchEnv0.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "Environments_Delete",
+        "tags": [
+          "Environments"
+        ],
+        "description": "Delete a EnvironmentResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "description": "environment name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an environment resource": {
+            "$ref": "./examples/Environments_DeleteEnv0.json"
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getMetadata": {
+      "post": {
+        "operationId": "Environments_GetMetadata",
+        "tags": [
+          "Environments"
+        ],
+        "description": "Gets recipe metadata including parameters and any constraints on the parameters.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "description": "environment name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RecipeGetMetadata"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RecipeGetMetadataResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get recipe metadata from environment": {
+            "$ref": "./examples/Environments_GetRecipeMetadata.json"
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/extenders": {
+      "get": {
+        "operationId": "Extenders_ListByScope",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "List ExtenderResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List extender resources by resource group": {
+            "$ref": "./examples/Extenders_List.json"
+          },
+          "List extender resources by rootScope": {
+            "$ref": "./examples/Extenders_ListByRootScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/extenders/{extenderName}": {
+      "get": {
+        "operationId": "Extenders_Get",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Get a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an extender resource": {
+            "$ref": "./examples/Extenders_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Extenders_CreateOrUpdate",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Create a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'ExtenderResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'ExtenderResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update an extender resource": {
+            "$ref": "./examples/Extenders_CreateOrUpdate.json"
+          },
+          "Create or Update an extender resource with recipe": {
+            "$ref": "./examples/Extenders_CreateOrUpdateWithRecipe.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "Extenders_Update",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Update a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update an extender resource": {
+            "$ref": "./examples/Extenders_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "Extenders_Delete",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Delete a ExtenderResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an extender resource": {
+            "$ref": "./examples/Extenders_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets": {
+      "post": {
+        "operationId": "Extenders_ListSecrets",
+        "tags": [
+          "Extenders"
+        ],
+        "description": "Lists secrets values for the specified Extender resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "extenderName",
+            "in": "path",
+            "description": "The name of the ExtenderResource link resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExtenderListSecretResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List the secrets from extender resources": {
+            "$ref": "./examples/Extenders_ListSecrets.json"
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/gateways": {
+      "get": {
+        "operationId": "Gateways_ListByScope",
+        "tags": [
+          "Gateways"
+        ],
+        "description": "List GatewayResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List gateway resources": {
+            "$ref": "./examples/Gateways_List.json"
+          },
+          "List gateway resources by rootScope": {
+            "$ref": "./examples/Gateways_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}": {
+      "get": {
+        "operationId": "Gateways_Get",
+        "tags": [
+          "Gateways"
+        ],
+        "description": "Get a GatewayResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "gatewayName",
+            "in": "path",
+            "description": "Gateway name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get an gateway resource": {
+            "$ref": "./examples/Gateways_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Gateways_Create",
+        "tags": [
+          "Gateways"
+        ],
+        "description": "Create a GatewayResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "gatewayName",
+            "in": "path",
+            "description": "Gateway name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'GatewayResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'GatewayResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "Gateways_CreateOrUpdate",
+        "tags": [
+          "Gateways"
+        ],
+        "description": "Update a GatewayResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "gatewayName",
+            "in": "path",
+            "description": "Gateway name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GatewayResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/GatewayResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a gateway resource": {
+            "$ref": "./examples/Gateways_CreateOrUpdate.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "Gateways_Delete",
+        "tags": [
+          "Gateways"
+        ],
+        "description": "Delete a GatewayResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "gatewayName",
+            "in": "path",
+            "description": "Gateway name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an gateway resource": {
+            "$ref": "./examples/Gateways_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/httpRoutes": {
+      "get": {
+        "operationId": "HttpRoutes_ListByScope",
+        "tags": [
+          "HttpRoutes"
+        ],
+        "description": "List HttpRouteResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List httpRoutes resources by resource group": {
+            "$ref": "./examples/HttpRoutes_List.json"
+          },
+          "List httpRoutes resources by rootScope": {
+            "$ref": "./examples/HttpRoutes_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/httpRoutes/{httpRouteName}": {
+      "get": {
+        "operationId": "HttpRoutes_Get",
+        "tags": [
+          "HttpRoutes"
+        ],
+        "description": "Get a HttpRouteResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "httpRouteName",
+            "in": "path",
+            "description": "HTTPRoute name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "HttpRoutes_CreateOrUpdate",
+        "tags": [
+          "HttpRoutes"
+        ],
+        "description": "Create a HttpRouteResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "httpRouteName",
+            "in": "path",
+            "description": "HTTPRoute name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'HttpRouteResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'HttpRouteResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update httpRoutes resources": {
+            "$ref": "./examples/HttpRoutes_CreateOrUpdate.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "HttpRoutes_Update",
+        "tags": [
+          "HttpRoutes"
+        ],
+        "description": "Update a HttpRouteResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "httpRouteName",
+            "in": "path",
+            "description": "HTTPRoute name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/HttpRouteResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "HttpRoutes_Delete",
+        "tags": [
+          "HttpRoutes"
+        ],
+        "description": "Delete a HttpRouteResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "httpRouteName",
+            "in": "path",
+            "description": "HTTPRoute name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/secretStores": {
+      "get": {
+        "operationId": "SecretStores_ListByScope",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "List SecretStoreResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}": {
+      "get": {
+        "operationId": "SecretStores_Get",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Get a SecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a secret store": {
+            "$ref": "./examples/SecretStores_Get.json"
+          },
+          "Get a secret store for Azure Keyvault": {
+            "$ref": "./examples/SecretStores_Get_AzureKeyVault.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "SecretStores_CreateOrUpdate",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Create a SecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'SecretStoreResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'SecretStoreResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update a secret store resource with azure keyvault": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate.json"
+          },
+          "Create or Update a secret store resource with valueFrom": {
+            "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "SecretStores_Update",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Update a SecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SecretStoreResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a secret store resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
+          },
+          "Update a secret store": {
+            "$ref": "./examples/SecretStores_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "SecretStores_Delete",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Delete a SecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}/listSecrets": {
+      "post": {
+        "operationId": "SecretStores_ListSecrets",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "List the secrets of a secret stores.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SecretStoreListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_ListSecrets.json"
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/volumes": {
+      "get": {
+        "operationId": "Volumes_ListByScope",
+        "tags": [
+          "Volumes"
+        ],
+        "description": "List VolumeResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List volumes by resource group": {
+            "$ref": "./examples/Volumes_List.json"
+          },
+          "List volumes by rootScope": {
+            "$ref": "./examples/Volumes_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Core/volumes/{volumeName}": {
+      "get": {
+        "operationId": "Volumes_Get",
+        "tags": [
+          "Volumes"
+        ],
+        "description": "Get a VolumeResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "volumeName",
+            "in": "path",
+            "description": "Volume name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a volume": {
+            "$ref": "./examples/Volumes_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "Volumes_CreateOrUpdate",
+        "tags": [
+          "Volumes"
+        ],
+        "description": "Create a VolumeResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "volumeName",
+            "in": "path",
+            "description": "Volume name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'VolumeResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'VolumeResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a volume": {
+            "$ref": "./examples/Volumes_CreateOrUpdate.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "Volumes_Update",
+        "tags": [
+          "Volumes"
+        ],
+        "description": "Update a VolumeResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "volumeName",
+            "in": "path",
+            "description": "Volume name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/VolumeResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/VolumeResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a volume": {
+            "$ref": "./examples/Volumes_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "Volumes_Delete",
+        "tags": [
+          "Volumes"
+        ],
+        "description": "Delete a VolumeResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "volumeName",
+            "in": "path",
+            "description": "Volume name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a volume": {
+            "$ref": "./examples/Volumes_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/providers/Applications.Core/operations": {
+      "get": {
+        "operationId": "Operations_List",
+        "tags": [
+          "Operations"
+        ],
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get the operations for the Applications.Core resource provider": {
+            "$ref": "./examples/Operations_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ApplicationProperties": {
+      "type": "object",
+      "description": "Application properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "The application extension.",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "x-ms-identifiers": []
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "ApplicationResource": {
+      "type": "object",
+      "description": "Radius Application resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ApplicationProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ApplicationResourceListResult": {
+      "type": "object",
+      "description": "The response of a ApplicationResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ApplicationResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ApplicationResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ApplicationResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the ApplicationResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/ApplicationResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "ApplicationResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the ApplicationResource.",
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentComputeUpdate",
+          "description": "The compute resource used by application environment."
+        },
+        "providers": {
+          "$ref": "#/definitions/ProvidersUpdate",
+          "description": "Cloud providers configuration for the environment."
+        },
+        "recipes": {
+          "type": "object",
+          "description": "Specifies Recipes linked to the Environment.",
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/definitions/RecipePropertiesUpdate"
+            },
+            "type": "object"
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "description": "The environment extension.",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "AzureKeyVaultVolumeProperties": {
+      "type": "object",
+      "description": "Represents Azure Key Vault Volume properties",
+      "properties": {
+        "certificates": {
+          "type": "object",
+          "description": "The KeyVault certificates that this volume exposes",
+          "additionalProperties": {
+            "$ref": "#/definitions/CertificateObjectProperties"
+          }
+        },
+        "keys": {
+          "type": "object",
+          "description": "The KeyVault keys that this volume exposes",
+          "additionalProperties": {
+            "$ref": "#/definitions/KeyObjectProperties"
+          }
+        },
+        "resource": {
+          "type": "string",
+          "description": "The ID of the keyvault to use for this volume resource"
+        },
+        "secrets": {
+          "type": "object",
+          "description": "The KeyVault secrets that this volume exposes",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretObjectProperties"
+          }
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/VolumeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "azure.com.keyvault"
+    },
+    "BicepRecipeProperties": {
+      "type": "object",
+      "description": "Represents Bicep recipe properties.",
+      "properties": {},
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "bicep"
+    },
+    "BicepRecipePropertiesUpdate": {
+      "type": "object",
+      "description": "Represents Bicep recipe properties.",
+      "properties": {},
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipePropertiesUpdate"
+        }
+      ],
+      "x-ms-discriminator-value": "bicep"
+    },
+    "CertificateFormats": {
+      "type": "string",
+      "description": "Represents certificate formats",
+      "enum": [
+        "pem",
+        "pfx"
+      ],
+      "x-ms-enum": {
+        "name": "CertificateFormats",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "pem",
+            "value": "pem",
+            "description": "PEM Certificate format"
+          },
+          {
+            "name": "pfx",
+            "value": "pfx",
+            "description": "PFX Certificate format"
+          }
+        ]
+      }
+    },
+    "CertificateObjectProperties": {
+      "type": "object",
+      "description": "Represents certificate object properties",
+      "properties": {
+        "alias": {
+          "type": "string",
+          "description": "File name when written to disk"
+        },
+        "encoding": {
+          "$ref": "#/definitions/VolumeSecretEncodings",
+          "description": "Encoding format. Default utf-8",
+          "default": "utf-8"
+        },
+        "format": {
+          "$ref": "#/definitions/CertificateFormats",
+          "description": "Certificate format. Default pem",
+          "default": "pem"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the certificate"
+        },
+        "certType": {
+          "$ref": "#/definitions/CertificateTypes",
+          "description": "Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate"
+        },
+        "version": {
+          "type": "string",
+          "description": "Certificate version"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "CertificateTypes": {
+      "type": "string",
+      "description": "Represents certificate types",
+      "enum": [
+        "certificate",
+        "privatekey",
+        "publickey"
+      ],
+      "x-ms-enum": {
+        "name": "CertificateTypes",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "certificate",
+            "value": "certificate",
+            "description": "Certificate type"
+          },
+          {
+            "name": "privatekey",
+            "value": "privatekey",
+            "description": "Private Key type"
+          },
+          {
+            "name": "publickey",
+            "value": "publickey",
+            "description": "Public Key type"
+          }
+        ]
+      }
+    },
+    "ConnectionProperties": {
+      "type": "object",
+      "description": "Connection Properties",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The source of the connection"
+        },
+        "disableDefaultEnvVars": {
+          "type": "boolean",
+          "description": "default environment variable override",
+          "default": false
+        },
+        "iam": {
+          "$ref": "#/definitions/IamProperties",
+          "description": "iam properties"
+        }
+      },
+      "required": [
+        "source"
+      ]
+    },
+    "ConnectionPropertiesUpdate": {
+      "type": "object",
+      "description": "Connection Properties",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The source of the connection"
+        },
+        "disableDefaultEnvVars": {
+          "type": "boolean",
+          "description": "default environment variable override",
+          "default": false
+        },
+        "iam": {
+          "$ref": "#/definitions/IamPropertiesUpdate",
+          "description": "iam properties"
+        }
+      }
+    },
+    "Container": {
+      "type": "object",
+      "description": "Definition of a container",
+      "properties": {
+        "image": {
+          "type": "string",
+          "description": "The registry and image to download and run in your container"
+        },
+        "env": {
+          "type": "object",
+          "description": "environment",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "description": "container ports",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerPortProperties"
+          }
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties",
+          "description": "readiness probe properties"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties",
+          "description": "liveness probe properties"
+        },
+        "volumes": {
+          "type": "object",
+          "description": "container volumes",
+          "additionalProperties": {
+            "$ref": "#/definitions/Volume"
+          }
+        },
+        "command": {
+          "type": "array",
+          "description": "Entrypoint array. Overrides the container image's ENTRYPOINT",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "description": "Arguments to the entrypoint. Overrides the container image's CMD",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workingDir": {
+          "type": "string",
+          "description": "Working directory for the container"
+        }
+      },
+      "required": [
+        "image"
+      ]
+    },
+    "ContainerPortProperties": {
+      "type": "object",
+      "description": "Specifies a listening port for the container",
+      "properties": {
+        "containerPort": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The listening port number"
+        },
+        "protocol": {
+          "$ref": "#/definitions/PortProtocol",
+          "description": "Protocol in use by the port"
+        },
+        "provides": {
+          "type": "string",
+          "description": "Specifies a route provided by this port"
+        },
+        "scheme": {
+          "type": "string",
+          "description": "Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired"
+        }
+      },
+      "required": [
+        "containerPort"
+      ]
+    },
+    "ContainerPortPropertiesUpdate": {
+      "type": "object",
+      "description": "Specifies a listening port for the container",
+      "properties": {
+        "containerPort": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The listening port number"
+        },
+        "protocol": {
+          "$ref": "#/definitions/PortProtocol",
+          "description": "Protocol in use by the port"
+        },
+        "provides": {
+          "type": "string",
+          "description": "Specifies a route provided by this port"
+        },
+        "scheme": {
+          "type": "string",
+          "description": "Specifies the URL scheme of the communication protocol. Consumers can use the scheme to construct a URL. The value defaults to 'http' or 'https' depending on the port value"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired"
+        }
+      }
+    },
+    "ContainerProperties": {
+      "type": "object",
+      "description": "Container properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "container": {
+          "$ref": "#/definitions/Container",
+          "description": "Definition of a container."
+        },
+        "connections": {
+          "type": "object",
+          "description": "Specifies a connection to another resource.",
+          "additionalProperties": {
+            "$ref": "#/definitions/ConnectionProperties"
+          }
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "Extensions spec of the resource",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "x-ms-identifiers": []
+        }
+      },
+      "required": [
+        "application",
+        "container"
+      ]
+    },
+    "ContainerResource": {
+      "type": "object",
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ContainerProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ContainerResourceListResult": {
+      "type": "object",
+      "description": "The response of a ContainerResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ContainerResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ContainerResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ContainerResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the ContainerResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/ContainerResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "ContainerResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the ContainerResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "container": {
+          "$ref": "#/definitions/ContainerUpdate",
+          "description": "Definition of a container."
+        },
+        "connections": {
+          "type": "object",
+          "description": "Specifies a connection to another resource.",
+          "additionalProperties": {
+            "$ref": "#/definitions/ConnectionPropertiesUpdate"
+          }
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettingsUpdate",
+          "description": "Configuration for supported external identity providers"
+        },
+        "extensions": {
+          "type": "array",
+          "description": "Extensions spec of the resource",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "ContainerUpdate": {
+      "type": "object",
+      "description": "Definition of a container",
+      "properties": {
+        "image": {
+          "type": "string",
+          "description": "The registry and image to download and run in your container"
+        },
+        "env": {
+          "type": "object",
+          "description": "environment",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ports": {
+          "type": "object",
+          "description": "container ports",
+          "additionalProperties": {
+            "$ref": "#/definitions/ContainerPortPropertiesUpdate"
+          }
+        },
+        "readinessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties",
+          "description": "readiness probe properties"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/HealthProbeProperties",
+          "description": "liveness probe properties"
+        },
+        "volumes": {
+          "type": "object",
+          "description": "container volumes",
+          "additionalProperties": {
+            "$ref": "#/definitions/VolumeUpdate"
+          }
+        },
+        "command": {
+          "type": "array",
+          "description": "Entrypoint array. Overrides the container image's ENTRYPOINT",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "type": "array",
+          "description": "Arguments to the entrypoint. Overrides the container image's CMD",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workingDir": {
+          "type": "string",
+          "description": "Working directory for the container"
+        }
+      }
+    },
+    "DaprSidecarExtension": {
+      "type": "object",
+      "description": "Specifies the resource should have a Dapr sidecar injected",
+      "properties": {
+        "appPort": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. "
+        },
+        "appId": {
+          "type": "string",
+          "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation."
+        },
+        "config": {
+          "type": "string",
+          "description": "Specifies the Dapr configuration to use for the resource."
+        },
+        "protocol": {
+          "$ref": "#/definitions/DaprSidecarExtensionProtocol",
+          "description": "Specifies the Dapr app-protocol to use for the resource."
+        }
+      },
+      "required": [
+        "appId"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extension"
+        }
+      ],
+      "x-ms-discriminator-value": "daprSidecar"
+    },
+    "DaprSidecarExtensionProtocol": {
+      "type": "string",
+      "description": "The Dapr sidecar extension protocol",
+      "enum": [
+        "http",
+        "grpc"
+      ],
+      "x-ms-enum": {
+        "name": "DaprSidecarExtensionProtocol",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "http",
+            "value": "http",
+            "description": "HTTP protocol"
+          },
+          {
+            "name": "grpc",
+            "value": "grpc",
+            "description": "gRPC protocol"
+          }
+        ]
+      }
+    },
+    "EnvironmentCompute": {
+      "type": "object",
+      "description": "Represents backing compute resource",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "EnvironmentComputeUpdate": {
+      "type": "object",
+      "description": "Represents backing compute resource",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettingsUpdate",
+          "description": "Configuration for supported external identity providers"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "EnvironmentProperties": {
+      "type": "object",
+      "description": "Environment properties",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource used by application environment."
+        },
+        "providers": {
+          "$ref": "#/definitions/Providers",
+          "description": "Cloud providers configuration for the environment."
+        },
+        "recipes": {
+          "type": "object",
+          "description": "Specifies Recipes linked to the Environment.",
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/definitions/RecipeProperties"
+            },
+            "type": "object"
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "description": "The environment extension.",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "x-ms-identifiers": []
+        }
+      },
+      "required": [
+        "compute"
+      ]
+    },
+    "EnvironmentResource": {
+      "type": "object",
+      "description": "The environment resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/EnvironmentProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "EnvironmentResourceListResult": {
+      "type": "object",
+      "description": "The response of a EnvironmentResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The EnvironmentResource items on this page",
+          "items": {
+            "$ref": "#/definitions/EnvironmentResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "EnvironmentResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the EnvironmentResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/EnvironmentResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "EnvironmentResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the EnvironmentResource.",
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentComputeUpdate",
+          "description": "The compute resource used by application environment."
+        },
+        "providers": {
+          "$ref": "#/definitions/ProvidersUpdate",
+          "description": "Cloud providers configuration for the environment."
+        },
+        "recipes": {
+          "type": "object",
+          "description": "Specifies Recipes linked to the Environment.",
+          "additionalProperties": {
+            "additionalProperties": {
+              "$ref": "#/definitions/RecipePropertiesUpdate"
+            },
+            "type": "object"
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "description": "The environment extension.",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "EphemeralVolume": {
+      "type": "object",
+      "description": "Specifies an ephemeral volume for a container",
+      "properties": {
+        "managedStore": {
+          "$ref": "#/definitions/ManagedStore",
+          "description": "Backing store for the ephemeral volume"
+        }
+      },
+      "required": [
+        "managedStore"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Volume"
+        }
+      ],
+      "x-ms-discriminator-value": "ephemeral"
+    },
+    "EphemeralVolumeUpdate": {
+      "type": "object",
+      "description": "Specifies an ephemeral volume for a container",
+      "properties": {
+        "managedStore": {
+          "$ref": "#/definitions/ManagedStore",
+          "description": "Backing store for the ephemeral volume"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/VolumeUpdate"
+        }
+      ],
+      "x-ms-discriminator-value": "ephemeral"
+    },
+    "ExecHealthProbeProperties": {
+      "type": "object",
+      "description": "Specifies the properties for readiness/liveness probe using an executable",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Command to execute to probe readiness/liveness"
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "exec"
+    },
+    "ExtenderListSecretResponse": {
+      "type": "object",
+      "description": "Response for list secrets API call",
+      "properties": {}
+    },
+    "ExtenderProperties": {
+      "type": "object",
+      "description": "ExtenderResource link properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "secrets": {
+          "type": "object",
+          "description": "The secrets for referenced resource",
+          "properties": {}
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      },
+      "required": [
+        "environment"
+      ],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        }
+      ]
+    },
+    "ExtenderResource": {
+      "type": "object",
+      "description": "ExtenderResource link",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/ExtenderProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "ExtenderResourceListResult": {
+      "type": "object",
+      "description": "The response of a ExtenderResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The ExtenderResource items on this page",
+          "items": {
+            "$ref": "#/definitions/ExtenderResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "ExtenderResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the ExtenderResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/ExtenderResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "ExtenderResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the ExtenderResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "secrets": {
+          "type": "object",
+          "description": "The secrets for referenced resource",
+          "properties": {}
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "Extension": {
+      "type": "object",
+      "description": "Extension of a environment/application resource.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for Extension."
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "GatewayHostname": {
+      "type": "object",
+      "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.",
+      "properties": {
+        "prefix": {
+          "type": "string",
+          "description": "Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden if both are defined."
+        },
+        "fullyQualifiedHostname": {
+          "type": "string",
+          "description": "Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined."
+        }
+      }
+    },
+    "GatewayProperties": {
+      "type": "object",
+      "description": "Gateway properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "internal": {
+          "type": "boolean",
+          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
+          "default": false
+        },
+        "hostname": {
+          "$ref": "#/definitions/GatewayHostname",
+          "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
+        },
+        "routes": {
+          "type": "array",
+          "description": "Routes attached to this Gateway",
+          "items": {
+            "$ref": "#/definitions/GatewayRoute"
+          },
+          "x-ms-identifiers": []
+        },
+        "tls": {
+          "$ref": "#/definitions/GatewayTls",
+          "description": "TLS configuration for the Gateway."
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of the gateway resource. Readonly",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "application",
+        "routes"
+      ]
+    },
+    "GatewayResource": {
+      "type": "object",
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/GatewayProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "GatewayResourceListResult": {
+      "type": "object",
+      "description": "The response of a GatewayResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The GatewayResource items on this page",
+          "items": {
+            "$ref": "#/definitions/GatewayResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "GatewayResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the GatewayResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/GatewayResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "GatewayResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the GatewayResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "internal": {
+          "type": "boolean",
+          "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
+          "default": false
+        },
+        "hostname": {
+          "$ref": "#/definitions/GatewayHostname",
+          "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
+        },
+        "routes": {
+          "type": "array",
+          "description": "Routes attached to this Gateway",
+          "items": {
+            "$ref": "#/definitions/GatewayRoute"
+          },
+          "x-ms-identifiers": []
+        },
+        "tls": {
+          "$ref": "#/definitions/GatewayTls",
+          "description": "TLS configuration for the Gateway."
+        }
+      }
+    },
+    "GatewayRoute": {
+      "type": "object",
+      "description": "Route attached to Gateway",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path to match the incoming request path on. Ex - /myservice."
+        },
+        "destination": {
+          "type": "string",
+          "description": "The HttpRoute to route to. Ex - myserviceroute.id."
+        },
+        "replacePrefix": {
+          "type": "string",
+          "description": "Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'"
+        }
+      }
+    },
+    "GatewayTls": {
+      "type": "object",
+      "description": "TLS configuration definition for Gateway resource.",
+      "properties": {
+        "sslPassthrough": {
+          "type": "boolean",
+          "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.",
+          "default": false
+        },
+        "minimumProtocolVersion": {
+          "$ref": "#/definitions/TlsMinVersion",
+          "description": "TLS minimum protocol version (defaults to 1.2).",
+          "default": "1.2"
+        },
+        "certificateFrom": {
+          "type": "string",
+          "description": "The resource id for the secret containing the TLS certificate and key for the gateway."
+        }
+      }
+    },
+    "HealthProbeProperties": {
+      "type": "object",
+      "description": "Properties for readiness/liveness probe",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for HealthProbeProperties."
+        },
+        "initialDelaySeconds": {
+          "type": "number",
+          "format": "float",
+          "description": "Initial delay in seconds before probing for readiness/liveness"
+        },
+        "failureThreshold": {
+          "type": "number",
+          "format": "float",
+          "description": "Threshold number of times the probe fails after which a failure would be reported"
+        },
+        "periodSeconds": {
+          "type": "number",
+          "format": "float",
+          "description": "Interval for the readiness/liveness probe in seconds"
+        },
+        "timeoutSeconds": {
+          "type": "number",
+          "format": "float",
+          "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds",
+          "default": 5
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "HttpGetHealthProbeProperties": {
+      "type": "object",
+      "description": "Specifies the properties for readiness/liveness probe using HTTP Get",
+      "properties": {
+        "containerPort": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The listening port number"
+        },
+        "path": {
+          "type": "string",
+          "description": "The route to make the HTTP request on"
+        },
+        "headers": {
+          "type": "object",
+          "description": "Custom HTTP headers to add to the get request",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "containerPort",
+        "path"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "httpGet"
+    },
+    "HttpRouteProperties": {
+      "type": "object",
+      "description": "HTTPRoute properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "hostname": {
+          "type": "string",
+          "description": "The internal hostname accepting traffic for the HTTP Route. Readonly."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port number for the HTTP Route. Defaults to 80. Readonly."
+        },
+        "scheme": {
+          "type": "string",
+          "description": "The scheme used for traffic. Readonly.",
+          "readOnly": true
+        },
+        "url": {
+          "type": "string",
+          "description": "A stable URL that that can be used to route traffic to a resource. Readonly.",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "application"
+      ]
+    },
+    "HttpRouteResource": {
+      "type": "object",
+      "description": "Radius HTTPRoute Resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/HttpRouteProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "HttpRouteResourceListResult": {
+      "type": "object",
+      "description": "The response of a HttpRouteResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The HttpRouteResource items on this page",
+          "items": {
+            "$ref": "#/definitions/HttpRouteResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "HttpRouteResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the HttpRouteResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/HttpRouteResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "HttpRouteResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the HttpRouteResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "hostname": {
+          "type": "string",
+          "description": "The internal hostname accepting traffic for the HTTP Route. Readonly."
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port number for the HTTP Route. Defaults to 80. Readonly."
+        }
+      }
+    },
+    "IAMKind": {
+      "type": "string",
+      "description": "The kind of IAM provider to configure",
+      "enum": [
+        "azure"
+      ],
+      "x-ms-enum": {
+        "name": "IAMKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "azure",
+            "value": "azure",
+            "description": "Azure Active Directory"
+          }
+        ]
+      }
+    },
+    "IamProperties": {
+      "type": "object",
+      "description": "IAM properties",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IAMKind",
+          "description": "The kind of IAM provider to configure"
+        },
+        "roles": {
+          "type": "array",
+          "description": "RBAC permissions to be assigned on the source resource",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "IamPropertiesUpdate": {
+      "type": "object",
+      "description": "IAM properties",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IAMKind",
+          "description": "The kind of IAM provider to configure"
+        },
+        "roles": {
+          "type": "array",
+          "description": "RBAC permissions to be assigned on the source resource",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "IdentitySettingKind": {
+      "type": "string",
+      "description": "IdentitySettingKind is the kind of supported external identity setting",
+      "enum": [
+        "undefined",
+        "azure.com.workload"
+      ],
+      "x-ms-enum": {
+        "name": "IdentitySettingKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "undefined",
+            "value": "undefined",
+            "description": "undefined identity"
+          },
+          {
+            "name": "azure.com.workload",
+            "value": "azure.com.workload",
+            "description": "azure ad workload identity"
+          }
+        ]
+      }
+    },
+    "IdentitySettings": {
+      "type": "object",
+      "description": "IdentitySettings is the external identity setting.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IdentitySettingKind",
+          "description": "kind of identity setting"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "description": "The URI for your compute platform's OIDC issuer"
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource ID of the provisioned identity"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "IdentitySettingsUpdate": {
+      "type": "object",
+      "description": "IdentitySettings is the external identity setting.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IdentitySettingKind",
+          "description": "kind of identity setting"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "description": "The URI for your compute platform's OIDC issuer"
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource ID of the provisioned identity"
+        }
+      }
+    },
+    "KeyObjectProperties": {
+      "type": "object",
+      "description": "Represents key object properties",
+      "properties": {
+        "alias": {
+          "type": "string",
+          "description": "File name when written to disk"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the key"
+        },
+        "version": {
+          "type": "string",
+          "description": "Key version"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "KubernetesCompute": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
+    "KubernetesComputeUpdate": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentComputeUpdate"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
+    "KubernetesMetadataExtension": {
+      "type": "object",
+      "description": "Kubernetes metadata extension of a environment/application resource.",
+      "properties": {
+        "annotations": {
+          "type": "object",
+          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "object",
+          "description": "Labels to be applied to the Kubernetes resources output by the resource",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "annotations",
+        "labels"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extension"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetesMetadata"
+    },
+    "KubernetesNamespaceExtension": {
+      "type": "object",
+      "description": "Kubernetes namespace extension of a environment/application resource.",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace of the application environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extension"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetesNamespace"
+    },
+    "ManagedStore": {
+      "type": "string",
+      "description": "The managed store for the ephemeral volume",
+      "enum": [
+        "memory",
+        "disk"
+      ],
+      "x-ms-enum": {
+        "name": "ManagedStore",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "memory",
+            "value": "memory",
+            "description": "Memory store"
+          },
+          {
+            "name": "disk",
+            "value": "disk",
+            "description": "Disk store"
+          }
+        ]
+      }
+    },
+    "ManualScalingExtension": {
+      "type": "object",
+      "description": "ManualScaling Extension",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Replica count."
+        }
+      },
+      "required": [
+        "replicas"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extension"
+        }
+      ],
+      "x-ms-discriminator-value": "manualScaling"
+    },
+    "OutputResource": {
+      "type": "object",
+      "description": "Properties of an output resource.",
+      "properties": {
+        "localId": {
+          "type": "string",
+          "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+        },
+        "id": {
+          "type": "string",
+          "description": "The UCP resource ID of the underlying resource."
+        },
+        "radiusManaged": {
+          "type": "boolean",
+          "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        }
+      }
+    },
+    "PersistentVolume": {
+      "type": "object",
+      "description": "Specifies a persistent volume for a container",
+      "properties": {
+        "permission": {
+          "$ref": "#/definitions/VolumePermission",
+          "description": "Container read/write access to the volume"
+        },
+        "source": {
+          "type": "string",
+          "description": "The source of the volume"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/Volume"
+        }
+      ],
+      "x-ms-discriminator-value": "persistent"
+    },
+    "PersistentVolumeUpdate": {
+      "type": "object",
+      "description": "Specifies a persistent volume for a container",
+      "properties": {
+        "permission": {
+          "$ref": "#/definitions/VolumePermission",
+          "description": "Container read/write access to the volume"
+        },
+        "source": {
+          "type": "string",
+          "description": "The source of the volume"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/VolumeUpdate"
+        }
+      ],
+      "x-ms-discriminator-value": "persistent"
+    },
+    "PortProtocol": {
+      "type": "string",
+      "description": "The protocol in use by the port",
+      "enum": [
+        "TCP",
+        "UDP"
+      ],
+      "x-ms-enum": {
+        "name": "PortProtocol",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "TCP",
+            "value": "TCP",
+            "description": "TCP protocol"
+          },
+          {
+            "name": "UDP",
+            "value": "UDP",
+            "description": "UDP protocol"
+          }
+        ]
+      }
+    },
+    "Providers": {
+      "type": "object",
+      "description": "The Cloud providers configuration",
+      "properties": {
+        "azure": {
+          "$ref": "#/definitions/ProvidersAzure",
+          "description": "The Azure cloud provider configuration"
+        },
+        "aws": {
+          "$ref": "#/definitions/ProvidersAws",
+          "description": "The AWS cloud provider configuration"
+        }
+      }
+    },
+    "ProvidersAws": {
+      "type": "object",
+      "description": "The AWS cloud provider definition",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+        }
+      },
+      "required": [
+        "scope"
+      ]
+    },
+    "ProvidersAwsUpdate": {
+      "type": "object",
+      "description": "The AWS cloud provider definition",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'"
+        }
+      }
+    },
+    "ProvidersAzure": {
+      "type": "object",
+      "description": "The Azure cloud provider definition",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+        }
+      },
+      "required": [
+        "scope"
+      ]
+    },
+    "ProvidersAzureUpdate": {
+      "type": "object",
+      "description": "The Azure cloud provider definition",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+        }
+      }
+    },
+    "ProvidersUpdate": {
+      "type": "object",
+      "description": "The Cloud providers configuration",
+      "properties": {
+        "azure": {
+          "$ref": "#/definitions/ProvidersAzureUpdate",
+          "description": "The Azure cloud provider configuration"
+        },
+        "aws": {
+          "$ref": "#/definitions/ProvidersAwsUpdate",
+          "description": "The AWS cloud provider configuration"
+        }
+      }
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
+    },
+    "Recipe": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RecipeGetMetadata": {
+      "type": "object",
+      "description": "Represents the request body of the getmetadata action.",
+      "properties": {
+        "linkType": {
+          "type": "string",
+          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe registered to the environment"
+        }
+      },
+      "required": [
+        "linkType",
+        "name"
+      ]
+    },
+    "RecipeGetMetadataResponse": {
+      "type": "object",
+      "description": "The properties of a Recipe linked to an Environment.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "The format of the template provided by the recipe. Allowed values: bicep, terraform."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
+        },
+        "templateVersion": {
+          "type": "string",
+          "description": "The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
+        },
+        "parameters": {
+          "type": "object",
+          "description": "The key/value parameters to pass to the recipe template at deployment.",
+          "properties": {}
+        }
+      },
+      "required": [
+        "templateKind",
+        "templatePath",
+        "templateVersion",
+        "parameters"
+      ]
+    },
+    "RecipeProperties": {
+      "type": "object",
+      "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "Discriminator property for RecipeProperties."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "properties": {}
+        }
+      },
+      "discriminator": "templateKind",
+      "required": [
+        "templateKind",
+        "templatePath"
+      ]
+    },
+    "RecipePropertiesUpdate": {
+      "type": "object",
+      "description": "Format of the template provided by the recipe. Allowed values: bicep, terraform.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "Discriminator property for RecipeProperties."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass to the recipe template at deployment",
+          "properties": {}
+        }
+      },
+      "discriminator": "templateKind",
+      "required": [
+        "templateKind"
+      ]
+    },
+    "RecipeUpdate": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      }
+    },
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "recipe",
+            "value": "recipe",
+            "description": "The resource lifecycle will be managed by Radius"
+          },
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
+      }
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "description": "Status of a resource.",
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource associated with the resource."
+        },
+        "outputResources": {
+          "type": "array",
+          "description": "Properties of an output resource",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "SecretObjectProperties": {
+      "type": "object",
+      "description": "Represents secret object properties",
+      "properties": {
+        "alias": {
+          "type": "string",
+          "description": "File name when written to disk"
+        },
+        "encoding": {
+          "$ref": "#/definitions/VolumeSecretEncodings",
+          "description": "Encoding format. Default utf-8",
+          "default": "utf-8"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the secret"
+        },
+        "version": {
+          "type": "string",
+          "description": "secret version"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "SecretStoreDataType": {
+      "type": "string",
+      "description": "The type of SecretStore data",
+      "enum": [
+        "generic",
+        "certificate"
+      ],
+      "x-ms-enum": {
+        "name": "SecretStoreDataType",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "generic",
+            "value": "generic",
+            "description": "Generic secret data type"
+          },
+          {
+            "name": "certificate",
+            "value": "certificate",
+            "description": "Certificate secret data type"
+          }
+        ]
+      }
+    },
+    "SecretStoreListSecretsResult": {
+      "type": "object",
+      "description": "The list of secrets",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/SecretStoreDataType",
+          "description": "The type of secret store data"
+        },
+        "data": {
+          "type": "object",
+          "description": "An object to represent key-value type secrets",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretValueProperties"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ]
+    },
+    "SecretStoreProperties": {
+      "type": "object",
+      "description": "The properties of SecretStore",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "type": {
+          "$ref": "#/definitions/SecretStoreDataType",
+          "description": "The type of secret store data",
+          "default": "generic"
+        },
+        "data": {
+          "type": "object",
+          "description": "An object to represent key-value type secrets",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretValueProperties"
+          }
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource id of external secret store."
+        }
+      },
+      "required": [
+        "application",
+        "data"
+      ]
+    },
+    "SecretStoreResource": {
+      "type": "object",
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/SecretStoreProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "SecretStoreResourceListResult": {
+      "type": "object",
+      "description": "The response of a SecretStoreResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The SecretStoreResource items on this page",
+          "items": {
+            "$ref": "#/definitions/SecretStoreResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "SecretStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the SecretStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/SecretStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "SecretStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the SecretStoreResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "type": {
+          "$ref": "#/definitions/SecretStoreDataType",
+          "description": "The type of secret store data",
+          "default": "generic"
+        },
+        "data": {
+          "type": "object",
+          "description": "An object to represent key-value type secrets",
+          "additionalProperties": {
+            "$ref": "#/definitions/SecretValueProperties"
+          }
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource id of external secret store."
+        }
+      }
+    },
+    "SecretValueEncoding": {
+      "type": "string",
+      "description": "The type of SecretValue Encoding",
+      "enum": [
+        "raw",
+        "base64"
+      ],
+      "x-ms-enum": {
+        "name": "SecretValueEncoding",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "raw",
+            "value": "raw",
+            "description": "The raw secret value"
+          },
+          {
+            "name": "base64",
+            "value": "base64",
+            "description": "The base64-encoded secret value"
+          }
+        ]
+      }
+    },
+    "SecretValueProperties": {
+      "type": "object",
+      "description": "The properties of SecretValue",
+      "properties": {
+        "encoding": {
+          "$ref": "#/definitions/SecretValueEncoding",
+          "description": "The encoding of value",
+          "default": "raw"
+        },
+        "value": {
+          "type": "string",
+          "format": "password",
+          "description": "The value of secret.",
+          "x-ms-secret": true
+        },
+        "valueFrom": {
+          "$ref": "#/definitions/ValueFromProperties",
+          "description": "The referenced secret in properties.resource"
+        }
+      }
+    },
+    "TcpHealthProbeProperties": {
+      "type": "object",
+      "description": "Specifies the properties for readiness/liveness probe using TCP",
+      "properties": {
+        "containerPort": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The listening port number"
+        }
+      },
+      "required": [
+        "containerPort"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/HealthProbeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "tcp"
+    },
+    "TerraformRecipeProperties": {
+      "type": "object",
+      "description": "Represents Terraform recipe properties.",
+      "properties": {
+        "templateVersion": {
+          "type": "string",
+          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
+        }
+      },
+      "required": [
+        "templateVersion"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipeProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "terraform"
+    },
+    "TerraformRecipePropertiesUpdate": {
+      "type": "object",
+      "description": "Represents Terraform recipe properties.",
+      "properties": {
+        "templateVersion": {
+          "type": "string",
+          "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/RecipePropertiesUpdate"
+        }
+      ],
+      "x-ms-discriminator-value": "terraform"
+    },
+    "TlsMinVersion": {
+      "type": "string",
+      "description": "Tls Minimum versions for Gateway resource.",
+      "enum": [
+        "1.2",
+        "1.3"
+      ],
+      "x-ms-enum": {
+        "name": "TlsMinVersion",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "tls12",
+            "value": "1.2",
+            "description": "TLS Version 1.2"
+          },
+          {
+            "name": "tls13",
+            "value": "1.3",
+            "description": "TLS Version 1.3"
+          }
+        ]
+      }
+    },
+    "ValueFromProperties": {
+      "type": "object",
+      "description": "The Secret value source properties",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the referenced secret."
+        },
+        "version": {
+          "type": "string",
+          "description": "The version of the referenced secret."
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for the Applications.Core resource provider.",
+      "enum": [
+        "2022-03-15-privatepreview"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2022_03_15_privatepreview",
+            "value": "2022-03-15-privatepreview",
+            "description": "2022-03-15-privatepreview"
+          }
+        ]
+      }
+    },
+    "Volume": {
+      "type": "object",
+      "description": "Specifies a volume for a container",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for Volume."
+        },
+        "mountPath": {
+          "type": "string",
+          "description": "The path where the volume is mounted"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind",
+        "mountPath"
+      ]
+    },
+    "VolumePermission": {
+      "type": "string",
+      "description": "The persistent volume permission",
+      "enum": [
+        "read",
+        "write"
+      ],
+      "x-ms-enum": {
+        "name": "VolumePermission",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "read",
+            "value": "read",
+            "description": "Read only"
+          },
+          {
+            "name": "write",
+            "value": "write",
+            "description": "Read and write"
+          }
+        ]
+      }
+    },
+    "VolumeProperties": {
+      "type": "object",
+      "description": "Volume properties",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for VolumeProperties."
+        },
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind",
+        "application"
+      ]
+    },
+    "VolumeResource": {
+      "type": "object",
+      "description": "Radius Volume resource.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/VolumeProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "VolumeResourceListResult": {
+      "type": "object",
+      "description": "The response of a VolumeResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The VolumeResource items on this page",
+          "items": {
+            "$ref": "#/definitions/VolumeResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "VolumeResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the VolumeResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/VolumeResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "VolumeResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the VolumeResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        }
+      }
+    },
+    "VolumeSecretEncodings": {
+      "type": "string",
+      "description": "Represents secret encodings",
+      "enum": [
+        "utf-8",
+        "hex",
+        "base64"
+      ],
+      "x-ms-enum": {
+        "name": "VolumeSecretEncodings",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "utf8",
+            "value": "utf-8",
+            "description": "UTF-8 encoding"
+          },
+          {
+            "name": "hex",
+            "value": "hex",
+            "description": "Hex encoding"
+          },
+          {
+            "name": "base64",
+            "value": "base64",
+            "description": "Base64 encoding"
+          }
+        ]
+      }
+    },
+    "VolumeUpdate": {
+      "type": "object",
+      "description": "Specifies a volume for a container",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for Volume."
+        },
+        "mountPath": {
+          "type": "string",
+          "description": "The path where the volume is mounted"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    }
+  },
+  "parameters": {
+    "RootScopeParameter": {
+      "name": "rootScope",
+      "in": "path",
+      "description": "The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "required": true,
+      "type": "string",
+      "minLength": 1,
+      "x-ms-parameter-location": "client",
+      "x-ms-skip-url-encoding": true
+    }
+  }
+}
