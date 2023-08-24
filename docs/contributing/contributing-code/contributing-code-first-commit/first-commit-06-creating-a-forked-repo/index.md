@@ -8,7 +8,17 @@ In order to fork a repo, go to the main radius repo page in GitHub and select th
 
 <img width="800px" src="fork.png" alt="Creating a fork of the main repo">
 
+## Clone the forked repo
+
+Now clone the forked repo and navigate there in your command shell.
+
+```
+git clone <forked repo url>
+```
+
 ## Configuring remote repositories
+
+We will now configure the remote repositories and we will refer to the forked repo as "origin" and the main repo as "upstream". You could use your own names here if you want.
 
 ### Adding remote repositories
 
