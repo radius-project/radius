@@ -45,9 +45,9 @@ jobs:
           popd
       - name: Install TypeSpec compiler
         run: |
-          cd typespec
-          npm install -g @typespec/compiler
-          tsp install
+          pushd typespec
+          npm ci
+          popd
       - name: Install autorest
         run: npm install -g autorest@3.6.1
       - name: Install oav
