@@ -24,7 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
 )
 
-// RabbitMQQueueDataModelFromVersioned converts version agnostic RabbitMQQueue datamodel to versioned model.
+// RabbitMQQueueDataModelToVersioned converts a version-agnostic datamodel.RabbitMQQueue to a versioned model interface
+// and returns an error if the version is unsupported.
 func RabbitMQQueueDataModelToVersioned(model *datamodel.RabbitMQQueue, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -36,7 +37,8 @@ func RabbitMQQueueDataModelToVersioned(model *datamodel.RabbitMQQueue, version s
 	}
 }
 
-// RabbitMQQueueDataModelFromVersioned converts versioned RabbitMQQueue model to datamodel.
+// RabbitMQQueueDataModelFromVersioned takes in a byte slice and a version string and returns a version-agnostic
+// RabbitMQQueue datamodel and an error if the version is unsupported.
 func RabbitMQQueueDataModelFromVersioned(content []byte, version string) (*datamodel.RabbitMQQueue, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -52,7 +54,8 @@ func RabbitMQQueueDataModelFromVersioned(content []byte, version string) (*datam
 	}
 }
 
-// RabbitMQSecretsDataModelFromVersioned converts version agnostic RabbitMQSecrets datamodel to versioned model.
+// RabbitMQSecretsDataModelToVersioned converts a version-agnostic datamodel.RabbitMQSecrets to a versioned model
+// based on the given version string, or returns an error if the version is not supported.
 func RabbitMQSecretsDataModelToVersioned(model *datamodel.RabbitMQSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:

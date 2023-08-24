@@ -33,57 +33,52 @@ using Azure.ResourceManager.Radius;
 using OpenAPI;
 
 namespace Applications.Datastores;
-
-@doc("SqlDatabase Properties for Mode Resource")
-model ResourceSqlDatabaseProperties extends SqlDatabaseProperties{
-  @doc("How to build the Sql database portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "resource";
-
-  @doc("Fully qualified resource ID of a supported resource with Sql API to use for this portable resource")
-  resource: string;
-
-  @doc("The name of the Sql database.")
-  database?: string;
-
-  @doc("The fully qualified domain name of the Sql database.")
-  server?: string;
-}
-@doc("SqlDatabase Properties for Mode Values")
-model ValuesSqlDatabaseProperties extends SqlDatabaseProperties{
-  @doc("How to build the Sql database portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "values";
-  
-  @doc("The name of the Sql database.")
-  database: string;
-
-  @doc("The fully qualified domain name of the Sql database.")
-  server: string;
-}
-@doc("SqlDatabase Properties for Mode Recipe")
-model RecipeSqlDatabaseProperties extends SqlDatabaseProperties{
-  @doc("How to build the Sql database portable resource. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: "recipe";
-
-  @doc("The recipe used to automatically deploy underlying infrastructure for the sqldatabases portable resource")
-  recipe: Recipe;
-
-  @doc("The name of the Sql database.")
-  database?: string;
-
-  @doc("The fully qualified domain name of the Sql database.")
-  server?: string;
-}
-@doc("SqlDatabase properties")
-@discriminator("mode")
+@doc("Sql database properties")
 model SqlDatabaseProperties extends BasicResourceProperties {
-  @doc("Provisioning state of the Sql database portable resource at the time the operation was called")
+  @doc("Provisioning state of the SQL database portable resource at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
+
+  @doc("The name of the SQL database.")
+  database?: string;
+
+  @doc("The fully qualified domain name of the target SQL database.")
+  server?: string;
+
+  @doc("Port value of the target SQL database")
+  port?: int32;
+
+  @doc("Username to use when connecting to the target SQL database")
+  username?: string;
+
+  @doc("The recipe used to automatically deploy underlying infrastructure for the SQL database portable resource")
+  recipe?: Recipe;
+
+  @doc("List of the resource IDs that support the SQL database resource")
+  resources?: ResourceReference[];
+
+  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  resourceProvisioning?: ResourceProvisioning;
+
+  @doc("Secret values provided for the resource")
+  secrets?: SqlDatabaseSecrets;
 }
 
-@doc("SqlDatabase portable resource")
+@doc("The secret values for the given SQL database resource")
+model SqlDatabaseListSecretsResult is SqlDatabaseSecrets;
+
+@doc("The secret values for the given SQL database resource")
+model SqlDatabaseSecrets {
+  @doc("Password to use when connecting to the target SQL database")
+  password?: string;
+
+  @doc("Connection string used to connect to the target SQL database")
+  connectionString?: string;
+}
+
+@doc("Sql database portable resource")
 model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
-  @doc("The name of the SqlDatabase portable resource")
+  @doc("The name of the SQL database portable resource")
   @maxLength(63)
   @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("sqlDatabaseName")
@@ -92,6 +87,20 @@ model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
   @extension("x-ms-parameter-location", "method")
   name: string;
 }
+
+#suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
+@doc("Lists secrets values for the specified SQL database resource")
+@post
+@route("/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}/listSecrets")
+op SqlDatabases_listSecrets(...ApiVersionParameter,
+  ...RootScopeParam,
+  @doc("The name of the SQL database portable resource")
+  @maxLength(63)
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
+  @path
+  @extension("x-ms-parameter-location", "method")
+  sqlDatabaseName: string): ArmResponse<SqlDatabaseListSecretsResult>
+   | ErrorResponse;
 
 @armResourceOperations
 interface SqlDatabases

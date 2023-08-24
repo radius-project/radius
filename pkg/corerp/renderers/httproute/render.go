@@ -29,7 +29,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -37,10 +36,14 @@ import (
 type Renderer struct {
 }
 
+// GetDependencyIDs returns nils for the resourceIDs, radiusResourceIDs and an error.
 func (r Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []resources.ID, resourceIDs []resources.ID, err error) {
 	return nil, nil, nil
 }
 
+// Render checks if the DataModelInterface is a valid HTTP Route, sets default port if none is provided, creates a
+// ComputedValueReference map, creates a service resource and returns a RendererOutput with the resources and
+// computed values. It returns an error if the service resource creation fails.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route, ok := dm.(*datamodel.HTTPRoute)
 	if !ok {
@@ -113,5 +116,5 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 		},
 	}
 
-	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
 }

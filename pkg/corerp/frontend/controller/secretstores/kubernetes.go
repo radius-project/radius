@@ -27,11 +27,10 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -75,7 +74,8 @@ func getOrDefaultEncoding(t datamodel.SecretType, e datamodel.SecretValueEncodin
 	return e, err
 }
 
-// ValidateAndMutateRequest validates and mutate the resource in the incoming request.
+// ValidateAndMutateRequest checks the type and encoding of the secret store, and ensures that the secret store data is
+// valid. If any of these checks fail, a BadRequestResponse is returned.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.SecretStore, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
 	var err error
 	newResource.Properties.Type, err = getOrDefaultType(newResource.Properties.Type)
@@ -176,7 +176,8 @@ func fromResourceID(id string) (ns string, name string, err error) {
 	return
 }
 
-// UpsertSecret upserts secret store data to backing secret store.
+// UpsertSecret creates or updates a Kubernetes secret based on the incoming request and returns the secret's location in
+// the output resource.
 func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
 	ref := newResource.Properties.Resource
 	if ref == "" && old != nil {
@@ -265,25 +266,20 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{
 		{
 			LocalID: rpv1.LocalIDSecret,
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.Secret,
-					Provider: resourcemodel.ProviderKubernetes,
-				},
-				Data: resourcemodel.KubernetesIdentity{
-					Kind:       resourcekinds.Secret,
-					APIVersion: "v1",
-					Name:       name,
-					Namespace:  ns,
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"",
+				resources_kubernetes.KindSecret,
+				ns,
+				name),
 		},
 	}
 
 	return nil, nil
 }
 
-// DeleteRadiusSecret deletes a secret if the secret is managed by Radius.
+// DeleteRadiusSecret deletes the Kubernetes secret associated with the given secret store if it is a
+// Radius managed resource.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
 	ksecret, err := getSecretFromOutputResources(oldResource.Properties.Status.OutputResources, options)
 	if err != nil {
@@ -302,33 +298,17 @@ func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore,
 	return nil, nil
 }
 
-func getIdentityFromOutputResources(resources []rpv1.OutputResource) (*resourcemodel.KubernetesIdentity, error) {
-	for _, r := range resources {
-		ri := r.Identity
-		if ri.ResourceType.Provider == resourcemodel.ProviderKubernetes && ri.ResourceType.Type == resourcekinds.Secret {
-			ki := &resourcemodel.KubernetesIdentity{}
-			if err := store.DecodeMap(ri.Data, ki); err != nil {
-				return nil, err
-			}
-			return ki, nil
+func getSecretFromOutputResources(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
+	name, ns := "", ""
+	for _, resource := range resources {
+		if strings.EqualFold(resource.ID.Type(), "core/Secret") {
+			_, _, ns, name = resources_kubernetes.ToParts(resource.ID)
+			break
 		}
 	}
 
-	return nil, nil
-}
-
-func getSecretFromOutputResources(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
-	ki, err := getIdentityFromOutputResources(resources)
-	if err != nil {
-		return nil, err
-	}
-
-	if ki == nil {
-		return nil, nil
-	}
-
 	ksecret := &corev1.Secret{}
-	err = options.KubeClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: ki.Namespace, Name: ki.Name}, ksecret)
+	err := options.KubeClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
 		return nil, nil
 	} else if err != nil {

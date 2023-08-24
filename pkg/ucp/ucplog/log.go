@@ -42,15 +42,19 @@ const (
 
 // Log levels
 const (
-	// More details on verbosity levels can be found here: https://pkg.go.dev/go.uber.org/zap@v1.20.0/zapcore#DebugLevel
-	// We do not want to support levels that introduce a new control flow
-	Error int = 1
-	Warn  int = 2
-	Info  int = 3
-	//Verbose = 4
-	Debug int = 9
-	//Trace   = 10
-	DefaultLogLevel int = Info
+	// These log levels can be used with `logger.V(...)` to **add** verbosity to a log message.
+	// These DO NOT map to the underlying Zap log levels.
+	//
+	// Please read the documentation of logger.V(...) before modifying these values.
+	//
+	// You CANNOT use these levels to make a log message more severe, which is why we don't
+	// define log levels for warning or error. Use logger.Error() for errors.
+
+	// LevelInfo is the default.
+	LevelInfo int = 0
+
+	// LevelDebug should be used for messages that should not be shown in production.
+	LevelDebug int = 1
 )
 
 const (
@@ -129,8 +133,6 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	return logger, nil
 }
 
-// # Function Explanation
-//
 // NewLogger creates a new logger with zap logger implementation, with the given name and logging options,
 // and returns a function to flush the logs before the server exits.
 func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error) {
@@ -157,25 +159,19 @@ func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error
 	return logger, flushLogs, nil
 }
 
-// # Function Explanation
-//
 // NewTestLogger creates a new logger zaptest logger implementation.
 func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
-	log := zapr.NewLogger(zapLogger)
-	return log, nil
+	logger := zapr.NewLogger(zapLogger)
+	return logger, nil
 }
 
-// # Function Explanation
-//
 // WrapLogContext adds key-value pairs to the context's logger for logging purposes.
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
 	return logr.NewContext(ctx, logger.WithValues(keyValues...))
 }
 
-// # Function Explanation
-//
 // Unwrap attempts to extract the underlying zap.Logger from a logr.Logger, returning nil if it fails.
 func Unwrap(logger logr.Logger) *zap.Logger {
 	underlier, ok := logger.GetSink().(zapr.Underlier)
@@ -186,8 +182,6 @@ func Unwrap(logger logr.Logger) *zap.Logger {
 	return nil
 }
 
-// # Function Explanation
-//
 // FromContextOrDiscard returns a logger with trace and span IDs populated from the context if they exist.
 // In order to get logger without span, use logr.FromContextOrDiscard(ctx context.Context).
 func FromContextOrDiscard(ctx context.Context) logr.Logger {
@@ -205,8 +199,6 @@ func FromContextOrDiscard(ctx context.Context) logr.Logger {
 	return logger
 }
 
-// # Function Explanation
-//
 // This function creates a new resource object with the given service name, hostname and version.
 func NewResourceObject(serviceName string) []any {
 	host, _ := os.Hostname()

@@ -33,12 +33,13 @@ type Gateway struct {
 	Properties GatewayProperties `json:"properties"`
 }
 
-// ResourceTypeName returns the qualified name of the resource
+// ResourceTypeName returns the resource type of the Gateway instance.
 func (g *Gateway) ResourceTypeName() string {
 	return GatewayResourceType
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues and URL properties of the Gateway struct
+// based on the DeploymentOutput object.
 func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.ComputedValues = do.ComputedValues
@@ -49,12 +50,12 @@ func (g *Gateway) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// OutputResources returns the OutputResources from the Status of the Gateway Properties.
 func (g *Gateway) OutputResources() []rpv1.OutputResource {
 	return g.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// ResourceMetadata returns the BasicResourceProperties of the Gateway instance.
 func (h *Gateway) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
@@ -89,7 +90,7 @@ type GatewayPropertiesTLS struct {
 	CertificateFrom        string                    `json:"certificateFrom,omitempty"`
 }
 
-// IsValid returns whether or not the supplied MinimumTLSProtocolVersion is supported.
+// IsValid checks if the given MinimumTLSProtocolVersion is valid.
 func (m MinimumTLSProtocolVersion) IsValid() bool {
 	s := ValidMinimumTLSProtocolVersions()
 	for _, v := range s {
@@ -100,7 +101,7 @@ func (m MinimumTLSProtocolVersion) IsValid() bool {
 	return false
 }
 
-// IsEqualTo returns whether or not two MinimumTLSProtocolVersions are equal.
+// IsEqualTo compares two MinimumTLSProtocolVersion objects and returns true if they are equal.
 func (m MinimumTLSProtocolVersion) IsEqualTo(minumumTLSProtocolVersion MinimumTLSProtocolVersion) bool {
 	return m == minumumTLSProtocolVersion
 }
@@ -117,7 +118,7 @@ const (
 	DefaultTLSMinVersion MinimumTLSProtocolVersion = TLSMinVersion12
 )
 
-// ValidMinimumTLSProtocolVersions returns a list of valid MinimumTLSProtocolVersions.
+// // ValidMinimumTLSProtocolVersions returns a slice of valid MinimumTLSProtocolVersions.
 func ValidMinimumTLSProtocolVersions() []MinimumTLSProtocolVersion {
 	return []MinimumTLSProtocolVersion{
 		TLSMinVersion12,

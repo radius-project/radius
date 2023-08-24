@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -34,12 +33,13 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_renderers "github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/project-radius/radius/test/testutil"
@@ -73,28 +73,21 @@ func setup(t *testing.T) SharedMocks {
 		[]model.OutputResourceModel{
 			{
 				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.Deployment,
+					Type:     model.AnyResourceType,
 					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.Secret,
-					Provider: resourcemodel.ProviderKubernetes,
-				},
-				ResourceHandler: resourceHandler,
-			},
-			{
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRoleAssignment,
+					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
 					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.Service,
-					Provider: resourcemodel.ProviderKubernetes,
+					Type:     "Test.Namespace/testResources",
+					Provider: "test",
 				},
 				ResourceHandler: resourceHandler,
 			},
@@ -139,9 +132,11 @@ func getTestRendererOutput() renderers.RendererOutput {
 	testOutputResources := []rpv1.OutputResource{
 		{
 			LocalID: rpv1.LocalIDService,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Service,
-				Provider: resourcemodel.ProviderKubernetes,
+			CreateResource: &rpv1.Resource{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resources_kubernetes.ResourceTypeService,
+					Provider: resourcemodel.ProviderKubernetes,
+				},
 			},
 		},
 	}
@@ -214,48 +209,31 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	testResource.ComputedValues = computedValues
 	testResource.SecretValues = secretValues
 
-	accountResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureCosmosAccount,
-		Provider: resourcemodel.ProviderAzure,
-	}
 	dbResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureCosmosDBMongo,
+		Type:     "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
 		Provider: resourcemodel.ProviderAzure,
 	}
 	outputResources := []rpv1.OutputResource{
 		{
-			LocalID:              rpv1.LocalIDAzureCosmosAccount,
-			ResourceType:         accountResourceType,
-			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &accountResourceType,
-				Data: resourcemodel.ARMIdentity{
-					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
-				},
-			},
+			LocalID:       rpv1.LocalIDAzureCosmosAccount,
+			ID:            resources.MustParse("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account"),
 			RadiusManaged: to.Ptr(true),
 		},
 		{
-			LocalID:              rpv1.LocalIDAzureCosmosDBMongo,
-			ResourceType:         dbResourceType,
-			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &dbResourceType,
-				Data: resourcemodel.ARMIdentity{
-					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-					APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
-				},
-			},
-			Resource: map[string]any{
-				"properties": map[string]any{
-					"resource": map[string]string{
-						"id": "test-database",
+			LocalID: rpv1.LocalIDAzureCosmosDBMongo,
+			ID:      resources.MustParse("/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"),
+			CreateResource: &rpv1.Resource{
+				ResourceType: dbResourceType,
+				Data: map[string]any{
+					"properties": map[string]any{
+						"resource": map[string]string{
+							"id": "test-database",
+						},
 					},
 				},
+				Dependencies: []string{rpv1.LocalIDAzureCosmosAccount},
 			},
 			RadiusManaged: to.Ptr(true),
-			Dependencies:  []rpv1.Dependency{{LocalID: rpv1.LocalIDAzureCosmosAccount}},
 		},
 	}
 
@@ -704,7 +682,7 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		testRendererOutput.Resources[0].ResourceType.Provider = ""
+		testRendererOutput.Resources[0].CreateResource.ResourceType.Provider = ""
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
@@ -774,7 +752,7 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		testRendererOutput.Resources[0].ResourceType.Provider = "unknown"
+		testRendererOutput.Resources[0].CreateResource.ResourceType.Provider = "unknown"
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
@@ -841,39 +819,33 @@ func Test_Render(t *testing.T) {
 }
 
 func Test_Deploy(t *testing.T) {
-	ctx := testcontext.New(t)
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
-
 	t.Run("Verify deploy success", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 		kubeProp := map[string]string{
-			handlers.KubernetesKindKey:       resourcekinds.Service,
+			handlers.KubernetesKindKey:       "Service",
 			handlers.KubernetesAPIVersionKey: "v1",
 			handlers.KubernetesNamespaceKey:  "test-namespace",
 			handlers.ResourceName:            "test-deployment",
 		}
 
-		expectedIdentity := resourcemodel.ResourceIdentity{
-			ResourceType: &resourcemodel.ResourceType{
-				Type:     resourcekinds.Service,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			Data: resourcemodel.KubernetesIdentity{
-				Name:       kubeProp[handlers.ResourceName],
-				Namespace:  kubeProp[handlers.KubernetesNamespaceKey],
-				Kind:       kubeProp[handlers.KubernetesKindKey],
-				APIVersion: kubeProp[handlers.ResourceName],
-			},
-		}
+		expectedID := resources_kubernetes.IDFromParts(
+			resources_kubernetes.PlaneNameTODO,
+			"",
+			kubeProp[handlers.KubernetesKindKey],
+			kubeProp[handlers.KubernetesNamespaceKey],
+			kubeProp[handlers.ResourceName])
 
 		mocks.resourceHandler.
 			EXPECT().
 			Put(gomock.Any(), gomock.Any()).Times(1).
 			DoAndReturn(func(ctx context.Context, options *handlers.PutOptions) (map[string]string, error) {
-				options.Resource.Identity = expectedIdentity
+				options.Resource.ID = expectedID
 				return kubeProp, nil
 			})
 
@@ -881,11 +853,15 @@ func Test_Deploy(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
-		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
+		require.NotEqual(t, resources.ID{}, deploymentOutput.DeployedOutputResources[0].ID)
 		require.Equal(t, map[string]any{"url": testRendererOutput.ComputedValues["url"].Value}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy failure", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -897,13 +873,15 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		testRendererOutput.Resources[0].Dependencies = []rpv1.Dependency{
-			{LocalID: ""},
-		}
+		testRendererOutput.Resources[0].CreateResource.Dependencies = []string{""}
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 
@@ -911,18 +889,26 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Invalid output resource type", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		testRendererOutput.Resources[0].ResourceType.Type = "foo"
+		testRendererOutput.Resources[0].CreateResource.ResourceType = resourcemodel.ResourceType{Provider: resourcemodel.ProviderAzure, Type: "foo"}
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 
-		require.ErrorContains(t, err, "output resource kind 'Provider: kubernetes, Type: foo' is unsupported")
+		require.ErrorContains(t, err, "output resource kind 'Provider: azure, Type: foo' is unsupported")
 	})
 
 	t.Run("Missing output resource identity", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -931,23 +917,23 @@ func Test_Deploy(t *testing.T) {
 			EXPECT().
 			Put(gomock.Any(), gomock.Any()).Times(1).
 			DoAndReturn(func(ctx context.Context, options *handlers.PutOptions) (map[string]string, error) {
-				options.Resource.Identity = resourcemodel.ResourceIdentity{}
+				options.Resource.ID = resources.ID{}
 				return map[string]string{}, nil
 			})
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 
-		require.ErrorContains(t, err, `output resource "Service" does not have an identity. This is a bug in the handler`)
+		require.ErrorContains(t, err, `output resource "Service" does not have an id. This is a bug in the handler`)
 	})
 }
 
 func Test_Delete(t *testing.T) {
-	ctx := testcontext.New(t)
-
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
 
 	t.Run("Verify delete success", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -958,6 +944,10 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -968,6 +958,10 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Status.OutputResources = []rpv1.OutputResource{}

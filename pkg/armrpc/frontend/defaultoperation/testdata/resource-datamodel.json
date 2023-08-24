@@ -1,43 +1,33 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/resources/resource0",
-    "name": "resource0",
-    "type": "applications.core/resources",
-    "location": "West US",
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "fake@hotmail.com",
-        "createdByType": "User",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "fake@hotmail.com",
-        "lastModifiedByType": "User"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/resources/resource0",
+  "name": "resource0",
+  "type": "applications.core/resources",
+  "location": "West US",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "provisioningState": "Succeeded",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
     },
-    "provisioningState": "Succeeded",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "resources",
-                "Provider": "aks"
-              },
-              "Resource": null,
-              "Identity": {
-                "data": null,
-                "resourceType": {
-                  "Type": "resources",
-                  "Provider": "aks"
-                }
-              }
-            }]
-          },
-          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-          "propertyA": "propertyAValue",
-          "propertyB": "propertyBValue"
-    },
-    "tenantId": "00000000-0000-0000-0000-000000000000",
-    "subscriptionId": "00000000-0000-0000-0000-000000000000",
-    "resourceGroup": "radius-test-rg",
-    "createdApiVersion": "2022-03-15-privatepreview",
-    "updatedApiVersion": "2022-03-15-privatepreview"
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "propertyA": "propertyAValue",
+    "propertyB": "propertyBValue"
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "radius-test-rg",
+  "createdApiVersion": "2022-03-15-privatepreview",
+  "updatedApiVersion": "2022-03-15-privatepreview"
 }

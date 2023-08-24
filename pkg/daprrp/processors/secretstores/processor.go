@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -38,7 +37,6 @@ type Processor struct {
 	Client runtime_client.Client
 }
 
-// # Function Explanation
 // Process validates resource properties, and applies output values from the recipe output. If the resource is being
 // provisioned manually, it creates a Dapr component in Kubernetes.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretStore, options processors.Options) error {
@@ -94,7 +92,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ResourceError{Inner: err}
 	}
 
-	deployed := rpv1.NewKubernetesOutputResource(resourcekinds.DaprComponent, "Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})
+	deployed := rpv1.NewKubernetesOutputResource("Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})
 	deployed.RadiusManaged = to.Ptr(true)
 	resource.Properties.Status.OutputResources = append(resource.Properties.Status.OutputResources, deployed)
 

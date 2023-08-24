@@ -34,12 +34,13 @@ type ContainerResource struct {
 	Properties ContainerProperties `json:"properties"`
 }
 
-// ResourceTypeName returns the qualified name of the resource
+// ResourceTypeName returns the qualified name of the resource.
 func (c ContainerResource) ResourceTypeName() string {
 	return ContainerResourceType
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// ApplyDeploymentOutput updates the ContainerResource's Properties, ComputedValues and SecretValues with
+// the DeploymentOutput's DeployedOutputResources, ComputedValues and SecretValues respectively and returns no error.
 func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
 	c.ComputedValues = do.ComputedValues
@@ -47,16 +48,18 @@ func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) erro
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// OutputResources returns the OutputResources from the ContainerResource's Properties Status.
 func (c *ContainerResource) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// ResourceMetadata returns the BasicResourceProperties of the ContainerResource instance.
 func (h *ContainerResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
+// GetDisableDefaultEnvVars returns the value of the DisableDefaultEnvVars field of the ConnectionProperties struct, or
+// false if the field is nil.
 func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 	if conn.DisableDefaultEnvVars == nil {
 		return false
@@ -97,8 +100,8 @@ type Container struct {
 // ContainerPort - Specifies a listening port for the container
 type ContainerPort struct {
 	ContainerPort int32    `json:"containerPort,omitempty"`
-	Port 		  int32    `json:"port,omitempty"`
-	Scheme		  string   `json:"scheme,omitempty"`
+	Port          int32    `json:"port,omitempty"`
+	Scheme        string   `json:"scheme,omitempty"`
 	Protocol      Protocol `json:"protocol,omitempty"`
 	Provides      string   `json:"provides,omitempty"`
 }
@@ -177,7 +180,7 @@ type HealthProbeProperties struct {
 	TCP     *TCPHealthProbeProperties     `json:"tcp,omitempty"`
 }
 
-// IsEmpty checks if the HealthProbeProperties is empty and returns true or false.
+// IsEmpty checks if the HealthProbeProperties is empty or not.
 func (h HealthProbeProperties) IsEmpty() bool {
 	return h == HealthProbeProperties{}
 }
@@ -229,6 +232,7 @@ type IAMProperties struct {
 	Roles []string `json:"roles,omitempty"`
 }
 
+// IsValid checks if the IAMKind is valid by comparing it to the list of valid IAMKinds.
 func (k IAMKind) IsValid() bool {
 	s := Kinds()
 	for _, v := range s {
@@ -239,6 +243,7 @@ func (k IAMKind) IsValid() bool {
 	return false
 }
 
+// IsKind compares two IAMKinds and returns true if they are equal.
 func (k IAMKind) IsKind(kind IAMKind) bool {
 	return k == kind
 }
@@ -261,6 +266,7 @@ const (
 	KindRedislabsComRedis       IAMKind = "redislabs.com/Redis"
 )
 
+// Kinds returns a list of supported IAMKinds.
 func Kinds() []IAMKind {
 	return []IAMKind{
 		KindAzure,

@@ -33,15 +33,11 @@ type FormattedOutput struct {
 	Options FormatterOptions
 }
 
-// # Function Explanation
-//
 // LogInfo takes in a format string and a variable number of parameters and appends them to the Writes slice.
 func (o *MockOutput) LogInfo(format string, v ...any) {
 	o.Writes = append(o.Writes, LogOutput{Format: format, Params: v})
 }
 
-// # Function Explanation
-//
 // WriteFormatted takes in a format string, an object of any type, and a FormatterOptions object, and appends
 // them to the Writes slice, returning no error.
 func (o *MockOutput) WriteFormatted(format string, obj any, options FormatterOptions) error {

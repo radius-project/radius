@@ -103,6 +103,96 @@ func Test_ContainerHttpRoute(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
+	template := "testdata/corerp-resources-container-two-containers-dns.bicep"
+	name := "corerp-resources-container-two-containers-dns"
+	appNamespace := "corerp-resources-container-two-containers-dns"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "containerad",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containeraf",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "containerad"),
+						validation.NewK8sPodForResource(name, "containeraf"),
+						validation.NewK8sServiceForResource(name, "containeraf"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
+	template := "testdata/corerp-resources-container-optional-port-scheme.bicep"
+	name := "corerp-resources-container-optional-port-scheme"
+	appNamespace := "corerp-resources-container-optional-port-scheme"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "containerqy",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerqu",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "containerqi",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "containerqy"),
+						validation.NewK8sPodForResource(name, "containerqu"),
+						validation.NewK8sPodForResource(name, "containerqi"),
+						validation.NewK8sServiceForResource(name, "containerqy"),
+						validation.NewK8sServiceForResource(name, "containerqu"),
+						validation.NewK8sServiceForResource(name, "containerqi"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
@@ -215,6 +305,89 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 				require.Equal(t, []string{"/bin/sh"}, container.Command)
 				require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, container.Args)
 				t.Logf("validated command and args of pod: %s", pod.Name)
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Container_FailDueToNonExistentImage(t *testing.T) {
+	template := "testdata/corerp-resources-container-nonexistent-container-image.bicep"
+	name := "corerp-resources-container-badimage"
+	appNamespace := "corerp-resources-container-badimage-app"
+
+	// We might see either of these states depending on the timing.
+	validate := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "Internal",
+					MessageContains: "ErrImagePull",
+				},
+			},
+		},
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "Internal",
+					MessageContains: "ImagePullBackOff",
+				},
+			},
+		},
+	})
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor:                               step.NewDeployErrorExecutor(template, validate, "magpieimage=non-existent-image"),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-cntr-badimage"),
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
+	template := "testdata/corerp-resources-container-bad-healthprobe.bicep"
+	name := "corerp-resources-container-bad-healthprobe"
+	appNamespace := "corerp-resources-container-bad-healthprobe-app"
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "Internal",
+				MessageContains: "CrashLoopBackOff",
+			},
+		},
+	})
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor:                               step.NewDeployErrorExecutor(template, validate, functional.GetMagpieImage()),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-cntr-bad-healthprobe"),
+					},
+				},
 			},
 		},
 	})

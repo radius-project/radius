@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,15 +67,7 @@ func TestDaprPubSubBrokerDataModelToVersioned(t *testing.T) {
 					Version:           to.Ptr("v1"),
 					ComponentName:     to.Ptr("test-dpsb"),
 					ProvisioningState: to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
-					Status: &v20220315privatepreview.ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-								"Identity": nil,
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&v20220315privatepreview.ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -112,15 +105,7 @@ func TestDaprPubSubBrokerDataModelToVersioned(t *testing.T) {
 					Version:              to.Ptr("v1"),
 					ComponentName:        to.Ptr("test-dpsb"),
 					ProvisioningState:    to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
-					Status: &v20220315privatepreview.ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-								"Identity": nil,
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&v20220315privatepreview.ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

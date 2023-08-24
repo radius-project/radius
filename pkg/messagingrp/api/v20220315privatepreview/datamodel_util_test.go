@@ -18,10 +18,10 @@ package v20220315privatepreview
 
 import (
 	"testing"
-	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -64,19 +64,6 @@ func TestFromProvisioningStateDataModel(t *testing.T) {
 		sc := fromProvisioningStateDataModel(testCase.datamodel)
 		require.Equal(t, testCase.versioned, *sc)
 	}
-}
-
-func TestUnmarshalTimeString(t *testing.T) {
-	parsedTime := unmarshalTimeString("2021-09-24T19:09:00.000000Z")
-	require.NotNil(t, parsedTime)
-
-	require.Equal(t, 2021, parsedTime.Year())
-	require.Equal(t, time.Month(9), parsedTime.Month())
-	require.Equal(t, 24, parsedTime.Day())
-
-	parsedTime = unmarshalTimeString("")
-	require.NotNil(t, parsedTime)
-	require.Equal(t, 1, parsedTime.Year())
 }
 
 func TestFromSystemDataModel(t *testing.T) {
@@ -135,7 +122,7 @@ func TestToRecipeDataModel(t *testing.T) {
 		{
 			nil,
 			linkrp.LinkRecipe{
-				Name: defaultRecipeName,
+				Name: v20220315privatepreview.DefaultRecipeName,
 			},
 		},
 		{
@@ -159,7 +146,7 @@ func TestToRecipeDataModel(t *testing.T) {
 				},
 			},
 			linkrp.LinkRecipe{
-				Name: defaultRecipeName,
+				Name: v20220315privatepreview.DefaultRecipeName,
 				Parameters: map[string]any{
 					"foo": "bar",
 				},
@@ -169,5 +156,49 @@ func TestToRecipeDataModel(t *testing.T) {
 	for _, testCase := range testset {
 		sc := toRecipeDataModel(testCase.versioned)
 		require.Equal(t, testCase.datamodel, sc)
+	}
+}
+
+func TestFromResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		versioned := fromResourcesDataModel(tt.DMResources)
+		require.Equal(t, tt.VersionedResources, versioned)
+
+	}
+}
+
+func TestToResourcesDataModel(t *testing.T) {
+	testset := []struct {
+		DMResources        []*linkrp.ResourceReference
+		VersionedResources []*ResourceReference
+	}{
+		{
+			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
+		},
+		{
+			DMResources:        []*linkrp.ResourceReference{},
+			VersionedResources: []*ResourceReference{},
+		},
+	}
+
+	for _, tt := range testset {
+		dm := toResourcesDataModel(tt.VersionedResources)
+		require.Equal(t, tt.DMResources, dm)
+
 	}
 }

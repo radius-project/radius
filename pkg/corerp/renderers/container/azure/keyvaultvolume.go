@@ -24,7 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -39,7 +38,8 @@ var (
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
 )
 
-// MakeKeyVaultVolumeSpec builds CSI volume spec for Azure Keyvault.
+// MakeKeyVaultVolumeSpec creates a Volume and VolumeMount spec for a secret store volume using the given volumeName,
+// mountPath and spcName and returns them along with a nil error.
 func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make Volume Spec which uses the SecretProvider created above
 	volumeSpec := corev1.Volume{
@@ -67,9 +67,9 @@ func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev
 	return volumeSpec, volumeMountSpec, nil
 }
 
-// TransformSecretProviderClass mutates Kubernetes SecretProviderClass type resource.
+// TransformSecretProviderClass updates the clientID and tenantID for azure workload identity.
 func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOptions) error {
-	spc, ok := options.Resource.Resource.(*csiv1.SecretProviderClass)
+	spc, ok := options.Resource.CreateResource.Data.(*csiv1.SecretProviderClass)
 	if !ok {
 		return errors.New("cannot transform service account")
 	}
@@ -88,7 +88,8 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	return nil
 }
 
-// MakeKeyVaultSecretProviderClass builds SecretProviderClass CR for keyvault secrets.
+// MakeKeyVaultSecretProviderClass creates a SecretProviderClass object for an Azure KeyVault resource and returns an
+// OutputResource with the ServiceAccount as a dependency.
 func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.VolumeResource, objSpec string, envOpt *renderers.EnvironmentOptions) (*rpv1.OutputResource, error) {
 	prop := res.Properties.AzureKeyVault
 
@@ -130,17 +131,8 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 		},
 	}
 
-	or := rpv1.NewKubernetesOutputResource(
-		resourcekinds.SecretProviderClass,
-		rpv1.LocalIDSecretProviderClass,
-		secretProvider,
-		secretProvider.ObjectMeta)
-
-	or.Dependencies = []rpv1.Dependency{
-		{
-			LocalID: rpv1.LocalIDServiceAccount,
-		},
-	}
+	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDSecretProviderClass, secretProvider, secretProvider.ObjectMeta)
+	or.CreateResource.Dependencies = []string{rpv1.LocalIDServiceAccount}
 
 	return &or, nil
 

@@ -42,15 +42,11 @@ type DeleteResource struct {
 	engine engine.Engine
 }
 
-// # Function Explanation
-//
 // NewDeleteResource creates a new DeleteResource controller which is used to delete resources asynchronously.
 func NewDeleteResource(opts ctrl.Options, engine engine.Engine) (ctrl.Controller, error) {
 	return &DeleteResource{ctrl.NewBaseAsyncController(opts), engine}, nil
 }
 
-// # Function Explanation
-//
 // Run retrieves a resource from storage, parses the resource ID, gets the data model, deletes the output
 // resources, and deletes the resource from storage. It returns an error if any of these steps fail.
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
@@ -91,6 +87,9 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 
 		err = c.engine.Delete(ctx, recipeData, resourceDataModel.OutputResources())
 		if err != nil {
+			if recipeError, ok := err.(*recipes.RecipeError); ok {
+				return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+			}
 			return ctrl.Result{}, err
 		}
 	}

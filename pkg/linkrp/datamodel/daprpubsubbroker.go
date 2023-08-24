@@ -33,8 +33,6 @@ type DaprPubSubBroker struct {
 	LinkMetadata
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput applies the properties changes based on the deployment output. It updates the
 // OutputResources of the DaprPubSubBroker resource with the output resources from a DeploymentOutput object.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -42,29 +40,21 @@ func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources of the DaprPubSubBroker resource.
 func (r *DaprPubSubBroker) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the DaprPubSubBroker resource i.e. application resources metadata.
 func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type of the DaprPubSubBroker resource.
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return linkrp.DaprPubSubBrokersResourceType
 }
 
-// # Function Explanation
-//
 // Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
 func (r *DaprPubSubBroker) Recipe() *linkrp.LinkRecipe {
 	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {

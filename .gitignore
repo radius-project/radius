@@ -44,8 +44,7 @@ main
 .DS_Store
 .idea/
 creds.json
-__debug_bin
-__debug_bin.exe
+__debug_bin*
 default.profraw
 
 # Editor backup files
@@ -56,7 +55,7 @@ default.profraw
 pkg/handlers/gomock_*
 
 # node modules
-cadl/node_modules
+node_modules
 
 # terraform state
 .terraform/

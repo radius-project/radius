@@ -28,7 +28,10 @@ import (
 	"github.com/project-radius/radius/pkg/daprrp/processors/pubsubbrokers"
 	"github.com/project-radius/radius/pkg/daprrp/processors/secretstores"
 	"github.com/project-radius/radius/pkg/daprrp/processors/statestores"
-	"github.com/project-radius/radius/pkg/kubeutil"
+	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	mongo_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/mongodatabases"
+	redis_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/rediscaches"
+	sql_prc "github.com/project-radius/radius/pkg/datastoresrp/processors/sqldatabases"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
@@ -50,18 +53,17 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/sdk/clients"
-	"k8s.io/client-go/discovery"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
+
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 )
 
 type Service struct {
 	worker.Service
 }
 
-// # Function Explanation
-//
 // NewService creates a new Service instance with the given options.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
@@ -72,32 +74,18 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns a string containing the namespace of the LinkProvider.
 func (s *Service) Name() string {
 	return fmt.Sprintf("%s async worker", handler.LinkProviderNamespace)
 }
 
-// # Function Explanation
-//
 // Run initializes the service and registers controllers for each resource type to handle create/update/delete operations.
 func (s *Service) Run(ctx context.Context) error {
 	if err := s.Init(ctx); err != nil {
 		return err
 	}
 
-	runtimeClient, err := kubeutil.NewRuntimeClient(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
+	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, s.KubeClient, s.KubeDiscoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
 
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
@@ -114,9 +102,10 @@ func (s *Service) Run(ctx context.Context) error {
 		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
-			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, driver.TerraformOptions{
-				Path: s.Options.Config.Terraform.Path,
-			}),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: s.Options.Config.Terraform.Path,
+				}, s.KubeClientSet),
 		},
 	})
 
@@ -143,15 +132,15 @@ func (s *Service) Run(ctx context.Context) error {
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &daprstatestores.Processor{Client: runtimeClient}
+			processor := &daprstatestores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &daprsecretstores.Processor{Client: runtimeClient}
+			processor := &daprsecretstores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &daprpubsubbrokers.Processor{Client: runtimeClient}
+			processor := &daprpubsubbrokers.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.ExtendersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
@@ -165,30 +154,29 @@ func (s *Service) Run(ctx context.Context) error {
 			return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &statestores.Processor{Client: runtimeClient}
+			processor := &statestores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &secretstores.Processor{Client: runtimeClient}
+			processor := &secretstores.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &pubsubbrokers.Processor{Client: runtimeClient}
+			processor := &pubsubbrokers.Processor{Client: s.KubeClient}
 			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, client, configLoader, options)
 		}},
-		/*	  The following will be worked on and uncommented in upcoming PRs
 		{linkrp.N_MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &mongodatabases.Processor{}
+			processor := &mongo_prc.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &rediscaches.Processor{}
+			processor := &redis_prc.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.RedisCache, ds_dm.RedisCache](processor, engine, client, configLoader, options)
 		}},
 		{linkrp.N_SqlDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &sqldatabases.Processor{}
+			processor := &sql_prc.Processor{}
 			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](processor, engine, client, configLoader, options)
-		}},*/
+		}},
 	}
 
 	opts := ctrl.Options{

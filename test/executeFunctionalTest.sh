@@ -41,3 +41,5 @@ export AZURE_TABLESTORAGE_RESOURCE_ID=$( jq -r '.properties.outputs.tableStorage
 export AZURE_COSMOS_MONGODB_ACCOUNT_ID=$( jq -r '.properties.outputs.cosmosMongoAccountID.value' <<< "${resp}" )
 make test-functional-shared
 make test-functional-msgrp
+make test-functional-daprrp
+make test-functional-datastoresrp

@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
@@ -30,8 +29,8 @@ import (
 // Opt-out case for manual resource provisioning
 func Test_MongoDB_ManualProvisioning(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-manual-provisioning.bicep"
-	name := "corerp-resources-mongodb-manual-provisioning"
-	appNamespace := "default-ccorerp-resources-mongodb-manual-provisioning"
+	name := "corerp-resources-mongodb-mp"
+	appNamespace := "default-ccorerp-resources-mp"
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -43,23 +42,23 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "mdb-us-app-ctnr",
+						Name: "mdb-us-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-ctnr",
+						Name: "mdb-us-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-rte",
+						Name: "mdb-us-rte-old",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-us-db",
-						Type: validation.MongoDatabasesResource,
+						Name: "mdb-us-db-old",
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 					},
 				},
@@ -67,9 +66,9 @@ func Test_MongoDB_ManualProvisioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "mdb-us-ctnr").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "mdb-us-rte").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr-old").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-us-ctnr-old").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "mdb-us-rte-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -101,13 +100,13 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongodb-app-ctnr",
+						Name: "mongodb-app-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-db",
-						Type: validation.MongoDatabasesResource,
+						Name: "mongodb-db-old",
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
 					},
 				},
@@ -115,7 +114,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mongodb-app-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -148,7 +147,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-environment-recipe-parameters-env",
+						Name: "corerp-resources-env-recipe-parameters-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -157,31 +156,21 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-param-ctnr",
+						Name: "mdb-param-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-recipe-param-db",
-						Type: validation.MongoDatabasesResource,
+						Name: "mdb-recipe-param-db-old",
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-param-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-param-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},
@@ -213,7 +202,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-environment-recipes-context-env",
+						Name: "corerp-resources-env-recipes-context-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -222,31 +211,21 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx-ctnr",
+						Name: "mdb-ctx-ctnr-old",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mdb-ctx",
-						Type: validation.MongoDatabasesResource,
+						Name: "mdb-ctx-old",
+						Type: validation.O_MongoDatabasesResource,
 						App:  name,
-						OutputResources: []validation.OutputResourceResponse{
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource0",
-							},
-							{
-								Provider: resourcemodel.ProviderAzure,
-								LocalID:  "RecipeResource1",
-							},
-						},
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr-old").ValidateLabels(false),
 					},
 				},
 			},

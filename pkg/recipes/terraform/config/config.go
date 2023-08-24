@@ -19,75 +19,73 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// GenerateTFConfigFile generates Terraform configuration in JSON format with module inputs, and writes it
-// to a main.tf.json file in the specified working directory. This JSON configuration is needed to retrieve the Terraform
-// module referenced by the Recipe. See https://www.terraform.io/docs/language/syntax/json.html
-// for more information on the JSON syntax for Terraform configuration.
-// Returns path to the generated config file.
-func GenerateTFConfigFile(ctx context.Context, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata, workingDir, localModuleName string) (string, error) {
-	moduleData := generateModuleData(ctx, envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+const (
+	// modeConfigFile is read/write mode only for the owner of the TF config file.
+	modeConfigFile fs.FileMode = 0600
+)
 
-	tfConfig := TerraformConfig{
-		Module: map[string]any{
-			localModuleName: moduleData,
+var ErrModuleNotFound = errors.New("module not found in Terraform config")
+
+// New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
+// Parameters are populated from environment recipe and resource recipe metadata.
+func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
+	// Resource parameter gets precedence over environment level parameter,
+	// if same parameter is defined in both environment and resource recipe metadata.
+	moduleData := newModuleConfig(envRecipe.TemplatePath, envRecipe.TemplateVersion, envRecipe.Parameters, resourceRecipe.Parameters)
+
+	return &TerraformConfig{
+		Terraform: nil,
+		Provider:  nil,
+		Module: map[string]TFModuleConfig{
+			moduleName: moduleData,
 		},
 	}
+}
 
-	// Convert the Terraform config to JSON
-	jsonData, err := json.MarshalIndent(tfConfig, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("error marshalling JSON: %w", err)
-	}
+// getMainConfigFilePath returns the path of the Terraform main config file.
+func getMainConfigFilePath(workingDir string) string {
+	return fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
+}
+
+// Save writes the Terraform config to main.tf.json file in the working directory.
+// This overwrites the existing file if it exists.
+func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Write the JSON data to a file in the working directory.
 	// JSON configuration syntax for Terraform requires the file to be named with .tf.json suffix.
 	// https://developer.hashicorp.com/terraform/language/syntax/json
-	configFilePath := fmt.Sprintf("%s/%s", workingDir, mainConfigFileName)
-	file, err := os.Create(configFilePath)
-	if err != nil {
-		return "", fmt.Errorf("error creating file: %w", err)
-	}
-	defer file.Close()
 
-	_, err = file.Write(jsonData)
+	// Convert the Terraform config to JSON
+	jsonData, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("error writing to file: %w", err)
+		return fmt.Errorf("error marshalling JSON: %w", err)
 	}
 
-	return configFilePath, nil
+	logger.Info(fmt.Sprintf("Writing Terraform JSON config to file: %s", getMainConfigFilePath(workingDir)))
+	if err = os.WriteFile(getMainConfigFilePath(workingDir), jsonData, modeConfigFile); err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
+	return nil
 }
 
-func generateModuleData(ctx context.Context, moduleSource string, moduleVersion string, envParams, resourceParams map[string]any) map[string]any {
-	moduleConfig := map[string]any{
-		moduleSourceKey:  moduleSource,
-		moduleVersionKey: moduleVersion,
-	}
-
-	// Populate recipe parameters
-	// Resource parameter gets precedence over environment level parameter,
-	// if same parameter is defined in both environment and resource recipe metadata.
-	for key, value := range envParams {
-		moduleConfig[key] = value
-	}
-
-	for key, value := range resourceParams {
-		moduleConfig[key] = value
-	}
-
-	return moduleConfig
-}
-
-// AddProviders generates and adds provider configurations for requiredProviders that are supported by Radius to generate custom provider configurations.
-// The generated config is added to the existing Terraform main config file present at the configFilePath, and writes the updated configuration data back to the file.
-// requiredProviders contains a list of provider names that are required for the module.
-func AddProviders(ctx context.Context, configFilePath string, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
+// AddProviders adds provider configurations for requiredProviders that are supported
+// by Radius to generate custom provider configurations. Save() must be called to save
+// the generated providers config. requiredProviders contains a list of provider names
+// that are required for the module.
+func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders []string, supportedProviders map[string]providers.Provider, envConfig *recipes.Configuration) error {
 	providerConfigs, err := getProviderConfigs(ctx, requiredProviders, supportedProviders, envConfig)
 	if err != nil {
 		return err
@@ -95,32 +93,46 @@ func AddProviders(ctx context.Context, configFilePath string, requiredProviders 
 
 	// Add generated provider configs for required providers to the existing terraform json config file
 	if len(providerConfigs) > 0 {
-		configFile, err := os.Open(configFilePath)
-		if err != nil {
-			return fmt.Errorf("error opening file %q: %w", configFilePath, err)
-		}
-		defer configFile.Close()
-
-		var tfConfig TerraformConfig
-		err = json.NewDecoder(configFile).Decode(&tfConfig)
-		if err != nil {
-			return err
-		}
-
-		tfConfig.Provider = providerConfigs
-
-		// Write the updated config data to the Terraform json config file
-		updatedConfig, err := json.MarshalIndent(tfConfig, "", "  ")
-		if err != nil {
-			return err
-		}
-		err = os.WriteFile(configFilePath, updatedConfig, 0666)
-		if err != nil {
-			return err
-		}
+		cfg.Provider = providerConfigs
 	}
 
 	return nil
+}
+
+// AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
+// Save() must be called after adding recipe context to the module config.
+func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {
+	mod, ok := cfg.Module[moduleName]
+	if !ok {
+		// must not happen because module key is set in New().
+		panic(ErrModuleNotFound)
+	}
+	if recipeCtx != nil {
+		mod.SetParams(RecipeParams{recipecontext.RecipeContextParamKey: recipeCtx})
+	}
+	return nil
+}
+
+// newModuleConfig creates a new TFModuleConfig object with the given module source and version
+// and also populates RecipeParams in TF module config. If same parameter key exists across params
+// then the last map specified gets precedence.
+func newModuleConfig(moduleSource string, moduleVersion string, params ...RecipeParams) TFModuleConfig {
+	moduleConfig := TFModuleConfig{
+		moduleSourceKey: moduleSource,
+	}
+
+	// Not all sources use versions, so only add the version if it's specified.
+	// Registries require versions, but HTTP or filesystem sources do not.
+	if moduleVersion != "" {
+		moduleConfig[moduleVersionKey] = moduleVersion
+	}
+
+	// Populate recipe parameters
+	for _, param := range params {
+		moduleConfig.SetParams(param)
+	}
+
+	return moduleConfig
 }
 
 // getProviderConfigs generates the Terraform provider configurations for the required providers.
@@ -143,4 +155,38 @@ func getProviderConfigs(ctx context.Context, requiredProviders []string, support
 	}
 
 	return providerConfigs, nil
+}
+
+// AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.
+// Save() must be called to save the generated backend config.
+// Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
+func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (map[string]any, error) {
+	backendConfig, err := backend.BuildBackend(resourceRecipe)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Terraform = &TerraformDefinition{
+		Backend: backendConfig,
+	}
+
+	return backendConfig, nil
+}
+
+// Add outputs to the config file referencing module outputs to populate expected Radius resource outputs.
+// Outputs of modules are accessible through this format: module.<MODULE NAME>.<OUTPUT NAME>
+// https://developer.hashicorp.com/terraform/language/modules/syntax#accessing-module-output-values
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+
+	cfg.Output = map[string]any{
+		recipes.ResultPropertyName: map[string]any{
+			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",
+			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
+		},
+	}
+
+	return nil
 }

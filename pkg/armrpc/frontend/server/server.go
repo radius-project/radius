@@ -30,7 +30,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 const (
@@ -48,8 +47,6 @@ type Options struct {
 	ArmCertMgr        *authentication.ArmCertManager
 }
 
-// # Function Explanation
-//
 // New creates a frontend server that can listen on the provided address and serve requests - it creates an HTTP server with a router,
 // configures the router with the given options, adds the default middlewares for logging, authentication, and service context, and
 // then returns the server.
@@ -81,7 +78,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	handlerFunc := otelhttp.NewHandler(
 		middleware.LowercaseURLPath(r),
 		options.ProviderNamespace,
-		otelhttp.WithMeterProvider(global.MeterProvider()),
+		otelhttp.WithMeterProvider(otel.GetMeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
 	// TODO: This is the workaround to fix the high cardinality of otelhttp.

@@ -25,12 +25,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
 )
 
-// NewFakeKubeClient create new fake kube dynamic client.
+// NewFakeKubeClient create new fake kube dynamic client with the given scheme and initial objects.
 func NewFakeKubeClient(scheme *runtime.Scheme, initObjs ...client.Object) client.WithWatch {
 	builder := fake.NewClientBuilder()
 	if scheme != nil {
@@ -78,7 +79,8 @@ type testClient struct {
 	client.WithWatch
 }
 
-// Patch implements client.Patch for apply patches.
+// Patch implements client.Patch for apply patches. It checks if the patch type is Apply, then attempts to get
+// the object, create it if it doesn't exist, or update it if it does. If an error is encountered, it is returned.
 func (c *testClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	if patch.Type() != client.Apply.Type() {
 		return c.WithWatch.Patch(ctx, obj, patch, opts...)
@@ -95,4 +97,35 @@ func (c *testClient) Patch(ctx context.Context, obj client.Object, patch client.
 	} else {
 		return c.WithWatch.Update(ctx, obj)
 	}
+}
+
+type DiscoveryClient struct {
+	Groups    *metav1.APIGroupList
+	Resources []*metav1.APIResourceList
+	APIGroup  []*metav1.APIGroup
+}
+
+// ServerGroups returns a list of API groups supported by the server.
+func (d *DiscoveryClient) ServerGroups() (*metav1.APIGroupList, error) {
+	return d.Groups, nil
+}
+
+// This function returns a slice of API resource lists.
+func (d *DiscoveryClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
+	return d.Resources, nil
+}
+
+// This function returns a slice of API resource lists.
+func (d *DiscoveryClient) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
+	return d.Resources, nil
+}
+
+// ServerGroupsAndResources returns a list of API groups and resources associated with the discovery client.
+func (d *DiscoveryClient) ServerGroupsAndResources() ([]*metav1.APIGroup, []*metav1.APIResourceList, error) {
+	return d.APIGroup, d.Resources, nil
+}
+
+// ServerResourcesForGroupVersion returns nil for the API resource list.
+func (d *DiscoveryClient) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
+	return nil, nil
 }

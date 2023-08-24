@@ -25,7 +25,7 @@ const (
 	Separator = "-"
 )
 
-// MakeResourceName builds resource name with prefix for azure resources.
+// MakeResourceName creates a normalized resource name by combining the prefix, name and separator.
 // For instance, when user uses keyvault persistent volume, RP will
 // auto-provision per-container managed identity in the resource group
 // which is specified by environment resource. In this case,

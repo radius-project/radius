@@ -34,13 +34,14 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-// GetDependencyIDs returns dependencies for the container/other datamodel passed in
+// GetDependencyIDs gets the IDs of the dependencies of the given resource.
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	// Let the inner renderer do its work
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }
 
-// Render augments the container's kubernetes output resource with value for manualscale replica if applicable.
+// Render checks if the DataModelInterface is a ContainerResource and if so, checks for ManualScaling
+// extensions and sets the replicas accordingly.
 func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
@@ -58,11 +59,12 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 		switch e.Kind {
 		case datamodel.ManualScaling:
 			for _, ores := range output.Resources {
-				if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
+				resourceType := ores.GetResourceType()
+				if resourceType.Provider != resourcemodel.ProviderKubernetes {
 					// Not a Kubernetes resource
 					continue
 				}
-				o, ok := ores.Resource.(runtime.Object)
+				o, ok := ores.CreateResource.Data.(runtime.Object)
 				if !ok {
 					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 				}

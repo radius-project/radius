@@ -89,6 +89,7 @@ type ResourceStatus struct {
 	OutputResources []map[string]any `json:"outputResources,omitempty"`
 }
 
+// ConvertTo converts a TestResource object to a TestResourceDataModel object and returns it.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
@@ -116,6 +117,9 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
+// ConvertFrom converts a TestResourceDataModel into a TestResource, mapping fields from the DataModelInterface to the
+// TestResource struct and converting the ProvisioningState from a DataModel to an internal type.
+// It returns an error if the DataModelInterface is not a TestResourceDataModel.
 func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {

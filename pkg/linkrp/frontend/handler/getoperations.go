@@ -33,15 +33,11 @@ type GetOperations struct {
 	ctrl.BaseController
 }
 
-// # Function Explanation
-//
 // NewGetOperations creates a new GetOperations controller and returns it, or returns an error if one occurs.
 func NewGetOperations(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetOperations{ctrl.NewBaseController(opts)}, nil
 }
 
-// # Function Explanation
-//
 // Run returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 func (opctrl *GetOperations) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {

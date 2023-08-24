@@ -31,6 +31,7 @@ type Service struct {
 	server.Service
 }
 
+// NewService creates a new Service instance with the given options.
 func NewService(options hostoptions.HostOptions) *Service {
 	return &Service{
 		server.Service{
@@ -40,10 +41,12 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
+// Name returns the namespace name of the provider.
 func (s *Service) Name() string {
 	return handler.ProviderNamespaceName
 }
 
+// Run initializes the service and starts the server with the specified options.
 func (s *Service) Run(ctx context.Context) error {
 	if err := s.Init(ctx); err != nil {
 		return err

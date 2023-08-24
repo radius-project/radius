@@ -14,7 +14,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-resources-extender-recipe-env' 
     }
     recipes: {
-      'Applications.Link/extenders':{
+      'Applications.Core/extenders':{
         default: {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/extender-recipe:${version}' 
@@ -41,7 +41,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
   name: 'extender-recipe'
   properties: {
     environment: env.id

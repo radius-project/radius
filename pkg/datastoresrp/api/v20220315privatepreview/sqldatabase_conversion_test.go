@@ -23,117 +23,235 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		file     string
+		expected *datamodel.SqlDatabase
+	}{
+		{
+			desc: "sqldatabase manual resource",
+			file: "sqldatabase_manual_resource.json",
+			expected: &datamodel.SqlDatabase{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+						Name:     "sql0",
+						Type:     linkrp.N_SqlDatabasesResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.SqlDatabaseProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					Resources: []*linkrp.ResourceReference{
+						{
+							ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+						},
+					},
+					Database: "testDatabase",
+					Server:   "testAccount1.sql.cosmos.azure.com",
+					Port:     1433,
+					Username: "testUser",
+					Secrets: datamodel.SqlDatabaseSecrets{
+						Password:         "testPassword",
+						ConnectionString: "test-connection-string",
+					},
+				},
+			},
+		},
+		{
+			desc: "sqldatabase recipe resource",
+			file: "sqldatabase_recipe_resource.json",
+			expected: &datamodel.SqlDatabase{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+						Name:     "sql0",
+						Type:     linkrp.N_SqlDatabasesResourceType,
+						Location: v1.LocationGlobal,
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+					SystemData: v1.SystemData{},
+				},
+				Properties: datamodel.SqlDatabaseProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
+						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
+					},
+					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					Recipe: linkrp.LinkRecipe{
+						Name: "sql-test",
+						Parameters: map[string]any{
+							"foo": "bar",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			// arrange
+			rawPayload := testutil.ReadFixture(tc.file)
+			versionedResource := &SQLDatabaseResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
 
-	testset := []string{"sqldatabaseresource.json", "sqldatabaseresource2.json", "sqldatabaseresource_recipe.json", "sqldatabaseresourcemodevalues.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &SQLDatabaseResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
+			// act
+			dm, err := versionedResource.ConvertTo()
 
-		// act
-		dm, err := versionedResource.ConvertTo()
+			// assert
+			require.NoError(t, err)
+			convertedResource := dm.(*datamodel.SqlDatabase)
 
-		// assert
-		require.NoError(t, err)
-		convertedResource := dm.(*datamodel.SqlDatabase)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0", convertedResource.ID)
-		require.Equal(t, "sql0", convertedResource.Name)
-		require.Equal(t, linkrp.N_SqlDatabasesResourceType, convertedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-
-		switch versionedResource.Properties.(type) {
-		case *ResourceSQLDatabaseProperties:
-			require.Equal(t, "resource", string(convertedResource.Properties.Mode))
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
-		case *ValuesSQLDatabaseProperties:
-			require.Equal(t, "values", string(convertedResource.Properties.Mode))
-			require.Equal(t, "testAccount1.sql.cosmos.azure.com", convertedResource.Properties.Server)
-			require.Equal(t, "testDatabase", convertedResource.Properties.Database)
-		case *RecipeSQLDatabaseProperties:
-			require.Equal(t, "recipe", string(convertedResource.Properties.Mode))
-			require.Equal(t, "sql-test", convertedResource.Properties.Recipe.Name)
-			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
-		}
+			require.Equal(t, tc.expected, convertedResource)
+		})
 	}
 }
 
 func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"sqldatabaseresourcedatamodel.json", "sqldatabaseresourcedatamodel2.json", "sqldatabaseresourcedatamodel_recipe.json", "sqldatabaseresourcemodevaluesdatamodel.json"}
+	testCases := []struct {
+		desc     string
+		file     string
+		expected *SQLDatabaseResource
+	}{
+		{
+			desc: "sqldatabase manual resource datamodel",
+			file: "sqldatabase_manual_resourcedatamodel.json",
+			expected: &SQLDatabaseResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &SQLDatabaseProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Resources: []*ResourceReference{
+						{
+							ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"),
+						},
+					},
+					Database:          to.Ptr("testDatabase"),
+					Server:            to.Ptr("testAccount1.sql.cosmos.azure.com"),
+					Port:              to.Ptr(int32(1433)),
+					Username:          to.Ptr("testUser"),
+					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0"),
+				Name: to.Ptr("sql0"),
+				Type: to.Ptr(linkrp.N_SqlDatabasesResourceType),
+			},
+		},
+		{
+			desc: "sqldatabase recipe resource datamodel",
+			file: "sqldatabase_recipe_resourcedatamodel.json",
+			expected: &SQLDatabaseResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &SQLDatabaseProperties{
+					Environment:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
+					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Database:             to.Ptr("testDatabase"),
+					Port:                 to.Ptr(int32(1433)),
+					Username:             to.Ptr("testUser"),
+					Server:               to.Ptr("testAccount1.sql.cosmos.azure.com"),
+					Recipe: &Recipe{
+						Name: to.Ptr("sql-test"),
+						Parameters: map[string]any{
+							"foo": "bar",
+						},
+					},
+					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0"),
+				Name: to.Ptr("sql0"),
+				Type: to.Ptr(linkrp.N_SqlDatabasesResourceType),
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload := testutil.ReadFixture(tc.file)
+			resource := &datamodel.SqlDatabase{}
+			err := json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
 
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		resource := &datamodel.SqlDatabase{}
-		err := json.Unmarshal(rawPayload, resource)
-		require.NoError(t, err)
+			versionedResource := &SQLDatabaseResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
 
-		// act
-		versionedResource := &SQLDatabaseResource{}
-		err = versionedResource.ConvertFrom(resource)
+			// Skip system data comparison
+			versionedResource.SystemData = nil
 
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0", *versionedResource.ID)
-		require.Equal(t, "sql0", *versionedResource.Name)
-		require.Equal(t, linkrp.N_SqlDatabasesResourceType, resource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetSQLDatabaseProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetSQLDatabaseProperties().Environment)
-		switch v := versionedResource.Properties.(type) {
-		case *ResourceSQLDatabaseProperties:
-			require.Equal(t, "resource", string(*v.Mode))
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", *v.Resource)
-		case *ValuesSQLDatabaseProperties:
-			require.Equal(t, "values", string(*v.Mode))
-			require.Equal(t, "testAccount1.sql.cosmos.azure.com", *v.Server)
-			require.Equal(t, "Deployment", versionedResource.Properties.GetSQLDatabaseProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "azure", versionedResource.Properties.GetSQLDatabaseProperties().Status.OutputResources[0]["Provider"])
-			require.Equal(t, "testDatabase", *v.Database)
-		case *RecipeSQLDatabaseProperties:
-			require.Equal(t, "recipe", string(*v.Mode))
-			require.Equal(t, "sql-test", *v.Recipe.Name)
-			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
-		}
+			require.Equal(t, tc.expected, versionedResource)
+		})
 	}
 }
 
 func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	testsFile := "sqldatabaseinvalid.json"
-	rawPayload := loadTestData(testsFile)
-	var testset []TestData
-	err := json.Unmarshal(rawPayload, &testset)
-	require.NoError(t, err)
-	for _, testData := range testset {
-		versionedResource := &SQLDatabaseResource{}
-		err := json.Unmarshal(testData.Payload, versionedResource)
-		require.NoError(t, err)
-		var expectedErr v1.ErrClientRP
-		description := testData.Description
-		if description == "unsupported_mode" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "Unsupported mode abc"
-		}
-		if description == "invalid_properties_with_mode_resource" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "resource is a required property for mode 'resource'"
-		}
-		if description == "invalid_properties_with_mode_recipe" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "recipe is a required property for mode 'recipe'"
-		}
-		if description == "invalid_properties_with_mode_values" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "database/server are required properties for mode 'values'"
-		}
-		_, err = versionedResource.ConvertTo()
-		require.Equal(t, &expectedErr, err)
+	testset := []struct {
+		payload string
+		errType error
+		message string
+	}{
+		{
+			"sqldatabase_invalid_properties_resource.json",
+			&v1.ErrClientRP{},
+			"code BadRequest: err multiple errors were found:\n\tserver must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual",
+		},
+		{
+			"sqldatabase_invalid_resourceprovisioning_resource.json",
+			&v1.ErrModelConversion{},
+			"$.properties.resourceProvisioning must be one of [manual recipe].",
+		},
+	}
+
+	for _, test := range testset {
+		t.Run(test.payload, func(t *testing.T) {
+			rawPayload := testutil.ReadFixture(test.payload)
+			versionedResource := &SQLDatabaseResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
+
+			dm, err := versionedResource.ConvertTo()
+			require.Error(t, err)
+			require.Nil(t, dm)
+			require.IsType(t, test.errType, err)
+			require.Equal(t, test.message, err.Error())
+		})
 	}
 }
 
@@ -142,7 +260,7 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -153,7 +271,35 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 	}
 }
 
-type TestData struct {
-	Description string          `json:"description,omitempty"`
-	Payload     json.RawMessage `json:"payload,omitempty"`
+func TestSqlDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := testutil.ReadFixture("sqldatabase_secrets_datamodel.json")
+	secrets := &datamodel.SqlDatabaseSecrets{}
+	err := json.Unmarshal(rawPayload, secrets)
+	require.NoError(t, err)
+
+	// act
+	versionedResource := &SQLDatabaseSecrets{}
+	err = versionedResource.ConvertFrom(secrets)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "testPassword", secrets.Password)
+}
+
+func TestSqlDatabaseSecrets_ConvertFromValidation(t *testing.T) {
+	validationTests := []struct {
+		src v1.DataModelInterface
+		err error
+	}{
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
+	}
+
+	for _, tc := range validationTests {
+		versioned := &SQLDatabaseSecrets{}
+		err := versioned.ConvertFrom(tc.src)
+		require.ErrorAs(t, tc.err, &err)
+	}
 }

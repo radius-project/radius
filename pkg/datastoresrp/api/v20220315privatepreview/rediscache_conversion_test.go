@@ -18,139 +18,289 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
+
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp"
-	linkrpdm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	ApplicationID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"
+	EnvironmentID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"
+	RedisID       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/redis0"
+)
+
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"rediscacheresource.json", "rediscacheresource2.json", "rediscacheresource3.json", "rediscacheresource_recipe.json", "rediscacheresource_recipe2.json"}
-	for _, payload := range testset {
+	testset := []struct {
+		desc     string
+		file     string
+		expected *datamodel.RedisCache
+	}{
+		{
+			desc: "redis cache with default recipe",
+			file: "rediscacheresource_defaultrecipe.json",
+			expected: &datamodel.RedisCache{
+				BaseResource: createBaseResource(),
+				Properties: datamodel.RedisCacheProperties{
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					Host:                    "",
+					Port:                    0,
+					TLS:                     false,
+					Username:                "",
+					Recipe:                  linkrp.LinkRecipe{Name: "default"},
+				},
+			},
+		},
+		{
+			desc: "redis cache with named recipe",
+			file: "rediscacheresource_recipe_named.json",
+			expected: &datamodel.RedisCache{
+				BaseResource: createBaseResource(),
+				Properties: datamodel.RedisCacheProperties{
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					Host:                    "",
+					Port:                    0,
+					TLS:                     false,
+					Username:                "",
+					Recipe:                  linkrp.LinkRecipe{Name: "redis-test"},
+				},
+			},
+		},
+		{
+			desc: "redis cache with recipe overridden values",
+			file: "rediscacheresource_recipe_overridevalues.json",
+			expected: &datamodel.RedisCache{
+				BaseResource: createBaseResource(),
+				Properties: datamodel.RedisCacheProperties{
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					Host:                    "myrediscache.redis.cache.windows.net",
+					Port:                    10255,
+					TLS:                     false,
+					Username:                "",
+					Recipe:                  linkrp.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
+				},
+			},
+		},
+		{
+			desc: "redis cache manual with resources",
+			file: "rediscacheresource_manual.json",
+			expected: &datamodel.RedisCache{
+				BaseResource: createBaseResource(),
+				Properties: datamodel.RedisCacheProperties{
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
+					Host:                    "myrediscache.redis.cache.windows.net",
+					Port:                    10255,
+					TLS:                     true,
+					Username:                "admin",
+					Resources:               []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
+					Secrets: datamodel.RedisCacheSecrets{
+						Password:         "testPassword",
+						ConnectionString: "test-connection-string",
+						URL:              "test-url",
+					},
+				},
+			},
+		},
+		{
+			desc: "redis cache manual without resources",
+			file: "rediscacheresource_manual_noresources.json",
+			expected: &datamodel.RedisCache{
+				BaseResource: createBaseResource(),
+				Properties: datamodel.RedisCacheProperties{
+					BasicResourceProperties: createBasicResourceProperties(),
+					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
+					Host:                    "myrediscache.redis.cache.windows.net",
+					Port:                    10255,
+					TLS:                     false,
+					Username:                "",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
-		versionedResource := &RedisCacheResource{}
-		err := json.Unmarshal(rawPayload, versionedResource)
-		require.NoError(t, err)
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload := testutil.ReadFixture(tc.file)
+			versionedResource := &RedisCacheResource{}
+			err := json.Unmarshal(rawPayload, versionedResource)
+			require.NoError(t, err)
 
-		// act
-		dm, err := versionedResource.ConvertTo()
+			// act
+			dm, err := versionedResource.ConvertTo()
 
-		// assert
-		require.NoError(t, err)
-		convertedResource := dm.(*datamodel.RedisCache)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/redis0", convertedResource.ID)
-		require.Equal(t, "redis0", convertedResource.Name)
-		require.Equal(t, linkrp.N_RedisCachesResourceType, convertedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		switch v := versionedResource.Properties.(type) {
-		case *ResourceRedisCacheProperties:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", convertedResource.Properties.Resource)
-			require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
-			require.Equal(t, int32(10255), convertedResource.Properties.Port)
-			require.Equal(t, linkrpdm.LinkModeResource, convertedResource.Properties.Mode)
-			if payload == "rediscacheresource.json" {
-				require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
-				require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
-				require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-			}
-		case *RecipeRedisCacheProperties:
-			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
-			if payload == "rediscacheresource_recipe2.json" {
-				parameters := map[string]any{"port": float64(6081)}
-				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
-				require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
-				require.Equal(t, int32(10255), convertedResource.Properties.Port)
-			}
-			require.Equal(t, linkrpdm.LinkModeRecipe, convertedResource.Properties.Mode)
-		case *ValuesRedisCacheProperties:
-			require.Equal(t, "myrediscache.redis.cache.windows.net", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
-			require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
-			require.Equal(t, []rpv1.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-			require.Equal(t, linkrpdm.LinkModeValues, convertedResource.Properties.Mode)
-		}
+			// assert
+			require.NoError(t, err)
+			convertedResource := dm.(*datamodel.RedisCache)
+
+			require.Equal(t, tc.expected, convertedResource)
+		})
 	}
 }
 
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json", "rediscacheresourcedatamodel_recipe.json", "rediscacheresourcedatamodel_recipe2.json"}
-	for _, payload := range testset {
-		// arrange
-		rawPayload := loadTestData(payload)
-		resource := &datamodel.RedisCache{}
-		err := json.Unmarshal(rawPayload, resource)
-		require.NoError(t, err)
+	testset1 := []struct {
+		desc     string
+		file     string
+		expected *RedisCacheResource
+	}{
+		{
+			desc: "redis cache manual with resources",
+			file: "rediscacheresourcedatamodel_manual.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Host:                 to.Ptr("myrediscache.redis.cache.windows.net"),
+					Port:                 to.Ptr(int32(10255)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr(""),
+					TLS:                  to.Ptr(false),
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr(RedisID),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+			},
+		},
+		{
+			desc: "redis cache default recipe",
+			file: "rediscacheresourcedatamodel_recipe_default.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Host:                 to.Ptr(""),
+					Port:                 to.Ptr(int32(0)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr(""),
+					TLS:                  to.Ptr(false),
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr(RedisID),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+			},
+		},
+		{
+			desc: "redis cache named recipe",
+			file: "rediscacheresourcedatamodel_recipe_params.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
+					Host:                 to.Ptr(""),
+					Port:                 to.Ptr(int32(0)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr("redis-test"), Parameters: map[string]any{"port": float64(6081)}},
+					Username:             to.Ptr(""),
+					TLS:                  to.Ptr(false),
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr(RedisID),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+			},
+		},
+		{
+			desc: "redis cache manual with resources",
+			file: "rediscacheresourcedatamodel_manual_resources.json",
+			expected: &RedisCacheResource{
+				Location: to.Ptr(""),
+				Properties: &RedisCacheProperties{
+					Environment:          to.Ptr(EnvironmentID),
+					Application:          to.Ptr(ApplicationID),
+					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
+					Host:                 to.Ptr("myrediscache.redis.cache.windows.net"),
+					Port:                 to.Ptr(int32(10255)),
+					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
+					Username:             to.Ptr(""),
+					TLS:                  to.Ptr(true),
+					Status: &ResourceStatus{
+						OutputResources: nil,
+					},
+					Resources: []*ResourceReference{
+						{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")},
+						{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")},
+					},
+				},
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
+				ID:   to.Ptr(RedisID),
+				Name: to.Ptr("redis0"),
+				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+			},
+		},
+	}
 
-		// act
-		versionedResource := &RedisCacheResource{}
-		err = versionedResource.ConvertFrom(resource)
+	for _, tc := range testset1 {
+		t.Run(tc.desc, func(t *testing.T) {
+			rawPayload := testutil.ReadFixture(tc.file)
+			resource := &datamodel.RedisCache{}
+			err := json.Unmarshal(rawPayload, resource)
+			require.NoError(t, err)
 
-		// assert
-		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/redis0", *versionedResource.ID)
-		require.Equal(t, "redis0", *versionedResource.Name)
-		require.Equal(t, linkrp.N_RedisCachesResourceType, *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetRedisCacheProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetRedisCacheProperties().Environment)
-		switch v := versionedResource.Properties.(type) {
-		case *ResourceRedisCacheProperties:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", *v.Resource)
-			require.Equal(t, "myrediscache.redis.cache.windows.net", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			if payload == "rediscacheresourcedatamodel.json" {
-				require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-				require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
-			}
-		case *RecipeRedisCacheProperties:
-			require.Equal(t, "redis-test", *v.Recipe.Name)
-			if payload == "rediscacheresourcedatamodel_recipe2.json" {
-				parameters := map[string]any{"port": float64(6081)}
-				require.Equal(t, parameters, v.Recipe.Parameters)
-			}
-		case *ValuesRedisCacheProperties:
-			require.Equal(t, "myrediscache.redis.cache.windows.net", *v.Host)
-			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
-		}
+			versionedResource := &RedisCacheResource{}
+			err = versionedResource.ConvertFrom(resource)
+			require.NoError(t, err)
+
+			// Skip system data comparison
+			versionedResource.SystemData = nil
+
+			require.Equal(t, tc.expected, versionedResource)
+		})
 	}
 }
 
 func TestRedisCache_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
-	testset := []string{"rediscacheresource-invalidmode.json", "rediscacheresource-invalidmode2.json", "rediscacheresource-invalidmode3.json", "rediscacheresource-invalidmode4.json"}
+	testset := []string{"rediscacheresource-invalid.json", "rediscacheresource-invalid2.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData(payload)
+		rawPayload := testutil.ReadFixture(payload)
 		versionedResource := &RedisCacheResource{}
 		err := json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
-		var expectedErr v1.ErrClientRP
-		if payload == "rediscacheresource-invalidmode.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "Unsupported mode abc"
+		if payload == "rediscacheresource-invalid.json" {
+			expectedErr := v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+			_, err = versionedResource.ConvertTo()
+			require.Equal(t, &expectedErr, err)
 		}
-		if payload == "rediscacheresource-invalidmode2.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "resource is a required property for mode \"resource\""
+		if payload == "rediscacheresource-invalid2.json" {
+			expectedErr := v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"}
+			_, err = versionedResource.ConvertTo()
+			require.Equal(t, &expectedErr, err)
 		}
-		if payload == "rediscacheresource-invalidmode3.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "recipe is a required property for mode \"recipe\""
-		}
-		if payload == "rediscacheresource-invalidmode4.json" {
-			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "host and port are required properties for mode \"values\""
-		}
-		_, err = versionedResource.ConvertTo()
-		require.Equal(t, &expectedErr, err)
 	}
 }
 
@@ -159,7 +309,7 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -172,7 +322,7 @@ func TestRedisCache_ConvertFromValidation(t *testing.T) {
 
 func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("rediscachesecrets.json")
+	rawPayload := testutil.ReadFixture("/rediscachesecrets.json")
 	versioned := &RedisCacheSecrets{}
 	err := json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
@@ -185,11 +335,12 @@ func TestRedisCacheSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	converted := dm.(*datamodel.RedisCacheSecrets)
 	require.Equal(t, "test-connection-string", converted.ConnectionString)
 	require.Equal(t, "testPassword", converted.Password)
+	require.Equal(t, "test-url", converted.URL)
 }
 
 func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := loadTestData("rediscachesecretsdatamodel.json")
+	rawPayload := testutil.ReadFixture("rediscachesecretsdatamodel.json")
 	secrets := &datamodel.RedisCacheSecrets{}
 	err := json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
@@ -202,6 +353,7 @@ func TestRedisCacheSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test-connection-string", secrets.ConnectionString)
 	require.Equal(t, "testPassword", secrets.Password)
+	require.Equal(t, "test-url", secrets.URL)
 }
 
 func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
@@ -209,7 +361,7 @@ func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -217,5 +369,29 @@ func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
 		versioned := &RedisCacheSecrets{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
+	}
+}
+
+func createBaseResource() v1.BaseResource {
+	return v1.BaseResource{
+		TrackedResource: v1.TrackedResource{
+			ID:   RedisID,
+			Name: "redis0",
+			Type: linkrp.N_RedisCachesResourceType,
+			Tags: map[string]string{},
+		},
+		InternalMetadata: v1.InternalMetadata{
+			CreatedAPIVersion:      "",
+			UpdatedAPIVersion:      "2022-03-15-privatepreview",
+			AsyncProvisioningState: v1.ProvisioningStateAccepted,
+		},
+		SystemData: v1.SystemData{},
+	}
+}
+
+func createBasicResourceProperties() rpv1.BasicResourceProperties {
+	return rpv1.BasicResourceProperties{
+		Application: ApplicationID,
+		Environment: EnvironmentID,
 	}
 }

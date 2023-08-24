@@ -12,7 +12,7 @@ param environment string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-mongodb-manual-provisioning'
+  name: 'corerp-resources-mongodb-mp'
   location: 'global'
   properties: {
     environment: environment
@@ -20,7 +20,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mdb-us-app-ctnr'
+  name: 'mdb-us-app-ctnr-old'
   location: 'global'
   properties: {
     application: app.id
@@ -38,7 +38,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 // https://hub.docker.com/_/mongo/
 resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mdb-us-ctnr'
+  name: 'mdb-us-ctnr-old'
   location: 'global'
   properties: {
     application: app.id
@@ -61,7 +61,7 @@ resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview'
 }
 
 resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'mdb-us-rte'
+  name: 'mdb-us-rte-old'
   location: 'global'
   properties: {
     application: app.id
@@ -70,7 +70,7 @@ resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
 }
 
 resource mongo 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mdb-us-db'
+  name: 'mdb-us-db-old'
   location: 'global'
   properties: {
     application: app.id
@@ -78,10 +78,10 @@ resource mongo 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
     resourceProvisioning: 'manual'
     host: mongoRoute.properties.hostname
     port: mongoRoute.properties.port
-    database: 'mongodb-${app.name}'
+    database: 'mongodb-o-${app.name}'
     username: username
     secrets: {
-      connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}/mongodb-${app.name}'
+      connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}/mongodb-o-${app.name}'
       password: password
     }
   }

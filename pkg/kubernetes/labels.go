@@ -35,7 +35,10 @@ const (
 	LabelManagedByRadiusRP = "radius-rp"
 
 	FieldManager = "radius-rp"
-	ControlPlane = "radius-control-plane"
+
+	// ControlPlanePartOfLabelValue is the value we use for 'app.kubernetes.io/part-of' in Radius's control-plane components.
+	// This value can be used to query all of the pods that make up the control plane (for example).
+	ControlPlanePartOfLabelValue = "radius"
 
 	AnnotationSecretHash = "radius.dev/secret-hash"
 	RadiusDevPrefix      = "radius.dev/"
@@ -60,8 +63,6 @@ const (
 // In general, descriptive labels should be applied all to Kubernetes objects, and selector labels should be used
 // when programmatically querying those objects.
 
-// # Function Explanation
-//
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a Radius resource.
 // The descriptive labels are a superset of the selector labels.
 func MakeDescriptiveLabels(application string, resource string, resourceType string) map[string]string {
@@ -75,8 +76,6 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 	}
 }
 
-// # Function Explanation
-//
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes Dapr resource associated with a Radius resource.
 // The descriptive labels are a superset of the selector labels.
 func MakeDescriptiveDaprLabels(application string, resource string, resourceType string) map[string]any {
@@ -94,8 +93,6 @@ func MakeDescriptiveDaprLabels(application string, resource string, resourceType
 	}
 }
 
-// # Function Explanation
-//
 // MakeSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
@@ -113,8 +110,6 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 	}
 }
 
-// # Function Explanation
-//
 // MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
@@ -130,8 +125,6 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 	}
 }
 
-// # Function Explanation
-//
 // NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
 // All name will be validated by swagger validation so that it does not get non-RFC1035 compliant characters.
 // Therefore, this function will lowercase the name without allowed character validation.
@@ -149,8 +142,6 @@ func NormalizeResourceName(name string) string {
 	return normalized
 }
 
-// # Function Explanation
-//
 // NormalizeDaprResourceName normalizes resource name used for kubernetes Dapr resource name scoped in namespace.
 // All name will be validated by swagger validation so that it does not get non-RFC1035 compliant characters.
 // Therefore, this function will lowercase the name without allowed character validation. This function panics
@@ -169,8 +160,6 @@ func NormalizeDaprResourceName(name string) string {
 	return normalized
 }
 
-// # Function Explanation
-//
 // ConvertResourceTypeToLabelValue converts the given string to a value that Kubernetes allows i.e.
 // it replaces the first occurrence of "/" with "-" and returns the modified string.
 // Example: Applications.Core/containers becomes Applications.Core-Containers
@@ -178,8 +167,6 @@ func ConvertResourceTypeToLabelValue(resourceType string) string {
 	return strings.Replace(resourceType, "/", "-", 1)
 }
 
-// # Function Explanation
-//
 // ConvertLabelToResourceType converts from kubernetes label value to Radius resource type i.e.
 // it replaces the first occurrence of "-" with "/" in the given string and returns the result.
 // Example: Applications.Core-containers becomes Applications.Core/Containers

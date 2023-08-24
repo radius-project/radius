@@ -26,8 +26,7 @@ import (
 
 // NewCommand creates an instance of the command for the `rad credential create` command.
 //
-// # Function Explanation
-//
+
 // NewCommand() creates a new command for registering cloud provider credentials and adds subcommands for Azure and AWS.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
@@ -37,7 +36,9 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 		Long:  "Register (Add or update) cloud provider configuration for a Radius installation." + common.LongDescriptionBlurb,
 		Example: `
 # Register (Add or update) cloud provider credential for Azure with service principal authentication
-rad credential register azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>		
+rad credential register azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> 	
+# Register (Add or Update) cloud provider credential for AWS with IAM authentication
+rad credential register aws --access-key-id <access-key-id> --secret-access-key <secret-access-key>	
 `,
 	}
 

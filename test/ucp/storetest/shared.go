@@ -96,6 +96,7 @@ var RadiusPlaneData = map[string]any{
 	},
 }
 
+// MarshalOrPanic takes in any type and returns a byte slice, panicking if an error occurs while marshalling.
 func MarshalOrPanic(in any) []byte {
 	b, err := json.Marshal(in)
 	if err != nil {
@@ -138,6 +139,7 @@ func compareObjects(t *testing.T, expected *store.Object, actual *store.Object) 
 	require.Equal(t, expectedCopy, actualCopy)
 }
 
+// CompareObjectLists compares two slices of store.Objects, ignoring their ETags.
 func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Object) {
 	t.Helper()
 
@@ -159,6 +161,9 @@ func CompareObjectLists(t *testing.T, expected []store.Object, actual []store.Ob
 	require.ElementsMatch(t, expectedCopy, actualCopy)
 }
 
+// This function tests the StorageClient's Get, Save and Delete methods by creating, updating and deleting objects with
+// different IDs and scopes, and checks the results of various query scenarios with different filters and scopes. It also
+// checks that the expected objects are returned.
 func RunTest(t *testing.T, client store.StorageClient, clear func(t *testing.T)) {
 	ctx, cancel := testcontext.NewWithCancel(t)
 	t.Cleanup(cancel)

@@ -126,8 +126,6 @@ func New(
 	}
 }
 
-// # Function Explanation
-//
 // Start starts worker's message loop - it starts a loop to process messages from a queue concurrently, and handles deduplication, updating
 // resource and operation status, and running the operation. It returns an error if it fails to start the dequeuer.
 func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
@@ -173,7 +171,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			asyncCtrl := w.registry.Get(armReqCtx.OperationType)
 			if asyncCtrl == nil {
-				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + armReqCtx.OperationType.String())
+				opLogger.Error(nil, "cannot process unknown operation: "+armReqCtx.OperationType.String())
 				if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
@@ -182,7 +180,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
-				opLogger.V(ucplog.Error).Info(errMsg)
+				opLogger.Error(nil, errMsg)
 				failed := ctrl.NewFailedResult(v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: errMsg,
@@ -201,7 +199,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 			if dup {
-				opLogger.V(ucplog.Warn).Info("duplicated message detected")
+				opLogger.Info("duplicated message detected")
 				return
 			}
 
@@ -241,8 +239,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		defer func(done chan struct{}) {
 			close(done)
 			if err := recover(); err != nil {
-				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
-				logger.V(ucplog.Error).Info(msg)
+				msg := fmt.Errorf("recovering from panic %v: %s", err, debug.Stack())
+				logger.Error(msg, "recovering from panic")
+
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
 				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and

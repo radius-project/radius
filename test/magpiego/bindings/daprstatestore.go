@@ -8,6 +8,8 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 )
 
+// DaprStateStoreBinding checks if the environment parameter COMPONENTNAME is set and if so, creates a Dapr client, saves a
+// value to the state store and returns a BindingStatus indicating success or failure.
 func DaprStateStoreBinding(envParams map[string]string) BindingStatus {
 	// From https://docs.dapr.io/developing-applications/sdks/go/go-client/
 	stateStoreName := envParams["COMPONENTNAME"]

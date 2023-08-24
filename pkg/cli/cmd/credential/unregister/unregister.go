@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad credential unregister` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a new Runner to unregister a configured cloud provider credential from the
 // Radius installation, and adds flags for output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -80,8 +79,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad credential unregister` command.
 //
-// # Function Explanation
-//
+
 // Validate validates the command line arguments, workspace and output format, and checks if the cloud provider
 // name is valid, returning an error if any of these checks fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -109,8 +107,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad credential unregister` command.
 //
-// # Function Explanation
-//
+
 // Run attempts to delete a cloud provider credential for a given Radius installation, and logs a message
 // depending on whether the credential was found and deleted or not.
 func (r *Runner) Run(ctx context.Context) error {

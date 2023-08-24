@@ -32,30 +32,22 @@ type MockFactory struct {
 	DiagnosticsClient            clients.DiagnosticsClient
 }
 
-// # Function Explanation
-//
 // CreateDeploymentClient function takes in a context and a workspace and returns a DeploymentClient and an error, if any.
 func (f *MockFactory) CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error) {
 	return nil, nil
 }
 
-// # Function Explanation
-//
 // CreateDiagnosticsClient function takes in a context and a workspace and returns a DiagnosticsClient without any errors.
 func (f *MockFactory) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
 	return f.DiagnosticsClient, nil
 }
 
-// # Function Explanation
-//
 // CreateApplicationsManagementClient function takes in a context and a workspace and returns an ApplicationsManagementClient
 // and an error if one occurs.
 func (f *MockFactory) CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error) {
 	return f.ApplicationsManagementClient, nil
 }
 
-// # Function Explanation
-//
 // CreateCredentialManagementClient function takes in a context and a workspace and returns a CredentialManagementClient and does not return an error.
 func (f *MockFactory) CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error) {
 	return f.CredentialManagementClient, nil

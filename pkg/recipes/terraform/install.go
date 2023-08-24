@@ -21,20 +21,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
+	"github.com/project-radius/radius/pkg/metrics"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
 	installSubDir = "install"
 )
 
-// Install installs Terraform under /install in the provided Terraform root directory for the resource.
-// Returns the path to the installed Terraform binary.
+// Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
+// the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
+// if the directory creation or Terraform installation fails.
 func Install(ctx context.Context, installer *install.Installer, tfDir string) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -45,6 +49,8 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 	}
 
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
+
+	installStartTime := time.Now()
 	// Re-visit this: consider checking if an existing installation of same version of Terraform is available.
 	// For initial iteration we will always install Terraform for every execution of the recipe driver.
 	execPath, err := installer.Ensure(ctx, []src.Source{
@@ -54,8 +60,22 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to install terraform: %w", err)
+		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
+			[]attribute.KeyValue{
+				metrics.TerraformVersionAttrKey.String("latest"),
+				metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
+			},
+		)
+		return "", err
 	}
+
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
+		[]attribute.KeyValue{
+			metrics.TerraformVersionAttrKey.String("latest"),
+			metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
+		},
+	)
+
 	logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
 
 	return execPath, nil

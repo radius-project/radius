@@ -99,10 +99,12 @@ type TestOptions struct {
 	DiscoveryClient discovery.DiscoveryInterface
 }
 
+// NewTestOptions creates a new TestOptions object with the given testing.T object.
 func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
+// NewRPTest creates a new RPTest instance with the given name, steps and initial resources.
 func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) RPTest {
 	return RPTest{
 		Options:          NewRPTestOptions(t),
@@ -113,7 +115,8 @@ func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...
 	}
 }
 
-// K8sSecretResource creates the secret resource for Initial Resource in NewRPTest().
+// K8sSecretResource creates the secret resource from the given namespace, name, secretType and key-value pairs,
+// for Initial Resource in NewRPTest().
 func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructured.Unstructured {
 	if len(kv)%2 != 0 {
 		panic("key value pairs must be even")
@@ -152,6 +155,8 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 	}
 }
 
+// CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
+// RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name); err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
@@ -166,13 +171,15 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
+// Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
 func (ct RPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
 		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
 	}
 }
 
-// CheckRequiredFeatures checks the test environment for the features that the test requires.
+// CheckRequiredFeatures checks the test environment for the features that the test requires and skips the test if not, otherwise
+// returns an error if there is an issue.
 func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 	for _, feature := range ct.RequiredFeatures {
 		var crd, message string
@@ -266,7 +273,7 @@ func (ct RPTest) Test(t *testing.T) {
 			if step.SkipKubernetesOutputResourceValidation {
 				t.Logf("skipping validation of resources...")
 			} else if step.RPResources == nil || len(step.RPResources.Resources) == 0 {
-				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
+				require.Fail(t, "no resource set was specified and SkipKubernetesOutputResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
@@ -319,10 +326,11 @@ func (ct RPTest) Test(t *testing.T) {
 
 					// Use the AWS CloudControl.Delete method to delete the resource
 					err := validation.DeleteAWSResource(ctx, &resource, ct.Options.AWSClient)
-					require.NoErrorf(t, err, "failed to delete %s", resource.Name)
-					t.Logf("finished deleting %s", ct.Description)
+					if err != nil {
+						t.Logf("failed to delete %s: %s", resource.Name, err)
+					}
 
-					// Retry
+					// Ensure that the resource is deleted with retries
 					notFound := false
 					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
@@ -341,6 +349,7 @@ func (ct RPTest) Test(t *testing.T) {
 							time.Sleep(10 * time.Second)
 						}
 					}
+
 					require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
 					t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 				} else {

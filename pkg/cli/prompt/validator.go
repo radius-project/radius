@@ -34,8 +34,7 @@ const (
 //
 // Largely matches https://github.com/kubernetes/apimachinery/blob/master/pkg/util/validation/validation.go#LL226C33-L226C59
 //
-// # Function Explanation
-//
+
 // ValidateKubernetesNamespace checks if the input string is a valid Kubernetes namespace name, and returns an error if it is not.
 func ValidateKubernetesNamespace(input string) error {
 	r := regexp.MustCompile("^[a-z]([-a-z0-9]*[a-z0-9])?$")
@@ -50,8 +49,7 @@ func ValidateKubernetesNamespace(input string) error {
 //
 // Largely matches https://github.com/kubernetes/apimachinery/blob/master/pkg/util/validation/validation.go#LL226C33-L226C59
 //
-// # Function Explanation
-//
+
 // ValidateKubernetesNamespaceOrDefault checks if the input is an empty string, and if so, returns nil, otherwise it
 // calls ValidateKubernetesNamespace and returns the result. If ValidateKubernetesNamespace returns an error,
 // ValidateKubernetesNamespaceOrDefault will also return an error.
@@ -67,8 +65,7 @@ func ValidateKubernetesNamespaceOrDefault(input string) error {
 //
 // Largely matches https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
 //
-// # Function Explanation
-//
+
 // ValidateResourceName checks if the given string is a valid resource name, and returns an error if it is not.
 func ValidateResourceName(input string) error {
 	// Note: resource names vary in length requirements depending on the type, so we don't validate length here.
@@ -84,8 +81,7 @@ func ValidateResourceName(input string) error {
 //
 // Largely matches https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
 //
-// # Function Explanation
-//
+
 // ValidateResourceNameOrDefault checks if the input string is empty, and if it is, returns nil, otherwise
 // it calls the ValidateResourceName function to check if the input string is valid.
 func ValidateResourceNameOrDefault(input string) error {
@@ -98,8 +94,7 @@ func ValidateResourceNameOrDefault(input string) error {
 
 // ValidateUUIDv4 validates the user input according to the rules for a UUID v4 (GUID).
 //
-// # Function Explanation
-//
+
 // ValidateUUIDv4 checks if the input string is a valid UUIDv4 and returns an error if it is not.
 func ValidateUUIDv4(input string) error {
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")

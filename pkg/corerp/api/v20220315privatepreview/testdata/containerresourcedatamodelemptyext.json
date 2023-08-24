@@ -1,89 +1,85 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
-    "name": "container0",
-    "type": "Applications.Core/containers",
-    "systemData": {
-      "createdBy": "fakeid@live.com",
-      "createdByType": "User",
-      "createdAt": "2021-09-24T19:09:54.2403864Z",
-      "lastModifiedBy": "fakeid@live.com",
-      "lastModifiedByType": "User",
-      "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
-    },
-    "tags": {
-      "env": "dev"
-    },
-    "provisioningState": "Succeeded",
-    "properties": {
-      "status": {
-        "outputResources": [
-          {
-            "LocalID": "Deployment",
-            "ResourceType": {
-              "Type": "containers",
-              "Provider": "aks"
-            }
-          }
-        ]
-      },
-      "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-      "connections": {
-        "inventory": {
-          "source": "inventory_route_id",
-          "iam": {
-            "kind": "azure",
-            "roles": [
-              "read"
-            ]
-          }
-        }
-      },
-      "identity": {
-        "kind": "azure.com.workload",
-        "oidcIssuer": "https://oidcuri/id",
-        "resource": "resourceid"
-      },
-      "container": {
-        "image": "radius.azurecr.io/webapptutorial-todoapp",
-        "livenessProbe": {
-          "kind": "tcp",
-          "tcp": {
-            "healthProbeBase": {
-              "failureThreshold": 5,
-              "initialDelaySeconds": 5,
-              "periodSeconds": 5
-            },
-            "containerPort": 8080
-          }
-        },
-        "command": [
-          "/bin/sh"
-        ],
-        "args": [
-          "-c",
-          "while true; do echo hello; sleep 10;done"
-        ],
-        "workingDir": "/app"
-      },
-      "extensions": [
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
+  "name": "container0",
+  "type": "Applications.Core/containers",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "provisioningState": "Succeeded",
+  "properties": {
+    "status": {
+      "outputResources": [
         {
-          "kind": "manualScaling",
-          "manualScaling": {
-            "replicas": 2
-          }
-        },
-        {
-          "kind": "daprSidecar",
-          "daprSidecar": {
-            "appId": "app-id",
-            "appPort": 80,
-            "config": "config",
-            "protocol": "http"
-          }
-        },
-        {
-          "kind": "kubernetesMetadata"
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
       ]
-    }
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "connections": {
+      "inventory": {
+        "source": "inventory_route_id",
+        "iam": {
+          "kind": "azure",
+          "roles": [
+            "read"
+          ]
+        }
+      }
+    },
+    "identity": {
+      "kind": "azure.com.workload",
+      "oidcIssuer": "https://oidcuri/id",
+      "resource": "resourceid"
+    },
+    "container": {
+      "image": "radius.azurecr.io/webapptutorial-todoapp",
+      "livenessProbe": {
+        "kind": "tcp",
+        "tcp": {
+          "healthProbeBase": {
+            "failureThreshold": 5,
+            "initialDelaySeconds": 5,
+            "periodSeconds": 5
+          },
+          "containerPort": 8080
+        }
+      },
+      "command": [
+        "/bin/sh"
+      ],
+      "args": [
+        "-c",
+        "while true; do echo hello; sleep 10;done"
+      ],
+      "workingDir": "/app"
+    },
+    "extensions": [
+      {
+        "kind": "manualScaling",
+        "manualScaling": {
+          "replicas": 2
+        }
+      },
+      {
+        "kind": "daprSidecar",
+        "daprSidecar": {
+          "appId": "app-id",
+          "appPort": 80,
+          "config": "config",
+          "protocol": "http"
+        }
+      },
+      {
+        "kind": "kubernetesMetadata"
+      }
+    ]
   }
+}

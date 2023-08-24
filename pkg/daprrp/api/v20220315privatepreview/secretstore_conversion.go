@@ -28,8 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned DaprSecretStore resource to version-agnostic datamodel and returns an error if the
 // resourceProvisioning is set to manual and the required fields are not specified.
 func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -101,9 +99,8 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
-// ConvertFrom converts from version-agnostic datamodel to the versioned DaprSecretStore resource.
+// ConvertFrom converts a version-agnostic DataModelInterface to a versionined DaprSecretStoreResource. It returns
+// an error if the mode is unsupported or required properties are missing.
 func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprSecretStore, ok := src.(*datamodel.DaprSecretStore)
 	if !ok {
@@ -126,7 +123,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		Metadata:             daprSecretStore.Properties.Metadata,
 		ComponentName:        to.Ptr(daprSecretStore.Properties.ComponentName),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
 		},
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {

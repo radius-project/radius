@@ -37,129 +37,160 @@ const (
 	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0"
 	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis-0"
 
-	recipeName = "cosmosDB"
+	recipeName      = "cosmosDB"
+	terraformRecipe = "terraform-cosmosDB"
 )
 
-func Test_GetConfigurationAzure(t *testing.T) {
-	envConfig := &recipes.Configuration{
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				EnvironmentNamespace: envNamespace,
-			},
-		},
-		Providers: createAzureProvider(),
-	}
-	envResource := model.EnvironmentResource{
-		Properties: &model.EnvironmentProperties{
-			Compute: &model.KubernetesCompute{
-				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(envNamespace),
-				ResourceID: to.Ptr(envResourceId),
-			},
-			Providers: &model.Providers{
-				Azure: &model.ProvidersAzure{
-					Scope: to.Ptr(azureScope),
+func TestGetConfiguration(t *testing.T) {
+	configTests := []struct {
+		name           string
+		envResource    *model.EnvironmentResource
+		appResource    *model.ApplicationResource
+		expectedConfig *recipes.Configuration
+		errString      string
+	}{
+		{
+			name: "azure provider with env resource",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.KubernetesCompute{
+						Kind:       to.Ptr(kind),
+						Namespace:  to.Ptr(envNamespace),
+						ResourceID: to.Ptr(envResourceId),
+					},
+					Providers: &model.Providers{
+						Azure: &model.ProvidersAzure{
+							Scope: to.Ptr(azureScope),
+						},
+					},
 				},
 			},
-		},
-	}
-	result, err := getConfiguration(&envResource, nil)
-	require.NoError(t, err)
-	require.Equal(t, envConfig, result)
-}
-
-func Test_GetConfigurationAWS(t *testing.T) {
-	envConfig := &recipes.Configuration{
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				EnvironmentNamespace: envNamespace,
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Providers: createAzureProvider(),
 			},
 		},
-		Providers: createAWSProvider(),
-	}
-	envResource := model.EnvironmentResource{
-		Properties: &model.EnvironmentProperties{
-			Compute: &model.KubernetesCompute{
-				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(envNamespace),
-				ResourceID: to.Ptr(envResourceId),
-			},
-			Providers: &model.Providers{
-				Aws: &model.ProvidersAws{
-					Scope: to.Ptr(awsScope),
+		{
+			name: "aws provider with env resource",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.KubernetesCompute{
+						Kind:       to.Ptr(kind),
+						Namespace:  to.Ptr(envNamespace),
+						ResourceID: to.Ptr(envResourceId),
+					},
+					Providers: &model.Providers{
+						Aws: &model.ProvidersAws{
+							Scope: to.Ptr(awsScope),
+						},
+					},
 				},
 			},
-		},
-	}
-	result, err := getConfiguration(&envResource, nil)
-	require.NoError(t, err)
-	require.Equal(t, envConfig, result)
-
-	appConfig := &recipes.Configuration{
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace: "app-default",
+			appResource: nil,
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            envNamespace,
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Providers: createAWSProvider(),
 			},
 		},
-		Providers: createAWSProvider(),
-	}
-	appResource := model.ApplicationResource{
-		Properties: &model.ApplicationProperties{
-			Status: &model.ResourceStatus{
-				Compute: &model.KubernetesCompute{
-					Kind:       to.Ptr(kind),
-					Namespace:  to.Ptr(appNamespace),
-					ResourceID: to.Ptr(appResourceId),
+		{
+			name: "aws provider with env and app resource",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.KubernetesCompute{
+						Kind:       to.Ptr(kind),
+						Namespace:  to.Ptr(envNamespace),
+						ResourceID: to.Ptr(envResourceId),
+					},
+					Providers: &model.Providers{
+						Aws: &model.ProvidersAws{
+							Scope: to.Ptr(awsScope),
+						},
+					},
 				},
 			},
-		},
-	}
-	result, err = getConfiguration(&envResource, &appResource)
-	require.NoError(t, err)
-	require.Equal(t, appConfig, result)
-}
-
-func Test_InvalidApplicationError(t *testing.T) {
-	envResource := model.EnvironmentResource{
-		Properties: &model.EnvironmentProperties{
-			Compute: &model.KubernetesCompute{
-				Kind:       to.Ptr(kind),
-				Namespace:  to.Ptr(envNamespace),
-				ResourceID: to.Ptr(envResourceId),
-			},
-		},
-	}
-	// Invalid app model (should have KubernetesCompute field)
-	appResource := model.ApplicationResource{
-		Properties: &model.ApplicationProperties{
-			Status: &model.ResourceStatus{
-				Compute: &model.EnvironmentCompute{},
-			},
-		},
-	}
-	_, err := getConfiguration(&envResource, &appResource)
-	require.Error(t, err)
-	require.Equal(t, err.Error(), "invalid model conversion")
-}
-
-func Test_InvalidEnvError(t *testing.T) {
-	// Invalid env model (should have KubernetesCompute field)
-	envResource := model.EnvironmentResource{
-		Properties: &model.EnvironmentProperties{
-			Compute: &model.EnvironmentCompute{
-				Kind:       to.Ptr(kind),
-				ResourceID: to.Ptr(envResourceId),
-			},
-			Providers: &model.Providers{
-				Azure: &model.ProvidersAzure{
-					Scope: to.Ptr(azureScope),
+			appResource: &model.ApplicationResource{
+				Properties: &model.ApplicationProperties{
+					Status: &model.ResourceStatus{
+						Compute: &model.KubernetesCompute{
+							Kind:       to.Ptr(kind),
+							Namespace:  to.Ptr(appNamespace),
+							ResourceID: to.Ptr(appResourceId),
+						},
+					},
 				},
 			},
+			expectedConfig: &recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace:            "app-default",
+						EnvironmentNamespace: envNamespace,
+					},
+				},
+				Providers: createAWSProvider(),
+			},
+		},
+		{
+			name: "invalid app resource",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.KubernetesCompute{
+						Kind:       to.Ptr(kind),
+						Namespace:  to.Ptr(envNamespace),
+						ResourceID: to.Ptr(envResourceId),
+					},
+				},
+			},
+			appResource: &model.ApplicationResource{
+				Properties: &model.ApplicationProperties{
+					Status: &model.ResourceStatus{
+						Compute: &model.EnvironmentCompute{},
+					},
+				},
+			},
+			errString: "invalid model conversion",
+		},
+		{
+			name: "invalid env resource",
+			envResource: &model.EnvironmentResource{
+				Properties: &model.EnvironmentProperties{
+					Compute: &model.EnvironmentCompute{
+						Kind:       to.Ptr(kind),
+						ResourceID: to.Ptr(envResourceId),
+					},
+					Providers: &model.Providers{
+						Azure: &model.ProvidersAzure{
+							Scope: to.Ptr(azureScope),
+						},
+					},
+				},
+			},
+			errString: ErrUnsupportedComputeKind.Error(),
 		},
 	}
-	_, err := getConfiguration(&envResource, nil)
-	require.Error(t, err)
-	require.Equal(t, err.Error(), "invalid model conversion")
+
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := getConfiguration(tc.envResource, tc.appResource)
+			if tc.errString != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.errString)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedConfig, result)
+			}
+		})
+	}
 }
 
 func createAzureProvider() datamodel.Providers {
@@ -189,14 +220,19 @@ func TestGetRecipeDefinition(t *testing.T) {
 					Scope: to.Ptr(azureScope),
 				},
 			},
-			Recipes: map[string]map[string]*model.EnvironmentRecipeProperties{
+			Recipes: map[string]map[string]model.RecipePropertiesClassification{
 				"Applications.Link/mongoDatabases": {
-					recipeName: {
+					recipeName: &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
+					},
+					terraformRecipe: &model.TerraformRecipeProperties{
+						TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+						TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
+						TemplateVersion: to.Ptr("1.1.0"),
 					},
 				},
 			},
@@ -207,6 +243,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		EnvironmentID: envResourceId,
 		ResourceID:    mongoResourceID,
 	}
+
 	t.Run("invalid resource id", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.ResourceID = "invalid-id"
@@ -214,6 +251,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to parse resourceID")
 	})
+
 	t.Run("recipe not found for the resource type", func(t *testing.T) {
 		metadata := recipeMetadata
 		metadata.ResourceID = redisID
@@ -221,6 +259,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
+
 	t.Run("success", func(t *testing.T) {
 		expected := recipes.EnvironmentDefinition{
 			Name:         recipeName,
@@ -235,6 +274,19 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, recipeDef, &expected)
 	})
+	t.Run("success-terraform", func(t *testing.T) {
+		recipeMetadata.Name = terraformRecipe
+		expected := recipes.EnvironmentDefinition{
+			Name:            terraformRecipe,
+			Driver:          recipes.TemplateKindTerraform,
+			ResourceType:    "Applications.Link/mongoDatabases",
+			TemplatePath:    "Azure/cosmosdb/azurerm",
+			TemplateVersion: "1.1.0",
+		}
+		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
+		require.NoError(t, err)
+		require.Equal(t, recipeDef, &expected)
+	})
 	t.Run("no recipes registered to the environment", func(t *testing.T) {
 		envResourceNilRecipe := envResource
 		envResourceNilRecipe.Properties.Recipes = nil
@@ -242,5 +294,4 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
-
 }

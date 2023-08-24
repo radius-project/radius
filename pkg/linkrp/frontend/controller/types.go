@@ -21,6 +21,9 @@ import (
 )
 
 var (
+	// AsyncOperationRetryAfter is polling interval for async create/update or delete resource operations.
+	AsyncOperationRetryAfter = time.Duration(5) * time.Second
+
 	// AsyncCreateOrUpdateMongoDatabaseTimeout is the timeout for async create or update mongo database
 	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(10) * time.Minute
 	// AsyncDeleteMongoDatabaseTimeout is the timeout for async delete mongo database

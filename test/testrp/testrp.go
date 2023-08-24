@@ -11,6 +11,8 @@ func main() {
 	http.ListenAndServe(":5000", nil)
 }
 
+// HelloServer responds to a request with a "Hello" message and adds a header to the response with a URL
+// from the request query parameters.
 func HelloServer(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Received request with URL: %s\n", r.URL.Path)
 	testRPURL := "http://testrp.radius-system:5000"

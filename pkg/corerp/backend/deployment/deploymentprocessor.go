@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
@@ -41,6 +40,7 @@ import (
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
@@ -58,6 +58,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
+// NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
 func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
@@ -83,6 +84,9 @@ type ResourceData struct {
 	RecipeData      linkrp.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
+// Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
+// resource being deployed, and then renders the resource using the fetched data. It returns an error if any of the fetches
+// fail or if the output resource does not have a provider specified or if the provider is not configured.
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
@@ -145,11 +149,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
-		if or.ResourceType.Provider == "" {
+		resourceType := or.GetResourceType()
+		if resourceType.Provider == "" {
 			return renderers.RendererOutput{}, fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 		}
-		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
+		if !dp.appmodel.IsProviderSupported(resourceType.Provider) {
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", resourceType.Provider, resourceType.Type))
 		}
 	}
 
@@ -172,9 +177,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	or := putOptions.Resource
-	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, or.ResourceType))
+	resourceType := or.GetResourceType()
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, resourceType))
 
-	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(or.ResourceType)
+	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
 	if err != nil {
 		return err
 	}
@@ -190,8 +196,8 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return err
 	}
 
-	if or.Identity.ResourceType == nil {
-		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", or.LocalID)
+	if or.ID.IsEmpty() {
+		err = fmt.Errorf("output resource %q does not have an id. This is a bug in the handler", or.LocalID)
 		return err
 	}
 
@@ -212,7 +218,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
-			value, _, err := pointer.Get(or.Resource)
+			value, _, err := pointer.Get(or.CreateResource)
 			if err != nil {
 				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
@@ -223,6 +229,9 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return nil
 }
 
+// Deploy deploys the given radius resource by ordering the output resources in deployment dependency order, deploying each
+// output resource, updating static values for connections, and transforming the radius resource with computed values. It
+// returns a DeploymentOutput and an error if one occurs.
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -243,26 +252,22 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	deployedOutputResourceProperties := map[string]map[string]string{}
 
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
+		resourceType := outputResource.GetResourceType()
+		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, resourceType))
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rpv1.DeploymentOutput{}, err
 		}
 
-		if outputResource.Identity.ResourceType == nil {
-			return rpv1.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
+		if outputResource.ID.IsEmpty() {
+			return rpv1.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an id. This is a bug in the handler", outputResource.LocalID)
 		}
 
 		// Build database resource - copy updated properties to Resource field
 		outputResource := rpv1.OutputResource{
-			LocalID:      outputResource.LocalID,
-			ResourceType: outputResource.ResourceType,
-			Identity:     outputResource.Identity,
-			Status: rpv1.OutputResourceStatus{
-				ProvisioningState:        string(v1.ProvisioningStateProvisioned),
-				ProvisioningErrorDetails: "",
-			},
+			LocalID: outputResource.LocalID,
+			ID:      outputResource.ID,
 		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
 	}
@@ -290,18 +295,20 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}, nil
 }
 
+// Delete deletes the output resources in reverse dependency order, starting with the resource deployed last.
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
 		outputResource := deployedOutputResources[i]
-		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+		resourceType := outputResource.GetResourceType()
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
 		if err != nil {
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
+		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, resourceType))
 		err = outputResourceModel.ResourceHandler.Delete(ctx, &handlers.DeleteOptions{Resource: &outputResource})
 		if err != nil {
 			return err
@@ -331,6 +338,7 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 	return rendererDependencies, nil
 }
 
+// FetchSecrets fetches the secret values from the given resource data and returns them as a map.
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]any, error) {
 	secretValues := map[string]any{}
 	for k, secretReference := range dependency.SecretValues {
@@ -366,7 +374,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	// Extract identity info.
 	envOpts.Identity = env.Properties.Compute.Identity
 	if envOpts.Identity == nil {
-		logger.V(ucplog.Debug).Info("environment identity is not specified.")
+		logger.V(ucplog.LevelDebug).Info("environment identity is not specified.")
 	}
 
 	// Get Environment KubernetesMetadata Info
@@ -592,7 +600,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = &parsedID
-	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.LinkRPNamespace) {
+	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources_radius.NamespaceApplicationsLink) {
 		// Application id is optional for link resource types
 		appID = nil
 	} else {
@@ -612,9 +620,9 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 
 func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, dependency ResourceData) (renderers.RendererDependency, error) {
 	// Get dependent resource identity
-	outputResourceIdentity := map[string]resourcemodel.ResourceIdentity{}
+	outputResourceIDs := map[string]resources.ID{}
 	for _, outputResource := range dependency.OutputResources {
-		outputResourceIdentity[outputResource.LocalID] = outputResource.Identity
+		outputResourceIDs[outputResource.LocalID] = outputResource.ID
 	}
 
 	// Get  dependent resource computedValues
@@ -639,7 +647,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 		ResourceID:      dependency.ID,
 		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
-		OutputResources: outputResourceIdentity,
+		OutputResources: outputResourceIDs,
 	}
 
 	return rendererDependency, nil

@@ -18,6 +18,7 @@ package validation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,6 +59,7 @@ type AWSResourceSet struct {
 	Resources []AWSResource
 }
 
+// ValidateAWSResources checks that the expected AWS resources exist and have the expected properties.
 func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
 		resourceType, err := GetResourceTypeName(ctx, &resource)
@@ -78,6 +81,9 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
+// DeleteAWSResource checks if the given AWS resource exists, deletes it if it does and waits until the delete is complete,
+//
+//	returning an error if any of these steps fail.
 func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) error {
 	resourceType, err := GetResourceTypeName(ctx, resource)
 	if err != nil {
@@ -106,12 +112,20 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 
 	// Wait till the delete is complete
 	maxWaitTime := 300 * time.Second
-	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client)
-	return waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client, func(options *cloudcontrol.ResourceRequestSuccessWaiterOptions) {
+		options.LogWaitAttempts = true
+	})
+	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)
+	if err != nil {
+		return fmt.Errorf("failed to delete resource %s after %s: %w", resource.Identifier, maxWaitTime, err)
+	}
+
+	return nil
 }
 
+// IsAWSResourceNotFound checks if the given AWS resource is not found.
 func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) (bool, error) {
 	// Verify that the resource is indeed deleted
 	resourceType, err := GetResourceTypeName(ctx, resource)
@@ -128,6 +142,7 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 
 }
 
+// GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
@@ -148,6 +163,8 @@ func GetResourceIdentifier(ctx context.Context, resourceType string, name string
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
+// GetResourceTypeName retrieves the AWS resource type name from the resource identifier and context. It returns an
+// error if the resource identifier or context is invalid.
 func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, error) {
 	id, err := GetResourceIdentifier(ctx, resource.Type, resource.Name)
 	if err != nil {
@@ -159,7 +176,7 @@ func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, er
 		return "", err
 	}
 
-	resourceType := resources.ToAWSResourceType(resourceID)
+	resourceType := resources_aws.ToAWSResourceType(resourceID)
 	return resourceType, nil
 }
 

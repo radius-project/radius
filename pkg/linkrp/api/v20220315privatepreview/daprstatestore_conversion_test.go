@@ -25,6 +25,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,10 +38,9 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(payload)
 			versionedResource := &DaprStateStoreResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -106,10 +107,9 @@ func TestDaprStateStore_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(test.payload)
 			versionedResource := &DaprStateStoreResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -129,10 +129,9 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(payload)
 			resource := &datamodel.DaprStateStore{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &DaprStateStoreResource{}
@@ -155,15 +154,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
 					ComponentName:     to.Ptr("daprStateStore0"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 			}
 
@@ -196,7 +187,7 @@ func TestDaprStateStore_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

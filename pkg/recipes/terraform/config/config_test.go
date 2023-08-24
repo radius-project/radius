@@ -17,7 +17,6 @@ limitations under the License.
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -25,12 +24,14 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/test/testcontext"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -51,16 +52,43 @@ var (
 	}
 )
 
-func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider) {
+func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider, *backends.MockBackend) {
 	ctrl := gomock.NewController(t)
 	mProvider := providers.NewMockProvider(ctrl)
+	mBackend := backends.NewMockBackend(ctrl)
 	providers := map[string]providers.Provider{
 		providers.AWSProviderName:        mProvider,
 		providers.AzureProviderName:      mProvider,
 		providers.KubernetesProviderName: mProvider,
 	}
 
-	return *mProvider, providers
+	return *mProvider, providers, mBackend
+}
+
+func getTestRecipeContext() *recipecontext.Context {
+	return &recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				Name: "mongo0",
+			},
+			Type: "applications.link/mongodatabases",
+		},
+		Application: recipecontext.ResourceInfo{
+			Name: "testApplication",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		},
+		Environment: recipecontext.ResourceInfo{
+			Name: "env0",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "radius-test-app",
+				EnvironmentNamespace: "radius-test-env",
+			},
+		},
+	}
 }
 
 func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
@@ -72,403 +100,399 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	}
 
 	resourceRecipe := recipes.ResourceMetadata{
-		Name:       testRecipeName,
-		Parameters: resourceParams,
+		Name:          testRecipeName,
+		Parameters:    resourceParams,
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
+		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
 	}
 
 	return envRecipe, resourceRecipe
 }
 
-func validateConfigIsGenerated(configFilePath string) (TerraformConfig, error) {
-	// Read the JSON data from the main.tf.json file.
-	jsonData, err := os.ReadFile(configFilePath)
-	if err != nil {
-		return TerraformConfig{}, err
+func Test_AddRecipeContext(t *testing.T) {
+	_, _, mBackend := setup(t)
+	_, resourceRecipe := getTestInputs()
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
+	configTests := []struct {
+		name               string
+		configPath         string
+		envdef             *recipes.EnvironmentDefinition
+		metadata           *recipes.ResourceMetadata
+		recipeContext      *recipecontext.Context
+		expectedConfigFile string
+		err                string
+		expectedBackend    map[string]any
+	}{
+		{
+			name: "recipe context, env, and resource metadata params are given",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			recipeContext:      getTestRecipeContext(),
+			expectedConfigFile: "testdata/main-all.tf.json",
+		},
+		{
+			name: "only recipe context is given without env and resource metadata params",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name: testRecipeName,
+			},
+			recipeContext:      getTestRecipeContext(),
+			expectedConfigFile: "testdata/main-noparams.tf.json",
+		},
+		{
+			name: "recipe context and env params are given",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name: testRecipeName,
+			},
+			recipeContext:      getTestRecipeContext(),
+			expectedConfigFile: "testdata/main-noresourceparam.tf.json",
+		},
+		{
+			name: "env and resource metadata params are given without recipe context",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			recipeContext:      nil,
+			expectedConfigFile: "testdata/main-module.tf.json",
+		},
+		{
+			name: "without template version",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:         testRecipeName,
+				TemplatePath: testTemplatePath,
+				Parameters:   envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			recipeContext:      nil,
+			expectedConfigFile: "testdata/main-notplver.tf.json",
+		},
+		{
+			name: "invalid working dir",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+				Parameters:      envParams,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name:       testRecipeName,
+				Parameters: resourceParams,
+			},
+			configPath: filepath.Join("invalid", uuid.New().String()),
+			err:        "error creating file: open invalid/",
+		},
 	}
 
-	// Unmarshal the JSON data into a TerraformConfig struct.
-	var tfConfig TerraformConfig
-	err = json.Unmarshal(jsonData, &tfConfig)
-	if err != nil {
-		return TerraformConfig{}, err
-	}
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			if tc.configPath == "" {
+				tc.configPath = t.TempDir()
+			}
+			tfconfig := New(testRecipeName, tc.envdef, tc.metadata)
+			if tc.recipeContext != nil {
+				err := tfconfig.AddRecipeContext(ctx, testRecipeName, tc.recipeContext)
+				require.NoError(t, err)
+			}
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err := tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, tc.configPath)
+			if tc.err != "" {
+				require.ErrorContains(t, err, tc.err)
+				return
+			}
 
-	return tfConfig, nil
+			require.NoError(t, err)
+
+			// assert
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(tc.configPath))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
 }
 
-func TestGenerateTFConfigFile(t *testing.T) {
-	// Create a temporary test directory.
+func Test_AddProviders(t *testing.T) {
+	mProvider, supportedProviders, mBackend := setup(t)
+	envRecipe, resourceRecipe := getTestInputs()
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
+	configTests := []struct {
+		name               string
+		modProviders       []map[string]any
+		modProviderErr     error
+		envConfig          recipes.Configuration
+		requiredProviders  []string
+		expectedConfigFile string
+	}{
+		{
+			name: "valid-aws-azure-k8s-providers",
+			modProviders: []map[string]any{
+				{
+					"region": "test-region",
+				},
+				{
+					"subscription_id": "test-sub",
+					"features":        map[string]any{},
+				},
+				{
+					"config_path": "/home/radius/.kube/config",
+				},
+			},
+			modProviderErr: nil,
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
+					},
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+					},
+				},
+			},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+				providers.AzureProviderName,
+				providers.KubernetesProviderName,
+				"sql",
+			},
+
+			expectedConfigFile: "testdata/main-provider-valid.tf.json",
+		},
+		{
+			name:           "invalid scope",
+			modProviders:   nil,
+			modProviderErr: errors.New("Invalid AWS provider scope"),
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "invalid",
+					},
+				},
+			},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+			},
+		},
+		{
+			name: "empty provider",
+			modProviders: []map[string]any{
+				{},
+			},
+			modProviderErr: nil,
+			envConfig:      recipes.Configuration{},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+			},
+			expectedConfigFile: "testdata/main-provider-empty.tf.json",
+		},
+		{
+			name: "empty aws scope",
+			modProviders: []map[string]any{
+				nil,
+			},
+			modProviderErr: nil,
+			envConfig: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "",
+					},
+					Azure: datamodel.ProvidersAzure{
+						Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
+					},
+				},
+			},
+			requiredProviders: []string{
+				providers.AWSProviderName,
+			},
+			expectedConfigFile: "testdata/main-provider-empty.tf.json",
+		},
+		{
+			name: "missing azure provider",
+			modProviders: []map[string]any{
+				{
+					"features": map[string]any{},
+				},
+			},
+			modProviderErr: nil,
+			envConfig:      recipes.Configuration{},
+			requiredProviders: []string{
+				providers.AzureProviderName,
+			},
+			expectedConfigFile: "testdata/main-provider-missingazure.tf.json",
+		},
+	}
+
+	for _, tc := range configTests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+			for _, p := range tc.modProviders {
+				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(p, nil)
+			}
+			if tc.modProviderErr != nil {
+				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.modProviderErr)
+			}
+			err := tfconfig.AddProviders(ctx, tc.requiredProviders, supportedProviders, &tc.envConfig)
+			if tc.modProviderErr != nil {
+				require.ErrorContains(t, err, tc.modProviderErr.Error())
+				return
+			}
+			require.NoError(t, err)
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// assert
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func Test_AddOutputs(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+	_, _, mBackend := setup(t)
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
+	tests := []struct {
+		desc                 string
+		moduleName           string
+		expectedOutputConfig map[string]any
+		expectedConfigFile   string
+		expectedErr          bool
+	}{
+		{
+			desc:       "valid output",
+			moduleName: testRecipeName,
+			expectedOutputConfig: map[string]any{
+				"result": map[string]any{
+					"value":     "${module.redis-azure.result}",
+					"sensitive": true,
+				},
+			},
+			expectedConfigFile: "testdata/main-outputs.tf.json",
+			expectedErr:        false,
+		},
+		{
+			desc:               "empty module name",
+			moduleName:         "",
+			expectedConfigFile: "testdata/main-module.tf.json",
+			expectedErr:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+
+			err := tfconfig.AddOutputs(tc.moduleName)
+			if tc.expectedErr {
+				require.Error(t, err)
+				require.Nil(t, tfconfig.Output)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedOutputConfig, tfconfig.Output)
+			}
+
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// Assert generated config file matches expected config in JSON format.
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func Test_Save_overwrite(t *testing.T) {
+	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
+	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
 
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
+	err := tfconfig.Save(ctx, testDir)
 	require.NoError(t, err)
 
-	// Assert config file exists and contains data in expected format.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
+	err = tfconfig.Save(ctx, testDir)
 	require.NoError(t, err)
-
-	// Assert that generated config contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
 }
 
-func TestGenerateTFConfig_EmptyParameters(t *testing.T) {
-	// Create a temporary test directory.
+func Test_Save_Failure(t *testing.T) {
+	ctx := testcontext.New(t)
 	testDir := t.TempDir()
-
 	envRecipe, resourceRecipe := getTestInputs()
-	envRecipe.Parameters = nil
-	resourceRecipe.Parameters = nil
-
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:  testTemplatePath,
-				moduleVersionKey: testTemplateVersion,
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, testDir, testRecipeName)
-	require.NoError(t, err)
-
-	// Assert config file exists and contains data in expected format.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-
-	// Assert that generated config contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-func TestGenerateTFConfig_InvalidWorkingDir_Error(t *testing.T) {
-	envRecipe, resourceRecipe := getTestInputs()
-
-	// Call GenerateMainConfig with a working directory that doesn't exist.
-	invalidPath := filepath.Join("invalid", uuid.New().String())
-	_, err := GenerateTFConfigFile(testcontext.New(t), &envRecipe, &resourceRecipe, invalidPath, testRecipeName)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error creating file")
-}
-
-func TestGenerateModuleData(t *testing.T) {
-	expectedModuleData := map[string]any{
-		moduleSourceKey:       testTemplatePath,
-		moduleVersionKey:      testTemplateVersion,
-		"resource_group_name": envParams["resource_group_name"],
-		"redis_cache_name":    resourceParams["redis_cache_name"],
-		"sku":                 resourceParams["sku"],
-	}
-
-	moduleData := generateModuleData(testcontext.New(t), testTemplatePath, testTemplateVersion, envParams, resourceParams)
-
-	// Assert that the module data contains the expected data.
-	require.Equal(t, expectedModuleData, moduleData)
-}
-
-func TestAddProviders_Success(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe := getTestInputs()
-	envConfig := recipes.Configuration{
-		Providers: datamodel.Providers{
-			AWS: datamodel.ProvidersAWS{
-				Scope: "/planes/aws/aws/accounts/0000/regions/test-region",
-			},
-			Azure: datamodel.ProvidersAzure{
-				Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
-			},
-		},
-	}
-
-	awsProviderConfig := map[string]any{
-		"region": "test-region",
-	}
-	azureProviderConfig := map[string]any{
-		"subscription_id": "test-sub",
-		"features":        map[string]any{},
-	}
-	kubernetesProviderConfig := map[string]any{
-		"config_path": clientcmd.RecommendedHomeFile,
-	}
-	expectedTFConfig := TerraformConfig{
-		Provider: map[string]any{
-			providers.AWSProviderName:        awsProviderConfig,
-			providers.AzureProviderName:      azureProviderConfig,
-			providers.KubernetesProviderName: kubernetesProviderConfig,
-		},
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
-	require.NoError(t, err)
-
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(awsProviderConfig, nil)
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(kubernetesProviderConfig, nil)
-
-	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName, providers.AzureProviderName, providers.KubernetesProviderName, "sql"}, supportedProviders, &envConfig)
-	require.NoError(t, err)
-
-	// Validate that the config file exists and read the updated data.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-	// Assert that the TerraformConfig contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-func TestAddProviders_InvalidScope_Error(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe := getTestInputs()
-	envConfig := recipes.Configuration{
-		Providers: datamodel.Providers{
-			AWS: datamodel.ProvidersAWS{
-				Scope: "invalid",
-			},
-		},
-	}
-
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
-	require.NoError(t, err)
-
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, errors.New("Invalid AWS provider scope"))
-
-	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
-	require.Error(t, err)
-
-	// Validate that the config file still exists and was not updated.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-func TestAddProviders_EmptyProviderConfigurations_Success(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-
-	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe := getTestInputs()
-	envConfig := recipes.Configuration{}
-
-	// Expected config shouldn't contain any provider config
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
-	require.NoError(t, err)
-
-	// Expect build config function call for AWS provider with empty output since envConfig has empty AWS scope
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(map[string]any{}, nil)
-
-	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
-	require.NoError(t, err)
-
-	// Validate that the config file exists and read the updated data.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-	// Assert that the TerraformConfig contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-// Empty AWS scope should return empty AWS provider config
-func TestAddProviders_EmptyAWSScope(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe := getTestInputs()
-	envConfig := recipes.Configuration{
-		Providers: datamodel.Providers{
-			AWS: datamodel.ProvidersAWS{
-				Scope: "",
-			},
-			Azure: datamodel.ProvidersAzure{
-				Scope: "/subscriptions/test-sub/resourceGroups/test-rg",
-			},
-		},
-	}
-
-	// Expected config shouldn't contain any provider config
-	expectedTFConfig := TerraformConfig{
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
-	require.NoError(t, err)
-
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(nil, nil)
-
-	err = AddProviders(ctx, configFilePath, []string{providers.AWSProviderName}, supportedProviders, &envConfig)
-	require.NoError(t, err)
-
-	// Validate that the config file exists and read the updated data.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-
-	// Assert that the TerraformConfig contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-func TestAddProviders_MissingAzureProvider(t *testing.T) {
-	ctx := testcontext.New(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	mProvider, supportedProviders := setup(t)
-	envRecipe, resourceRecipe := getTestInputs()
-	envConfig := recipes.Configuration{}
-
-	azureProviderConfig := map[string]any{
-		"features": map[string]any{},
-	}
-	// Expected config shouldn't contain Azure subscription id in the provider config
-	expectedTFConfig := TerraformConfig{
-		Provider: map[string]any{
-			providers.AzureProviderName: azureProviderConfig,
-		},
-		Module: map[string]any{
-			testRecipeName: map[string]any{
-				moduleSourceKey:       testTemplatePath,
-				moduleVersionKey:      testTemplateVersion,
-				"resource_group_name": envParams["resource_group_name"],
-				"redis_cache_name":    resourceParams["redis_cache_name"],
-				"sku":                 resourceParams["sku"],
-			},
-		},
-	}
-
-	configFilePath, err := GenerateTFConfigFile(ctx, &envRecipe, &resourceRecipe, testDir, testRecipeName)
-	require.NoError(t, err)
-
-	mProvider.EXPECT().BuildConfig(ctx, &envConfig).Times(1).Return(azureProviderConfig, nil)
-
-	err = AddProviders(ctx, configFilePath, []string{providers.AzureProviderName}, supportedProviders, &envConfig)
-	require.NoError(t, err)
-
-	// Validate that the config file exists and read the updated data.
-	tfConfig, err := validateConfigIsGenerated(configFilePath)
-	require.NoError(t, err)
-
-	// Assert that the TerraformConfig contains the expected data.
-	require.Equal(t, expectedTFConfig, tfConfig)
-}
-
-func TestAddProviders_OpenConfigFileError(t *testing.T) {
-	ctx := testcontext.New(t)
-	mProvider, supportedProviders := setup(t)
-	kubernetesProviderConfig := map[string]any{
-		"config_path": clientcmd.RecommendedHomeFile,
-	}
-
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
-
-	// Call AddProviders with a non-existent file path.
-	err := AddProviders(ctx, "/path/to/non-existent/file.json", []string{providers.KubernetesProviderName}, supportedProviders, nil)
-
-	// Assert that AddProviders returns an error.
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no such file or directory")
-}
-
-func TestAddProviders_DecodeError(t *testing.T) {
-	ctx := testcontext.New(t)
-	mProvider, supportedProviders := setup(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	// Create a test configuration file with invalid JSON data.
-	configFile := filepath.Join(testDir, "test.json")
-	err := os.WriteFile(configFile, []byte(`invalid json data`), 0644)
-	require.NoError(t, err)
-
-	kubernetesProviderConfig := map[string]any{
-		"config_path": clientcmd.RecommendedHomeFile,
-	}
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
-
-	// Call AddProviders with the test configuration file and required providers.
-	err = AddProviders(ctx, configFile, []string{providers.KubernetesProviderName}, supportedProviders, nil)
-
-	// Assert that AddProviders returns an error.
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid character")
-}
-
-func TestAddProviders_WriteConfigFileError(t *testing.T) {
-	ctx := testcontext.New(t)
-	mProvider, supportedProviders := setup(t)
-	// Create a temporary test directory.
-	testDir := t.TempDir()
+	tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
 
 	// Create a test configuration file.
-	configFile := filepath.Join(testDir, "test.json")
-	err := os.WriteFile(configFile, []byte(`{"module":{}}`), 0644)
+	err := os.WriteFile(getMainConfigFilePath(testDir), []byte(`{"module":{}}`), 0400)
 	require.NoError(t, err)
-	// Mock a write file error by setting the file permissions to read-only.
-	err = os.Chmod(configFile, 0400)
-	require.NoError(t, err)
-
-	kubernetesProviderConfig := map[string]any{
-		"config_path": clientcmd.RecommendedHomeFile,
-	}
-	mProvider.EXPECT().BuildConfig(ctx, nil).Times(1).Return(kubernetesProviderConfig, nil)
-
-	// Call AddProviders with the test configuration file and required providers.
-	err = AddProviders(ctx, configFile, []string{providers.KubernetesProviderName}, supportedProviders, nil)
 
 	// Assert that AddProviders returns an error.
+	err = tfconfig.Save(ctx, testDir)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "permission denied")
 }

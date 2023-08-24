@@ -24,9 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 )
 
-// # Function Explanation
-//
-// MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model based on the
+// MongoDatabaseDataModelToVersioned converts a Mongo database data model to a versioned model interface based on the
 // specified version, and returns an error if the version is not supported.
 func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -39,10 +37,8 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 	}
 }
 
-// # Function Explanation
-//
-// MongoDatabaseDataModelFromVersioned converts versioned MongoDatabase model to datamodel based on the specified version
-// and returns an error if the version is not supported.
+// MongoDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a Mongo database instance and
+// an error if the version is unsupported.
 func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.MongoDatabase, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -51,6 +47,9 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 			return nil, err
 		}
 		dm, err := versioned.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.MongoDatabase), err
 
 	default:
@@ -58,10 +57,11 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 	}
 }
 
-// # Function Explanation
+// MongoDatabaseSecretsDataModelFromVersioned converts version agnostic MongoDatabaseSecrets datamodel to versioned model.
 //
-// MongoDatabaseSecretsDataModelToVersioned converts version agnostic MongoDatabaseSecrets datamodel to versioned model and returns a
-// an error if the version is not supported.
+
+// MongoDatabaseSecretsDataModelToVersioned converts a MongoDatabaseSecrets data model to a versioned model interface and
+// returns an error if the version is not supported.
 func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:

@@ -43,8 +43,7 @@ type Impl struct {
 // Stream opens a log stream and writes the application's log to the provided writer.
 // This function will block until the context is cancelled.
 //
-// # Function Explanation
-//
+
 // Stream() configures and runs Stern, a library for streaming logs from Kubernetes pods, with custom filters and output formats
 // based on the provided parameters. It returns an error if there is an issue configuring or running Stern.
 func (i *Impl) Stream(ctx context.Context, options Options) error {
@@ -80,6 +79,9 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 		Template:   template.Must(template.New("output").Funcs(functionTable()).Parse(outputFormat)),
 		Out:        options.Out,
 		ErrOut:     options.Out,
+
+		// Limit the number of concurrent log fetch function unlike Kubernetes client rate limitter.
+		MaxLogRequests: 10,
 	}
 
 	// This is the only Radius-specific customization we make.

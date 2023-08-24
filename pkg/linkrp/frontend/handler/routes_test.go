@@ -138,8 +138,91 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: linkrp.N_DaprStateStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodDelete,
-	},
-	{
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.datastores/mongodatabases",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_MongoDatabasesResourceType, Method: mongo_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo/listsecrets",
+		Method:        http.MethodPost,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.datastores/rediscaches",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_RedisCachesResourceType, Method: redis_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis/listsecrets",
+		Method:        http.MethodPost,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/providers/applications.datastores/sqldatabases",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: v1.OperationList},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: v1.OperationGet},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
+		Method:        http.MethodPut,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
+		Method:        http.MethodPatch,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: v1.OperationDelete},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
+		Method:        http.MethodDelete,
+	}, {
+		OperationType: v1.OperationType{Type: linkrp.N_SqlDatabasesResourceType, Method: sql_ctrl.OperationListSecret},
+		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql/listsecrets",
+		Method:        http.MethodPost,
+	}, {
 		OperationType: v1.OperationType{Type: linkrp.DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.link/daprpubsubbrokers",
 		Method:        http.MethodGet,
@@ -417,6 +500,13 @@ func TestHandlers(t *testing.T) {
 			{
 				OperationType:               v1.OperationType{Type: "Applications.Dapr/providers", Method: v1.OperationGet},
 				Path:                        "/providers/applications.dapr/operations",
+				Method:                      http.MethodGet,
+				WithoutRootScope:            true,
+				SkipOperationTypeValidation: true,
+			},
+			{
+				OperationType:               v1.OperationType{Type: "Applications.Datastores/providers", Method: v1.OperationGet},
+				Path:                        "/providers/applications.datastores/operations",
 				Method:                      http.MethodGet,
 				WithoutRootScope:            true,
 				SkipOperationTypeValidation: true,

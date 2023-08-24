@@ -33,8 +33,7 @@ import (
 
 // NewCommand creates an instance of the `rad app show` command and runner.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command for showing Radius application details, which takes in a factory object and
 // returns a Cobra command and a Runner object.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -88,8 +87,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad app show` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the workspace, scope, application name and output format from the command line arguments and
 // request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -123,8 +121,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad app show` command.
 //
-// # Function Explanation
-//
+
 // Run() uses the provided context and connection factory to create an applications management client, then attempts to
 // show the application with the given name. If the application is not found or has been deleted, an error is
 // returned. Otherwise, the application is written to the output in the specified format, and nil is returned.

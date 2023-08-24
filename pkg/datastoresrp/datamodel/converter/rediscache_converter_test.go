@@ -24,6 +24,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,13 +37,13 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/rediscacheresourcedatamodel_manual.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.RedisCacheResource{},
 			nil,
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/rediscacheresourcedatamodel_manual.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -51,9 +52,10 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.RedisCache{}
-			_ = json.Unmarshal(c, dm)
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
 			am, err := RedisCacheDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -72,17 +74,22 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource.json",
+			"../../api/v20220315privatepreview/testdata/rediscacheresource_manual.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid.json",
+			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalidinput.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.resource of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.host of type string"),
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid2.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid2.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -90,7 +97,7 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.versionedModelFile)
+			c := testutil.ReadFixture("../" + tc.versionedModelFile)
 			dm, err := RedisCacheDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -116,7 +123,7 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 			nil,
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/rediscachesecretsdatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -125,9 +132,10 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.RedisCacheSecrets{}
-			_ = json.Unmarshal(c, dm)
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
 			am, err := RedisCacheSecretsDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)

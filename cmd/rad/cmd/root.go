@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/acarl005/stripansi"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/aws"
@@ -79,15 +80,18 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
 var RootCmd = &cobra.Command{
-	Use:           "rad",
-	Short:         "Radius CLI",
-	Long:          `Radius CLI`,
-	SilenceErrors: true,
-	SilenceUsage:  true,
+	Use:               "rad",
+	Short:             "Radius CLI",
+	Long:              `Radius CLI`,
+	SilenceErrors:     true,
+	SilenceUsage:      true,
+	DisableAutoGenTag: true,
 }
 
 const (
@@ -153,7 +157,14 @@ func Execute() error {
 		fmt.Println("") // Output an extra blank line for readability
 		return err
 	} else if err != nil {
-		fmt.Println("Error:", prettyPrintRPError(err))
+		errText := prettyPrintRPError(err)
+
+		// Remove any ANSI escape sequences from the error text. We may be displaying untrusted
+		// data in an error message for an "unhandled" error. This will prevent the error text
+		// from potentially corrupting the terminal.
+		errText = stripansi.Strip(errText)
+
+		fmt.Println("Error:", errText)
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
 		fmt.Println("") // Output an extra blank line for readability
 		return err
@@ -164,6 +175,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// Must set the default logger to use controller-runtime.
+	runtimelog.SetLogger(zap.New())
 
 	RootCmd.PersistentFlags().StringVar(&ConfigHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 

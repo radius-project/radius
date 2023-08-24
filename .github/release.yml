@@ -1,0 +1,13 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - rad-ci-bot
+  categories:
+    - title: '## Breaking Changes'
+      labels:
+        - breaking-change
+    - title: '## changelog'
+      labels:
+        - "*"

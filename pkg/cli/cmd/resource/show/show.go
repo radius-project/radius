@@ -31,8 +31,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad resource show` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a new Runner, and configures the command with the Runner, common flags, and
 //
 //	usage information.
@@ -91,8 +90,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad resource show` command.
 //
-// # Function Explanation
-//
+
 // Validate checks the workspace, scope, resource type and name, and output format from the command line arguments and config,
 // and sets them in the Runner struct. It returns an error if any of these values are not valid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -126,8 +124,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad resource show` command.
 //
-// # Function Explanation
-//
+
 // Run creates a connection to an applications management client, retrieves resource details, and writes the details in a
 // specified format to an output. It returns an error if any of these steps fail.
 func (r *Runner) Run(ctx context.Context) error {

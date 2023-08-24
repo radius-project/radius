@@ -42,7 +42,7 @@ type CreateOrUpdateResource struct {
 	ctrl.BaseController
 }
 
-// NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
+// NewCreateOrUpdateResource creates a new CreateOrUpdateResource controller.
 func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
@@ -63,6 +63,8 @@ func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 	}
 }
 
+// Run checks if the resource exists, renders the resource, deploys the resource, applies the
+// deployment output to the resource, deletes any resources that are no longer needed, and saves the resource.
 func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil && !errors.Is(&store.ErrNotFound{ID: request.ResourceID}, err) {

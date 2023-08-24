@@ -36,7 +36,7 @@ func NewWithCancel(t *testing.T) (context.Context, context.CancelFunc) {
 	return Wrap(t, context.Background())
 }
 
-// NewWithDeadline creates a new deadline context with test logger for testing.
+// NewWithDeadline creates a new deadline context based on the given duration, with test logger for testing.
 func NewWithDeadline(t *testing.T, duration time.Duration) (context.Context, context.CancelFunc) {
 	ctx, _ := Wrap(t, context.Background())
 	return context.WithDeadline(ctx, time.Now().Add(duration))

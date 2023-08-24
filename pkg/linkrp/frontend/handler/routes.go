@@ -7,6 +7,7 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,10 +30,14 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
+	// TODO: Rename alias to remove n prefix for resources in new namespace
 	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
 	dapr_conv "github.com/project-radius/radius/pkg/daprrp/datamodel/converter"
 	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	ds_conv "github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
+	mongon_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller/mongodatabases"
+	redisn_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller/rediscaches"
+	sqln_ctrl "github.com/project-radius/radius/pkg/datastoresrp/frontend/controller/sqldatabases"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
@@ -54,8 +59,6 @@ const (
 	resourceGroupPath           = "/resourcegroups/{resourceGroupName}"
 )
 
-// # Function Explanation
-//
 // AddRoutes configures routes and handlers for Datastores, Messaging, Dapr Resource Providers.
 func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	rootScopePath := ctrlOpts.PathBase
@@ -83,18 +86,14 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 		return err
 	}
 
-	/* The following routes will be configured in upcoming PRs
 	err = AddDatastoresRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
-	*/
 
 	return nil
 }
 
-// # Function Explanation
-//
 // AddMessagingRoutes configures the default ARM handlers and registers handlers for the RabbitMQQueue resource type for
 // the List, Get, Put, Patch and Delete operations.
 func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
@@ -176,7 +175,8 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[msg_dm.RabbitMQQueue]{
 							rp_frontend.PrepareRadiusResource[*msg_dm.RabbitMQQueue],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -193,7 +193,8 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[msg_dm.RabbitMQQueue]{
 							rp_frontend.PrepareRadiusResource[*msg_dm.RabbitMQQueue],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -205,9 +206,10 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:      msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter:     msg_conv.RabbitMQQueueDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+						RequestConverter:         msg_conv.RabbitMQQueueDataModelFromVersioned,
+						ResponseConverter:        msg_conv.RabbitMQQueueDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -230,8 +232,6 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 	return nil
 }
 
-// # Function Explanation
-//
 // AddDaprRoutes configures the default ARM handlers and adds handlers for Dapr resources such as Dapr PubSubBroker,
 // SecretStore and StateStore. It registers handlers for various operations on these resources.
 func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
@@ -260,7 +260,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/pubsubbrokers", validator)
 	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers", validator)
-	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{daprPubSubBrokerName}", validator)
+	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{pubSubBrokerName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -311,8 +311,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprPubSubBroker]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprPubSubBroker],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprPubSubBroker],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -328,8 +330,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprPubSubBroker]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprPubSubBroker],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprPubSubBroker],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -341,9 +345,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[dapr_dm.DaprPubSubBroker]{
-						RequestConverter:      dapr_conv.PubSubBrokerDataModelFromVersioned,
-						ResponseConverter:     dapr_conv.PubSubBrokerDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						RequestConverter:         dapr_conv.PubSubBrokerDataModelFromVersioned,
+						ResponseConverter:        dapr_conv.PubSubBrokerDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -352,7 +357,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/secretstores", validator)
 	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores", validator)
-	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{daprSecretStoreName}", validator)
+	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{secretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -403,8 +408,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprSecretStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprSecretStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprSecretStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -420,8 +427,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprSecretStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprSecretStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprSecretStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -433,9 +442,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[dapr_dm.DaprSecretStore]{
-						RequestConverter:      dapr_conv.SecretStoreDataModelFromVersioned,
-						ResponseConverter:     dapr_conv.SecretStoreDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprSecretStoreTimeout,
+						RequestConverter:         dapr_conv.SecretStoreDataModelFromVersioned,
+						ResponseConverter:        dapr_conv.SecretStoreDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteDaprSecretStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -444,7 +454,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/statestores", validator)
 	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores", validator)
-	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{daprStateStoreName}", validator)
+	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{stateStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -495,8 +505,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprStateStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprStateStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprStateStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -512,8 +524,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprStateStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprStateStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprStateStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -525,9 +539,10 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[dapr_dm.DaprStateStore]{
-						RequestConverter:      dapr_conv.StateStoreDataModelFromVersioned,
-						ResponseConverter:     dapr_conv.StateStoreDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprStateStoreTimeout,
+						RequestConverter:         dapr_conv.StateStoreDataModelFromVersioned,
+						ResponseConverter:        dapr_conv.StateStoreDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteDaprStateStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -543,8 +558,6 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	return nil
 }
 
-// # Function Explanation
-//
 // AddDatastoresRoutes configures the routes and handlers for  Datastores Resource Provider. It registers handlers for List, Get, Put,
 // Patch, and Delete operations for MongoDatabase, RedisCache, and SqlDatabase resources.
 func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
@@ -625,7 +638,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.MongoDatabase]{
 							rp_frontend.PrepareRadiusResource[*ds_dm.MongoDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -642,7 +656,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -654,9 +669,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[ds_dm.MongoDatabase]{
-						RequestConverter:      ds_conv.MongoDatabaseDataModelFromVersioned,
-						ResponseConverter:     ds_conv.MongoDatabaseDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteMongoDatabaseTimeout,
+						RequestConverter:         ds_conv.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter:        ds_conv.MongoDatabaseDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteMongoDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -664,9 +680,9 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      mongoResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      linkrp.MongoDatabasesResourceType,
-			Method:            mongo_ctrl.OperationListSecret,
-			ControllerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
+			ResourceType:      linkrp.N_MongoDatabasesResourceType,
+			Method:            mongon_ctrl.OperationListSecret,
+			ControllerFactory: mongon_ctrl.NewListSecretsMongoDatabase,
 		},
 	}
 
@@ -724,7 +740,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*ds_dm.RedisCache],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -741,7 +758,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*ds_dm.RedisCache],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -753,9 +771,10 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[ds_dm.RedisCache]{
-						RequestConverter:      ds_conv.RedisCacheDataModelFromVersioned,
-						ResponseConverter:     ds_conv.RedisCacheDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
+						RequestConverter:         ds_conv.RedisCacheDataModelFromVersioned,
+						ResponseConverter:        ds_conv.RedisCacheDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -763,9 +782,9 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      redisResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      linkrp.RedisCachesResourceType,
-			Method:            redis_ctrl.OperationListSecret,
-			ControllerFactory: redis_ctrl.NewListSecretsRedisCache,
+			ResourceType:      linkrp.N_RedisCachesResourceType,
+			Method:            redisn_ctrl.OperationListSecret,
+			ControllerFactory: redisn_ctrl.NewListSecretsRedisCache,
 		},
 	}...)
 
@@ -823,7 +842,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.SqlDatabase]{
 							rp_frontend.PrepareRadiusResource[*ds_dm.SqlDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -840,7 +860,8 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 						UpdateFilters: []frontend_ctrl.UpdateFilter[ds_dm.SqlDatabase]{
 							rp_frontend.PrepareRadiusResource[*ds_dm.SqlDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -852,12 +873,20 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[ds_dm.SqlDatabase]{
-						RequestConverter:      ds_conv.SqlDatabaseDataModelFromVersioned,
-						ResponseConverter:     ds_conv.SqlDatabaseDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
+						RequestConverter:         ds_conv.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter:        ds_conv.SqlDatabaseDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
+		},
+		{
+			ParentRouter:      sqlResourceRouter,
+			Path:              "/listsecrets",
+			ResourceType:      linkrp.N_SqlDatabasesResourceType,
+			Method:            sqln_ctrl.OperationListSecret,
+			ControllerFactory: sqln_ctrl.NewListSecretsSqlDatabase,
 		},
 	}...)
 
@@ -870,8 +899,6 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 	return nil
 }
 
-// # Function Explanation
-//
 // AddLinkRoutes sets up routes and registers handlers for various operations (GET, PUT, PATCH, DELETE) on different
 // resources (MongoDatabases, DaprPubSubBrokers, DaprSecretStores, DaprStateStores, Extenders, RedisCaches,
 // RabbitMQMessageQueues and SQLDatabases). It also sets up the necessary options for each handler.
@@ -952,7 +979,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -969,7 +997,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.MongoDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.MongoDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -981,9 +1010,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
-						RequestConverter:      converter.MongoDatabaseDataModelFromVersioned,
-						ResponseConverter:     converter.MongoDatabaseDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteMongoDatabaseTimeout,
+						RequestConverter:         converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter:        converter.MongoDatabaseDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteMongoDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1049,9 +1079,11 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprPubSubBroker]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprPubSubBroker],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1066,9 +1098,11 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprPubSubBroker]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprPubSubBroker],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1080,9 +1114,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
-						RequestConverter:      converter.DaprPubSubBrokerDataModelFromVersioned,
-						ResponseConverter:     converter.DaprPubSubBrokerDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						RequestConverter:         converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter:        converter.DaprPubSubBrokerDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1141,9 +1176,11 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprSecretStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprSecretStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1158,9 +1195,11 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprSecretStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprSecretStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1172,9 +1211,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
-						RequestConverter:      converter.DaprSecretStoreDataModelFromVersioned,
-						ResponseConverter:     converter.DaprSecretStoreDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprSecretStoreTimeout,
+						RequestConverter:         converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter:        converter.DaprSecretStoreDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteDaprSecretStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1233,9 +1273,11 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprStateStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprStateStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1250,9 +1292,11 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprStateStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprStateStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1264,9 +1308,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
-						RequestConverter:      converter.DaprStateStoreDataModelFromVersioned,
-						ResponseConverter:     converter.DaprStateStoreDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteDaprStateStoreTimeout,
+						RequestConverter:         converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter:        converter.DaprStateStoreDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteDaprStateStoreTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1327,7 +1372,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1344,7 +1390,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RedisCache]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RedisCache],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1356,9 +1403,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
-						RequestConverter:      converter.RedisCacheDataModelFromVersioned,
-						ResponseConverter:     converter.RedisCacheDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
+						RequestConverter:         converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter:        converter.RedisCacheDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteRedisCacheTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1427,7 +1475,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1444,7 +1493,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.RabbitMQMessageQueue]{
 							rp_frontend.PrepareRadiusResource[*datamodel.RabbitMQMessageQueue],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1456,9 +1506,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
-						RequestConverter:      converter.RabbitMQMessageQueueDataModelFromVersioned,
-						ResponseConverter:     converter.RabbitMQMessageQueueDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+						RequestConverter:         converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter:        converter.RabbitMQMessageQueueDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteRabbitMQTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1526,7 +1577,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SqlDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.SqlDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1543,7 +1595,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.SqlDatabase]{
 							rp_frontend.PrepareRadiusResource[*datamodel.SqlDatabase],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1555,9 +1608,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
-						RequestConverter:      converter.SqlDatabaseDataModelFromVersioned,
-						ResponseConverter:     converter.SqlDatabaseDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
+						RequestConverter:         converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter:        converter.SqlDatabaseDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteSqlDatabaseTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1625,7 +1679,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
 							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1642,7 +1697,8 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.Extender]{
 							rp_frontend.PrepareRadiusResource[*datamodel.Extender],
 						},
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateExtenderTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},
@@ -1654,9 +1710,10 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.Extender]{
-						RequestConverter:      converter.ExtenderDataModelFromVersioned,
-						ResponseConverter:     converter.ExtenderDataModelToVersioned,
-						AsyncOperationTimeout: link_frontend_ctrl.AsyncDeleteExtenderTimeout,
+						RequestConverter:         converter.ExtenderDataModelFromVersioned,
+						ResponseConverter:        converter.ExtenderDataModelToVersioned,
+						AsyncOperationTimeout:    link_frontend_ctrl.AsyncDeleteExtenderTimeout,
+						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
 					},
 				)
 			},

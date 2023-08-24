@@ -64,7 +64,7 @@ func initAPIServerClient(ctx context.Context, opt StorageProviderOptions, _ stri
 		Scheme: scheme,
 
 		// The client will log info the console that we don't really care about.
-		Opts: runtimeclient.WarningHandlerOptions{
+		WarningHandler: runtimeclient.WarningHandlerOptions{
 			SuppressWarnings: true,
 		},
 	}
@@ -98,8 +98,6 @@ func initCosmosDBClient(ctx context.Context, opt StorageProviderOptions, collect
 	return dbclient, nil
 }
 
-// # Function Explanation
-//
 // InitETCDClient checks if the ETCD client is in memory and if the client is not nil, then it initializes the storage
 // client and returns an ETCDClient. If either of these conditions are not met, an error is returned.
 func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (store.StorageClient, error) {

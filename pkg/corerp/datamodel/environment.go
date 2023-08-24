@@ -31,6 +31,7 @@ type Environment struct {
 	Properties EnvironmentProperties `json:"properties"`
 }
 
+// ResourceTypeName returns the resource type of the Environment instance.
 func (e *Environment) ResourceTypeName() string {
 	return EnvironmentResourceType
 }
@@ -60,10 +61,12 @@ type Recipe struct {
 	Name string `json:"recipeName,omitempty"`
 }
 
+// ResourceTypeName returns the resource type of the Recipe instance.
 func (e *Recipe) ResourceTypeName() string {
 	return "Applications.Core/environments"
 }
 
+// ResourceTypeName returns the resource type of the EnvironmentRecipeProperties instance.
 func (e *EnvironmentRecipeProperties) ResourceTypeName() string {
 	return "Applications.Core/environments"
 }

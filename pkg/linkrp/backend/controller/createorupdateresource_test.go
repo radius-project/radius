@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 
@@ -35,8 +34,8 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -57,8 +56,6 @@ type TestResource struct {
 	Properties TestResourceProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the status of the TestResource instance with the DeploymentOutput values.
 func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
@@ -68,22 +65,16 @@ func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the Status field of the Properties field of the TestResource instance.
 func (r *TestResource) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the TestResource instance.
 func (r *TestResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // Recipe returns a pointer to the LinkRecipe stored in the Properties field of the TestResource struct.
 func (t *TestResource) Recipe() *linkrp.LinkRecipe {
 	return &t.Properties.Recipe
@@ -98,8 +89,6 @@ type TestResourceProperties struct {
 type SuccessProcessor struct {
 }
 
-// # Function Explanation
-//
 // Process sets a computed value and adds an output resource to the TestResource object, and returns no error.
 func (p *SuccessProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	// Simulate setting a computed value and adding an output resource.
@@ -115,8 +104,6 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
-// # Function Explanation
-//
 // Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return processorErr
@@ -127,20 +114,9 @@ var processorErr = errors.New("processor error")
 var configurationErr = errors.New("configuration error")
 
 var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1"
-var oldOutputResource = rpv1.OutputResource{
-	Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
-		Type:     "System.Test/testResources",
-		Provider: resourcemodel.ProviderAzure,
-	}, oldOutputResourceResourceID, "2022-01-01"),
-}
 
 var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test2"
-var newOutputResource = rpv1.OutputResource{
-	Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
-		Type:     "System.Test/testResources",
-		Provider: resourcemodel.ProviderAzure,
-	}, newOutputResourceResourceID, "2022-01-01"),
-}
+var newOutputResource = rpv1.OutputResource{ID: resources.MustParse(newOutputResourceResourceID)}
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
 	setupTest := func(tb testing.TB) (*store.MockStorageClient, *engine.MockEngine, *processors.MockResourceClient, *configloader.MockConfigurationLoader) {
@@ -305,19 +281,6 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 
-			// Set up an output resource so we can cover resource deletion.
-			status := rpv1.ResourceStatus{
-				OutputResources: []rpv1.OutputResource{
-					oldOutputResource,
-				},
-			}
-			sb, err := json.Marshal(&status)
-			require.NoError(t, err)
-
-			sm := map[string]interface{}{}
-			err = json.Unmarshal(sb, &sm)
-			require.NoError(t, err)
-
 			data := map[string]any{
 				"name":     "tr",
 				"type":     "Applications.Test/testResources",
@@ -327,7 +290,13 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					"application":       TestApplicationID,
 					"environment":       TestEnvironmentID,
 					"provisioningState": "Accepted",
-					"status":            sm,
+					"status": map[string]any{
+						"outputResources": []map[string]any{
+							{
+								"id": oldOutputResourceResourceID,
+							},
+						},
+					},
 					"recipe": map[string]any{
 						"name": "test-recipe",
 						"parameters": map[string]any{
@@ -423,12 +392,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			if stillPassing && tt.resourceClientErr != nil {
 				stillPassing = false
 				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID, resourcemodel.APIVersionUnknown).
+					Delete(gomock.Any(), oldOutputResourceResourceID).
 					Return(tt.resourceClientErr).
 					Times(1)
 			} else if stillPassing {
 				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID, resourcemodel.APIVersionUnknown).
+					Delete(gomock.Any(), oldOutputResourceResourceID).
 					Return(nil).
 					Times(1)
 			}

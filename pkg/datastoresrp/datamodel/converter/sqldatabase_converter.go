@@ -24,10 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 )
 
-// # Function Explanation
-//
-// SqlDatabaseDataModelToVersioned converts version agnostic SqlDatabase datamodel to versioned model
-// and returns an error if the version is not supported.
+// SqlDatabaseDataModelToVersioned converts a SqlDatabase data model to a VersionedModelInterface based on the specified
+// version, returning an error if the version is unsupported.
 func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -40,10 +38,8 @@ func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version strin
 	}
 }
 
-// # Function Explanation
-//
-// SqlDatabaseDataModelFromVersioned converts versioned SqlDatabase model to datamodel
-// or returns an error if the JSON unmarshalling or conversion fails.
+// SqlDatabaseDataModelFromVersioned takes in a byte slice and a version string and returns a SqlDatabase object and an
+// error if one occurs.
 func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.SqlDatabase, error) {
 	switch version {
 	case v20220315privatepreview.Version:
@@ -52,7 +48,24 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 			return nil, err
 		}
 		dm, err := am.ConvertTo()
+		if err != nil {
+			return nil, err
+		}
 		return dm.(*datamodel.SqlDatabase), err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+// This function converts a SqlDatabaseSecretsDataModel to a VersionedModelInterface based on the version provided, and
+// returns an error if the version is unsupported.
+func SqlDatabaseSecretsDataModelToVersioned(model *datamodel.SqlDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
+	switch version {
+	case v20220315privatepreview.Version:
+		versioned := &v20220315privatepreview.SQLDatabaseSecrets{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

@@ -33,13 +33,14 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-// GetDependencyIDs returns dependencies for the container/other datamodel passed in
+// GetDependencyIDs gets the IDs of the resources that the given resource depends on.
 func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	// Let the inner renderer do its work
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }
 
-// Render augments the container's kubernetes output resource with value for kubernetesmetadata replica if applicable.
+// Render checks if the given DataModelInterface is a ContainerResource, extracts the KubernetesMetadata extension, and processes
+// annotations and labels for Kubernetes resources. It returns an error if the DataModelInterface is not a ContainerResource.
 func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 
 	// Let the inner renderer do its work
@@ -65,12 +66,13 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	}
 
 	for _, ores := range output.Resources {
-		if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
+		resourceType := ores.GetResourceType()
+		if resourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		dep, ok := ores.Resource.(*appsv1.Deployment)
+		dep, ok := ores.CreateResource.Data.(*appsv1.Deployment)
 		if !ok {
 			continue
 		}

@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -52,11 +51,7 @@ func init() {
 	_ = contourv1.AddToScheme(Scheme)
 }
 
-// NewDynamicClient creates a dynamic resource Kubernetes client.
-//
-// # Function Explanation
-//
-// NewDynamicClient creates a new dynamic client using the given context and returns it, or returns an error if one occurs.
+// NewDynamicClient creates a new dynamic client by context name, otherwise returns an error.
 func NewDynamicClient(context string) (dynamic.Interface, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
@@ -71,11 +66,7 @@ func NewDynamicClient(context string) (dynamic.Interface, error) {
 	return client, err
 }
 
-// NewClientset creates the typed Kubernetes client and return rest client config.
-//
-// # Function Explanation
-//
-// NewClientset creates a new Kubernetes client and config based on the given context, and returns them along with any errors encountered.
+// NewClientset creates a new Kubernetes client and rest client config by context name.
 func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
@@ -90,28 +81,16 @@ func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 	return client, merged, err
 }
 
-// NewRuntimeClient creates a new runtime client.
-//
-// # Function Explanation
-//
-// NewRuntimeClient attempts to create a kubernetes client using a given context and scheme, retrying up to 3 times if an
-// error occurs. If the client cannot be created after 3 retries, an error is returned.
+// NewRuntimeClient creates a kubernetes client using a given context and scheme.
 func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
 
-	var c client.Client
-	for i := 0; i < 2; i++ {
-		c, err = client.New(merged, client.Options{Scheme: scheme})
-		if err != nil {
-			output.LogInfo(fmt.Errorf("failed to get a kubernetes client: %w", err).Error())
-			time.Sleep(15 * time.Second)
-		}
-	}
+	c, err := client.New(merged, client.Options{Scheme: scheme})
 	if err != nil {
-		output.LogInfo("aborting runtime client creation after 3 retries")
+		output.LogInfo("failed to create runtime client due to error: %v", err)
 		return nil, err
 	}
 
@@ -120,8 +99,7 @@ func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client
 
 // EnsureNamespace creates or get Kubernetes namespace.
 //
-// # Function Explanation
-//
+
 // EnsureNamespace checks if a namespace exists in a Kubernetes cluster and creates it if it doesn't, returning an error if it fails.
 func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	namespaceApply := applycorev1.Namespace(namespace)
@@ -136,8 +114,7 @@ func EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string
 
 // NewCLIClientConfig creates new Kubernetes client config loading from local home directory with CLI options.
 //
-// # Function Explanation
-//
+
 // NewCLIClientConfig creates a new Kubernetes client config from the local configuration file using the given context
 // name, with a default QPS and Burst. It returns a rest.Config and an error if one occurs.
 func NewCLIClientConfig(context string) (*rest.Config, error) {
@@ -150,8 +127,7 @@ func NewCLIClientConfig(context string) (*rest.Config, error) {
 
 // GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
 //
-// # Function Explanation
-//
+
 // GetContextFromConfigFileIfExists attempts to load a Kubernetes context from a config file, and returns an error if the
 // context is not found.
 func GetContextFromConfigFileIfExists(configFilePath, context string) (string, error) {
@@ -186,8 +162,7 @@ type Impl struct {
 
 // Fetches the kubecontext from the system
 //
-// # Function Explanation
-//
+
 // GetKubeContext loads the kube configuration file and returns a Config object and an error if the file cannot be loaded.
 func (i *Impl) GetKubeContext() (*api.Config, error) {
 	return kubeutil.LoadConfigFile("")

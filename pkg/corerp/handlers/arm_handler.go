@@ -18,18 +18,17 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 )
 
-// NewARMHandler creates a ResourceHandler for 'generic' ARM resources.
+// NewARMHandler creates a new ARMHandler instance with the given ARM configuration, for 'generic' ARM resources.
 func NewARMHandler(arm *armauth.ArmConfig) ResourceHandler {
 	return &armHandler{arm: arm}
 }
@@ -38,64 +37,69 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
+// Put validates that the resource exists. It returns an error if the resource does not exist.
 func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	// Do a GET just to validate that the resource exists.
-	resource, err := getByID(ctx, &handler.arm.ClientOptions, options.Resource.Identity)
+	_, err := handler.getByID(ctx, options.Resource.ID)
 	if err != nil {
 		return nil, err
 	}
-
-	// Return the resource so renderers can use it for computed values.
-	serialized, err := handler.serializeResource(resource)
-	if err != nil {
-		return nil, err
-	}
-	options.Resource.Resource = serialized
 
 	return map[string]string{}, nil
 }
 
+// No-op - just returns nil.
 func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }
 
-func (handler *armHandler) serializeResource(resource *armresources.GenericResource) (map[string]interface{}, error) {
-	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
-	// will have trouble with the autorest embdedded types.
-	b, err := json.Marshal(&resource)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal %T", resource)
-	}
-
-	data := map[string]any{}
-	err = json.Unmarshal(b, &data)
-	if err != nil {
-		return nil, errors.New("failed to umarshal resource data")
-	}
-
-	return data, nil
-}
-
-func getByID(ctx context.Context, options *clientv2.Options, identity resourcemodel.ResourceIdentity) (*armresources.GenericResource, error) {
-	id, apiVersion, err := identity.RequireARM()
+func (handler *armHandler) getByID(ctx context.Context, id resources.ID) (*armresources.GenericResource, error) {
+	client, err := clientv2.NewGenericResourceClient(id.FindScope(resources_azure.ScopeSubscriptions), &handler.arm.ClientOptions, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	parsed, err := ucpresources.ParseResource(id)
+	apiVersion, err := handler.lookupARMAPIVersion(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
 
-	client, err := clientv2.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), options, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.GetByID(ctx, id, apiVersion, &armresources.ClientGetByIDOptions{})
+	resp, err := client.GetByID(ctx, id.String(), apiVersion, &armresources.ClientGetByIDOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
 
 	return &resp.GenericResource, nil
+}
+
+func (handler *armHandler) lookupARMAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+	client, err := clientv2.NewProvidersClient(id.FindScope(resources_azure.ScopeSubscriptions), &handler.arm.ClientOptions, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.Get(ctx, id.ProviderNamespace(), nil)
+	if err != nil {
+		return "", err
+	}
+
+	// We need to match on the resource type name without the provider namespace.
+	shortType := strings.TrimPrefix(id.TypeSegments()[0].Type, id.ProviderNamespace()+"/")
+	for _, rt := range resp.ResourceTypes {
+		if !strings.EqualFold(shortType, *rt.ResourceType) {
+			continue
+		}
+		if rt.DefaultAPIVersion != nil {
+			return *rt.DefaultAPIVersion, nil
+		}
+
+		if len(rt.APIVersions) > 0 {
+			return *rt.APIVersions[0], nil
+		}
+
+		return "", fmt.Errorf("could not find API version for type %q, no supported API versions", id.Type())
+
+	}
+
+	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
 }

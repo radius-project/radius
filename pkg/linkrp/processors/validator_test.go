@@ -21,7 +21,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -178,12 +177,6 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 			Resources: []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream2"},
 		}
 
-		mustparse := func(id string) resources.ID {
-			parsed, err := resources.ParseResource(id)
-			require.NoError(t, err)
-			return parsed
-		}
-
 		v := NewValidator(&values, &secrets, &outputResources)
 		v.AddResourcesField(&resourcesField)
 
@@ -192,15 +185,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		expected := []rpv1.OutputResource{
 			{
-				LocalID:       "RecipeResource0",
-				Identity:      resourcemodel.FromUCPID(mustparse(output.Resources[0]), ""),
-				ResourceType:  *resourcemodel.FromUCPID(mustparse(output.Resources[0]), "").ResourceType,
+				ID:            resources.MustParse(output.Resources[0]),
 				RadiusManaged: to.Ptr(true),
 			},
 			{
-				LocalID:       "Resource0",
-				Identity:      resourcemodel.FromUCPID(mustparse(resourcesField[0].ID), ""),
-				ResourceType:  *resourcemodel.FromUCPID(mustparse(resourcesField[0].ID), "").ResourceType,
+				ID:            resources.MustParse(resourcesField[0].ID),
 				RadiusManaged: to.Ptr(false),
 			},
 		}

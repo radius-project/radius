@@ -9,6 +9,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
 )
 
+// KeyVaultBinding attempts to connect to a Key Vault client, create a secret, and get the secret, returning a
+// BindingStatus indicating success or failure.
 func KeyVaultBinding(envParams map[string]string) BindingStatus {
 	// FROM: https://docs.microsoft.com/en-us/azure/key-vault/secrets/quick-create-go
 	keyVaultUrl := envParams["URI"]

@@ -22,19 +22,30 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	clients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ParameterConflict(t *testing.T) {
+func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {
+	devParams := map[string]any{}
+	operatorParams := map[string]any{}
+	expectedParams := map[string]any{}
+
+	actualParams := createRecipeParameters(devParams, operatorParams, false, nil)
+	require.Equal(t, expectedParams, actualParams)
+}
+
+func Test_CreateRecipeParameters_ParameterConflict(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -64,56 +75,25 @@ func Test_ParameterConflict(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_ContextParameter(t *testing.T) {
-	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
-	expectedLinkContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
-				Name: "mongo0",
-			},
-			Type: "applications.link/mongodatabases",
-		},
-		Application: ResourceInfo{
-			Name: "testApplication",
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-		},
-		Environment: ResourceInfo{
-			Name: "env0",
-			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-		},
-		Runtime: recipes.RuntimeConfiguration{
-			Kubernetes: &recipes.KubernetesRuntime{
-				Namespace:            "radius-test-app",
-				EnvironmentNamespace: "radius-test-env",
-			},
-		},
-	}
-
-	linkContext, err := createRecipeContextParameter(linkID, "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0", "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
-	require.NoError(t, err)
-	require.Equal(t, expectedLinkContext, *linkContext)
-}
-
-func Test_DevParameterWithContextParameter(t *testing.T) {
+func Test_CreateRecipeParameters_WithContextParameter(t *testing.T) {
 	devParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
+	recipeContext := recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: ResourceInfo{
+		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: ResourceInfo{
+		Environment: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
@@ -143,25 +123,25 @@ func Test_DevParameterWithContextParameter(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
+func Test_CreateRecipeParameters_EmptyResourceParameters(t *testing.T) {
 	operatorParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
 		"name":       "test-parameters",
 	}
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
+	recipeContext := recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: ResourceInfo{
+		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: ResourceInfo{
+		Environment: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
@@ -191,7 +171,7 @@ func Test_EmptyDevParameterWithOperatorParameter(t *testing.T) {
 	require.Equal(t, expectedParams, actualParams)
 }
 
-func Test_DevParameterWithOperatorParameter(t *testing.T) {
+func Test_CreateRecipeParameters_ResourceAndEnvParameters(t *testing.T) {
 	operatorParams := map[string]any{
 		"throughput": 400,
 		"port":       2030,
@@ -201,19 +181,19 @@ func Test_DevParameterWithOperatorParameter(t *testing.T) {
 		"throughput": 800,
 		"port":       2060,
 	}
-	recipeContext := RecipeContext{
-		Resource: Resource{
-			ResourceInfo: ResourceInfo{
+	recipeContext := recipecontext.Context{
+		Resource: recipecontext.Resource{
+			ResourceInfo: recipecontext.ResourceInfo{
 				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
 			Type: "Applications.Link/mongoDatabases",
 		},
-		Application: ResourceInfo{
+		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			Name: "testApplication",
 		},
-		Environment: ResourceInfo{
+		Environment: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			Name: "env0",
 		},
@@ -242,12 +222,6 @@ func Test_DevParameterWithOperatorParameter(t *testing.T) {
 	actualParams := createRecipeParameters(devParams, operatorParams, true, &recipeContext)
 	require.Equal(t, expectedParams, actualParams)
 }
-func Test_ContextParameterError(t *testing.T) {
-	envID := "error-env"
-	linkContext, err := createRecipeContextParameter("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0", envID, "radius-test-env", "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication", "radius-test-app")
-	require.Error(t, err)
-	require.Nil(t, linkContext)
-}
 
 func Test_createDeploymentID(t *testing.T) {
 	expected, err := resources.ParseResource("/planes/radius/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
@@ -260,7 +234,7 @@ func Test_createDeploymentID(t *testing.T) {
 
 func Test_createProviderConfig_defaults(t *testing.T) {
 	expected := clients.NewDefaultProviderConfig("test-rg")
-	actual := createProviderConfig("test-rg", corerp_datamodel.Providers{})
+	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{})
 	require.Equal(t, expected, actual)
 }
 
@@ -281,10 +255,13 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 		Type:  clients.ProviderTypeAWS,
 		Value: clients.Value{Scope: aws},
 	}
-	actual := createProviderConfig("test-rg", providers)
+	actual := newProviderConfig("test-rg", providers)
 	require.Equal(t, expected, actual)
 }
-func Test_RecipeResponseSuccess(t *testing.T) {
+
+func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -306,7 +283,7 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
-	expectedResponse := recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets: map[string]any{
 			"username":         "testUser",
@@ -319,12 +296,14 @@ func Test_RecipeResponseSuccess(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_RecipeResponseWithoutSecret(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
@@ -341,7 +320,7 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
-	expectedResponse := recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"testId1", "testId2", "outputResourceId"},
 		Secrets:   map[string]any{},
 		Values: map[string]any{
@@ -350,25 +329,25 @@ func Test_RecipeResponseWithoutSecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func Test_RecipeResponseWithoutResult(t *testing.T) {
+func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
+	d := &bicepDriver{}
+
 	resources := []*armresources.ResourceReference{
 		{
 			ID: to.Ptr("outputResourceId"),
 		},
 	}
 	response := map[string]any{}
-	expectedResponse := recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"outputResourceId"},
-		Secrets:   map[string]any{},
-		Values:    map[string]any{},
 	}
 
-	actualResponse, err := prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse(response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -384,73 +363,68 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 	return driver, client
 }
 
-func Test_Driver_Delete_Success(t *testing.T) {
+func Test_Bicep_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
 			LocalID: "RecipeResource0",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Service",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "apps/unknown",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
 			RadiusManaged: to.Ptr(true),
 		},
 		{
 			LocalID: "RecipeResource1",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Service",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "apps/unknown",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"",
+				"Service",
+				"recipe-app",
+				"redis"),
 			// We don't expect a call to delete to be made when RadiusManaged is false.
 			RadiusManaged: to.Ptr(false),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(nil)
+	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
-	err := driver.Delete(ctx, outputResources)
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
 	require.NoError(t, err)
 }
 
-func Test_Driver_Delete_Error(t *testing.T) {
+func Test_Bicep_Delete_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
-			LocalID: "RecipeResource0",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "KubernetesService",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "invalid api versionn",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
 			RadiusManaged: to.Ptr(true),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+		},
+	}
+	client.EXPECT().
+		Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
+		Times(1)
 
-	err := driver.Delete(ctx, outputResources)
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
 	require.Error(t, err)
+	require.Equal(t, err, &recipeError)
 }

@@ -36,7 +36,7 @@ type CreateOrUpdateEnvironment struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
 
-// NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
+// NewCreateOrUpdateEnvironment creates a new controller for creating or updating an environment resource.
 func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateEnvironment{
 		ctrl.NewOperation(opts,
@@ -48,7 +48,8 @@ func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// Run executes CreateOrUpdateEnvironment operation.
+// Run checks if a resource with the same namespace already exists, and if not, updates the resource with the new values.
+// If a resource with the same namespace already exists, a conflict response is returned.
 func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)

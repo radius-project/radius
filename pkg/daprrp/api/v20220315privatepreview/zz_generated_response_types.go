@@ -8,75 +8,83 @@
 
 package v20220315privatepreview
 
-// DaprPubSubBrokerClientCreateOrUpdateResponse contains the response from method DaprPubSubBrokerClient.CreateOrUpdate.
-type DaprPubSubBrokerClientCreateOrUpdateResponse struct {
-	DaprPubSubBrokerResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprPubSubBrokerClientDeleteResponse contains the response from method DaprPubSubBrokerClient.Delete.
-type DaprPubSubBrokerClientDeleteResponse struct {
-	// placeholder for future response values
-}
-
-// DaprPubSubBrokerClientGetResponse contains the response from method DaprPubSubBrokerClient.Get.
-type DaprPubSubBrokerClientGetResponse struct {
-	DaprPubSubBrokerResource
-}
-
-// DaprPubSubBrokerClientListByRootScopeResponse contains the response from method DaprPubSubBrokerClient.ListByRootScope.
-type DaprPubSubBrokerClientListByRootScopeResponse struct {
-	DaprPubSubBrokerResourceListResult
-}
-
-// DaprSecretStoreClientCreateOrUpdateResponse contains the response from method DaprSecretStoreClient.CreateOrUpdate.
-type DaprSecretStoreClientCreateOrUpdateResponse struct {
-	DaprSecretStoreResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprSecretStoreClientDeleteResponse contains the response from method DaprSecretStoreClient.Delete.
-type DaprSecretStoreClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprSecretStoreClientGetResponse contains the response from method DaprSecretStoreClient.Get.
-type DaprSecretStoreClientGetResponse struct {
-	DaprSecretStoreResource
-}
-
-// DaprSecretStoreClientListByRootScopeResponse contains the response from method DaprSecretStoreClient.ListByRootScope.
-type DaprSecretStoreClientListByRootScopeResponse struct {
-	DaprSecretStoreResourceListResult
-}
-
-// DaprStateStoreClientCreateOrUpdateResponse contains the response from method DaprStateStoreClient.CreateOrUpdate.
-type DaprStateStoreClientCreateOrUpdateResponse struct {
-	DaprStateStoreResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// DaprStateStoreClientDeleteResponse contains the response from method DaprStateStoreClient.Delete.
-type DaprStateStoreClientDeleteResponse struct {
-	// placeholder for future response values
-}
-
-// DaprStateStoreClientGetResponse contains the response from method DaprStateStoreClient.Get.
-type DaprStateStoreClientGetResponse struct {
-	DaprStateStoreResource
-}
-
-// DaprStateStoreClientListByRootScopeResponse contains the response from method DaprStateStoreClient.ListByRootScope.
-type DaprStateStoreClientListByRootScopeResponse struct {
-	DaprStateStoreResourceListResult
-}
-
 // OperationsClientListResponse contains the response from method OperationsClient.List.
 type OperationsClientListResponse struct {
 	OperationListResult
+}
+
+// PubSubBrokersClientCreateOrUpdateResponse contains the response from method PubSubBrokersClient.CreateOrUpdate.
+type PubSubBrokersClientCreateOrUpdateResponse struct {
+	DaprPubSubBrokerResource
+}
+
+// PubSubBrokersClientDeleteResponse contains the response from method PubSubBrokersClient.Delete.
+type PubSubBrokersClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// PubSubBrokersClientGetResponse contains the response from method PubSubBrokersClient.Get.
+type PubSubBrokersClientGetResponse struct {
+	DaprPubSubBrokerResource
+}
+
+// PubSubBrokersClientListByScopeResponse contains the response from method PubSubBrokersClient.ListByScope.
+type PubSubBrokersClientListByScopeResponse struct {
+	DaprPubSubBrokerResourceListResult
+}
+
+// PubSubBrokersClientUpdateResponse contains the response from method PubSubBrokersClient.Update.
+type PubSubBrokersClientUpdateResponse struct {
+	DaprPubSubBrokerResource
+}
+
+// SecretStoresClientCreateOrUpdateResponse contains the response from method SecretStoresClient.CreateOrUpdate.
+type SecretStoresClientCreateOrUpdateResponse struct {
+	DaprSecretStoreResource
+}
+
+// SecretStoresClientDeleteResponse contains the response from method SecretStoresClient.Delete.
+type SecretStoresClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// SecretStoresClientGetResponse contains the response from method SecretStoresClient.Get.
+type SecretStoresClientGetResponse struct {
+	DaprSecretStoreResource
+}
+
+// SecretStoresClientListByScopeResponse contains the response from method SecretStoresClient.ListByScope.
+type SecretStoresClientListByScopeResponse struct {
+	DaprSecretStoreResourceListResult
+}
+
+// SecretStoresClientUpdateResponse contains the response from method SecretStoresClient.Update.
+type SecretStoresClientUpdateResponse struct {
+	DaprSecretStoreResource
+}
+
+// StateStoresClientCreateOrUpdateResponse contains the response from method StateStoresClient.CreateOrUpdate.
+type StateStoresClientCreateOrUpdateResponse struct {
+	DaprStateStoreResource
+}
+
+// StateStoresClientDeleteResponse contains the response from method StateStoresClient.Delete.
+type StateStoresClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// StateStoresClientGetResponse contains the response from method StateStoresClient.Get.
+type StateStoresClientGetResponse struct {
+	DaprStateStoreResource
+}
+
+// StateStoresClientListByScopeResponse contains the response from method StateStoresClient.ListByScope.
+type StateStoresClientListByScopeResponse struct {
+	DaprStateStoreResourceListResult
+}
+
+// StateStoresClientUpdateResponse contains the response from method StateStoresClient.Update.
+type StateStoresClientUpdateResponse struct {
+	DaprStateStoreResource
 }
 

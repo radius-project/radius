@@ -1,51 +1,43 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0",
-    "name": "gateway0",
-    "type": "Applications.Core/gateways",
-    "location": "West US",
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "fake@hotmail.com",
-        "createdByType": "User",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "fake@hotmail.com",
-        "lastModifiedByType": "User"
-    },
-    "tags": {
-        "env": "dev"
-    },
-    "provisioningState": "Succeeded",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "Gateway",
-                "Provider": "kubernetes"
-              },
-              "Identity": {
-                "data": null,
-                "resourceType": {
-                  "Type": "httproutes",
-                  "Provider": "aks"
-                }
-              }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostname": {
-            "fullyQualifiedHostname": "myapp.mydomain.com",
-            "prefix":"myprefix"
-        },
-        "routes": [{
-            "destination": "mydestination",
-            "path": "mypath",
-            "replacePrefix": "myreplaceprefix"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/gateway0",
+  "name": "gateway0",
+  "type": "Applications.Core/gateways",
+  "location": "West US",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "provisioningState": "Succeeded",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
-        ],
-        "tls":{
-          "sslPassthrough": false
-        },
-        "url": "myprefix.myapp.mydomain.com"
-    }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "hostname": {
+      "fullyQualifiedHostname": "myapp.mydomain.com",
+      "prefix": "myprefix"
+    },
+    "routes": [
+      {
+        "destination": "mydestination",
+        "path": "mypath",
+        "replacePrefix": "myreplaceprefix"
+      }
+    ],
+    "tls": {
+      "sslPassthrough": false
+    },
+    "url": "myprefix.myapp.mydomain.com"
+  }
 }

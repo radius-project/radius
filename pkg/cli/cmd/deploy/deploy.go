@@ -38,8 +38,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad deploy` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner to deploy a Bicep or ARM template to a specified environment, with
 // optional parameters. It also adds common flags to the command for workspace, resource group, environment name,
 // application name and parameters.
@@ -142,8 +141,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad deploy` command.
 //
-// # Function Explanation
-//
+
 // Validate validates the workspace, scope, environment name, application name, and parameters from the command
 // line arguments and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -191,11 +189,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Providers = &clients.Providers{}
 	r.Providers.Radius = &clients.RadiusProvider{}
 	r.Providers.Radius.EnvironmentID = r.Workspace.Scope + "/providers/applications.core/environments/" + r.EnvironmentName
+	r.Workspace.Environment = r.Providers.Radius.EnvironmentID
+
 	if r.ApplicationName != "" {
 		r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 	}
-	if env.Properties != nil && env.Properties.Providers != nil {
 
+	if env.Properties != nil && env.Properties.Providers != nil {
 		if env.Properties.Providers.Aws != nil {
 			r.Providers.AWS = &clients.AWSProvider{
 				Scope: *env.Properties.Providers.Aws.Scope,
@@ -226,8 +226,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad deploy` command.
 //
-// # Function Explanation
-//
+
 // Run deploys a Bicep template into an environment from a workspace, optionally creating an application if
 // specified, and displays progress and completion messages. It returns an error if any of the operations fail.
 func (r *Runner) Run(ctx context.Context) error {

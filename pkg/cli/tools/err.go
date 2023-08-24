@@ -23,8 +23,6 @@ type ErrToolNotFound struct {
 	Message string
 }
 
-// # Function Explanation
-//
 // Error() returns a string containing the error message for the ErrToolNotFound struct.
 func (e ErrToolNotFound) Error() string {
 	return e.Message

@@ -24,6 +24,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,13 +37,13 @@ func TestSqlDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseresourcedatamodel.json",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.SQLDatabaseResource{},
 			nil,
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -51,9 +52,10 @@ func TestSqlDatabaseDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.SqlDatabase{}
-			_ = json.Unmarshal(c, dm)
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
 			am, err := SqlDatabaseDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -72,17 +74,27 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseresource.json",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resource.json",
+			"2022-03-15-privatepreview",
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resource.json",
 			"2022-03-15-privatepreview",
 			nil,
 		},
 		{
 			"../../api/v20220315privatepreview/testdata/sqldatabaseresource-invalid.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.resource of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.database of type string"),
 		},
 		{
-			"",
+			"../../api/v20220315privatepreview/testdata/sqldatabase_invalid_properties_resource.json",
+			"2022-03-15-privatepreview",
+			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "multiple errors were found:\n\tserver must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual"},
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_invalid_properties_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -90,13 +102,57 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.versionedModelFile)
+			c := testutil.ReadFixture("../" + tc.versionedModelFile)
 			dm, err := SqlDatabaseDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
 				require.NoError(t, err)
 				require.IsType(t, tc.apiVersion, dm.InternalMetadata.UpdatedAPIVersion)
+			}
+		})
+	}
+}
+
+func TestSqlDatabaseSecretsDataModelToVersioned(t *testing.T) {
+	testset := []struct {
+		dataModelFile string
+		apiVersion    string
+		apiModelType  any
+		err           error
+	}{
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_secrets_datamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.SQLDatabaseSecrets{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resourcedatamodel.json",
+			"2022-03-15-privatepreview",
+			&v20220315privatepreview.SQLDatabaseSecrets{},
+			nil,
+		},
+		{
+			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resourcedatamodel.json",
+			"unsupported",
+			nil,
+			v1.ErrUnsupportedAPIVersion,
+		},
+	}
+
+	for _, tc := range testset {
+		t.Run(tc.apiVersion, func(t *testing.T) {
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
+			dm := &datamodel.SqlDatabaseSecrets{}
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
+			am, err := SqlDatabaseSecretsDataModelToVersioned(dm, tc.apiVersion)
+			if tc.err != nil {
+				require.ErrorAs(t, tc.err, &err)
+			} else {
+				require.NoError(t, err)
+				require.IsType(t, tc.apiModelType, am)
 			}
 		})
 	}

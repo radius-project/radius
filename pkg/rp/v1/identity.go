@@ -38,7 +38,8 @@ type IdentitySettings struct {
 	Resource string `json:"resource,omitempty"`
 }
 
-// Validate validates IdentitySettings.
+// Validate checks if the IdentitySettings struct is nil and if the Kind is AzureIdentityWorkload, checks if the OIDCIssuer
+// is empty and if the Resource is not empty. It returns an error if any of these conditions are not met.
 func (is *IdentitySettings) Validate() error {
 	if is == nil {
 		return nil

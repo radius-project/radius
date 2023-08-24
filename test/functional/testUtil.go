@@ -18,14 +18,18 @@ package functional
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
@@ -39,19 +43,22 @@ const (
 	RadiusSystemNamespace = "radius-system"
 )
 
+// GetMagpieImage creates a string with the default Docker registry and image tag for MagpieGo.
 func GetMagpieImage() string {
 	defaultDockerReg, imageTag := SetDefault()
 	magpieImage := "magpieimage=" + defaultDockerReg + "/magpiego:" + imageTag
 	return magpieImage
 }
 
+// GetMagpieTag sets a default image tag and returns a string with the format "magpietag=<imageTag>"
 func GetMagpieTag() string {
 	_, imageTag := SetDefault()
 	magpietag := "magpietag=" + imageTag
 	return magpietag
 }
 
-// GetOIDCIssuer gets OIDC Issuer URI from FUNCTEST_OIDC_ISSUER environment variable.
+// GetOIDCIssuer gets the OIDC Issuer URI from the environment variable FUNCTEST_OIDC_ISSUER or
+// a default value if the environment variable is empty.
 func GetOIDCIssuer() string {
 	oidcIssuer := os.Getenv("FUNCTEST_OIDC_ISSUER")
 	if oidcIssuer == "" {
@@ -60,6 +67,7 @@ func GetOIDCIssuer() string {
 	return "oidcIssuer=" + oidcIssuer
 }
 
+// SetDefault sets the default Docker registry and image tag if they are not already set in the environment.
 func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
@@ -78,6 +86,7 @@ type ProxyMetadata struct {
 	Status   string
 }
 
+// GetBicepRecipeRegistry returns the default recipe registry if one is not set in the environment.
 func GetBicepRecipeRegistry() string {
 	defaultRecipeRegistry := os.Getenv("BICEP_RECIPE_REGISTRY")
 	if defaultRecipeRegistry == "" {
@@ -86,6 +95,8 @@ func GetBicepRecipeRegistry() string {
 	return "registry=" + defaultRecipeRegistry
 }
 
+// GetBicepRecipeVersion returns the version of the Bicep recipe to be used, either from the environment variable or the
+// default value "latest".
 func GetBicepRecipeVersion() string {
 	defaultVersion := os.Getenv("BICEP_RECIPE_TAG_VERSION")
 	if defaultVersion == "" {
@@ -112,17 +123,20 @@ func GetTerraformRecipeModuleServerURL() string {
 	return "moduleServer=" + u
 }
 
+// GetAWSAccountId retrieves the AWS Account ID from the environment and returns it as a string.
 func GetAWSAccountId() string {
 	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
 	return "awsAccountId=" + awsAccountId
 }
 
+// GetAWSRegion returns the AWS region from the environment variable "AWS_REGION".
 func GetAWSRegion() string {
 	awsRegion := os.Getenv("AWS_REGION")
 	return "awsRegion=" + awsRegion
 }
 
-// GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status (e.g. "Valid", "Invalid")
+// GetHTTPProxyMetadata finds the fqdn set on the root HTTPProxy of the specified application and the current status
+// (e.g. "Valid", "Invalid"). It returns an error if the root proxy is not found.
 func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, namespace, application string) (*ProxyMetadata, error) {
 	httpproxies, err := GetHTTPProxyList(ctx, client, namespace, application)
 	if err != nil {
@@ -142,7 +156,8 @@ func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, nam
 	return nil, fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-// GetHTTPProxyList returns a list of HTTPProxies for the specified application
+// GetHTTPProxyList returns a list of HTTPProxies for the specified application. It returns an
+// error if the list cannot be retrieved.
 func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespace, application string) (*contourv1.HTTPProxyList, error) {
 	var httpproxies contourv1.HTTPProxyList
 
@@ -162,13 +177,16 @@ func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespa
 	return &httpproxies, nil
 }
 
-// ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan
+// ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan. It exposes a pod
+// in the RadiusSystemNamespace with the selector "app.kubernetes.io/component=envoy" on the given remotePort
+// and returns the port number and an error if any.
 func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
 	selector := "app.kubernetes.io/component=envoy"
 	ExposePod(t, ctx, client, config, RadiusSystemNamespace, selector, remotePort, stopChan, portChan, errorChan)
 }
 
-// ExposePod creates a port-forward session and sends the (assigned) local port to portChan
+// ExposePod creates a port-forward session. It finds a pod matching the given selector, creates an API Server URL,
+// sets up a port-forwarder, and sends the assigned port to the portChan channel.
 func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, namespace string, selector string, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
 	// Find matching pods
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector, Limit: 1})
@@ -225,6 +243,7 @@ func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config 
 	portChan <- int(ports[0].Local)
 }
 
+// NewTestLogger creates a new logger that writes to the testing.T object.
 func NewTestLogger(t *testing.T) *log.Logger {
 	tw := TestWriter{t}
 	logger := log.Logger{}
@@ -265,7 +284,36 @@ type TestWriter struct {
 	t *testing.T
 }
 
+// TestWriter.Write writes the given byte slice to the test log.
 func (tw TestWriter) Write(p []byte) (n int, err error) {
 	tw.t.Log(string(p))
 	return len(p), nil
+}
+
+// WriteBicepParameterFile writes a Bicep parameter file to a temporary file and returns the path to the file.
+// The temporary file will be removed when the test finishes.
+func WriteBicepParameterFile(t *testing.T, data map[string]any) string {
+	file := filepath.Join(t.TempDir(), uuid.New().String()+".json")
+
+	values := map[string]any{}
+	for key, value := range data {
+		values[key] = map[string]any{
+			"value": value,
+		}
+	}
+
+	params := map[string]any{
+		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+		"contentVersion": "1.0.0.0",
+		"parameters":     values,
+	}
+
+	text, err := json.MarshalIndent(params, "", "  ")
+	require.NoError(t, err)
+
+	t.Logf("Writing parameters file to: %s\n\n%s", file, text)
+
+	err = os.WriteFile(file, []byte(text), os.FileMode(0755))
+	require.NoError(t, err)
+	return file
 }

@@ -43,8 +43,6 @@ type CustomActionClient struct {
 	baseURI  string
 }
 
-// # Function Explanation
-//
 // InvokeCustomAction sends a request to the server to invoke a custom action on the given resource
 // and returns the response body and an error if one occurs.
 func (client *CustomActionClient) InvokeCustomAction(ctx context.Context, resourceID, apiVersion, action string) (*ClientCustomActionResponse, error) {
@@ -87,7 +85,9 @@ func (client *CustomActionClient) customActionCreateRequest(ctx context.Context,
 		return nil, errors.New("action cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(resourceID), url.PathEscape(action))
+	// resourceID contains slashes, and only allows characters allowed in a URL path, so
+	// it must not be escaped.
+	urlPath := runtime.JoinPaths(client.baseURI, resourceID, url.PathEscape(action))
 	req, err := runtime.NewRequest(ctx, http.MethodPost, urlPath)
 	if err != nil {
 		return nil, err

@@ -26,8 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// # Function Explanation
-// 
 // Recoverer handles panics and logs the error, returning an Internal Server Error response.
 func Recoverer(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,8 +33,8 @@ func Recoverer(h http.Handler) http.Handler {
 			if err := recover(); err != nil {
 				log := ucplog.FromContextOrDiscard(r.Context())
 
-				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
-				log.V(ucplog.Error).Info(msg)
+				msg := fmt.Errorf("recovering from panic %v: %s", err, debug.Stack())
+				log.Error(msg, "recovering from panic")
 
 				resp := rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
 					Error: v1.ErrorDetails{

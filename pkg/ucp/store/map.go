@@ -23,8 +23,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-// # Function Explanation
-//
 // DecodeMap decodes map[string]interface{} structure to the type of out.
 func DecodeMap(in any, out any) error {
 	cfg := &mapstructure.DecoderConfig{
@@ -32,7 +30,8 @@ func DecodeMap(in any, out any) error {
 		Result:  out,
 		Squash:  true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			toTimeHookFunc()),
+			toTimeHookFunc(),
+			mapstructure.TextUnmarshallerHookFunc()),
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	if err != nil {

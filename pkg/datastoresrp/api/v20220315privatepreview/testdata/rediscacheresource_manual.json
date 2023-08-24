@@ -1,0 +1,31 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/redisCaches/redis0",
+  "name": "redis0",
+  "type": "Applications.Datastores/redisCaches",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+    "resources": [
+      {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"
+      }
+    ],
+    "host": "myrediscache.redis.cache.windows.net",
+    "port": 10255,
+    "username": "admin",
+    "secrets": {
+      "password": "testPassword",
+      "connectionString": "test-connection-string",
+      "url": "test-url"
+    },
+    "tls": true,
+    "resourceProvisioning": "manual"
+  }
+}

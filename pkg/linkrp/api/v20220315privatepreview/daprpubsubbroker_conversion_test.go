@@ -25,6 +25,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -112,10 +114,9 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			versionedResource := &DaprPubSubBrokerResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -150,10 +151,9 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(test.payload)
 			versionedResource := &DaprStateStoreResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -192,15 +192,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 					Version:           to.Ptr("v1"),
 					ComponentName:     to.Ptr("test-dpsb"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -224,15 +216,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ComponentName:        to.Ptr("test-dpsb"),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -246,10 +230,9 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			resource := &datamodel.DaprPubSubBroker{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &DaprPubSubBrokerResource{}
@@ -269,7 +252,7 @@ func TestDaprPubSubBroker_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

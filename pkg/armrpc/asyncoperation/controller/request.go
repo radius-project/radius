@@ -58,8 +58,6 @@ type Request struct {
 	OperationTimeout *time.Duration `json:"asyncOperationTimeout"`
 }
 
-// # Function Explanation
-//
 // Timeout gets the operation timeout and returns the default timeout unless it specifies.
 func (r *Request) Timeout() time.Duration {
 	if r.OperationTimeout == nil {
@@ -68,8 +66,6 @@ func (r *Request) Timeout() time.Duration {
 	return *r.OperationTimeout
 }
 
-// # Function Explanation
-//
 // ARMRequestContext creates v1.ARMRequestContext object from async operation request. It returns error if the given resource id is invalid.
 func (r *Request) ARMRequestContext() (*v1.ARMRequestContext, error) {
 	rID, err := resources.Parse(r.ResourceID)

@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
-// # Function Explanation
-//
 // ARMRequestCtx is a middleware handler that adds an ARM request context to an incoming request. It takes in a pathBase
 // and location string and returns a function that takes in an http.Handler. If the location string is empty, it will
 // panic. Otherwise, it will attempt to create an ARM request context from the request and location strings. If it fails,

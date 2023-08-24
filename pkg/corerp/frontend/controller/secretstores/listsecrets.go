@@ -40,7 +40,7 @@ type ListSecrets struct {
 	ctrl.Operation[*datamodel.SecretStore, datamodel.SecretStore]
 }
 
-// NewListSecrets creates a new ListSecrets controller.
+// NewListSecrets creates a new controller for listing secrets from the secret store.
 func NewListSecrets(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListSecrets{
 		ctrl.NewOperation(opts,
@@ -52,7 +52,8 @@ func NewListSecrets(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// Run reads secret store metadata and returns the secret data from kubernetes secret. Currently, we support only kubernetes secret store.
+// Run retrieves the values of the referenced secret from Kubernetes and returns them in a response. If the
+// secret is not found, an error is returned. Currently, we support only kubernetes secret store.
 func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	resource, _, err := l.GetResource(ctx, serviceCtx.ResourceID)

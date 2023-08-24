@@ -9,6 +9,10 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 )
 
+// DaprHttpRouteBinding checks if the environment parameter "APPID" is present and if so, creates a Dapr client and invokes
+// a method on it, returning a BindingStatus object with a boolean and a message. If an error occurs, the BindingStatus
+// object will contain false and an error message.
+//
 // requires both the value to be set as env variables
 // - CONNECTION_DAPRHTTPROUTE_APPID
 // - DAPR_GRPC_PORT

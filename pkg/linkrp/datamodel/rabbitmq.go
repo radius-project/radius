@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	"fmt"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
@@ -35,8 +36,6 @@ type RabbitMQMessageQueue struct {
 	LinkMetadata
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the output resources of the RabbitMQMessageQueue resource with
 // the DeployedOutputResources.
 func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -44,22 +43,16 @@ func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) e
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources of the RabbitMQMessageQueue resource.
 func (r *RabbitMQMessageQueue) OutputResources() []rpv1.OutputResource {
 	return r.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the RabbitMQMessageQueue resource.
 func (r *RabbitMQMessageQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type for RabbitMQMessageQueue resource.
 func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
@@ -69,25 +62,28 @@ func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 type RabbitMQMessageQueueProperties struct {
 	rpv1.BasicResourceProperties
 	Queue                string                      `json:"queue,omitempty"`
+	Host                 string                      `json:"host,omitempty"`
+	Port                 int32                       `json:"port,omitempty"`
+	VHost                string                      `json:"vHost,omitempty"`
+	Username             string                      `json:"username,omitempty"`
+	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
 	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
 	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
 	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	TLS                  bool                        `json:"tls,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
 type RabbitMQSecrets struct {
-	ConnectionString string `json:"connectionString"`
+	URI      string `json:"uri,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the resource type for RabbitMQMessageQueue resource.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return linkrp.RabbitMQMessageQueuesResourceType
 }
 
-// # Function Explanation
-//
 // Recipe returns the LinkRecipe associated with the RabbitMQMessageQueue resource, or nil if the
 // ResourceProvisioning is set to Manual.
 func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
@@ -97,14 +93,33 @@ func (r *RabbitMQMessageQueue) Recipe() *linkrp.LinkRecipe {
 	return &r.Properties.Recipe
 }
 
-// # Function Explanation
-//
 // VerifyInputs checks if the required fields are present in the RabbitMQMessageQueue instance and returns an error if not.
 func (rabbitmq *RabbitMQMessageQueue) VerifyInputs() error {
 	properties := rabbitmq.Properties
+	msgs := []string{}
 	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
 		if properties.Queue == "" {
 			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+		}
+		if properties.Host == "" {
+			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
+		}
+		if properties.Port == 0 {
+			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
+		}
+		if properties.Username == "" && properties.Secrets.Password != "" {
+			msgs = append(msgs, "username must be provided with password")
+		}
+	}
+	if len(msgs) == 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: msgs[0],
+		}
+	} else if len(msgs) > 1 {
+		return &v1.ErrClientRP{
+			Code:    v1.CodeInvalid,
+			Message: fmt.Sprintf("multiple errors were found:\n\t%v", strings.Join(msgs, "\n\t")),
 		}
 	}
 	return nil

@@ -33,7 +33,8 @@ const (
 	secretProviderClassesCRD = "secretproviderclasses.secrets-store.csi.x-k8s.io"
 )
 
-// ValidateRequest validates the resource in the incoming request.
+// ValidateRequest checks if the new resource kind is valid and if a Secret CSI driver is installed for the resource kind.
+// If not, it returns a BadRequestResponse.
 func ValidateRequest(ctx context.Context, newResource *datamodel.VolumeResource, oldResource *datamodel.VolumeResource, options *controller.Options) (rest.Response, error) {
 	csiCRDValidationRequired := false
 

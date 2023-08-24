@@ -17,11 +17,13 @@ limitations under the License.
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
 
+// ValidateResourceIDsForResource checks if the given properties map contains all the required keys and returns an error if
+//
+//	any of the keys are missing.
 func ValidateResourceIDsForResource(properties map[string]string, keys ...string) error {
 	missing := []string{}
 	for _, k := range keys {
@@ -39,7 +41,8 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
 }
 
-// GetMapValue extracts the value for key from collection.
+// GetMapValue returns the value of a given key from a map of strings or a map of any type, or an error if the key is not
+// found or the value is not of the expected type.
 func GetMapValue[T any](collection any, key string) (T, error) {
 	var defaultValue T
 	switch c := collection.(type) {
@@ -59,6 +62,7 @@ func GetMapValue[T any](collection any, key string) (T, error) {
 			return defaultValue, fmt.Errorf("value is not %T type", *new(T))
 		}
 		return s, nil
+	default:
+		return defaultValue, fmt.Errorf("unsupported type: %T", c)
 	}
-	return defaultValue, errors.New("unsupported type")
 }

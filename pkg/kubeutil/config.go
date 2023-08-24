@@ -57,8 +57,6 @@ func buildConfigOptions(options *ConfigOptions) *ConfigOptions {
 	return options
 }
 
-// # Function Explanation
-//
 // LoadConfigFile loads the Kubernetes config file from the given path, or will load the default
 // config from the home directory if no path is provided.
 func LoadConfigFile(configFilePath string) (*api.Config, error) {
@@ -69,8 +67,6 @@ func LoadConfigFile(configFilePath string) (*api.Config, error) {
 	return clientcmd.LoadFromFile(configFilePath)
 }
 
-// # Function Explanation
-//
 // NewClientConfig builds a Kubernetes client config from either in-cluster or local configuration, and sets the QPS and
 // Burst values if provided. It returns an error if the config cannot be built.
 func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
@@ -100,8 +96,6 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 	return config, nil
 }
 
-// # Function Explanation
-//
 // NewClientConfigFromLocal builds a Kubernetes client config from a ConfigOptions instance, loading the config file from the
 // ConfigFilePath and setting the QPS and Burst values if specified. It returns an error if the config file cannot be loaded
 // or the client config cannot be initialized.

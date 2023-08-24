@@ -28,6 +28,7 @@ import (
 	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
 )
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the
@@ -128,7 +129,7 @@ func readRegionFromRequest(path string, pathBase string) (string, armrpc_rest.Re
 		response := armrpc_rest.NewBadRequestARMResponse(errResponse)
 		return "", response
 	}
-	region := resourceID.FindScope(resources.RegionsSegment)
+	region := resourceID.FindScope(resources_aws.ScopeRegions)
 	if region == "" {
 		errResponse := v1.ErrorResponse{
 			Error: v1.ErrorDetails{

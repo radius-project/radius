@@ -167,7 +167,8 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	return routeParams
 }
 
-// ValidateRequest validates http.Request and returns []ValidationError if the request is invalid.
+// ValidateRequest validates http.Request and returns []ValidationError if the request is invalid. It returns an
+// error if failed to parse the route.
 // Known limitation:
 //   - readonly property: go-openapi/middleware doesn't support "readonly" property even though
 //     go-openapi/validate has readonly property check used only for go-swagger.

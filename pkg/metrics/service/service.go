@@ -34,8 +34,6 @@ type Service struct {
 	Options HostOptions
 }
 
-// # Function Explanation
-//
 // NewService creates a new Service instance with the given HostOptions.
 func NewService(options HostOptions) *Service {
 	return &Service{
@@ -43,15 +41,11 @@ func NewService(options HostOptions) *Service {
 	}
 }
 
-// # Function Explanation
-//
 // Name returns the name of the metrics service.
 func (s *Service) Name() string {
 	return "Metrics Collector"
 }
 
-// # Function Explanation
-//
 // Run creates a new server for exposing an endpoint to collect metrics from. It sets up a
 // Prometheus exporter, initializes metrics, creates an HTTP server and handles shutdown based
 // on the context, returning an error if one occurs.

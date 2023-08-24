@@ -40,8 +40,7 @@ var validPlatforms = map[string]string{
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
 // exists on disk.
 //
-// # Function Explanation
-//
+
 // GetLocalFilepath checks for an override path in an environment variable, and if it exists, returns it. If not, it
 // returns the path to the binary in the user's home directory. It returns an error if it cannot find the user's home
 // directory or if the filename is invalid.
@@ -106,8 +105,7 @@ func getOverridePath(overrideEnvVarName string, binaryName string) (string, erro
 
 // GetValidPlatform returns the valid platform for the current OS and architecture.
 //
-// # Function Explanation
-//
+
 // GetValidPlatform checks if the given OS and architecture combination is supported and returns the corresponding
 // platform string if it is, or an error if it is not.
 func GetValidPlatform(currentOS, currentArch string) (string, error) {
@@ -118,8 +116,6 @@ func GetValidPlatform(currentOS, currentArch string) (string, error) {
 	return platform, nil
 }
 
-// # Function Explanation
-//
 // GetDownloadURI takes in a download URI format string and a binary name, and returns a download URI
 // string based on the runtime OS and architecture, or an error if the platform is not valid.
 func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
@@ -136,8 +132,6 @@ func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 	return fmt.Sprintf(downloadURIFmt, version.Channel(), platform, filename), nil
 }
 
-// # Function Explanation
-//
 // DownloadToFolder creates a folder and a file, writes the response body to the file, and makes the file executable by
 // everyone. An error is returned if any of these steps fail.
 func DownloadToFolder(filepath string, resp *http.Response) error {

@@ -18,9 +18,10 @@ package credential
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clierrors"
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
@@ -40,6 +41,11 @@ const (
 	infoRequiredTemplate = "required info %s"
 )
 
+type AWSCredentialProperties struct {
+	// AccessKeyID is the access key ID for the AWS credential.
+	AccessKeyID *string
+}
+
 // AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClientInterface interface {
 	// Get gets the credential registered with the given ucp provider plane.
@@ -54,8 +60,7 @@ type AWSCredentialManagementClientInterface interface {
 
 // Put registers credentials with the provided credential config
 //
-// # Function Explanation
-//
+
 // "Put" checks if the credential type is "AWSCredential" and if so, creates or updates the credential in the AWS plane,
 // otherwise it returns an error.
 func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AWSCredentialResource) error {
@@ -68,53 +73,37 @@ func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential uc
 
 // Get, gets the credential from the provided ucp provider plane
 //
-// # Function Explanation
-//
+
 // "Get" retrieves the credentials for the specified cloud provider from the backend and returns a ProviderCredentialConfiguration
-// object containing the credentials or an error if the credentials could not be retrieved. If the credentials for the specified
-// cloud provider are not registered, an error of type ErrUnsupportedCloudProvider is returned.
-func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
+// object containing the credentials or an error if the credentials could not be retrieved.
+func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialName string) (ProviderCredentialConfiguration, error) {
 	var err error
+
+	// We send only the name when getting credentials from backend which we already have access to
+	resp, err := cpm.AWSCredentialClient.Get(ctx, AWSPlaneName, credentialName, nil)
+	if err != nil {
+		return ProviderCredentialConfiguration{}, err
+	}
+	awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSAccessKeyCredentialProperties)
+	if !ok {
+		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AWSCredential)
+	}
+
 	providerCredentialConfiguration := ProviderCredentialConfiguration{
 		CloudProviderStatus: CloudProviderStatus{
-			Name:    name,
+			Name:    AWSCredential,
 			Enabled: true,
 		},
-	}
-
-	if strings.EqualFold(name, AWSCredential) {
-		// We send only the name when getting credentials from backend which we already have access to
-		resp, err := cpm.AWSCredentialClient.Get(ctx, AWSPlaneName, name, nil)
-		if err != nil {
-			return ProviderCredentialConfiguration{}, err
-		}
-		awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSCredentialProperties)
-		if !ok {
-			return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", name)
-		}
-		providerCredentialConfiguration.AWSCredentials = awsAccessKeyCredentials
-	} else {
-		return ProviderCredentialConfiguration{}, &ErrUnsupportedCloudProvider{}
-	}
-
-	// We get 404 when credential for the provider plane is not registered.
-	if clients.Is404Error(err) {
-		return ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    name,
-				Enabled: false,
-			},
-		}, nil
-	} else if err != nil {
-		return ProviderCredentialConfiguration{}, err
+		AWSCredentials: &AWSCredentialProperties{
+			AccessKeyID: awsAccessKeyCredentials.AccessKeyID,
+		},
 	}
 	return providerCredentialConfiguration, nil
 }
 
 // List, lists the AWS credentials registered
 //
-// # Function Explanation
-//
+
 // List retrieves a list of AWS credentials and returns a slice of CloudProviderStatus objects containing the name and
 // enabled status of each credential. If an error occurs, an error is returned.
 func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
@@ -132,9 +121,9 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 	}
 
 	res := []CloudProviderStatus{}
-	for _, provider := range providerList {
+	if len(providerList) > 0 {
 		res = append(res, CloudProviderStatus{
-			Name:    *provider.Name,
+			Name:    AWSCredential,
 			Enabled: true,
 		})
 	}
@@ -143,18 +132,15 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 
 // Delete, deletes the credentials from the given ucp provider plane
 //
-// # Function Explanation
-//
+
 // Delete checks if a credential for the provider plane is registered and if so, deletes it; if not, it returns true
 // without an error. If an error occurs, it returns false and the error.
 func (cpm *AWSCredentialManagementClient) Delete(ctx context.Context, name string) (bool, error) {
-	_, err := cpm.AWSCredentialClient.Delete(ctx, AWSPlaneName, name, nil)
-	// We get 404 when credential for the provider plane is not registered.
-	if clients.Is404Error(err) {
-		// return true if not found.
-		return true, nil
-	} else if err != nil {
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+	_, err := cpm.AWSCredentialClient.Delete(ctxWithResp, AWSPlaneName, name, nil)
+	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return respFromCtx.StatusCode != 204, nil
 }

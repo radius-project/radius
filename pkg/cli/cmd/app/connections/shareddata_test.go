@@ -16,6 +16,10 @@ limitations under the License.
 
 package connections
 
+import (
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+)
+
 // This file contains shared variables and functions used in tests.
 
 var environmentResourceID = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test-env"
@@ -30,43 +34,21 @@ func makeRedisResourceID(name string) string {
 	return "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/" + name
 }
 
-var containerDeploymentOutputResource any = makeKubernetesOutputResource("apps/v1", "Deployment", "default-demo", "demo")
-var redisAWSOutputResource any = makeAWSOutputResource(awsMemoryDBResourceID)
-var redisAzureOutputResource any = makeAzureOutputResource(azureRedisCacheResourceID)
+var containerDeploymentOutputResource any = makeKubernetesOutputResource("apps", "Deployment", "default-demo", "demo")
+var redisAWSOutputResource any = makeOutputResource(awsMemoryDBResourceID)
+var redisAzureOutputResource any = makeOutputResource(azureRedisCacheResourceID)
 
 // makeKubernetesOutputResource creates a Kubernetes output resource.
-func makeKubernetesOutputResource(apiVersion string, kind string, namespace string, name string) map[string]any {
+func makeKubernetesOutputResource(group string, kind string, namespace string, name string) map[string]any {
 	return map[string]any{
-		"Identity": map[string]any{
-			"apiVersion": apiVersion,
-			"kind":       kind,
-			"name":       name,
-			"namespace":  namespace,
-		},
-		"LocalID":  "Ignored",
-		"Provider": "kubernetes",
+		"id": resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, group, kind, namespace, name),
 	}
 }
 
-// makeAWSOutputResource creates an AWS output resource.
-func makeAWSOutputResource(id string) map[string]any {
+// makeOutputResource creates an AWS output resource.
+func makeOutputResource(id string) map[string]any {
 	return map[string]any{
-		"Identity": map[string]any{
-			"id": id,
-		},
-		"LocalID":  "Ignored",
-		"Provider": "aws",
-	}
-}
-
-// makeAzureOutputResource creates an Azure output resource.
-func makeAzureOutputResource(id string) map[string]any {
-	return map[string]any{
-		"Identity": map[string]any{
-			"id": id,
-		},
-		"LocalID":  "Ignored",
-		"Provider": "azure",
+		"id": id,
 	}
 }
 

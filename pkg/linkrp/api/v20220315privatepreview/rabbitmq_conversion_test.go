@@ -25,6 +25,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,8 +64,14 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					ResourceProvisioning: linkrp.ResourceProvisioningManual,
 					Queue:                "testQueue",
+					Host:                 "test-host",
+					VHost:                "test-vhost",
+					Port:                 5672,
+					Username:             "test-user",
+					TLS:                  true,
 					Secrets: datamodel.RabbitMQSecrets{
-						ConnectionString: "connection://string",
+						URI:      "connection://string",
+						Password: "password",
 					},
 				},
 			},
@@ -95,6 +103,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
 					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					TLS:                  false,
 					Recipe: linkrp.LinkRecipe{
 						Name: "rabbitmq",
 						Parameters: map[string]any{
@@ -108,10 +117,9 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			versionedResource := &RabbitMQMessageQueueResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -143,15 +151,12 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Queue:                to.Ptr("testQueue"),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "rabbitmqProvider",
-							},
-						},
-					},
+					Host:                 to.Ptr("test-host"),
+					VHost:                to.Ptr("test-vhost"),
+					Port:                 to.Ptr(int32(5672)),
+					Username:             to.Ptr("test-user"),
+					TLS:                  to.Ptr(true),
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -172,21 +177,18 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Queue:                to.Ptr("testQueue"),
+					Host:                 to.Ptr("test-host"),
+					VHost:                to.Ptr("test-vhost"),
+					Port:                 to.Ptr(int32(5672)),
+					Username:             to.Ptr("test-user"),
+					TLS:                  to.Ptr(false),
 					Recipe: &Recipe{
 						Name: to.Ptr("rabbitmq"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
 					},
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "rabbitmqProvider",
-							},
-						},
-					},
+					Status: resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -199,10 +201,9 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			resource := &datamodel.RabbitMQMessageQueue{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &RabbitMQMessageQueueResource{}
@@ -237,10 +238,9 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *test
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := loadTestData("./testdata/" + test.payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(test.payload)
 			versionedResource := &RabbitMQMessageQueueResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -257,7 +257,7 @@ func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -270,10 +270,9 @@ func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rabbitmqsecrets.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("rabbitmqsecrets.json")
 	versioned := &RabbitMQSecrets{}
-	err = json.Unmarshal(rawPayload, versioned)
+	err := json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
 	// act
@@ -282,15 +281,14 @@ func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	converted := dm.(*datamodel.RabbitMQSecrets)
-	require.Equal(t, "test-connection-string", converted.ConnectionString)
+	require.Equal(t, "test-connection-string", converted.URI)
 }
 
 func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := loadTestData("./testdata/rabbitmqsecretsdatamodel.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("./rabbitmqsecretsdatamodel.json")
 	secrets := &datamodel.RabbitMQSecrets{}
-	err = json.Unmarshal(rawPayload, secrets)
+	err := json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act
@@ -299,7 +297,7 @@ func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, "test-connection-string", secrets.ConnectionString)
+	require.Equal(t, "test-connection-string", secrets.URI)
 }
 
 func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
@@ -307,7 +305,7 @@ func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

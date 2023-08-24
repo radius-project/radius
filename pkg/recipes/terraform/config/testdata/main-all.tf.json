@@ -1,0 +1,41 @@
+{
+  "terraform": {
+    "backend": {
+      "kubernetes": {
+        "config_path": "/home/radius/.kube/config",
+        "namespace": "radius-system",
+        "secret_suffix": "test-secret-suffix"
+      }
+    }
+  },
+  "module": {
+    "redis-azure": {
+      "context": {
+        "resource": {
+          "name": "mongo0",
+          "id": "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+          "type": "applications.link/mongodatabases"
+        },
+        "application": {
+          "name": "testApplication",
+          "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication"
+        },
+        "environment": {
+          "name": "env0",
+          "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0"
+        },
+        "runtime": {
+          "kubernetes": {
+            "namespace": "radius-test-app",
+            "environmentNamespace": "radius-test-env"
+          }
+        }
+      },
+      "redis_cache_name": "redis-test",
+      "resource_group_name": "test-rg",
+      "sku": "P",
+      "source": "Azure/redis/azurerm",
+      "version": "1.1.0"
+    }
+  }
+}

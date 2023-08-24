@@ -17,6 +17,8 @@ limitations under the License.
 package recipes
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -73,19 +75,12 @@ type ResourceMetadata struct {
 	Parameters map[string]any
 }
 
-// RecipeOutput represents recipe deployment output.
-type RecipeOutput struct {
-	// Resources represents the list of output resources deployed recipe.
-	Resources []string
-	// Secrets represents the key/value pairs of secret values of the deployed resource.
-	Secrets map[string]any
-	// Values represents the key/value pairs of properties of the deployed resource.
-	Values map[string]any
-}
-
 const (
 	TemplateKindBicep     = "bicep"
 	TemplateKindTerraform = "terraform"
+
+	// Recipe outputs are expected to be wrapped under an object named "result"
+	ResultPropertyName = "result"
 )
 
 var (
@@ -97,6 +92,49 @@ type ErrRecipeNotFound struct {
 	Environment string
 }
 
+// ErrRecipeNotFoundError returns an error message with the recipe name and environment when a recipe is not found.
 func (e *ErrRecipeNotFound) Error() string {
 	return fmt.Sprintf("could not find recipe %q in environment %q", e.Name, e.Environment)
+}
+
+// RecipeOutput represents recipe deployment output.
+type RecipeOutput struct {
+	// Resources represents the list of output resources deployed recipe.
+	Resources []string
+
+	// Secrets represents the key/value pairs of secret values of the deployed resource.
+	Secrets map[string]any
+
+	// Values represents the key/value pairs of properties of the deployed resource.
+	Values map[string]any
+}
+
+// PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.
+// outputs map is the value of "result" output from the recipe deployment response.
+func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error {
+	b, err := json.Marshal(&resultValue)
+	if err != nil {
+		return err
+	}
+
+	// Using a decoder to block unknown fields.
+	decoder := json.NewDecoder(bytes.NewBuffer(b))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(ro)
+	if err != nil {
+		return err
+	}
+
+	// Make sure maps are non-nil (it's just friendly).
+	if ro.Secrets == nil {
+		ro.Secrets = map[string]any{}
+	}
+	if ro.Values == nil {
+		ro.Values = map[string]any{}
+	}
+	if ro.Resources == nil {
+		ro.Resources = []string{}
+	}
+
+	return nil
 }

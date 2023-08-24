@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel
 // and returns an error if the inputs are invalid.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -59,7 +57,13 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	}
+	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
+	converted.Properties.Host = to.String(properties.Host)
+	converted.Properties.Port = to.Int32(properties.Port)
+	converted.Properties.Username = to.String(properties.Username)
 	converted.Properties.Queue = to.String(properties.Queue)
+	converted.Properties.VHost = to.String(properties.VHost)
+	converted.Properties.TLS = to.Bool(properties.TLS)
 	err = converted.VerifyInputs()
 	if err != nil {
 		return nil, err
@@ -67,14 +71,13 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (v1.DataModelInterface, err
 
 	if src.Properties.Secrets != nil {
 		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			URI:      to.String(src.Properties.Secrets.URI),
+			Password: to.String(properties.Secrets.Password),
 		}
 	}
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQMessageQueue resource,
 // and returns an error if the source is not a valid datamodel.RabbitMQMessageQueue.
 func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) error {
@@ -98,6 +101,12 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 		Application:          to.Ptr(rabbitmq.Properties.Application),
 		ResourceProvisioning: fromResourceProvisioningDataModel(rabbitmq.Properties.ResourceProvisioning),
 		Queue:                to.Ptr(rabbitmq.Properties.Queue),
+		Host:                 to.Ptr(rabbitmq.Properties.Host),
+		Port:                 to.Ptr(rabbitmq.Properties.Port),
+		VHost:                to.Ptr(rabbitmq.Properties.VHost),
+		Username:             to.Ptr(rabbitmq.Properties.Username),
+		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
+		TLS:                  to.Ptr(rabbitmq.Properties.TLS),
 	}
 	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
@@ -105,8 +114,6 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src v1.DataModelInterface) 
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance
 // and returns an error if the conversion fails.
 func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
@@ -115,16 +122,16 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	dst.ConnectionString = to.Ptr(rabbitMQSecrets.ConnectionString)
+	dst.URI = to.Ptr(rabbitMQSecrets.URI)
+	dst.Password = to.Ptr(rabbitMQSecrets.Password)
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned RabbitMQSecrets instance to version-agnostic datamodel.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
-		ConnectionString: to.String(src.ConnectionString),
+		URI:      to.String(src.URI),
+		Password: to.String(src.Password),
 	}
 	return converted, nil
 }

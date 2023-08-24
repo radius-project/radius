@@ -1,26 +1,25 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
-    "name": "mongo0",
-    "type": "Applications.Datastores/mongoDatabases",
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "azure.cosmosdb.mongo",
-                "Provider": "azure"
-              }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "mode": "values",
-        "host": "testAccount1.mongo.cosmos.azure.com",
-        "port": 10255,
-        "secrets": {
-          "username": "testUser",
-          "password": "testPassword",
-          "connectionString": "test-connection-string"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+  "name": "mongo0",
+  "type": "Applications.Datastores/mongoDatabases",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+    "resourceProvisioning": "manual",
+    "host": "testAccount.mongo.cosmos.azure.com",
+    "port": 10255,
+    "database": "test-database",
+    "username": "testUser",
+    "secrets": {
+      "password": "testPassword",
+      "connectionString": "test-connection-string"
     }
+  }
 }

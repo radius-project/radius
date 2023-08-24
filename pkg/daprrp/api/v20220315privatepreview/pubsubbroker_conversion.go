@@ -28,10 +28,8 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
-// ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel, validating the input
-// and returning an error if any of the validation checks fail.
+// ConvertTo converts a versioned DaprPubSubBrokerResource to a version-agnostic DaprPubSubBroker. It returns an error
+// if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -108,8 +106,6 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
 // If the DataModelInterface is not of the correct type, an error is returned.
 func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) error {
@@ -133,7 +129,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		ComponentName:        to.Ptr(daprPubSub.Properties.ComponentName),
 		ProvisioningState:    fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
 		},
 	}
 

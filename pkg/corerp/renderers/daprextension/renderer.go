@@ -36,7 +36,7 @@ type Renderer struct {
 	Inner renderers.Renderer
 }
 
-// GetDependencyIDs returns dependencies for the container datamodel passed in
+// GetDependencyIDs returns the radius and azure dependency IDs, or an error if one occurs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, dm)
 	if err != nil {
@@ -46,7 +46,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusDependencyIDs, azureDependencyIDs, nil
 }
 
-// Render augments the container's kubernetes output resource with value for dapr sidecar extension.
+// Render checks if the given DataModelInterface is a ContainerResource, then renders it using the Inner renderer,
+// finds the Dapr Sidecar extension if any, and updates the Kubernetes deployment with the desired annotations.
 func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
@@ -71,12 +72,13 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	// the desired annotations.
 
 	for i := range output.Resources {
-		if output.Resources[i].ResourceType.Provider != resourcemodel.ProviderKubernetes {
+		resourceType := output.Resources[i].GetResourceType()
+		if resourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		o, ok := output.Resources[i].Resource.(runtime.Object)
+		o, ok := output.Resources[i].CreateResource.Data.(runtime.Object)
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}

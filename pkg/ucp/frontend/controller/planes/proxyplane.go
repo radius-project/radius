@@ -44,8 +44,6 @@ type ProxyPlane struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// # Function Explanation
-//
 // NewProxyPlane creates a new ProxyPlane controller with the given options and returns it, or returns an error if the
 // controller cannot be created.
 func NewProxyPlane(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
@@ -54,8 +52,6 @@ func NewProxyPlane(opts armrpc_controller.Options) (armrpc_controller.Controller
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() takes in a request object and context, looks up the plane and resource provider associated with the
 // request, and proxies the request to the appropriate resource provider.
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
@@ -63,7 +59,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
-		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
+		logger.V(ucplog.LevelDebug).Info("incoming request header", "key", key, "value", value)
 	}
 
 	refererURL := url.URL{

@@ -44,8 +44,6 @@ type Options struct {
 	ARMClientOptions *arm.ClientOptions
 }
 
-// # Function Explanation
-// 
 // DeploymentEngineURL takes a base URI and a resource ID and returns a URL string by combining the two.
 func DeploymentEngineURL(baseURI string, resourceID string) string {
 	return runtime.JoinPaths(strings.TrimSuffix(baseURI, "/"), "/", strings.TrimPrefix(resourceID, "/"))

@@ -17,13 +17,18 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
+	"fmt"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp"
+	linkrp_apiver "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned Extender resource to version-agnostic datamodel.
+// ConvertTo converts from the versioned Extender resource to version-agnostic datamodel and returns it, or an error if the
+// conversion fails.
 func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.Extender{
 		BaseResource: v1.BaseResource{
@@ -46,12 +51,19 @@ func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			AdditionalProperties: src.Properties.AdditionalProperties,
 			Secrets:              src.Properties.Secrets,
+			ResourceRecipe:       toRecipeDataModel(src.Properties.Recipe),
 		},
+	}
+
+	var err error
+	converted.Properties.ResourceProvisioning, err = toResourceProvisiongDataModel(src.Properties.ResourceProvisioning)
+	if err != nil {
+		return nil, err
 	}
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned Extender resource.
+// ConvertFrom converts from version-agnostic datamodel to the versioned Extender resource and returns an error if the conversion fails.
 func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	extender, ok := src.(*datamodel.Extender)
 	if !ok {
@@ -66,14 +78,66 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(extender.Properties.Environment),
 		Application:          to.Ptr(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,
-
+		Recipe:               fromRecipeDataModel(extender.Properties.ResourceRecipe),
+		ResourceProvisioning: fromResourceProvisioningDataModel(extender.Properties.ResourceProvisioning),
 		// Secrets are omitted.
 	}
 	return nil
+}
+
+func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) (linkrp.ResourceProvisioning, error) {
+	if provisioning == nil {
+		return linkrp.ResourceProvisioningRecipe, nil
+	}
+	switch *provisioning {
+	case ResourceProvisioningManual:
+		return linkrp.ResourceProvisioningManual, nil
+	case ResourceProvisioningRecipe:
+		return linkrp.ResourceProvisioningRecipe, nil
+	default:
+		return "", &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
+	}
+}
+
+func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning) *ResourceProvisioning {
+	var converted ResourceProvisioning
+	switch provisioning {
+	case linkrp.ResourceProvisioningManual:
+		converted = ResourceProvisioningManual
+	default:
+		converted = ResourceProvisioningRecipe
+	}
+
+	return &converted
+}
+
+func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
+	return &Recipe{
+		Name:       to.Ptr(r.Name),
+		Parameters: r.Parameters,
+	}
+}
+
+func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
+	if r == nil {
+		return linkrp.LinkRecipe{
+			Name: linkrp_apiver.DefaultRecipeName,
+		}
+	}
+	recipe := linkrp.LinkRecipe{}
+	if r.Name == nil {
+		recipe.Name = linkrp_apiver.DefaultRecipeName
+	} else {
+		recipe.Name = to.String(r.Name)
+	}
+	if r.Parameters != nil {
+		recipe.Parameters = r.Parameters
+	}
+	return recipe
 }

@@ -24,7 +24,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// ValidateAndMutateRequest validates and mutates the incoming request.
+// ValidateAndMutateRequest checks if the TLS configuration is valid and sets the TLS protocol version to 1.2 if it is not
+// specified. It returns a BadRequestResponse error if SSL Passthrough and TLS termination are both configured or if TLS
+// protocol version is set but certificateFrom is not.
 func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *datamodel.Gateway, options *controller.Options) (rest.Response, error) {
 	if newResource.Properties.TLS != nil {
 		// If SSL Passthrough and TLS termination are both configured, then report an error

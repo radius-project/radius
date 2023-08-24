@@ -19,23 +19,13 @@ package v20220315privatepreview
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
-
 	"github.com/stretchr/testify/require"
 )
-
-type fakeResource struct{}
-
-// # Function Explanation
-//
-// Always returns "FakeResource" as the name.
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
 
 func TestToProvisioningStateDataModel(t *testing.T) {
 	stateTests := []struct {
@@ -75,19 +65,6 @@ func TestFromProvisioningStateDataModel(t *testing.T) {
 		sc := fromProvisioningStateDataModel(testCase.datamodel)
 		require.Equal(t, testCase.versioned, *sc)
 	}
-}
-
-func TestUnmarshalTimeString(t *testing.T) {
-	parsedTime := unmarshalTimeString("2021-09-24T19:09:00.000000Z")
-	require.NotNil(t, parsedTime)
-
-	require.Equal(t, 2021, parsedTime.Year())
-	require.Equal(t, time.Month(9), parsedTime.Month())
-	require.Equal(t, 24, parsedTime.Day())
-
-	parsedTime = unmarshalTimeString("")
-	require.NotNil(t, parsedTime)
-	require.Equal(t, 1, parsedTime.Year())
 }
 
 func TestFromSystemDataModel(t *testing.T) {
@@ -235,6 +212,7 @@ func TestFromResourceProvisiongDataModel(t *testing.T) {
 		require.Equal(t, testCase.versioned, *sc)
 	}
 }
+
 func TestToRecipeDataModel(t *testing.T) {
 	testset := []struct {
 		versioned *Recipe
@@ -243,7 +221,7 @@ func TestToRecipeDataModel(t *testing.T) {
 		{
 			nil,
 			linkrp.LinkRecipe{
-				Name: defaultRecipeName,
+				Name: v20220315privatepreview.DefaultRecipeName,
 			},
 		},
 		{
@@ -267,7 +245,7 @@ func TestToRecipeDataModel(t *testing.T) {
 				},
 			},
 			linkrp.LinkRecipe{
-				Name: defaultRecipeName,
+				Name: v20220315privatepreview.DefaultRecipeName,
 				Parameters: map[string]any{
 					"foo": "bar",
 				},

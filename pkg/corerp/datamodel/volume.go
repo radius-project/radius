@@ -39,12 +39,13 @@ type VolumeResource struct {
 	Properties VolumeResourceProperties `json:"properties"`
 }
 
-// ResourceTypeName returns the qualified name of the resource
+// ResourceTypeName returns the type of VolumeResource.
 func (h *VolumeResource) ResourceTypeName() string {
 	return VolumeResourceType
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+// ApplyDeploymentOutput updates the VolumeResource's Properties, ComputedValues and SecretValues with the
+// DeploymentOutput's DeployedOutputResources, ComputedValues and SecretValues respectively.
 func (h *VolumeResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
 	h.ComputedValues = do.ComputedValues
@@ -52,12 +53,12 @@ func (h *VolumeResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	return nil
 }
 
-// OutputResources returns the output resources array.
+// OutputResources returns the OutputResources from the VolumeResource's Properties.
 func (h *VolumeResource) OutputResources() []rpv1.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
-// ResourceMetadata returns the application resource metadata.
+// ResourceMetadata returns the BasicResourceProperties of the VolumeResource instance.
 func (h *VolumeResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }

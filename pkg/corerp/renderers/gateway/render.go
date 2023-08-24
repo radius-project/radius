@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
+	"strconv"
 	"strings"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -30,15 +32,16 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 )
 
 type Renderer struct {
 }
 
-// GetDependencyIDs fetches all the httproutes used by the gateway
+// GetDependencyIDs parses the gateway data model to get the resource IDs of the httpRoutes and the secretStore resource ID
+// from the certificateFrom property, and returns them as two slices of resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
@@ -47,8 +50,13 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	gtwyProperties := gateway.Properties
 
 	// Get all httpRoutes that are used by this gateway
-	for _, httpRoute := range gtwyProperties.Routes {
-		resourceID, err := resources.ParseResource(httpRoute.Destination)
+	for _, route := range gtwyProperties.Routes {
+		// Skip if destination is a URL. DNS-SD will resolve the route.
+		if isURL(route.Destination) {
+			continue
+		}
+
+		resourceID, err := resources.ParseResource(route.Destination)
 		if err != nil {
 			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
@@ -69,7 +77,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-// Render creates the kubernetes output resource for the gateway and its dependency - httproute
+// Render creates a gateway object and http route objects based on the given parameters, and returns them along
+// with a computed value for the gateway's public endpoint.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []rpv1.OutputResource{}
 	gateway, ok := dm.(*datamodel.Gateway)
@@ -119,7 +128,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-// MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
+// MakeGateway validates the Gateway resource and its dependencies, and creates a Contour HTTPProxy resource
+// to act as the Gateway.
 func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
 	dependencies := options.Dependencies
@@ -130,6 +140,8 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 
 	sslPassthrough := false
 	var contourTLSConfig *contourv1.TLS
+
+	// configure TLS if it is enabled
 	if gateway.Properties.TLS != nil {
 		sslPassthrough = gateway.Properties.TLS.SSLPassthrough
 
@@ -168,19 +180,14 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretResource := secretStoreResource.OutputResources[rpv1.LocalIDSecret].Data
-			secretResourceData, ok := secretResource.(map[string]any)
+			secretResourceID, ok := secretStoreResource.OutputResources[rpv1.LocalIDSecret]
 			if !ok {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretName, ok := secretResourceData["name"]
-			if !ok {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
-			}
-
-			secretNamespace, ok := secretResourceData["namespace"]
-			if !ok {
+			secretName := secretResourceID.Name()
+			secretNamespace := secretResourceID.FindScope(resources_kubernetes.ScopeNamespaces)
+			if secretNamespace == "" {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
@@ -282,20 +289,32 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 
-	return rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
-// MakeHttpRoutes creates the kubernetes httproute construct from the corerp gateway datamodel
+// MakeHttpRoutes creates HTTPProxy objects for each route in the gateway and returns them as OutputResources. It returns
+// an error if it fails to get the route name.
 func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
 	dependencies := options.Dependencies
 	objects := make(map[string]*contourv1.HTTPProxy)
 
 	for _, route := range gateway.Routes {
-		routeProperties := dependencies[route.Destination]
 		port := renderers.DefaultPort
-		routePort, ok := routeProperties.ComputedValues["port"].(float64)
-		if ok {
-			port = int32(routePort)
+
+		if isURL(route.Destination) {
+			_, _, urlPort, err := parseURL(route.Destination)
+			if err != nil {
+				return []rpv1.OutputResource{}, err
+			}
+			port = urlPort
+
+		} else {
+			routeProperties := dependencies[route.Destination]
+			routePort, ok := routeProperties.ComputedValues["port"].(float64)
+			if ok {
+				port = int32(routePort)
+			}
+
 		}
 
 		routeName, err := getRouteName(&route)
@@ -372,13 +391,24 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 
 	var outputResources []rpv1.OutputResource
 	for localID, object := range objects {
-		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
+		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(localID, object, object.ObjectMeta))
 	}
 
 	return outputResources, nil
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
+	// if isURL, then name is hostname (DNS-SD case)
+	if isURL(route.Destination) {
+		u, err := url.Parse(route.Destination)
+		if err != nil {
+			return "", v1.NewClientErrInvalidRequest(err.Error())
+		}
+
+		return u.Hostname(), nil
+	}
+
+	// if not URL, then name is the resourceID (HTTProute case)
 	resourceID, err := resources.ParseResource(route.Destination)
 	if err != nil {
 		return "", v1.NewClientErrInvalidRequest(err.Error())
@@ -454,4 +484,55 @@ func getPublicEndpoint(hostname string, port string, isHttps bool) string {
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, authority)
+}
+
+func isURL(input string) bool {
+	_, err := url.ParseRequestURI(input)
+
+	// if first character is a slash, it's not a URL. It's a path.
+	if err != nil || input[0] == '/' {
+		return false
+	}
+	return true
+}
+
+func parseURL(sourceURL string) (scheme string, hostname string, port int32, err error) {
+	u, err := url.Parse(sourceURL)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	scheme = u.Scheme
+	host := u.Host
+
+	hostname, strPort, err := net.SplitHostPort(host)
+	_, ok := err.(*net.AddrError)
+	if ok {
+		strPort = ""
+		hostname = host
+	} else if err != nil {
+		return "", "", 0, err
+	}
+
+	if scheme == "http" && strPort == "" {
+		strPort = "80"
+	}
+
+	if scheme == "https" && strPort == "" {
+		strPort = "443"
+	}
+
+	// bound check port
+	portInt, err := strconv.Atoi(strPort)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	if portInt < 0 || portInt > 65535 {
+		return "", "", 0, fmt.Errorf("port %d is out of range", port)
+	}
+
+	port = int32(portInt)
+
+	return scheme, hostname, port, nil
 }
