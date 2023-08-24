@@ -49,7 +49,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Dapr/pubSubBrokers?api-version=2022-03-15-privatepreview&$skipToken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Dapr/pubSubBrokers?api-version=2022-03-15-privatepreview&$skipToken=X'12345'"
       }
     }
   }
