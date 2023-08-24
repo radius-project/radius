@@ -550,7 +550,7 @@
     },
     "RabbitMQListSecretsResult": {
       "type": "object",
-      "description": "The secret values for the given RabbitMQMessageQueue resource",
+      "description": "The secret values for the given RabbitMQQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -751,7 +751,7 @@
     },
     "RabbitMQSecrets": {
       "type": "object",
-      "description": "The secret values for the given RabbitMQMessageQueue resource",
+      "description": "The secret values for the given RabbitMQQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -765,7 +765,7 @@
     },
     "Recipe": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -783,7 +783,7 @@
     },
     "RecipeUpdate": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",

@@ -513,7 +513,7 @@ type PubSubBrokersClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
@@ -522,7 +522,7 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a link
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type RecipeUpdate struct {
 	// The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`

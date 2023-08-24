@@ -26,10 +26,10 @@
 * **port**: int: The port of the RabbitMQ instance. Defaults to 5672
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **queue**: string: The name of the queue
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the rabbitMQ resource
-* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
+* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **tls**: bool: Specifies whether to use SSL when connecting to the RabbitMQ instance
 * **username**: string: The username to use when connecting to the RabbitMQ instance

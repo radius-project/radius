@@ -1580,7 +1580,7 @@
     },
     "Recipe": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -1598,7 +1598,7 @@
     },
     "RecipeUpdate": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",

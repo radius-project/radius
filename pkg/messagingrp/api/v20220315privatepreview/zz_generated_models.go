@@ -172,7 +172,7 @@ type OutputResource struct {
 	RadiusManaged *bool `json:"radiusManaged,omitempty"`
 }
 
-// RabbitMQListSecretsResult - The secret values for the given RabbitMQMessageQueue resource
+// RabbitMQListSecretsResult - The secret values for the given RabbitMQQueue resource
 type RabbitMQListSecretsResult struct {
 	// The password used to connect to the RabbitMQ instance
 	Password *string `json:"password,omitempty"`
@@ -308,7 +308,7 @@ type RabbitMQQueueResourceUpdateProperties struct {
 	VHost *string `json:"vHost,omitempty"`
 }
 
-// RabbitMQSecrets - The secret values for the given RabbitMQMessageQueue resource
+// RabbitMQSecrets - The secret values for the given RabbitMQQueue resource
 type RabbitMQSecrets struct {
 	// The password used to connect to the RabbitMQ instance
 	Password *string `json:"password,omitempty"`
@@ -352,7 +352,7 @@ type RabbitMqQueuesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
@@ -361,7 +361,7 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a link
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type RecipeUpdate struct {
 	// The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`

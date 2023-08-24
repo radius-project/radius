@@ -43,7 +43,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the pubSubBroker
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -109,7 +109,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string: Dapr component type which must matches the format used by Dapr Kubernetes configuration format
@@ -127,7 +127,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the state store
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
