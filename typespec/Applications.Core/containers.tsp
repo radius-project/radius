@@ -61,6 +61,22 @@ model ContainerProperties {
   @doc("Extensions spec of the resource")
   @extension("x-ms-identifiers", [])
   extensions?: Extension[];
+
+  @doc("Specifies Runtime-specific functionality")
+  runtimes?: RuntimesProperties;
+}
+
+@doc("The properties for runtime configuration")
+@discriminator("kind")
+model RuntimesProperties {}
+
+@doc("The runtime configuration properties for Kubernetes")
+model KubernetesRuntimeProperties extends RuntimesProperties {
+  @doc("The RuntimeProperties kind")
+  kind: "kubernetes";
+
+  @doc("The serialized YAML of the Kubernetes deployment object")
+  base?: string;
 }
 
 @doc("Specifies a listening port for the container")

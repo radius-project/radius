@@ -297,14 +297,10 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
-<<<<<<< HEAD
-	// Specifies runtime-specific functionality for the container resource.
-	Runtimes *RuntimeProperties
+	// Specifies Runtime-specific functionality
+	Runtimes RuntimesPropertiesClassification
 
-	// READ-ONLY; Gets the status of the container at the time the operation was called.
-=======
 	// READ-ONLY; The status of the asynchronous operation.
->>>>>>> main
 	ProvisioningState *ProvisioningState
 
 	// READ-ONLY; Status of a resource.
@@ -372,6 +368,9 @@ type ContainerResourceUpdateProperties struct {
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettingsUpdate
+
+	// Specifies Runtime-specific functionality
+	Runtimes RuntimesPropertiesClassification
 }
 
 // ContainerUpdate - Definition of a container
@@ -1145,6 +1144,22 @@ func (k *KubernetesNamespaceExtension) GetExtension() *Extension {
 	}
 }
 
+// KubernetesRuntimeProperties - The runtime configuration properties for Kubernetes
+type KubernetesRuntimeProperties struct {
+	// REQUIRED; Discriminator property for RuntimesProperties.
+	Kind *string
+
+	// The serialized YAML of the Kubernetes deployment object
+	Base *string
+}
+
+// GetRuntimesProperties implements the RuntimesPropertiesClassification interface for type KubernetesRuntimeProperties.
+func (k *KubernetesRuntimeProperties) GetRuntimesProperties() *RuntimesProperties {
+	return &RuntimesProperties{
+		Kind: k.Kind,
+	}
+}
+
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
 	// REQUIRED; Discriminator property for Extension.
@@ -1409,21 +1424,16 @@ type ResourceStatus struct {
 	OutputResources []*OutputResource
 }
 
-<<<<<<< HEAD
-type RuntimeProperties struct {
-	// Represents the runtime configuration for the platform-specific functionalities
-	Kubernetes *RuntimePropertiesKubernetes
+// RuntimesProperties - The properties for runtime configuration
+type RuntimesProperties struct {
+	// REQUIRED; Discriminator property for RuntimesProperties.
+	Kind *string
 }
 
-// RuntimePropertiesKubernetes - Represents the runtime configuration for the platform-specific functionalities
-type RuntimePropertiesKubernetes struct {
-	// The Kubernetes resource definition in the serialized YAML format
-	Base *string
-}
+// GetRuntimesProperties implements the RuntimesPropertiesClassification interface for type RuntimesProperties.
+func (r *RuntimesProperties) GetRuntimesProperties() *RuntimesProperties { return r }
 
-=======
 // SecretObjectProperties - Represents secret object properties
->>>>>>> main
 type SecretObjectProperties struct {
 	// REQUIRED; The name of the secret
 	Name *string

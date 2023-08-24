@@ -199,16 +199,6 @@
 
 ## ContainerProperties
 ### Properties
-<<<<<<< HEAD
-* **application**: string (Required): Specifies the resource id of the application
-* **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
-* **container**: [Container](#container) (Required): Definition of a container.
-* **environment**: string: The resource id of the environment linked to the resource
-* **extensions**: [ContainerExtension](#containerextension)[]: Extensions spec of the resource
-* **identity**: [IdentitySettings](#identitysettings)
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **runtimes**: [RuntimeProperties](#runtimeproperties)
-=======
 * **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Specifies a connection to another resource.
 * **container**: [Container](#container) (Required): Definition of a container
@@ -216,7 +206,7 @@
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings): IdentitySettings is the external identity setting.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
->>>>>>> main
+* **runtimes**: [RuntimesProperties](#runtimesproperties): The properties for runtime configuration
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## ContainerPropertiesConnections
@@ -318,51 +308,16 @@
 * **source**: string (Required): The source of the volume
 
 
-<<<<<<< HEAD
-## ContainerExtension
+## RuntimesProperties
 * **Discriminator**: kind
 
 ### Base Properties
-### DaprSidecarExtension
+### KubernetesRuntimeProperties
 #### Properties
-* **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
-* **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
-* **config**: string: Specifies the Dapr configuration to use for the resource.
-* **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
-* **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
-
-### ContainerKubernetesMetadataExtension
-#### Properties
-* **annotations**: [ContainerKubernetesMetadataExtensionAnnotations](#containerkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
-* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
-* **labels**: [ContainerKubernetesMetadataExtensionLabels](#containerkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
-
-### ManualScalingExtension
-#### Properties
-* **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
-* **replicas**: int: Replica count.
+* **base**: string: The serialized YAML of the Kubernetes deployment object
+* **kind**: 'kubernetes' (Required): Discriminator property for RuntimesProperties.
 
 
-## ContainerKubernetesMetadataExtensionAnnotations
-### Properties
-### Additional Properties
-* **Additional Properties Type**: string
-
-## ContainerKubernetesMetadataExtensionLabels
-### Properties
-### Additional Properties
-* **Additional Properties Type**: string
-
-## RuntimeProperties
-### Properties
-* **kubernetes**: [RuntimePropertiesKubernetes](#runtimepropertieskubernetes): Represents the runtime configuration for the platform-specific functionalities
-
-## RuntimePropertiesKubernetes
-### Properties
-* **base**: string: The Kubernetes resource definition in the serialized YAML format
-
-=======
->>>>>>> main
 ## TrackedResourceTags
 ### Properties
 ### Additional Properties

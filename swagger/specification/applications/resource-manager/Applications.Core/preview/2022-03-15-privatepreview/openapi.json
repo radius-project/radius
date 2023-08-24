@@ -456,6 +456,9 @@
         "x-ms-examples": {
           "Create or update an container resource": {
             "$ref": "./examples/Containers_CreateOrUpdate.json"
+          },
+          "Create or update an container resource with base manifest": {
+            "$ref": "./examples/Containers_CreateOrUpdate_BaseManifest.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2942,6 +2945,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "runtimes": {
+          "$ref": "#/definitions/RuntimesProperties",
+          "description": "Specifies Runtime-specific functionality"
         }
       },
       "required": [
@@ -3041,6 +3048,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "runtimes": {
+          "$ref": "#/definitions/RuntimesProperties",
+          "description": "Specifies Runtime-specific functionality"
         }
       }
     },
@@ -4152,6 +4163,22 @@
       ],
       "x-ms-discriminator-value": "kubernetesNamespace"
     },
+    "KubernetesRuntimeProperties": {
+      "type": "object",
+      "description": "The runtime configuration properties for Kubernetes",
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "The serialized YAML of the Kubernetes deployment object"
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/RuntimesProperties"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
     "ManagedStore": {
       "type": "string",
       "description": "The managed store for the ephemeral volume",
@@ -4578,6 +4605,20 @@
           "x-ms-identifiers": []
         }
       }
+    },
+    "RuntimesProperties": {
+      "type": "object",
+      "description": "The properties for runtime configuration",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for RuntimesProperties."
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
     },
     "SecretObjectProperties": {
       "type": "object",

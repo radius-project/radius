@@ -653,7 +653,7 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "ProvisioningState", &c.ProvisioningState)
 			delete(rawMsg, key)
 		case "runtimes":
-				err = unpopulate(val, "Runtimes", &c.Runtimes)
+			c.Runtimes, err = unmarshalRuntimesPropertiesClassification(val)
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &c.Status)
@@ -788,6 +788,7 @@ func (c ContainerResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", c.Environment)
 	populate(objectMap, "extensions", c.Extensions)
 	populate(objectMap, "identity", c.Identity)
+	populate(objectMap, "runtimes", c.Runtimes)
 	return json.Marshal(objectMap)
 }
 
@@ -817,6 +818,9 @@ func (c *ContainerResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "identity":
 				err = unpopulate(val, "Identity", &c.Identity)
+			delete(rawMsg, key)
+		case "runtimes":
+			c.Runtimes, err = unmarshalRuntimesPropertiesClassification(val)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2618,6 +2622,37 @@ func (k *KubernetesNamespaceExtension) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type KubernetesRuntimeProperties.
+func (k KubernetesRuntimeProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "base", k.Base)
+	objectMap["kind"] = "kubernetes"
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type KubernetesRuntimeProperties.
+func (k *KubernetesRuntimeProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", k, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "base":
+				err = unpopulate(val, "Base", &k.Base)
+			delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &k.Kind)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", k, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type ManualScalingExtension.
 func (m ManualScalingExtension) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3317,15 +3352,15 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RuntimeProperties.
-func (r RuntimeProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RuntimesProperties.
+func (r RuntimesProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "kubernetes", r.Kubernetes)
+	objectMap["kind"] = r.Kind
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RuntimeProperties.
-func (r *RuntimeProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RuntimesProperties.
+func (r *RuntimesProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -3333,35 +3368,8 @@ func (r *RuntimeProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "kubernetes":
-				err = unpopulate(val, "Kubernetes", &r.Kubernetes)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", r, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RuntimePropertiesKubernetes.
-func (r RuntimePropertiesKubernetes) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "base", r.Base)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RuntimePropertiesKubernetes.
-func (r *RuntimePropertiesKubernetes) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", r, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "base":
-				err = unpopulate(val, "Base", &r.Base)
+		case "kind":
+				err = unpopulate(val, "Kind", &r.Kind)
 			delete(rawMsg, key)
 		}
 		if err != nil {

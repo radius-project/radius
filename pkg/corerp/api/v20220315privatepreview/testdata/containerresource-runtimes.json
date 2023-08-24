@@ -73,9 +73,8 @@
       }
     ],
     "runtimes": {
-      "kubernetes": {
-        "base": "apiVersion: v1\nkind: Service\nmetadata:\n  name: my-service\nspec:\n  selector:\n    app.kubernetes.io/name: MyApp\n  ports:\n    - protocol: TCP\n      port: 80\n      targetPort: 9376"
-      }
+      "kind": "kubernetes",
+      "base": "apiVersion: v1\nkind: Service\nmetadata:\n  name: my-service\nspec:\n  selector:\n    app.kubernetes.io/name: MyApp\n  ports:\n    - protocol: TCP\n      port: 80\n      targetPort: 9376"
     }
   }
 }

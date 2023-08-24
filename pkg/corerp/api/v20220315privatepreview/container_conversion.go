@@ -470,15 +470,16 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 	return &m
 }
 
-func toRuntimeProperties(runtime *RuntimeProperties) *datamodel.RuntimeProperties {
+func toRuntimeProperties(runtime RuntimesPropertiesClassification) *datamodel.RuntimeProperties {
 	if runtime == nil {
 		return nil
 	}
 
-	if runtime.Kubernetes != nil {
+	switch c := runtime.(type) {
+	case *KubernetesRuntimeProperties:
 		return &datamodel.RuntimeProperties{
 			Kubernetes: &datamodel.KubernetesRuntime{
-				Base: to.String(runtime.Kubernetes.Base),
+				Base: to.String(c.Base),
 			},
 		}
 	}
@@ -486,15 +487,14 @@ func toRuntimeProperties(runtime *RuntimeProperties) *datamodel.RuntimePropertie
 	return nil
 }
 
-func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) *RuntimeProperties {
+func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) RuntimesPropertiesClassification {
 	if runtime == nil {
 		return nil
 	}
 
-	return &RuntimeProperties{
-		Kubernetes: &RuntimePropertiesKubernetes{
-			Base: to.Ptr(runtime.Kubernetes.Base),
-		},
+	return &KubernetesRuntimeProperties{
+		Kind: to.Ptr("kubernetes"),
+		Base: to.Ptr(runtime.Kubernetes.Base),
 	}
 }
 
