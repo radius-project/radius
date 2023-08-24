@@ -1,0 +1,72 @@
+{
+  "operationId": "SqlDatabases_ListByScope",
+  "title": "List SqlDatabases resources by rootScope",
+  "parameters": {
+    "rootScope": "planes/radius/local",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/sqlDatabases/sql0",
+            "name": "sql0",
+            "type": "Applications.Datastores/sqlDatabases",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+                }
+              ],
+              "database": "sql-database",
+              "server": "test-server",
+              "resourceProvisioning": "manual"
+            }
+          },
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Datastores/sqlDatabases/sql1",
+            "name": "sql1",
+            "type": "Applications.Datastores/sqlDatabases",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+              "resources": [
+                {
+                  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase1"
+                }
+              ],
+              "database": "testDatabase",
+              "server": "testAccount1.sql.cosmos.azure.com",
+              "resourceProvisioning": "manual"
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/sqlDatabases/sql2",
+            "name": "sql2",
+            "type": "Applications.Datastores/sqlDatabases",
+            "location": "global",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+              "recipe": {
+                "name": "sqldb",
+                "parameters": {
+                  "foo": "bar"
+                }
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Datastores/sqlDatabases?api-version=2022-03-15-privatepreview&$skipToken=X'12345'"
+      }
+    }
+  }
+}

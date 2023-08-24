@@ -15,20 +15,21 @@
 ## Function listSecrets (Applications.Messaging/rabbitMQQueues@2022-03-15-privatepreview)
 * **Resource**: Applications.Messaging/rabbitMQQueues
 * **ApiVersion**: 2022-03-15-privatepreview
+* **Input**: any
 * **Output**: [RabbitMQListSecretsResult](#rabbitmqlistsecretsresult)
 
 ## RabbitMQQueueProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **host**: string: The hostname of the RabbitMQ instance
 * **port**: int: The port of the RabbitMQ instance. Defaults to 5672
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **queue**: string: The name of the queue
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the rabbitMQ resource
-* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQQueue resource
+* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **tls**: bool: Specifies whether to use SSL when connecting to the RabbitMQ instance
 * **username**: string: The username to use when connecting to the RabbitMQ instance
@@ -50,7 +51,32 @@
 
 ## ResourceStatus
 ### Properties
-* **outputResources**: any[]: Properties of an output resource
+* **compute**: [EnvironmentCompute](#environmentcompute): Represents backing compute resource
+* **outputResources**: [OutputResource](#outputresource)[]: Properties of an output resource
+
+## EnvironmentCompute
+* **Discriminator**: kind
+
+### Base Properties
+* **identity**: [IdentitySettings](#identitysettings): IdentitySettings is the external identity setting.
+* **resourceId**: string: The resource id of the compute resource for application environment.
+### KubernetesCompute
+#### Properties
+* **kind**: 'kubernetes' (Required): Discriminator property for EnvironmentCompute.
+* **namespace**: string (Required): The namespace to use for the environment.
+
+
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.workload' | 'undefined' (Required): IdentitySettingKind is the kind of supported external identity setting
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the provisioned identity
+
+## OutputResource
+### Properties
+* **id**: string: The UCP resource ID of the underlying resource.
+* **localId**: string: The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships.
+* **radiusManaged**: bool: Determines whether Radius manages the lifecycle of the underlying resource.
 
 ## SystemData
 ### Properties

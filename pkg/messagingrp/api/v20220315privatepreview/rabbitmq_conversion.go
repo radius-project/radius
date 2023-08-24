@@ -95,7 +95,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQQueueProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(rabbitmq.Properties.Environment),
