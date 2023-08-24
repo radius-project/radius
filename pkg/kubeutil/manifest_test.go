@@ -59,6 +59,49 @@ spec:
       targetPort: 9376
 `
 
+const validManifestWithSecrets = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  namespace: app-scoped
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-admin
+type: Opaque
+stringData:
+  username: admin
+  password: password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-user
+type: Opaque
+stringData:
+  username: user
+  password: password
+`
+
 const invalidManifest = `
 apiVersion: apps/v1
 kind: Deployment
@@ -76,13 +119,25 @@ func TestParseManifest(t *testing.T) {
 	manifestTests := []struct {
 		name      string
 		manifest  string
-		types     []string
+		types     map[string]int
 		errString string
 	}{
 		{
-			name:      "valid manifest",
-			manifest:  validManifest,
-			types:     []string{"Deployment", "Service"},
+			name:     "valid manifest with deployments and services",
+			manifest: validManifest,
+			types: map[string]int{
+				"deployment": 1,
+				"service":    1,
+			},
+			errString: "",
+		},
+		{
+			name:     "valid manifest with deployments and secrets",
+			manifest: validManifestWithSecrets,
+			types: map[string]int{
+				"deployment": 1,
+				"secret":     2,
+			},
 			errString: "",
 		},
 		{
@@ -102,10 +157,8 @@ func TestParseManifest(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Len(t, objects, len(tc.types))
-
-			for i, obj := range objects {
-				require.Equal(t, tc.types[i], obj.GetObjectKind().GroupVersionKind().Kind)
+			for k, _ := range objects {
+				require.Equal(t, tc.types[k], len(objects[k]))
 			}
 		})
 	}

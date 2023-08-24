@@ -19,6 +19,7 @@ package kubeutil
 import (
 	"bytes"
 	"io"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -26,11 +27,11 @@ import (
 )
 
 // ParseManifest parses the given manifest and returns a list of objects. It returns an error if the manifest is invalid.
-func ParseManifest(data []byte) ([]runtime.Object, error) {
+func ParseManifest(data []byte) (map[string][]runtime.Object, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
 	deser := scheme.Codecs.UniversalDeserializer()
 
-	var objects []runtime.Object
+	objects := map[string][]runtime.Object{}
 	for {
 		ext := runtime.RawExtension{}
 		if err := decoder.Decode(&ext); err != nil {
@@ -44,8 +45,12 @@ func ParseManifest(data []byte) ([]runtime.Object, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		objects = append(objects, obj)
+		resourceTypeName := strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind)
+		if v, ok := objects[resourceTypeName]; ok {
+			objects[resourceTypeName] = append(v, obj)
+		} else {
+			objects[resourceTypeName] = []runtime.Object{obj}
+		}
 	}
 
 	return objects, nil
