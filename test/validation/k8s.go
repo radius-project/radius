@@ -113,7 +113,20 @@ func NewK8sServiceForResource(application string, name string) K8sObject {
 }
 
 // NewK8sSecretForResource creates a K8sObject for a secret with the Labels set to the application and name.
-func NewK8sSecretForResource(application string, name string, resourceName string) K8sObject {
+func NewK8sSecretForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "secrets",
+		},
+		Kind:   "Secret",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+// NewK8sSecretForResourceWithResourceName creates a K8sObject for a secret with the Labels set to the application and name.
+func NewK8sSecretForResourceWithResourceName(application string, name string, resourceName string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
@@ -533,7 +546,7 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 				resourceExists = true
 				actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 				break
-			} else if expectedResource.Kind == "Secret" {
+			} else if expectedResource.Kind == "Secret" && expectedResource.SkipLabelValidation {
 				if actualResource.GetName() == expectedResource.ResourceName {
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
