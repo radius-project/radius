@@ -28,7 +28,7 @@ generate: generate-genericcliclient generate-rad-corerp-client generate-rad-link
 .PHONY: generate-cadl-installed
 generate-cadl-installed:
 	@echo "$(ARROW) Detecting cadl..."
-	npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
+	cd cadl/Applications.Link && npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-tsp-installed
