@@ -79,12 +79,3 @@ type VolumePropertiesClassification interface {
 	GetVolumeProperties() *VolumeProperties
 }
 
-// VolumeUpdateClassification provides polymorphic access to related types.
-// Call the interface's GetVolumeUpdate() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *EphemeralVolumeUpdate, *PersistentVolumeUpdate, *VolumeUpdate
-type VolumeUpdateClassification interface {
-	// GetVolumeUpdate returns the VolumeUpdate content of the underlying type.
-	GetVolumeUpdate() *VolumeUpdate
-}
-

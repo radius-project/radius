@@ -24,13 +24,18 @@ endif
 
 .PHONY: generate
 generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
-	
+
 .PHONY: generate-cadl-installed
 generate-cadl-installed:
 	@echo "$(ARROW) Detecting cadl..."
 	cd cadl/Applications.Link && npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
 
+.PHONY: generate-tsp-installed
+generate-tsp-installed:
+	@echo "$(ARROW) Detecting tsp..."
+	cd typespec/ && npx$(CMD_EXT) -q tsp --help > /dev/null || { echo "run 'npm ci' in typespec directory."; exit 1; }
+	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
 generate-openapi-spec:
@@ -38,8 +43,11 @@ generate-openapi-spec:
 	cd cadl/Applications.Link && npx$(CMD_EXT) cadl compile .
 	cd cadl/UCP && npx$(CMD_EXT) cadl compile . 
 	cd cadl/Applications.Messaging && npx$(CMD_EXT) cadl compile .
-	cd cadl/Applications.Dapr && npx$(CMD_EXT) cadl compile .
 	cd cadl/Applications.Datastores && npx$(CMD_EXT) cadl compile .
+
+	@echo  "Generating openapi specs from typespec models."
+	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
+	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -71,27 +79,27 @@ generate-genericcliclient: generate-node-installed generate-autorest-installed
 	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
 
 .PHONY: generate-rad-corerp-client
-generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the corerp client SDK (Autorest).
+generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
 
 .PHONY: generate-rad-linkrp-client
-generate-rad-linkrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the linkrp client SDK (Autorest).
+generate-rad-linkrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the linkrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
 
 .PHONY: generate-rad-datastoresrp-client
-generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
+generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/datastoresrp/api/README.md --tag=datastores-2022-03-15-privatepreview
 
 .PHONY: generate-rad-messagingrp-client
-generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
+generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/messagingrp/api/README.md --tag=messaging-2022-03-15-privatepreview
 
 .PHONY: generate-rad-daprrp-client
-generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
+generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/daprrp/api/README.md --tag=dapr-2022-03-15-privatepreview
 

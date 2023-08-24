@@ -7,6 +7,7 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -259,7 +260,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/pubsubbrokers", validator)
 	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers", validator)
-	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{daprPubSubBrokerName}", validator)
+	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{pubSubBrokerName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -310,6 +311,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprPubSubBroker]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprPubSubBroker],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprPubSubBroker],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
 						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
@@ -328,6 +330,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.PubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprPubSubBroker]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprPubSubBroker],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprPubSubBroker],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
 						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
@@ -354,7 +357,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/secretstores", validator)
 	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores", validator)
-	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{daprSecretStoreName}", validator)
+	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{secretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -405,6 +408,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprSecretStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprSecretStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprSecretStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
 						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
@@ -423,6 +427,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.SecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprSecretStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprSecretStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprSecretStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
 						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
@@ -449,7 +454,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/statestores", validator)
 	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores", validator)
-	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{daprStateStoreName}", validator)
+	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{stateStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -500,6 +505,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprStateStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprStateStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprStateStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
 						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
@@ -518,6 +524,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						ResponseConverter: dapr_conv.StateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[dapr_dm.DaprStateStore]{
 							rp_frontend.PrepareRadiusResource[*dapr_dm.DaprStateStore],
+							rp_frontend.PrepareDaprResource[*dapr_dm.DaprStateStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
 						AsyncOperationRetryAfter: link_frontend_ctrl.AsyncOperationRetryAfter,
@@ -1072,6 +1079,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprPubSubBroker]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprPubSubBroker],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
@@ -1090,6 +1098,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprPubSubBroker]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprPubSubBroker],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
@@ -1167,6 +1176,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprSecretStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprSecretStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
@@ -1185,6 +1195,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprSecretStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprSecretStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
@@ -1262,6 +1273,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprStateStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprStateStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
@@ -1280,6 +1292,7 @@ func AddLinkRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.DaprStateStore]{
+							rp_frontend.PrepareDaprResource[*datamodel.DaprStateStore],
 							rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 						},
 						AsyncOperationTimeout:    link_frontend_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,

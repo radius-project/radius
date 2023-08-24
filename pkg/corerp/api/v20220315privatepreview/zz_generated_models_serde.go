@@ -868,7 +868,7 @@ func (c *ContainerUpdate) UnmarshalJSON(data []byte) error {
 			c.ReadinessProbe, err = unmarshalHealthProbePropertiesClassification(val)
 			delete(rawMsg, key)
 		case "volumes":
-			c.Volumes, err = unmarshalVolumeUpdateClassificationMap(val)
+			c.Volumes, err = unmarshalVolumeClassificationMap(val)
 			delete(rawMsg, key)
 		case "workingDir":
 				err = unpopulate(val, "WorkingDir", &c.WorkingDir)
@@ -1222,41 +1222,6 @@ func (e EphemeralVolume) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type EphemeralVolume.
 func (e *EphemeralVolume) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", e, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &e.Kind)
-			delete(rawMsg, key)
-		case "managedStore":
-				err = unpopulate(val, "ManagedStore", &e.ManagedStore)
-			delete(rawMsg, key)
-		case "mountPath":
-				err = unpopulate(val, "MountPath", &e.MountPath)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", e, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type EphemeralVolumeUpdate.
-func (e EphemeralVolumeUpdate) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	objectMap["kind"] = "ephemeral"
-	populate(objectMap, "managedStore", e.ManagedStore)
-	populate(objectMap, "mountPath", e.MountPath)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type EphemeralVolumeUpdate.
-func (e *EphemeralVolumeUpdate) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", e, err)
@@ -2832,45 +2797,6 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type PersistentVolumeUpdate.
-func (p PersistentVolumeUpdate) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	objectMap["kind"] = "persistent"
-	populate(objectMap, "mountPath", p.MountPath)
-	populate(objectMap, "permission", p.Permission)
-	populate(objectMap, "source", p.Source)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type PersistentVolumeUpdate.
-func (p *PersistentVolumeUpdate) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", p, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &p.Kind)
-			delete(rawMsg, key)
-		case "mountPath":
-				err = unpopulate(val, "MountPath", &p.MountPath)
-			delete(rawMsg, key)
-		case "permission":
-				err = unpopulate(val, "Permission", &p.Permission)
-			delete(rawMsg, key)
-		case "source":
-				err = unpopulate(val, "Source", &p.Source)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", p, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type Providers.
 func (p Providers) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -4084,37 +4010,6 @@ func (v *VolumeResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &v.Environment)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", v, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type VolumeUpdate.
-func (v VolumeUpdate) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	objectMap["kind"] = v.Kind
-	populate(objectMap, "mountPath", v.MountPath)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type VolumeUpdate.
-func (v *VolumeUpdate) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", v, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &v.Kind)
-			delete(rawMsg, key)
-		case "mountPath":
-				err = unpopulate(val, "MountPath", &v.MountPath)
 			delete(rawMsg, key)
 		}
 		if err != nil {
