@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Core Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST API for Applications.Core",
+    "description": "REST APIs for Applications.Core",
     "x-typespec-generated": [
       {
         "emitter": "@azure-tools/typespec-autorest"
