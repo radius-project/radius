@@ -32,6 +32,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp"
 	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 )
 
 type UCPApplicationsManagementClient struct {
@@ -223,7 +224,7 @@ func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context
 		if err != nil {
 			return results, err
 		}
-		applicationList := nextPage.ApplicationResourceList.Value
+		applicationList := nextPage.ApplicationResourceListResult.Value
 		for _, application := range applicationList {
 			results = append(results, *application)
 		}
@@ -440,7 +441,7 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx 
 		if err != nil {
 			return envResourceList, err
 		}
-		applicationList := nextPage.EnvironmentResourceList.Value
+		applicationList := nextPage.EnvironmentResourceListResult.Value
 		for _, application := range applicationList {
 			envResourceList = append(envResourceList, *application)
 		}
@@ -460,7 +461,7 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 	//
 	// - /planes/radius/local
 	// - /planes/radius/local/resourceGroups/my-group
-	if scope.FindScope(resources.ResourceGroupsSegment) != "" {
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
 		scope = scope.Truncate()
 	}
 
@@ -477,7 +478,7 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 			return []corerpv20220315.EnvironmentResource{}, err
 		}
 
-		for _, environment := range nextPage.EnvironmentResourceList.Value {
+		for _, environment := range nextPage.EnvironmentResourceListResult.Value {
 			environments = append(environments, *environment)
 		}
 	}
@@ -618,16 +619,16 @@ func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 
 // ShowRecipe creates a new EnvironmentsClient, gets the recipe metadata from the
 // environment, and returns the EnvironmentRecipeProperties or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.RecipeMetadataProperties, error) {
+func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.RecipeGetMetadata) (corerpv20220315.RecipeGetMetadataResponse, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.RecipeMetadataProperties{}, err
+		return corerpv20220315.RecipeGetMetadataResponse{}, err
 	}
 
-	resp, err := client.GetRecipeMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetRecipeMetadataOptions{})
+	resp, err := client.GetMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetMetadataOptions{})
 	if err != nil {
-		return corerpv20220315.RecipeMetadataProperties{}, err
+		return corerpv20220315.RecipeGetMetadataResponse{}, err
 	}
 
-	return corerpv20220315.RecipeMetadataProperties(resp.RecipeMetadataProperties), nil
+	return corerpv20220315.RecipeGetMetadataResponse(resp.RecipeGetMetadataResponse), nil
 }

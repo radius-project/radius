@@ -1,29 +1,33 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/extenders/extender0",
-    "location": "West US",
-    "name": "extender0",
-    "properties": {
-        "status": {
-          "outputResources": null
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-        "fromNumber": "222-222-2222",
-        "secrets": {
-          "accountSid": "sid",
-          "authToken:": "token"
-        },
-        "resourceProvisioning": "manual",
-        "provisioningState": "Succeeded"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/extenders/extender0",
+  "location": "West US",
+  "name": "extender0",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
     },
-    "systemData": {
-        "createdAt": "2022-03-22T18:54:52.6857175Z",
-        "createdBy": "fake@hotmail.com",
-        "createdByType": "User",
-        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
-        "lastModifiedBy": "fake@hotmail.com",
-        "lastModifiedByType": "User"
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+    "fromNumber": "222-222-2222",
+    "secrets": {
+      "accountSid": "sid",
+      "authToken:": "token"
     },
-    "tags": {},
-    "type": "applications.core/extenders"
+    "resourceProvisioning": "manual",
+    "provisioningState": "Succeeded"
+  },
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "tags": {},
+  "type": "applications.core/extenders"
 }

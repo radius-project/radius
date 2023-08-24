@@ -134,7 +134,7 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testRecipes := map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
+		testRecipes := map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
 			linkrp.MongoDatabasesResourceType: {
 				"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
@@ -197,7 +197,7 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe Failure", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testRecipes := map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
+		testRecipes := map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
 			linkrp.MongoDatabasesResourceType: {
 				"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -284,7 +284,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
+			Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
 				linkrp.MongoDatabasesResourceType: {
 					"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
@@ -347,7 +347,7 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe with no namespace", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
+			Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
 				linkrp.MongoDatabasesResourceType: {
 					"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),

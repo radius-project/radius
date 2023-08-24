@@ -174,9 +174,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envRecipes := envResource.Properties.Recipes
 	if envRecipes == nil {
-		envRecipes = map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
+		envRecipes = map[string]map[string]corerp.RecipePropertiesClassification{}
 	}
-	var properties corerp.EnvironmentRecipePropertiesClassification
+	var properties corerp.RecipePropertiesClassification
 	switch r.TemplateKind {
 	case recipes.TemplateKindTerraform:
 		properties = &corerp.TerraformRecipeProperties{
@@ -195,7 +195,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		envRecipes[r.LinkType] = map[string]corerp.EnvironmentRecipePropertiesClassification{
+		envRecipes[r.LinkType] = map[string]corerp.RecipePropertiesClassification{
 			r.RecipeName: properties,
 		}
 	}

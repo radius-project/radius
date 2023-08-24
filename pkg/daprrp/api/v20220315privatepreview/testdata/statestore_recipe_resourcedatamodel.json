@@ -19,11 +19,7 @@
     "status": {
       "outputResources": [
         {
-          "LocalID": "Deployment",
-          "ResourceType": {
-            "Type": "DaprStateStoreProvider",
-            "Provider": "kubernetes"
-          }
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
       ]
     },

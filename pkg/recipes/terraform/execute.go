@@ -28,6 +28,7 @@ import (
 	install "github.com/hashicorp/hc-install"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
@@ -108,6 +109,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	if err != nil {
 		return nil, err
 	}
+
 	// verifying if kubernetes secret is created as part of terraform init
 	// this is valid only for the backend of type kubernetes
 	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet, secretSuffix)
@@ -119,6 +121,49 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	return state, nil
+}
+
+// Delete installs Terraform, creates a working directory, generates a config, and runs Terraform destroy
+// in the working directory, returning an error if any of these steps fail.
+func (e *executor) Delete(ctx context.Context, options Options) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Install Terraform
+	i := install.NewInstaller()
+	execPath, err := Install(ctx, i, options.RootDir)
+	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
+	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
+	defer func() {
+		if err := i.Remove(ctx); err != nil {
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
+		}
+	}()
+	if err != nil {
+		return err
+	}
+
+	// Create Working Directory
+	workingDir, err := createWorkingDir(ctx, options.RootDir)
+	if err != nil {
+		return err
+	}
+
+	// Create Terraform config in the working directory
+	secretSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
+	if err != nil {
+		return err
+	}
+
+	// Run TF Destroy in the working directory
+	err = initAndDestroy(ctx, workingDir, execPath)
+	if err != nil {
+		return err
+	}
+
+	// Delete the kubernetes secret created as part of `terraform apply` in the execute flow.
+	return e.k8sClientSet.CoreV1().
+		Secrets(backends.RadiusNamespace).
+		Delete(ctx, terraformStateKubernetesPrefix+secretSuffix, metav1.DeleteOptions{})
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
@@ -163,7 +208,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, metrics.FailedOperationState))
-		return "", err
+		return "", recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
@@ -267,6 +312,33 @@ func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes
 	_, err := k8s.CoreV1().Secrets(backends.RadiusNamespace).Get(ctx, terraformStateKubernetesPrefix+secretSuffix, metav1.GetOptions{})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// initAndDestroy runs Terraform init and destroy in the provided working directory.
+func initAndDestroy(ctx context.Context, workingDir, execPath string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	tf, err := NewTerraform(ctx, workingDir, execPath)
+	if err != nil {
+		return err
+	}
+
+	// Initialize Terraform
+	logger.Info("Initializing Terraform")
+
+	terraformInitStartTime := time.Now()
+	if err := tf.Init(ctx); err != nil {
+		return fmt.Errorf("terraform init failure: %w", err)
+	}
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
+
+	// Destroy Terraform configuration
+	logger.Info("Running Terraform destroy")
+	if err := tf.Destroy(ctx); err != nil {
+		return fmt.Errorf("terraform destroy failure: %w", err)
 	}
 
 	return nil

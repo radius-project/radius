@@ -123,10 +123,13 @@ func BuildExternalOutputResources(outputResources []OutputResource) []map[string
 	var externalOutputResources []map[string]any
 	for _, or := range outputResources {
 		externalOutput := map[string]any{
-			"LocalID":  or.LocalID,
-			"Provider": or.ResourceType.Provider,
-			"Identity": or.Identity.Data,
+			"id": or.ID.String(),
 		}
+
+		if or.LocalID != "" {
+			externalOutput["LocalID"] = or.LocalID
+		}
+
 		externalOutputResources = append(externalOutputResources, externalOutput)
 	}
 

@@ -23,6 +23,7 @@ import (
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/recipes"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -45,12 +46,12 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), nil)
 	}
 
 	bytes, err := getBytes(ctx, repo, digest)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), nil)
 	}
 
 	err = json.Unmarshal(bytes, data)

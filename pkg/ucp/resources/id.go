@@ -17,47 +17,33 @@ limitations under the License.
 package resources
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 const (
-	SegmentSeparator      = "/"
-	PlanesSegment         = "planes"
-	ProvidersSegment      = "providers"
-	ResourceGroupsSegment = "resourcegroups"
-	SubscriptionsSegment  = "subscriptions"
-	LocationsSegment      = "locations"
-	AccountsSegment       = "accounts"
-	RegionsSegment        = "regions"
+	// SegmentSeparator is the separator between segments in a resource ID.
+	SegmentSeparator = "/"
 
-	CoreRPNamespace       = "Applications.Core"
-	LinkRPNamespace       = "Applications.Link"
-	DatastoresRPNamespace = "Applications.Datastores"
-	DaprRPNamespace       = "Applications.Dapr"
-	MessagingRPNamespace  = "Applications.Messaging"
+	// ProvidersSegment is the segment that separates the scope from the resource type.
+	ProvidersSegment = "providers"
+
+	// PlanesSegment is the segment the planes delimiter that distinguishes between UCP and ARM resource IDs.
+	PlanesSegment = "planes"
 
 	PlaneTypePrefix   = "System.Planes"
 	ResourceGroupType = "System.Resources/resourceGroups"
 )
 
-var supportedNamespaces = []string{
-	CoreRPNamespace,
-	LinkRPNamespace,
-	DatastoresRPNamespace,
-	DaprRPNamespace,
-	MessagingRPNamespace,
-}
-
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
 // to create IDs and use String() to convert back to strings.
 type ID struct {
-	id            string
-	scopeSegments []ScopeSegment
-	typeSegments  []TypeSegment
+	id                string
+	scopeSegments     []ScopeSegment
+	typeSegments      []TypeSegment
+	extensionSegments []TypeSegment
 }
 
 // ScopeSegment represents one of the root-scope pairs of a resource ID.
@@ -89,8 +75,16 @@ type TypeSegment struct {
 	Name string
 }
 
+// KnownType represents a known resource type. Since resource types can have child types, this
+// includes multiple segments.
 type KnownType struct {
+	// Types is the set of TypeSegments that make up the type.
 	Types []TypeSegment
+}
+
+// IDEquals compares two IDs for equality.
+func IDEquals(x ID, y ID) bool {
+	return strings.EqualFold(x.String(), y.String())
 }
 
 // IsEmpty checks if the ID is empty.
@@ -106,6 +100,7 @@ func (ri ID) IsEmpty() bool {
 func (ri ID) IsScope() bool {
 	return !ri.IsEmpty() && // Not empty
 		len(ri.typeSegments) == 0 && // Not a type
+		len(ri.extensionSegments) == 0 &&
 		(len(ri.scopeSegments) == 0 || len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) > 0) // No scope segments or last one is named
 }
 
@@ -114,9 +109,19 @@ func (ri ID) IsScope() bool {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type/my-extension
 func (ri ID) IsResource() bool {
-	return !ri.IsEmpty() && // Not empty
-		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) > 0 // Has type segments and last one is named
+	if ri.IsEmpty() {
+		return false
+	}
+
+	if len(ri.extensionSegments) > 0 {
+		// Has at least one extension segment, and the last one is named.
+		return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) > 0
+	}
+
+	// Has type segments and last one is named
+	return len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) > 0
 }
 
 // IsScopeCollection returns true if the ID represents a collection or custom action on a scope.
@@ -127,6 +132,7 @@ func (ri ID) IsResource() bool {
 func (ri ID) IsScopeCollection() bool {
 	return !ri.IsEmpty() && // Not empty
 		len(ri.typeSegments) == 0 && // No type segments
+		len(ri.extensionSegments) == 0 && // No extension segments
 		len(ri.scopeSegments) > 0 && len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) == 0 // Has scope segments and last one is un-named
 }
 
@@ -135,9 +141,39 @@ func (ri ID) IsScopeCollection() bool {
 // Example:
 //
 //	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type
 func (ri ID) IsResourceCollection() bool {
-	return !ri.IsEmpty() && // Not empty
-		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) == 0 // Has type segments and last one is un-named
+	if ri.IsEmpty() {
+		return false
+	}
+
+	if len(ri.extensionSegments) > 0 {
+		// Has at least one extension segment, and the last one is un-named.
+		return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) == 0
+	}
+
+	// Has type segments and last one is un-named
+	return len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) == 0
+}
+
+// IsExtensionResource returns true if the ID represents an extension resource.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type/my-extension
+func (ri ID) IsExtensionResource() bool {
+	// Has at least one extension segment, and the last one is named.
+	return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) > 0
+}
+
+// IsExtensionCollection returns true if the ID represents a collection or custom action on an extension resource.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app/providers/Some.Other/type
+func (ri ID) IsExtensionCollection() bool {
+	// Has at least one extension segment, and the last one is named.
+	return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) == 0
 }
 
 // IsUCPQualfied checks if the ID has a prefix of SegmentSeparator and PlanesSegment.
@@ -155,6 +191,11 @@ func (ri ID) TypeSegments() []TypeSegment {
 	return ri.typeSegments
 }
 
+// ExtensionSegments gets the slice of extension segments.
+func (ri ID) ExtensionSegments() []TypeSegment {
+	return ri.extensionSegments
+}
+
 // This function returns the "id" field of the given ID instance.
 func (ri ID) String() string {
 	return ri.id
@@ -170,7 +211,9 @@ func (ri ID) FindScope(scopeType string) string {
 	return ""
 }
 
-// RootScope returns the root-scope (the part before 'providers'),  taking into account whether the ID is qualified for UCP or not.
+// RootScope returns the root-scope (the part before the first 'providers'), taking into account whether the ID is qualified for UCP or not.
+//
+// For an exension resource the root scope is the same as its parent resource's root scope.
 //
 // Examples:
 //
@@ -202,7 +245,7 @@ func (ri ID) RootScope() string {
 func (ri ID) PlaneScope() string {
 	segments := []string{}
 	for _, t := range ri.scopeSegments {
-		if !strings.EqualFold(t.Type, ResourceGroupsSegment) {
+		if !strings.EqualFold(t.Type, "resourcegroups") {
 			segments = append(segments, t.Type)
 			if t.Name != "" {
 				segments = append(segments, t.Name)
@@ -219,31 +262,31 @@ func (ri ID) PlaneScope() string {
 	return SegmentSeparator + joined
 }
 
-// ProviderNamespace returns the providers part of the ID
+// ProviderNamespace returns the namespace of the resource provider. Will be empty if the resource ID
+// is empty or refers to a scope.
+//
 // Examples:
 //
 //	Applications.Core
 func (ri ID) ProviderNamespace() string {
-	if len(ri.typeSegments) == 0 {
-		return ""
+	if len(ri.extensionSegments) > 0 {
+		segments := strings.Split(ri.extensionSegments[0].Type, SegmentSeparator)
+		return segments[0]
 	}
-	segments := strings.Split(ri.typeSegments[0].Type, SegmentSeparator)
-	return segments[0]
-}
 
-// IsRadiusRPResource checks if the given ID is a supported Radius resource.
-func (ri ID) IsRadiusRPResource() bool {
-	return slices.Contains(supportedNamespaces, ri.ProviderNamespace())
+	if len(ri.typeSegments) > 0 {
+		segments := strings.Split(ri.typeSegments[0].Type, SegmentSeparator)
+		return segments[0]
+	}
+
+	return ""
 }
 
 // PlaneNamespace returns the plane part of the UCP ID, or an empty string if the ID is not UCP qualified.
 //
-// Note: This function does NOT handle invalid IDs. If an invalid ID calls this function then there is
-// a chance that it is going to trigger a panic.
-//
 // Examples:
 //
-//	radius
+//	radius/local
 func (ri ID) PlaneNamespace() string {
 	if !ri.IsUCPQualfied() {
 		return ""
@@ -261,21 +304,57 @@ func (ri ID) PlaneNamespace() string {
 //
 // Examples:
 //
-//	/Applications.Core/applications/my-app
+//	Applications.Core/applications/my-app
 func (ri ID) RoutingScope() string {
 	segments := []string{}
-	for _, t := range ri.typeSegments {
-		segments = append(segments, t.Type)
-		if t.Name != "" {
-			segments = append(segments, t.Name)
+
+	if len(ri.extensionSegments) > 0 {
+		for _, t := range ri.extensionSegments {
+			segments = append(segments, t.Type)
+			if t.Name != "" {
+				segments = append(segments, t.Name)
+			}
+		}
+	} else {
+		for _, t := range ri.typeSegments {
+			segments = append(segments, t.Type)
+			if t.Name != "" {
+				segments = append(segments, t.Name)
+			}
 		}
 	}
 
 	return strings.Join(segments, SegmentSeparator)
 }
 
+// ParentResource returns the parent resource of the resource ID, or an empty string if the ID is a scope or non-extension resource.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/application/my-app/providers/Applications.Core/someExtensionType/my-extension
+//	=> /planes/radius/local/resourceGroups/cool-group/providers/Applications.Core/application/my-app
+func (ri ID) ParentResource() string {
+	if len(ri.extensionSegments) == 0 {
+		return ""
+	}
+
+	if ri.IsUCPQualfied() {
+		return MakeUCPID(ri.scopeSegments, ri.typeSegments, nil)
+	} else {
+		return MakeRelativeID(ri.scopeSegments, ri.typeSegments, nil)
+	}
+}
+
 // Type returns the fully-qualified resource type of a ResourceID, or an empty string if the type cannot be determined.
 func (ri ID) Type() string {
+	if len(ri.extensionSegments) > 0 {
+		types := make([]string, len(ri.extensionSegments))
+		for i, t := range ri.extensionSegments {
+			types[i] = t.Type
+		}
+		return strings.Join(types, SegmentSeparator)
+	}
+
 	if len(ri.typeSegments) > 0 {
 		types := make([]string, len(ri.typeSegments))
 		for i, t := range ri.typeSegments {
@@ -297,24 +376,50 @@ func (ri ID) Type() string {
 
 // QualifiedName gets the fully-qualified resource name (eg. `radiusv3/myapp/mycontainer`) by joining the type segments with the SegmentSeparator.
 func (ri ID) QualifiedName() string {
-	names := make([]string, len(ri.typeSegments))
-	for i, t := range ri.typeSegments {
-		names[i] = t.Name
+	names := []string{}
+	if len(ri.extensionSegments) > 0 {
+		for _, t := range ri.extensionSegments {
+			if t.Name != "" {
+				names = append(names, t.Name)
+			}
+		}
+
+	} else if len(ri.typeSegments) > 0 {
+		for _, t := range ri.typeSegments {
+			if t.Name != "" {
+				names = append(names, t.Name)
+			}
+		}
+	} else if len(ri.scopeSegments) > 0 {
+		for _, t := range ri.scopeSegments {
+			if t.Name != "" {
+				names = append(names, t.Name)
+			}
+		}
 	}
+
+	if len(names) == 0 {
+		return ""
+	}
+
 	return strings.Join(names, SegmentSeparator)
 }
 
 // Name gets the resource or scope name.
 func (ri ID) Name() string {
-	if len(ri.typeSegments) == 0 && len(ri.scopeSegments) == 0 {
-		return ""
+	if len(ri.extensionSegments) > 0 {
+		return ri.extensionSegments[len(ri.extensionSegments)-1].Name
 	}
 
-	if len(ri.typeSegments) == 0 {
+	if len(ri.typeSegments) > 0 {
+		return ri.typeSegments[len(ri.typeSegments)-1].Name
+	}
+
+	if len(ri.scopeSegments) > 0 {
 		return ri.scopeSegments[len(ri.scopeSegments)-1].Name
 	}
 
-	return ri.typeSegments[len(ri.typeSegments)-1].Name
+	return ""
 }
 
 // ValidateResourceType validates that the resource ID type segment matches the expected type.
@@ -350,17 +455,23 @@ func invalidType(id string) error {
 // Append appends a resource type segment to the ID and returns the resulting ID. If the ID is UCP qualified, it will
 // return a UCP qualified ID, otherwise it will return a relative ID.
 func (ri ID) Append(resourceType TypeSegment) ID {
-	types := append(ri.typeSegments, resourceType)
+	typeSegments := ri.typeSegments
+	extensionSegments := ri.extensionSegments
+	if len(ri.extensionSegments) > 0 {
+		extensionSegments = append(extensionSegments, resourceType)
+	} else {
+		typeSegments = append(typeSegments, resourceType)
+	}
 
 	if ri.IsUCPQualfied() {
-		result, err := Parse(MakeUCPID(ri.scopeSegments, types...))
+		result, err := Parse(MakeUCPID(ri.scopeSegments, typeSegments, extensionSegments))
 		if err != nil {
 			panic(err) // Should not be possible.
 		}
 
 		return result
 	} else {
-		result, err := Parse(MakeRelativeID(ri.scopeSegments, types...))
+		result, err := Parse(MakeRelativeID(ri.scopeSegments, typeSegments, extensionSegments))
 		if err != nil {
 			panic(err) // Should not be possible.
 		}
@@ -371,49 +482,80 @@ func (ri ID) Append(resourceType TypeSegment) ID {
 
 // Truncate removes the last type/name pair for a resource id or scope id. Calling truncate on a top level resource or scope has no effect.
 func (ri ID) Truncate() ID {
-	if len(ri.typeSegments) == 0 && len(ri.scopeSegments) == 0 {
-		return ri // Top level scope already
+	scopeSegments := ri.scopeSegments
+	typeSegments := ri.typeSegments
+	extensionSegments := ri.extensionSegments
+
+	if len(ri.extensionSegments) > 1 {
+		extensionSegments = extensionSegments[0 : len(extensionSegments)-1]
+	} else if len(ri.extensionSegments) == 1 {
+		// Do nothing
+		return ri
+	} else if len(ri.typeSegments) > 1 {
+		typeSegments = typeSegments[0 : len(typeSegments)-1]
+	} else if len(ri.typeSegments) == 1 {
+		// Do nothing
+		return ri
+	} else if len(ri.scopeSegments) >= 1 {
+		// Allow the last scope to be truncated. An empty ID is still a "scope".
+		scopeSegments = scopeSegments[0 : len(scopeSegments)-1]
 	}
 
-	if len(ri.typeSegments) > 0 && len(ri.typeSegments) < 2 {
-		return ri // Top level resource already
-	}
-
-	if len(ri.typeSegments) == 0 {
-		// Truncate the root scope
-		if ri.IsUCPQualfied() {
-			result, err := Parse(MakeUCPID(ri.scopeSegments[0:len(ri.scopeSegments)-1], []TypeSegment{}...))
-			if err != nil {
-				panic(err) // Should not be possible.
-			}
-
-			return result
-		} else {
-			result, err := Parse(MakeRelativeID(ri.scopeSegments[0:len(ri.scopeSegments)-1], []TypeSegment{}...))
-			if err != nil {
-				panic(err) // Should not be possible.
-			}
-
-			return result
-		}
-	}
-
-	// Truncate the resource type
 	if ri.IsUCPQualfied() {
-		result, err := Parse(MakeUCPID(ri.scopeSegments, ri.typeSegments[0:len(ri.typeSegments)-1]...))
+		result, err := Parse(MakeUCPID(scopeSegments, typeSegments, extensionSegments))
 		if err != nil {
 			panic(err) // Should not be possible.
 		}
 
 		return result
 	} else {
-		result, err := Parse(MakeRelativeID(ri.scopeSegments, ri.typeSegments[0:len(ri.typeSegments)-1]...))
+		result, err := Parse(MakeRelativeID(scopeSegments, typeSegments, extensionSegments))
 		if err != nil {
 			panic(err) // Should not be possible.
 		}
 
 		return result
 	}
+}
+
+// MarshalText implements text marshalling support for Resource IDs.
+func (id ID) MarshalText() ([]byte, error) {
+	return []byte(id.String()), nil
+}
+
+// UnmarshalText implements text unmarshalling support for Resource IDs.
+func (id *ID) UnmarshalText(data []byte) error {
+	parsed, err := Parse(string(data))
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal text, value was not a valid resource ID: %w", err)
+	}
+
+	// Assign fields into self.
+	*id = parsed
+	return nil
+}
+
+// MarshalJSON implements JSON marshalling support for Resource IDs.
+func (id ID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(id.String())
+}
+
+// UnmarshalJSON implements JSON unmarshalling support for Resource IDs.
+func (id *ID) UnmarshalJSON(data []byte) error {
+	str := ""
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON, value was not a string: %w", err)
+	}
+
+	parsed, err := Parse(str)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal JSON, value was not a valid resource ID: %w", err)
+	}
+
+	// Assign fields into self.
+	*id = parsed
+	return nil
 }
 
 // ParseByMethod is a helper function to extract the custom actions from the id.
@@ -472,37 +614,14 @@ func ParseResource(id string) (ID, error) {
 // Most code should use a more specific function like ParseResource to parse the specific kind of ID
 // they want to handle.
 func Parse(id string) (ID, error) {
-	isUCPQualified := false
-	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
-		isUCPQualified = true
-		id = strings.TrimPrefix(id, SegmentSeparator+PlanesSegment)
-
-		// Handles /planes and /planes/
-		if id == "" || id == "/" {
-			normalized := MakeUCPID([]ScopeSegment{}, []TypeSegment{}...)
-			return ID{
-				id:            normalized,
-				scopeSegments: []ScopeSegment{},
-				typeSegments:  []TypeSegment{},
-			}, nil
-		}
-	}
-
-	if id == "/" {
-		normalized := MakeRelativeID([]ScopeSegment{}, []TypeSegment{}...)
-		return ID{
-			id:            normalized,
-			scopeSegments: []ScopeSegment{},
-			typeSegments:  []TypeSegment{},
-		}, nil
-	}
-
-	// If UCP forwards a request to the RP, the incoming URL
-	// will not have the UCP Prefix but will have a planes segment
-	isUCPForwarded := false
-	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
-		isUCPForwarded = true
-		id = strings.TrimPrefix(id, SegmentSeparator+PlanesSegment)
+	original := id
+	// We require the leading / for all IDs, and tolerate a trailing /.
+	//
+	// We block // for explicitly for security reasons so we can avoid a reflected redirect attack.
+	// A URL path that contains `//example.com` could end up in the Location header and result in an open
+	// redirect.
+	if !strings.HasPrefix(id, SegmentSeparator) || strings.HasPrefix(id, SegmentSeparator+SegmentSeparator) {
+		return ID{}, invalid(original)
 	}
 
 	// trim the leading and ending / so we don't end up with an empty segment - we disallow
@@ -510,30 +629,54 @@ func Parse(id string) (ID, error) {
 	id = strings.TrimPrefix(id, SegmentSeparator)
 	id = strings.TrimSuffix(id, SegmentSeparator)
 
-	// The minimum segment count is 2 since we can parse "root scope only" ids.
-	segments := strings.Split(id, SegmentSeparator)
+	isUCPQualified := false
+	if strings.EqualFold(id, PlanesSegment) {
+		isUCPQualified = true
 
-	if len(segments) < 2 {
-		return ID{}, invalid(id)
+		// We don't need to process the planes segment while parsing.
+		id = strings.TrimPrefix(id, PlanesSegment)
+	} else if strings.HasPrefix(id, PlanesSegment+SegmentSeparator) {
+		isUCPQualified = true
+
+		// We don't need to process the planes segment while parsing.
+		id = strings.TrimPrefix(id, PlanesSegment+SegmentSeparator)
+	}
+
+	// Handle trivial case
+	if id == "" {
+		normalized := ""
+		if isUCPQualified {
+			normalized = MakeUCPID(nil, nil, nil)
+		} else {
+			normalized = MakeRelativeID(nil, nil, nil)
+		}
+		return ID{
+			id: normalized,
+		}, nil
 	}
 
 	// Check up front for empty segments
+	segments := strings.Split(id, SegmentSeparator)
 	for _, s := range segments {
 		if s == "" {
-			return ID{}, invalid(id)
+			return ID{}, invalid(original)
 		}
 	}
 
 	// Parse scopes - iterate until we get to "providers"
 	//
-	// Each id has a 'scope' portion and an optional 'resource'. The 'providers' segment is the
-	// delimiter between these.
+	// Each id has a 'scope' portion and an optional 'resource' followed by an optional 'extension'.
+	// The '/providers/' segment is the delimiter between these.
 	scopes := []ScopeSegment{}
 
 	i := 0
 	for i < len(segments) {
-		// We're done parsing scopes
+		// We're done parsing scopes when we reach the providers segment.
 		if strings.ToLower(segments[i]) == ProvidersSegment {
+			if len(segments) == i+1 {
+				// Last segment is "providers"
+				return ID{}, invalid(original)
+			}
 			i++ // advance past "providers"
 			break
 		}
@@ -552,13 +695,9 @@ func Parse(id string) (ID, error) {
 			// odd number of non-providers segments inside the root scope followed by 'providers', this is invalid.
 			//
 			// eg: /planes/radius/local/resourceGroups/test-rg/|resources|/providers/....
-			return ID{}, invalid(id)
+			return ID{}, invalid(original)
 		}
 
-		if isUCPForwarded && i == 0 {
-			// Add the planes segment to the scope
-			segments[i] = PlanesSegment + SegmentSeparator + segments[i]
-		}
 		scopes = append(scopes, ScopeSegment{Type: segments[i], Name: segments[i+1]})
 		i += 2
 	}
@@ -568,22 +707,21 @@ func Parse(id string) (ID, error) {
 	if len(segments)-i == 0 {
 		normalized := ""
 		if isUCPQualified {
-			normalized = MakeUCPID(scopes, []TypeSegment{}...)
+			normalized = MakeUCPID(scopes, nil, nil)
 		} else {
-			normalized = MakeRelativeID(scopes, []TypeSegment{}...)
+			normalized = MakeRelativeID(scopes, nil, nil)
 		}
 
 		return ID{
 			id:            normalized,
 			scopeSegments: scopes,
-			typeSegments:  []TypeSegment{},
 		}, nil
 	}
 
 	// Now that're past providers, we're looking for the namespace/type - that is
 	// at least 2 segments.
 	if len(segments)-i < 2 {
-		return ID{}, invalid(id)
+		return ID{}, invalid(original)
 	}
 
 	resourceType := TypeSegment{Type: fmt.Sprintf("%s/%s", segments[i], segments[i+1])}
@@ -597,6 +735,16 @@ func Parse(id string) (ID, error) {
 	types := []TypeSegment{resourceType}
 
 	for i < len(segments) {
+		// We're done parsing types when we reach the providers segment.
+		if strings.ToLower(segments[i]) == ProvidersSegment {
+			if len(segments) == i+1 {
+				// Last segment is "providers"
+				return ID{}, invalid(original)
+			}
+			i++ // advance past "providers"
+			break
+		}
+
 		rt := TypeSegment{Type: segments[i]}
 		i++
 
@@ -614,17 +762,69 @@ func Parse(id string) (ID, error) {
 		types = append(types, rt)
 	}
 
+	if len(segments)-i == 0 {
+		normalized := ""
+		if isUCPQualified {
+			normalized = MakeUCPID(scopes, types, nil)
+		} else {
+			normalized = MakeRelativeID(scopes, types, nil)
+		}
+
+		return ID{
+			id:            normalized,
+			scopeSegments: scopes,
+			typeSegments:  types,
+		}, nil
+	}
+
+	// If we get here then this is an extension resource. We need to parse another type.
+
+	// Now that're past providers, we're looking for the namespace/type - that is
+	// at least 2 segments.
+	if len(segments)-i < 2 {
+		return ID{}, invalid(original)
+	}
+
+	extensionType := TypeSegment{Type: fmt.Sprintf("%s/%s", segments[i], segments[i+1])}
+	i += 2
+
+	// We intentionally tolerate a "collection" id that omits the last name segment
+	if len(segments)-i > 0 {
+		extensionType.Name = segments[i]
+		i++
+	}
+	extensionTypes := []TypeSegment{extensionType}
+
+	for i < len(segments) {
+		et := TypeSegment{Type: segments[i]}
+		i++
+
+		// check for a resource name
+		if len(segments)-i == 0 {
+			// This is a collection.
+			extensionTypes = append(extensionTypes, et)
+			break
+		}
+
+		// we have a name - keep parsing
+		et.Name = segments[i]
+		i++
+
+		extensionTypes = append(extensionTypes, et)
+	}
+
 	normalized := ""
 	if isUCPQualified {
-		normalized = MakeUCPID(scopes, types...)
+		normalized = MakeUCPID(scopes, types, extensionTypes)
 	} else {
-		normalized = MakeRelativeID(scopes, types...)
+		normalized = MakeRelativeID(scopes, types, extensionTypes)
 	}
 
 	return ID{
-		id:            normalized,
-		scopeSegments: scopes,
-		typeSegments:  types,
+		id:                normalized,
+		scopeSegments:     scopes,
+		typeSegments:      types,
+		extensionSegments: extensionTypes,
 	}, nil
 }
 
@@ -632,11 +832,29 @@ func invalid(id string) error {
 	return fmt.Errorf("'%s' is not a valid resource id", id)
 }
 
-// MakeUCPID creates a fully-qualified UCP resource ID, from the given scopes and resource types.
-func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
-	segments := []string{
-		PlanesSegment,
+// MustParse parses a resource ID. MustParse will panic if the ID is not valid. This should only
+// be used in tests and other circumstances where the ID is known to be valid.
+func MustParse(id string) ID {
+	parsed, err := Parse(id)
+	if err != nil {
+		panic(err)
 	}
+	return parsed
+}
+
+// MakeUCPID creates a fully-qualified UCP resource ID, from the given scopes and resource types.
+func MakeUCPID(scopes []ScopeSegment, resourceTypes []TypeSegment, extensionTypes []TypeSegment) string {
+	relative := MakeRelativeID(scopes, resourceTypes, extensionTypes)
+	if relative == "/" {
+		return SegmentSeparator + PlanesSegment
+	}
+
+	return SegmentSeparator + PlanesSegment + relative
+}
+
+// MakeRelativeID makes a plane-relative resource ID (ARM style) from a slice of ScopeSegment and a variadic of TypeSegment..
+func MakeRelativeID(scopes []ScopeSegment, resourceTypes []TypeSegment, extensionTypes []TypeSegment) string {
+	segments := []string{}
 	for _, scope := range scopes {
 		segments = append(segments, scope.Type)
 		if scope.Name != "" {
@@ -655,23 +873,13 @@ func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 		}
 	}
 
-	return SegmentSeparator + strings.Join(segments, SegmentSeparator)
-}
-
-// MakeRelativeID makes a plane-relative resource ID (ARM style) from a slice of ScopeSegment and a variadic of TypeSegment..
-func MakeRelativeID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
-	segments := []string{}
-	for _, scope := range scopes {
-		segments = append(segments, scope.Type, scope.Name)
-	}
-
-	if len(resourceTypes) != 0 {
+	if len(extensionTypes) != 0 {
 		segments = append(segments, ProvidersSegment)
 
-		for _, rt := range resourceTypes {
-			segments = append(segments, rt.Type)
-			if rt.Name != "" {
-				segments = append(segments, rt.Name)
+		for _, et := range extensionTypes {
+			segments = append(segments, et.Type)
+			if et.Name != "" {
+				segments = append(segments, et.Name)
 			}
 		}
 	}

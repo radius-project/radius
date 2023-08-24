@@ -30,7 +30,8 @@ func DecodeMap(in any, out any) error {
 		Result:  out,
 		Squash:  true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			toTimeHookFunc()),
+			toTimeHookFunc(),
+			mapstructure.TextUnmarshallerHookFunc()),
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	if err != nil {

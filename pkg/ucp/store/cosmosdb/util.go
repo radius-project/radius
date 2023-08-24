@@ -23,6 +23,7 @@ import (
 	"unicode"
 
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/spaolacci/murmur3"
 )
@@ -131,9 +132,9 @@ func NormalizeStorageKey(storageKey string, maxLength int) (string, error) {
 // GenerateCosmosDBKey takes in an ID object and returns a string and an error if the resource group or resource type and
 // name fail to normalize.
 func GenerateCosmosDBKey(id resources.ID) (string, error) {
-	storageKeys := []string{NormalizeSubscriptionID(id.FindScope(resources.SubscriptionsSegment))}
+	storageKeys := []string{NormalizeSubscriptionID(id.FindScope(resources_azure.ScopeSubscriptions))}
 
-	resourceGroup := id.FindScope(resources.ResourceGroupsSegment)
+	resourceGroup := id.FindScope(resources_azure.ScopeResourceGroups)
 
 	if resourceGroup != "" {
 		uniqueResourceGroup, err := NormalizeStorageKey(resourceGroup, ResourceGroupNameMaxStorageKeyLen)

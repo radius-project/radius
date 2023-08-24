@@ -1,0 +1,44 @@
+{
+  "operationId": "Containers_Get",
+  "title": "Get an container resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2022-03-15-privatepreview",
+    "containerName": "container0"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
+        "name": "container0",
+        "type": "Applications.Core/containers",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "connections": {
+            "inventory": {
+              "kind": "dapr.io/InvokeHttp",
+              "source": "inventory_route_id"
+            }
+          },
+          "container": {
+            "image": "radius.azurecr.io/webapptutorial-todoapp",
+            "command": [
+              "/bin/sh"
+            ],
+            "args": [
+              "-c",
+              "while true; do echo hello; sleep 10;done"
+            ],
+            "workingDir": "/app"
+          },
+          "identity": {
+            "kind": "azure.com.workload",
+            "oidcIssuer": "https://oidcissuer/oidc",
+            "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/app0-container0"
+          }
+        }
+      }
+    }
+  }
+}

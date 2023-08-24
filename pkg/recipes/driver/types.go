@@ -26,8 +26,33 @@ import (
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
-	Execute(ctx context.Context, configuration recipes.Configuration, recipe recipes.ResourceMetadata, definition recipes.EnvironmentDefinition) (*recipes.RecipeOutput, error)
+	Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error)
 
 	// Delete handles deletion of output resources for the recipe deployment.
-	Delete(ctx context.Context, outputResources []rpv1.OutputResource) error
+	Delete(ctx context.Context, opts DeleteOptions) error
+}
+
+// BaseOptions is the base options for the driver operations.
+type BaseOptions struct {
+	// Configuration is the configuration for the recipe.
+	Configuration recipes.Configuration
+
+	// Recipe is the recipe metadata.
+	Recipe recipes.ResourceMetadata
+
+	// Definition is the environment definition for the recipe.
+	Definition recipes.EnvironmentDefinition
+}
+
+// ExecuteOptions is the options for the Execute method.
+type ExecuteOptions struct {
+	BaseOptions
+}
+
+// DeleteOptions is the options for the Delete method.
+type DeleteOptions struct {
+	BaseOptions
+
+	// OutputResources is the list of output resources for the recipe.
+	OutputResources []rpv1.OutputResource
 }

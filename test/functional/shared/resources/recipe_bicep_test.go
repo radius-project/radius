@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
@@ -85,7 +85,7 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Link/extenders", name)
+				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")
@@ -192,7 +192,7 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 			// This currently fails.
 			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Link/extenders", name)
+				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
 				require.NoError(t, err)
 
 				text, err := json.MarshalIndent(resource, "", "  ")
@@ -206,27 +206,15 @@ func Test_BicepRecipe_ResourceCreation(t *testing.T) {
 				scope := strings.ReplaceAll(parsed.RootScope(), "resourcegroups", "resourceGroups")
 				expected := []any{
 					map[string]any{
-						"Identity": map[string]any{
-							"apiVersion": "unknown",
-							"kind":       "Secret",
-							"name":       name,
-							"namespace":  name + "-app",
-						},
-						"LocalID":  "RecipeResource0",
-						"Provider": "kubernetes",
+						"id":            "/planes/kubernetes/local/namespaces/" + name + "-app/providers/core/Secret/" + name,
+						"radiusManaged": true,
 					},
 					map[string]any{
-						"Identity": map[string]interface{}{
-							"id": scope + "/providers/Applications.Link/extenders/" + name + "-created",
-						},
-						"LocalID":  "RecipeResource1",
-						"Provider": "radius",
+						"id":            scope + "/providers/Applications.Core/extenders/" + name + "-created",
+						"radiusManaged": true,
 					}, map[string]interface{}{
-						"Identity": map[string]interface{}{
-							"id": scope + "/providers/Applications.Link/extenders/" + name + "-module",
-						},
-						"LocalID":  "RecipeResource2",
-						"Provider": "radius",
+						"id":            scope + "/providers/Applications.Core/extenders/" + name + "-module",
+						"radiusManaged": true,
 					},
 				}
 				actual := resource.Properties["status"].(map[string]any)["outputResources"].([]any)
@@ -266,7 +254,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: v1.CodeInternal,
+				Code: recipes.RecipeDeploymentFailed,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -312,7 +300,7 @@ func Test_BicepRecipe_WrongOutput(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code:            v1.CodeInternal,
+				Code:            recipes.InvalidRecipeOutputs,
 				MessageContains: "failed to read the recipe output \"result\": json: unknown field \"error\"",
 			},
 		},
@@ -353,7 +341,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: v1.CodeInternal,
+				Code: recipes.RecipeDeploymentFailed,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
@@ -399,7 +387,7 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: v1.CodeInternal,
+				Code: recipes.RecipeDeploymentFailed,
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//

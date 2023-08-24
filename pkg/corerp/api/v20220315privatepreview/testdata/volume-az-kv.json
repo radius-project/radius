@@ -16,10 +16,11 @@
     },
     "properties": {
         "status": {
-            "outputResources": [{
-                "LocalID": "Deployment",
-                "Provider": "kubernetes"
-            }]
+            "outputResources": [
+                {
+                    "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+                }
+            ]
         },
         "provisioningState": "Succeeded",
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",

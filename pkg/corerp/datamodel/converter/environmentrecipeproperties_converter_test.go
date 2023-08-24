@@ -39,7 +39,7 @@ func TestEnvironmentRecipePropertiesDataModelToVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/environmentrecipepropertiesdatamodel.json",
 			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RecipeMetadataProperties{},
+			&v20220315privatepreview.RecipeGetMetadataResponse{},
 			nil,
 		},
 		// TODO: add new conversion tests.

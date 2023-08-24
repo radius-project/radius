@@ -97,9 +97,9 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 		return v1.ErrInvalidModelConversion
 	}
 
-	var tls *GatewayPropertiesTLS
+	var tls *GatewayTLS
 	if g.Properties.TLS != nil {
-		tls = &GatewayPropertiesTLS{
+		tls = &GatewayTLS{
 			CertificateFrom:        to.Ptr(g.Properties.TLS.CertificateFrom),
 			MinimumProtocolVersion: fromTLSMinVersionDataModel(g.Properties.TLS.MinimumProtocolVersion),
 			SSLPassthrough:         to.Ptr(g.Properties.TLS.SSLPassthrough),
@@ -118,9 +118,9 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 	}
 
-	var hostname *GatewayPropertiesHostname
+	var hostname *GatewayHostname
 	if g.Properties.Hostname != nil {
-		hostname = &GatewayPropertiesHostname{
+		hostname = &GatewayHostname{
 			FullyQualifiedHostname: to.Ptr(g.Properties.Hostname.FullyQualifiedHostname),
 			Prefix:                 to.Ptr(g.Properties.Hostname.Prefix),
 		}
@@ -134,7 +134,7 @@ func (dst *GatewayResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(g.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(g.Properties.Application),
@@ -153,9 +153,9 @@ func toTLSMinVersionDataModel(tlsMinVersion *TLSMinVersion) datamodel.MinimumTLS
 	}
 
 	switch *tlsMinVersion {
-	case TLSMinVersionOne2:
+	case TLSMinVersionTls12:
 		return datamodel.TLSMinVersion12
-	case TLSMinVersionOne3:
+	case TLSMinVersionTls13:
 		return datamodel.TLSMinVersion13
 	default:
 		return datamodel.DefaultTLSMinVersion
@@ -166,11 +166,11 @@ func fromTLSMinVersionDataModel(tlsMinVersion datamodel.MinimumTLSProtocolVersio
 	var t TLSMinVersion
 	switch tlsMinVersion {
 	case datamodel.TLSMinVersion12:
-		t = TLSMinVersionOne2
+		t = TLSMinVersionTls12
 	case datamodel.TLSMinVersion13:
-		t = TLSMinVersionOne3
+		t = TLSMinVersionTls13
 	default:
-		t = TLSMinVersionOne2
+		t = TLSMinVersionTls12
 	}
 
 	return &t
