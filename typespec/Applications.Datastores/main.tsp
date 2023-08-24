@@ -28,7 +28,7 @@ using Azure.ResourceManager;
 @service({
   title: "Applications.Datastores Resource Management APIs",
 })
-@doc("REST API for Applications.Datastores")
+@doc("REST APIs for Applications.Datastores")
 @versioned(Versions)
 namespace Applications.Datastores;
 

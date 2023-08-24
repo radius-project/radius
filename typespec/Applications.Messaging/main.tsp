@@ -26,7 +26,7 @@ using Azure.ResourceManager;
 @service({
   title: "Applications.Messaging Resource Management APIs",
 })
-@doc("REST API for Applications.Messaging")
+@doc("REST APIs for Applications.Messaging")
 @versioned(Versions)
 namespace Applications.Messaging;
 

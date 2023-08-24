@@ -29,7 +29,7 @@ using Azure.ResourceManager;
 @service({
   title: "Test.Resource Resource Management APIs",
 })
-@doc("REST API for Test.Resource")
+@doc("REST APIs for Test.Resource")
 @versioned(Versions)
 namespace Test.Resource;
 
