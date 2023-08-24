@@ -56,8 +56,8 @@ func Test_SecretStore_CreateSecret(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sSecretForResource(appName, "appcert"),
-						validation.NewK8sSecretForResource(appName, "appsecret"),
+						validation.NewK8sSecretForResource(appName, "appcert", "appcert"),
+						validation.NewK8sSecretForResource(appName, "appsecret", "appsecret"),
 					},
 				},
 			},

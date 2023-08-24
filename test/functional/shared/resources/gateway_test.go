@@ -335,7 +335,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-gtwy"),
 						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-front-rte"),
 						validation.NewK8sServiceForResource(name, "tls-gtwy-front-rte"),
-						validation.NewK8sSecretForResource(name, "tls-gtwy-cert"),
+						validation.NewK8sSecretForResource(name, "tls-gtwy-cert", "tls-gtwy-cert"),
 					},
 				},
 			},
@@ -454,4 +454,3 @@ func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
 		Transport: transport,
 	}
 }
-

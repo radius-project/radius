@@ -26,7 +26,9 @@ package resource_test
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -49,8 +51,10 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-redis.bicep"
 	name := "corerp-resources-terraform-redis"
 	appName := "corerp-resources-terraform-redis-app"
+	envName := "corerp-resources-terraform-redis-env"
 	redisCacheName := "tf-redis-cache"
-
+	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/"+name, envName, appName)
+	require.NoError(t, err)
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
@@ -77,6 +81,9 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 					appName: {
 						validation.NewK8sServiceForResource(appName, redisCacheName).ValidateLabels(false),
 					},
+					"radius-system": {
+						validation.NewK8sSecretForResource(appName, redisCacheName, "tfstate-default-"+secret).ValidateLabels(false),
+					},
 				},
 			},
 			SkipResourceDeletion: true, // Skip deletion because Terraform Recipe deletion isn't supported yet.
@@ -88,9 +95,9 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 func Test_TerraformRecipe_Context(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
-
 	appNamespace := "corerp-resources-terraform-context-app"
-
+	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/"+name, name, name)
+	require.NoError(t, err)
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
@@ -109,7 +116,10 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sSecretForResource(name, name),
+						validation.NewK8sSecretForResource(name, name, "recipe-context"),
+					},
+					"radius-system": {
+						validation.NewK8sSecretForResource(name, name, "tfstate-default-"+secret).ValidateLabels(false),
 					},
 				},
 			},
@@ -195,4 +205,27 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 		},
 	})
 	test.Test(t)
+}
+
+func getSecretSuffix(resourceID, envName, appName string) (string, error) {
+	parsedResourceID, err := resources.Parse(resourceID)
+	if err != nil {
+		return "", err
+	}
+
+	prefix := fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.Name())
+	maxResourceNameLen := 22
+	if len(prefix) >= maxResourceNameLen {
+		prefix = prefix[:maxResourceNameLen]
+	}
+
+	hasher := sha1.New()
+	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.String()))))
+	if err != nil {
+		return "", err
+	}
+	hash := hasher.Sum(nil)
+
+	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
+	return fmt.Sprintf("%s.%x", prefix, hash), nil
 }
