@@ -37,10 +37,10 @@ model KubernetesMetadataExtension extends Extension {
   kind: "kubernetesMetadata";
 
   @doc("Annotations to be applied to the Kubernetes resources output by the resource")
-  annotations: Record<string>;
+  annotations?: Record<string>;
 
   @doc("Labels to be applied to the Kubernetes resources output by the resource")
-  labels: Record<string>;
+  labels?: Record<string>;
 }
 
 @doc("ManualScaling Extension")
