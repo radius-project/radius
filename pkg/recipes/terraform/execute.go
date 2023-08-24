@@ -205,7 +205,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
 	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
-	result, err := inspectTFModuleConfig(workingDir, localModuleName)
+	result, err := inspectModule(workingDir, localModuleName)
 	if err != nil {
 		return nil, err
 	}
