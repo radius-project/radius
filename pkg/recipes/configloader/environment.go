@@ -132,7 +132,11 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
 	}
 	recipeName := recipe.Name
-	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
+	resourceType := resource.Type()
+	if recipe.ResourceType != "" {
+		resourceType = recipe.ResourceType
+	}
+	found, ok := environment.Properties.Recipes[resourceType][recipeName]
 	if !ok {
 		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
 	}

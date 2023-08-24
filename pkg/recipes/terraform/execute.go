@@ -166,6 +166,53 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		Delete(ctx, terraformStateKubernetesPrefix+secretSuffix, metav1.DeleteOptions{})
 }
 
+func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Install Terraform
+	i := install.NewInstaller()
+	execPath, err := Install(ctx, i, options.RootDir)
+	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
+	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
+	defer func() {
+		if err := i.Remove(ctx); err != nil {
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
+		}
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create Working Directory
+	workingDir, err := createWorkingDir(ctx, options.RootDir)
+	if err != nil {
+		return nil, err
+	}
+
+	localModuleName := options.EnvRecipe.Name
+	if localModuleName == "" {
+		return nil, ErrRecipeNameEmpty
+	}
+	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
+		return nil, err
+	}
+
+	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		return nil, err
+	}
+
+	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
+	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
+	result, err := inspectTFModuleConfig(workingDir, localModuleName)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Parameters, nil
+}
+
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

@@ -451,6 +451,44 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
+	recipeMetadata, recipeDefiniition, _ := getDeleteInputs()
+
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefiniition, nil)
+	driver.EXPECT().GetRecipeMetadata(ctx, recipeDefiniition, recipeMetadata).Times(1).Return(recipeMetadata.Parameters, nil)
+
+	recipeData, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
+	require.NoError(t, err)
+	require.Equal(t, recipeMetadata.Parameters, recipeData)
+}
+
+func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
+	recipeMetadata, recipeDefiniition, _ := getDeleteInputs()
+
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefiniition, nil)
+	driver.EXPECT().GetRecipeMetadata(ctx, recipeDefiniition, recipeMetadata).Times(1).Return(nil, errors.New("driver failure"))
+
+	_, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
+	require.Error(t, err)
+}
+
+func Test_GetRecipeMetadata_Lookup_Error(t *testing.T) {
+	recipeMetadata, _, _ := getDeleteInputs()
+
+	ctx := testcontext.New(t)
+	engine, configLoader, _ := setup(t)
+
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
+	_, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
+	require.Error(t, err)
+}
+
 func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

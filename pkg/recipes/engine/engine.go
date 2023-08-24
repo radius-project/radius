@@ -149,3 +149,20 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 
 	return definition, nil
 }
+
+// TODO
+func (e *engine) GetRecipeMetadata(ctx context.Context, recipeMetadata recipes.ResourceMetadata) (map[string]any, error) {
+	// Load Recipe Definition from the environment.
+	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipeMetadata)
+	if err != nil {
+		return nil, err
+	}
+
+	// Determine Recipe driver type
+	driver, ok := e.options.Drivers[definition.Driver]
+	if !ok {
+		return nil, fmt.Errorf("could not find driver %s", definition.Driver)
+	}
+
+	return driver.GetRecipeMetadata(ctx, *definition, recipeMetadata)
+}

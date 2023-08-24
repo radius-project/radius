@@ -19,6 +19,7 @@ package environments
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http/httptest"
 	"testing"
@@ -28,6 +29,8 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,8 +40,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mEngine := engine.NewMockEngine(mctrl)
 	ctx := context.Background()
-
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
@@ -56,9 +59,25 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
+		recipeMetadata := recipes.ResourceMetadata{
+			Name:          *envInput.Name,
+			EnvironmentID: envDataModel.ID,
+			Parameters:    nil,
+			ResourceID:    envDataModel.ID,
+			ResourceType:  "Applications.Link/mongoDatabases",
+		}
+		recipeData := map[string]any{
+			"parameters": map[string]any{
+				"documentdbName": map[string]any{"type": "string"},
+				"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
+				"mongodbName":    map[string]any{"type": "string"},
+			},
+		}
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(recipeData, nil)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
+			Engine:        mEngine,
 		}
 		ctl, err := NewGetRecipeMetadata(opts)
 		require.NoError(t, err)
@@ -86,6 +105,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			})
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
+			Engine:        mEngine,
 		}
 		ctl, err := NewGetRecipeMetadata(opts)
 		require.NoError(t, err)
@@ -127,6 +147,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
+			Engine:        mEngine,
 		}
 		ctl, err := NewGetRecipeMetadata(opts)
 		require.NoError(t, err)
@@ -147,15 +168,42 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		require.Equal(t, v1.CodeNotFound, armerr.Error.Code)
 		require.Contains(t, armerr.Error.Message, "Either recipe with name \"mongodb\" or resource type \"Applications.Datastores/mongoDatabases\" not found on environment with id")
 	})
-}
 
-func TestGetRecipeMetadataFromRegistry(t *testing.T) {
-	ctx := context.Background()
+	t.Run("get recipe metadata engine failure", func(t *testing.T) {
+		envInput, envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
+		require.NoError(t, err)
 
-	t.Run("get recipe metadata from registry with invalid path", func(t *testing.T) {
-		templatePath := "radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0"
-		_, err := getRecipeMetadataFromRegistry(ctx, templatePath, "mongodb")
-		require.ErrorContains(t, err, "failed to fetch repository from the path \"radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0\": radiusdev.azurecr.io/recipes/functionaltest/test/mongodatabases/azure:1.0: not found")
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "etag"},
+					Data:     envDataModel,
+				}, nil
+			})
+		ctx := rpctest.NewARMRequestContext(req)
+		recipeMetadata := recipes.ResourceMetadata{
+			Name:          *envInput.Name,
+			EnvironmentID: envDataModel.ID,
+			Parameters:    nil,
+			ResourceID:    envDataModel.ID,
+			ResourceType:  "Applications.Link/mongoDatabases",
+		}
+		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(nil, engineErr)
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			Engine:        mEngine,
+		}
+		ctl, err := NewGetRecipeMetadata(opts)
+		require.NoError(t, err)
+		_, err = ctl.Run(ctx, w, req)
+		require.Error(t, err)
+		require.Equal(t, err, engineErr)
 	})
 }
 

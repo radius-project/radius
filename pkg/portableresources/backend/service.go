@@ -82,7 +82,7 @@ func (s *Service) Run(ctx context.Context) error {
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          s.Options.UCPConnection.Endpoint(),
-		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
+		ARMClientOptions: clientOptions,
 	})
 	if err != nil {
 		return err

@@ -65,6 +65,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	}
 
 	envRecipe := recipes.EnvironmentDefinition{
+		Name:         "redis-azure",
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "Azure/redis/azurerm",
 		ResourceType: "Applications.Datastores/redisCaches",
@@ -305,6 +306,35 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 			},
 		})
 	})
+}
+
+func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	_, recipeMetadata, envRecipe := buildTestInputs()
+
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	expectedOutput := map[string]any{
+		"redis_cache_name": "redis-test",
+	}
+	options := terraform.Options{
+		RootDir:        tfDir,
+		ResourceRecipe: &recipeMetadata,
+		EnvRecipe:      &envRecipe,
+	}
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(expectedOutput, nil)
+
+	recipeData, err := driver.GetRecipeMetadata(ctx, envRecipe, recipeMetadata)
+	require.NoError(t, err)
+	require.Equal(t, expectedOutput, recipeData)
+	// Verify directory cleanup
+	_, err = os.Stat(tfDir)
+	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
