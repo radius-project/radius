@@ -397,7 +397,7 @@ type ContainerUpdate struct {
 	ReadinessProbe HealthProbePropertiesClassification
 
 	// container volumes
-	Volumes map[string]VolumeUpdateClassification
+	Volumes map[string]VolumeClassification
 
 	// Working directory for the container
 	WorkingDir *string
@@ -541,33 +541,13 @@ type EphemeralVolume struct {
 	// REQUIRED; Backing store for the ephemeral volume
 	ManagedStore *ManagedStore
 
-	// REQUIRED; The path where the volume is mounted
+	// The path where the volume is mounted
 	MountPath *string
 }
 
 // GetVolume implements the VolumeClassification interface for type EphemeralVolume.
 func (e *EphemeralVolume) GetVolume() *Volume {
 	return &Volume{
-		Kind: e.Kind,
-		MountPath: e.MountPath,
-	}
-}
-
-// EphemeralVolumeUpdate - Specifies an ephemeral volume for a container
-type EphemeralVolumeUpdate struct {
-	// REQUIRED; Discriminator property for Volume.
-	Kind *string
-
-	// Backing store for the ephemeral volume
-	ManagedStore *ManagedStore
-
-	// The path where the volume is mounted
-	MountPath *string
-}
-
-// GetVolumeUpdate implements the VolumeUpdateClassification interface for type EphemeralVolumeUpdate.
-func (e *EphemeralVolumeUpdate) GetVolumeUpdate() *VolumeUpdate {
-	return &VolumeUpdate{
 		Kind: e.Kind,
 		MountPath: e.MountPath,
 	}
@@ -1111,13 +1091,13 @@ func (k *KubernetesComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComp
 
 // KubernetesMetadataExtension - Kubernetes metadata extension of a environment/application resource.
 type KubernetesMetadataExtension struct {
-	// REQUIRED; Annotations to be applied to the Kubernetes resources output by the resource
-	Annotations map[string]*string
-
 	// REQUIRED; Discriminator property for Extension.
 	Kind *string
 
-	// REQUIRED; Labels to be applied to the Kubernetes resources output by the resource
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string
+
+	// Labels to be applied to the Kubernetes resources output by the resource
 	Labels map[string]*string
 }
 
@@ -1244,11 +1224,11 @@ type PersistentVolume struct {
 	// REQUIRED; Discriminator property for Volume.
 	Kind *string
 
-	// REQUIRED; The path where the volume is mounted
-	MountPath *string
-
 	// REQUIRED; The source of the volume
 	Source *string
+
+	// The path where the volume is mounted
+	MountPath *string
 
 	// Container read/write access to the volume
 	Permission *VolumePermission
@@ -1257,29 +1237,6 @@ type PersistentVolume struct {
 // GetVolume implements the VolumeClassification interface for type PersistentVolume.
 func (p *PersistentVolume) GetVolume() *Volume {
 	return &Volume{
-		Kind: p.Kind,
-		MountPath: p.MountPath,
-	}
-}
-
-// PersistentVolumeUpdate - Specifies a persistent volume for a container
-type PersistentVolumeUpdate struct {
-	// REQUIRED; Discriminator property for Volume.
-	Kind *string
-
-	// The path where the volume is mounted
-	MountPath *string
-
-	// Container read/write access to the volume
-	Permission *VolumePermission
-
-	// The source of the volume
-	Source *string
-}
-
-// GetVolumeUpdate implements the VolumeUpdateClassification interface for type PersistentVolumeUpdate.
-func (p *PersistentVolumeUpdate) GetVolumeUpdate() *VolumeUpdate {
-	return &VolumeUpdate{
 		Kind: p.Kind,
 		MountPath: p.MountPath,
 	}
@@ -1356,8 +1313,8 @@ type RecipeGetMetadataResponse struct {
 	// REQUIRED; The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
-	// REQUIRED; The version of the template to deploy. For Terraform recipes using a module registry this is required, but must
-// be omitted for other module sources.
+	// The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources.
 	TemplateVersion *string
 }
 
@@ -1614,12 +1571,12 @@ type TerraformRecipeProperties struct {
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
-	// REQUIRED; Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be
-// omitted for other module sources.
-	TemplateVersion *string
-
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
+// for other module sources.
+	TemplateVersion *string
 }
 
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type TerraformRecipeProperties.
@@ -1692,7 +1649,7 @@ type Volume struct {
 	// REQUIRED; Discriminator property for Volume.
 	Kind *string
 
-	// REQUIRED; The path where the volume is mounted
+	// The path where the volume is mounted
 	MountPath *string
 }
 
@@ -1770,16 +1727,4 @@ type VolumeResourceUpdateProperties struct {
 	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 }
-
-// VolumeUpdate - Specifies a volume for a container
-type VolumeUpdate struct {
-	// REQUIRED; Discriminator property for Volume.
-	Kind *string
-
-	// The path where the volume is mounted
-	MountPath *string
-}
-
-// GetVolumeUpdate implements the VolumeUpdateClassification interface for type VolumeUpdate.
-func (v *VolumeUpdate) GetVolumeUpdate() *VolumeUpdate { return v }
 

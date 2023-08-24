@@ -407,6 +407,18 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rpv1
 	}
 }
 
+// NewDependencyMissingResponse creates a DependencyMissingResponse with a given error message.
+func NewDependencyMissingResponse(message string) Response {
+	return &BadRequestResponse{
+		Body: v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeDependencyMissing,
+				Message: message,
+			},
+		},
+	}
+}
+
 // NewBadRequestResponse creates a BadRequestResponse with a given error message.
 func NewBadRequestResponse(message string) Response {
 	return &BadRequestResponse{

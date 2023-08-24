@@ -42,20 +42,19 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
-      - name: Setup npm
+      - name: Setup NodeJS
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '18'
       - name: Install cadl compiler
         run: |
           pushd cadl
           npm ci
           popd
-      - name: Install TypeSpec
+      - name: Install TypeSpec compiler
         run: |
           pushd typespec
-          npm install -g @typespec/compiler
-          tsp install
+          npm ci
           popd
       - name: Install autorest
         run: npm install -g autorest@3.6.1

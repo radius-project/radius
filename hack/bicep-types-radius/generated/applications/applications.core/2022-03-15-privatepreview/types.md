@@ -129,9 +129,9 @@
 
 ### KubernetesMetadataExtension
 #### Properties
-* **annotations**: [KubernetesMetadataExtensionAnnotations](#kubernetesmetadataextensionannotations) (Required): Annotations to be applied to the Kubernetes resources output by the resource
+* **annotations**: [KubernetesMetadataExtensionAnnotations](#kubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
 * **kind**: 'kubernetesMetadata' (Required): Discriminator property for Extension.
-* **labels**: [KubernetesMetadataExtensionLabels](#kubernetesmetadataextensionlabels) (Required): Labels to be applied to the Kubernetes resources output by the resource
+* **labels**: [KubernetesMetadataExtensionLabels](#kubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
 
 ### KubernetesNamespaceExtension
 #### Properties
@@ -295,7 +295,7 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **mountPath**: string (Required): The path where the volume is mounted
+* **mountPath**: string: The path where the volume is mounted
 ### EphemeralVolume
 #### Properties
 * **kind**: 'ephemeral' (Required): Discriminator property for Volume.
@@ -367,7 +367,7 @@
 ### TerraformRecipeProperties
 #### Properties
 * **templateKind**: 'terraform' (Required): Discriminator property for RecipeProperties.
-* **templateVersion**: string (Required): Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.
+* **templateVersion**: string: Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.
 
 
 ## TrackedResourceTags

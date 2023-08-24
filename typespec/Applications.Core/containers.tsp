@@ -150,7 +150,7 @@ model ExecHealthProbeProperties extends HealthProbeProperties {
 @doc("Specifies a volume for a container")
 model Volume {
   @doc("The path where the volume is mounted")
-  mountPath: string;
+  mountPath?: string;
 }
 
 @doc("Specifies an ephemeral volume for a container")

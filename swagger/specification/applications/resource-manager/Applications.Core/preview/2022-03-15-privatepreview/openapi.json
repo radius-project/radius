@@ -3089,7 +3089,7 @@
           "type": "object",
           "description": "container volumes",
           "additionalProperties": {
-            "$ref": "#/definitions/VolumeUpdate"
+            "$ref": "#/definitions/Volume"
           }
         },
         "command": {
@@ -3357,22 +3357,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/Volume"
-        }
-      ],
-      "x-ms-discriminator-value": "ephemeral"
-    },
-    "EphemeralVolumeUpdate": {
-      "type": "object",
-      "description": "Specifies an ephemeral volume for a container",
-      "properties": {
-        "managedStore": {
-          "$ref": "#/definitions/ManagedStore",
-          "description": "Backing store for the ephemeral volume"
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/VolumeUpdate"
         }
       ],
       "x-ms-discriminator-value": "ephemeral"
@@ -4133,10 +4117,6 @@
           }
         }
       },
-      "required": [
-        "annotations",
-        "labels"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/Extension"
@@ -4260,26 +4240,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/Volume"
-        }
-      ],
-      "x-ms-discriminator-value": "persistent"
-    },
-    "PersistentVolumeUpdate": {
-      "type": "object",
-      "description": "Specifies a persistent volume for a container",
-      "properties": {
-        "permission": {
-          "$ref": "#/definitions/VolumePermission",
-          "description": "Container read/write access to the volume"
-        },
-        "source": {
-          "type": "string",
-          "description": "The source of the volume"
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/VolumeUpdate"
         }
       ],
       "x-ms-discriminator-value": "persistent"
@@ -4498,7 +4458,6 @@
       "required": [
         "templateKind",
         "templatePath",
-        "templateVersion",
         "parameters"
       ]
     },
@@ -4897,9 +4856,6 @@
           "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
         }
       },
-      "required": [
-        "templateVersion"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/RecipeProperties"
@@ -4997,8 +4953,7 @@
       },
       "discriminator": "kind",
       "required": [
-        "kind",
-        "mountPath"
+        "kind"
       ]
     },
     "VolumePermission": {
@@ -5159,24 +5114,6 @@
           }
         ]
       }
-    },
-    "VolumeUpdate": {
-      "type": "object",
-      "description": "Specifies a volume for a container",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Discriminator property for Volume."
-        },
-        "mountPath": {
-          "type": "string",
-          "description": "The path where the volume is mounted"
-        }
-      },
-      "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
     }
   },
   "parameters": {
