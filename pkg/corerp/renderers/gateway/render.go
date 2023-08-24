@@ -103,7 +103,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port, isHttps)
 	}
 
-	gatewayObject, err := MakeGateway(ctx, options, gateway, gateway.Name, applicationName, hostname)
+	gatewayObject, err := MakeRootHTTPProxy(ctx, options, gateway, gateway.Name, applicationName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -116,7 +116,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		},
 	}
 
-	httpRouteObjects, err := MakeHttpRoutes(ctx, options, *gateway, &gateway.Properties, gatewayName, applicationName)
+	httpRouteObjects, err := MakeRoutesHttpProxies(ctx, options, *gateway, &gateway.Properties, gatewayName, gatewayObject, applicationName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -128,9 +128,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-// MakeGateway validates the Gateway resource and its dependencies, and creates a Contour HTTPProxy resource
+// MakeRootHTTPProxy validates the Gateway resource and its dependencies, and creates a Contour HTTPProxy resource
 // to act as the Gateway.
-func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
+func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
 	includes := []contourv1.Include{}
 	dependencies := options.Dependencies
 
@@ -292,9 +292,9 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
-// MakeHttpRoutes creates HTTPProxy objects for each route in the gateway and returns them as OutputResources. It returns
+// MakeRoutesHttpProxies creates HTTPProxy objects for each route in the gateway and returns them as OutputResources. It returns
 // an error if it fails to get the route name.
-func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
+func MakeRoutesHttpProxies(ctx context.Context, options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, gatewayOutPutResource rpv1.OutputResource, applicationName string) ([]rpv1.OutputResource, error) {
 	dependencies := options.Dependencies
 	objects := make(map[string]*contourv1.HTTPProxy)
 
@@ -387,6 +387,9 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 		}
 
 		objects[localID] = httpProxyObject
+
+		// Add the route as a dependency of the root http proxy to ensure that the route is created before the root http proxy
+		gatewayOutPutResource.CreateResource.Dependencies = append(gatewayOutPutResource.CreateResource.Dependencies, localID)
 	}
 
 	var outputResources []rpv1.OutputResource

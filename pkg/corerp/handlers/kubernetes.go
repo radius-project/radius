@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/resourcemodel"
@@ -39,6 +40,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/dynamic/dynamicinformer"
 	"k8s.io/client-go/informers"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -48,19 +51,25 @@ import (
 const (
 	// MaxDeploymentTimeout is the max timeout for waiting for a deployment to be ready.
 	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
-	MaxDeploymentTimeout = time.Minute * time.Duration(10)
+	MaxDeploymentTimeout          = time.Minute * time.Duration(10)
+	MaxHTTPProxyDeploymentTimeout = time.Minute * time.Duration(10)
 	// DefaultCacheResyncInterval is the interval for resyncing informer.
 	DefaultCacheResyncInterval = time.Second * time.Duration(30)
+	HTTPProxyConditionValid    = "Valid"
+	HTTPProxyStatusInvalid     = "invalid"
+	HTTPProxyStatusValid       = "valid"
 )
 
 // NewKubernetesHandler creates a new KubernetesHandler which is used to handle Kubernetes resources.
-func NewKubernetesHandler(client client.Client, clientSet k8s.Interface, discoveryClient discovery.ServerResourcesInterface) ResourceHandler {
+func NewKubernetesHandler(client client.Client, clientSet k8s.Interface, discoveryClient discovery.ServerResourcesInterface, dynamicClientSet dynamic.Interface) ResourceHandler {
 	return &kubernetesHandler{
-		client:              client,
-		clientSet:           clientSet,
-		k8sDiscoveryClient:  discoveryClient,
-		deploymentTimeOut:   MaxDeploymentTimeout,
-		cacheResyncInterval: DefaultCacheResyncInterval,
+		client:                     client,
+		clientSet:                  clientSet,
+		k8sDiscoveryClient:         discoveryClient,
+		dynamicClientSet:           dynamicClientSet,
+		deploymentTimeOut:          MaxDeploymentTimeout,
+		httpProxyDeploymentTimeout: MaxHTTPProxyDeploymentTimeout,
+		cacheResyncInterval:        DefaultCacheResyncInterval,
 	}
 }
 
@@ -69,9 +78,11 @@ type kubernetesHandler struct {
 	clientSet k8s.Interface
 	// k8sDiscoveryClient is the Kubernetes client to used for API version lookups on Kubernetes resources. Override this for testing.
 	k8sDiscoveryClient discovery.ServerResourcesInterface
+	dynamicClientSet   dynamic.Interface
 
-	deploymentTimeOut   time.Duration
-	cacheResyncInterval time.Duration
+	deploymentTimeOut          time.Duration
+	httpProxyDeploymentTimeout time.Duration
+	cacheResyncInterval        time.Duration
 }
 
 // Put stores the Kubernetes resource in the cluster and returns the properties of the resource. If the resource is a
@@ -123,6 +134,13 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 			return nil, err
 		}
 		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
+		return properties, nil
+	case "httpproxy":
+		err = handler.waitUntilHTTPProxyIsReady(ctx, &item)
+		if err != nil {
+			return nil, err
+		}
+		logger.Info(fmt.Sprintf("HTTP Proxy %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	default:
 		// We do not monitor the other resource types.
@@ -188,8 +206,26 @@ func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerF
 	}
 }
 
+func (handler *kubernetesHandler) addHTTPProxyEventHandler(ctx context.Context, informerFactory dynamicinformer.DynamicSharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			handler.checkHTTPProxyStatus(ctx, informerFactory, item, doneCh)
+		},
+		UpdateFunc: func(_, newObj any) {
+			handler.checkHTTPProxyStatus(ctx, informerFactory, item, doneCh)
+		},
+	})
+
+	if err != nil {
+		logger.Error(err, "failed to add event handler")
+	}
+}
+
 func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 	// Add event handlers to the pod informer
 	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh)
@@ -208,6 +244,11 @@ func (handler *kubernetesHandler) startInformers(ctx context.Context, item clien
 
 	logger.Info(fmt.Sprintf("Informers started and caches synced for deployment: %s in namespace: %s", item.GetName(), item.GetNamespace()))
 	return nil
+}
+
+// HTTPProxyInformer returns the HTTPProxy informer.
+func HTTPProxyInformer(dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory) informers.GenericInformer {
+	return dynamicInformerFactory.ForResource(contourv1.HTTPProxyGVR)
 }
 
 // Check if all the pods in the deployment are ready
@@ -249,6 +290,112 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 			return true
 		} else {
 			logger.Info(fmt.Sprintf("Deployment status is: %s - %s, Reason: %s, Deployment replicaset: %s", c.Type, c.Status, c.Reason, deploymentReplicaSet.Name))
+		}
+	}
+	return false
+}
+
+func (handler *kubernetesHandler) waitUntilHTTPProxyIsReady(ctx context.Context, obj client.Object) error {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
+
+	doneCh := make(chan error, 1)
+
+	ctx, cancel := context.WithTimeout(ctx, handler.httpProxyDeploymentTimeout)
+	// This ensures that the informer is stopped when this function is returned.
+	defer cancel()
+
+	// Create dynamic informer for HTTPProxy
+	dynamicInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(handler.dynamicClientSet, 0, obj.GetNamespace(), nil)
+	httpProxyInformer := dynamicInformerFactory.ForResource(contourv1.HTTPProxyGVR)
+	// Add event handlers to the http proxy informer
+	handler.addHTTPProxyEventHandler(ctx, dynamicInformerFactory, httpProxyInformer.Informer(), obj, doneCh)
+
+	// Start the informers
+	dynamicInformerFactory.Start(ctx.Done())
+
+	// Wait for the cache to be synced.
+	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
+
+	select {
+	case <-ctx.Done():
+		// Get the final status
+		proxy, err := httpProxyInformer.Lister().Get(obj.GetName())
+
+		if err != nil {
+			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
+		}
+
+		p := contourv1.HTTPProxy{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(proxy.(*unstructured.Unstructured).Object, &p)
+		if err != nil {
+			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
+		}
+
+		status := contourv1.DetailedCondition{}
+		if len(p.Status.Conditions) > 0 {
+			status = p.Status.Conditions[len(p.Status.Conditions)-1]
+		}
+		return fmt.Errorf("HTTP proxy deployment timed out, name: %s, namespace %s, status: %s, reason: %s", obj.GetName(), obj.GetNamespace(), status.Message, status.Reason)
+	case err := <-doneCh:
+		if err == nil {
+			logger.Info(fmt.Sprintf("Marking HTTP proxy deployment %s in namespace %s as complete", obj.GetName(), obj.GetNamespace()))
+		}
+		return err
+	}
+}
+
+func (handler *kubernetesHandler) checkHTTPProxyStatus(ctx context.Context, dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory, obj client.Object, doneCh chan<- error) bool {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
+	selector := labels.SelectorFromSet(
+		map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			kubernetes.LabelName:      obj.GetName(),
+		},
+	)
+	proxies, err := HTTPProxyInformer(dynamicInformerFactory).Lister().List(selector)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Unable to list http proxies: %s", err.Error()))
+		return false
+	}
+
+	for _, proxy := range proxies {
+		p := contourv1.HTTPProxy{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(proxy.(*unstructured.Unstructured).Object, &p)
+		if err != nil {
+			logger.Info(fmt.Sprintf("Unable to convert http proxy: %s", err.Error()))
+			continue
+		}
+
+		if len(p.Spec.Includes) == 0 && len(p.Spec.Routes) > 0 {
+			// This is a route HTTP proxy. We will not validate deployment completion for it and return success here
+			logger.Info("Not validating the deployment of route HTTP proxy for ", p.Name)
+			doneCh <- nil
+			return true
+		}
+
+		// We will check the status for the root HTTP proxy
+		if p.Status.CurrentStatus == HTTPProxyStatusInvalid {
+			if strings.Contains(p.Status.Description, "see Errors for details") {
+				var msg string
+				for _, c := range p.Status.Conditions {
+					if c.ObservedGeneration != p.Generation {
+						continue
+					}
+					if c.Type == HTTPProxyConditionValid && c.Status == "False" {
+						for _, e := range c.Errors {
+							msg += fmt.Sprintf("Error - Type: %s, Status: %s, Reason: %s, Message: %s\n", e.Type, e.Status, e.Reason, e.Message)
+						}
+					}
+				}
+				doneCh <- errors.New(msg)
+			} else {
+				doneCh <- fmt.Errorf("Failed to deploy HTTP proxy. Description: %s", p.Status.Description)
+			}
+			return false
+		} else if p.Status.CurrentStatus == HTTPProxyStatusValid {
+			// The HTTPProxy is ready
+			doneCh <- nil
+			return true
 		}
 	}
 	return false
