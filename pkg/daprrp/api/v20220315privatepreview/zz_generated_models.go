@@ -12,11 +12,11 @@ import "time"
 
 // DaprPubSubBrokerProperties - PubSubBroker link properties
 type DaprPubSubBrokerProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -91,10 +91,10 @@ type DaprPubSubBrokerResourceUpdate struct {
 
 // DaprPubSubBrokerResourceUpdateProperties - The updatable properties of the DaprPubSubBrokerResource.
 type DaprPubSubBrokerResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -118,11 +118,11 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 
 // DaprSecretStoreProperties - DaprSecretStore link properties
 type DaprSecretStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -194,10 +194,10 @@ type DaprSecretStoreResourceUpdate struct {
 
 // DaprSecretStoreResourceUpdateProperties - The updatable properties of the DaprSecretStoreResource.
 type DaprSecretStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -218,11 +218,11 @@ type DaprSecretStoreResourceUpdateProperties struct {
 
 // DaprStateStoreProperties - StateStore link properties
 type DaprStateStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
+
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -297,10 +297,10 @@ type DaprStateStoreResourceUpdate struct {
 
 // DaprStateStoreResourceUpdateProperties - The updatable properties of the DaprStateStoreResource.
 type DaprStateStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec

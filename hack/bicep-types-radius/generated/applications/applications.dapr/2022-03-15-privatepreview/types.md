@@ -38,9 +38,9 @@
 
 ## DaprPubSubBrokerProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
@@ -104,9 +104,9 @@
 
 ## DaprSecretStoreProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
@@ -122,9 +122,9 @@
 
 ## DaprStateStoreProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **metadata**: any: Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link

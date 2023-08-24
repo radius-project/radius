@@ -47,7 +47,7 @@ model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
 
 @doc("PubSubBroker link properties")
 model DaprPubSubBrokerProperties {
-  ...ApplicationScopedResource;
+  ...EnvironmentScopedResource;
   ...DaprResourceProperties;
 
   @doc("A collection of references to resources associated with the pubSubBroker")

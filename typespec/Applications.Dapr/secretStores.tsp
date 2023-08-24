@@ -46,7 +46,7 @@ model DaprSecretStoreResource is TrackedResource<DaprSecretStoreProperties> {
 
 @doc("DaprSecretStore link properties")
 model DaprSecretStoreProperties {
-  ...ApplicationScopedResource;
+  ...EnvironmentScopedResource;
   ...DaprResourceProperties;
   ...RecipeBaseProperties;
 }
