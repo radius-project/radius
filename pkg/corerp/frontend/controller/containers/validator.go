@@ -26,6 +26,10 @@ import (
 	"github.com/project-radius/radius/pkg/kubeutil"
 )
 
+const (
+	manifestErrorFormat = "%s is allowed, but the manifest includes %d resources"
+)
+
 // ValidateAndMutateRequest checks if the newResource has a user-defined identity and if so, returns a bad request
 // response, otherwise it sets the identity of the newResource to the identity of the oldResource if it exists.
 func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *datamodel.ContainerResource, options *controller.Options) (rest.Response, error) {
@@ -42,11 +46,46 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 
 	runtimes := newResource.Properties.Runtimes
 	if runtimes != nil && runtimes.Kubernetes != nil {
-		_, err := kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
+		err := validateBaseManifest([]byte(runtimes.Kubernetes.Base))
 		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.runtimes.kubernetes.base is invalid: %v", err)), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.runtimes.base is invalid: %v", err)), nil
 		}
 	}
 
 	return nil, nil
+}
+
+func validateBaseManifest(manifest []byte) error {
+	resourceMap, err := kubeutil.ParseManifest(manifest)
+	if err != nil {
+		return err
+	}
+
+	for k, resources := range resourceMap {
+		switch k {
+		case "deployment":
+			if len(resources) != 1 {
+				return fmt.Errorf(manifestErrorFormat, "only one Deployment", len(resources))
+			}
+
+		case "service":
+			if len(resources) != 1 {
+				return fmt.Errorf(manifestErrorFormat, "only one Service", len(resources))
+			}
+
+		case "serviceaccount":
+			if len(resources) != 1 {
+				return fmt.Errorf(manifestErrorFormat, "only one ServiceAccount", len(resources))
+			}
+
+		// No limitation for ConfigMap and Secret resources.
+		case "configmap":
+		case "secret":
+
+		default:
+			return fmt.Errorf("unsupported resource type %s", k)
+		}
+	}
+
+	return nil
 }
