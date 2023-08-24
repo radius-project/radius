@@ -67,7 +67,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.RecipeMetadataProperties{}
+		actualOutput := &v20220315privatepreview.RecipeGetMetadataResponse{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})

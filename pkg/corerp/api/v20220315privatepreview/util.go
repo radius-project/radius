@@ -148,3 +148,23 @@ func isValidLinkType(link string) bool {
 func isValidTemplateKind(templateKind string) bool {
 	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
 }
+
+func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource {
+	var outResources []*OutputResource
+	for _, or := range outputResources {
+		r := &OutputResource{
+			ID: to.Ptr(or.ID.String()),
+		}
+
+		// We will not serialize the following fields if they are empty or nil.
+		if or.LocalID != "" {
+			r.LocalID = to.Ptr(or.LocalID)
+		}
+		if or.RadiusManaged != nil {
+			r.RadiusManaged = or.RadiusManaged
+		}
+
+		outResources = append(outResources, r)
+	}
+	return outResources
+}

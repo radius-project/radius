@@ -26,12 +26,12 @@ import (
 )
 
 // ConvertTo returns an error as it does not support converting Environment Recipe Properties to a version-agnostic object.
-func (src *RecipeMetadataProperties) ConvertTo() (v1.DataModelInterface, error) {
+func (src *RecipeGetMetadataResponse) ConvertTo() (v1.DataModelInterface, error) {
 	return nil, fmt.Errorf("converting Environment Recipe Properties to a version-agnostic object is not supported")
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment recipe properties resource.
-func (dst *RecipeMetadataProperties) ConvertFrom(src v1.DataModelInterface) error {
+func (dst *RecipeGetMetadataResponse) ConvertFrom(src v1.DataModelInterface) error {
 	recipe, ok := src.(*datamodel.EnvironmentRecipeProperties)
 	if !ok {
 		return v1.ErrInvalidModelConversion
@@ -46,7 +46,7 @@ func (dst *RecipeMetadataProperties) ConvertFrom(src v1.DataModelInterface) erro
 }
 
 // ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
-func (src *Recipe) ConvertTo() (v1.DataModelInterface, error) {
+func (src *RecipeGetMetadata) ConvertTo() (v1.DataModelInterface, error) {
 	return &datamodel.Recipe{
 		Name:     to.String(src.Name),
 		LinkType: to.String(src.LinkType),

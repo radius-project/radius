@@ -131,10 +131,10 @@ model SecretObjectProperties {
   @doc("Encoding format. Default utf-8")
   encoding?: VolumeSecretEncodings = VolumeSecretEncodings.utf8;
 
-  @doc("The name of the certificate")
+  @doc("The name of the secret")
   name: string;
 
-  @doc("Certificate version")
+  @doc("secret version")
   version?: string;
 }
 
@@ -143,10 +143,10 @@ model KeyObjectProperties {
   @doc("File name when written to disk")
   `alias`?: string;
 
-  @doc("The name of the certificate")
+  @doc("The name of the key")
   name: string;
 
-  @doc("Certificate version")
+  @doc("Key version")
   version?: string;
 }
 

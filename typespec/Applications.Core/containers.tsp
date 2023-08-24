@@ -206,7 +206,7 @@ model Container {
   args?: string[];
 
   @doc("Working directory for the container")
-  workingDir: string;
+  workingDir?: string;
 }
 
 @doc("The protocol in use by the port")
