@@ -167,8 +167,8 @@ interface Environments {
   >;
 
   @doc("Gets recipe metadata including parameters and any constraints on the parameters.")
-  @action("getmetadata")
-  getmetadata is ArmResourceActionSync<
+  @action("getMetadata")
+  getMetadata is ArmResourceActionSync<
     EnvironmentResource,
     RecipeGetMetadata,
     RecipeGetMetadataResponse,

@@ -78,7 +78,7 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(extender.Properties.Environment),
@@ -117,14 +117,14 @@ func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning)
 	return &converted
 }
 
-func fromRecipeDataModel(r linkrp.LinkRecipe) *ResourceRecipe {
-	return &ResourceRecipe{
+func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
+	return &Recipe{
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
 	}
 }
 
-func toRecipeDataModel(r *ResourceRecipe) linkrp.LinkRecipe {
+func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
 	if r == nil {
 		return linkrp.LinkRecipe{
 			Name: linkrp_apiver.DefaultRecipeName,

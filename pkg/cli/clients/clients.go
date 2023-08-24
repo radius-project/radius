@@ -169,7 +169,7 @@ type ApplicationsManagementClient interface {
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
 
 	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
-	ShowRecipe(ctx context.Context, environmentName string, recipe corerp.Recipe) (corerp.RecipeMetadataProperties, error)
+	ShowRecipe(ctx context.Context, environmentName string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)
 }
 
 // ShallowCopy creates a shallow copy of the DeploymentParameters object by iterating through the original object and

@@ -2,7 +2,7 @@
   "operationId": "Containers_ListByScope",
   "title": "List containers at resource group",
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
@@ -10,12 +10,12 @@
       "body": {
         "value": [
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
             "name": "container0",
             "type": "Applications.Core/containers",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "connections": {
                 "inventory": {
                   "kind": "dapr.io/InvokeHttp",
@@ -41,12 +41,12 @@
             }
           },
           {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/containers/container1",
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers/container1",
             "name": "container1",
             "type": "Applications.Core/containers",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app1",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app1",
               "connections": {
                 "inventory": {
                   "kind": "dapr.io/InvokeHttp",
@@ -96,7 +96,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/providers/Applications.Core/containers?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
       }
     }
   }
