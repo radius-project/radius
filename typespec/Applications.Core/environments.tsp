@@ -109,7 +109,7 @@ model TerraformRecipeProperties extends RecipeProperties {
   templateKind: "terraform";
 
   @doc("Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
-  templateVersion: string;
+  templateVersion?: string;
 }
 
 @doc("Represents the request body of the getmetadata action.")
@@ -130,7 +130,7 @@ model RecipeGetMetadataResponse {
   templatePath: string;
 
   @doc("The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
-  templateVersion: string;
+  templateVersion?: string;
 
   @doc("The key/value parameters to pass to the recipe template at deployment.")
   parameters: {};
