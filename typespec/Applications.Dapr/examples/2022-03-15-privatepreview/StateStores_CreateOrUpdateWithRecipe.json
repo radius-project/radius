@@ -1,0 +1,55 @@
+{
+  "operationId": "StateStores_CreateOrUpdate",
+  "title": "Create or update a StateStore resource with recipe",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "stateStoreName": "daprstatestore0",
+    "api-version": "2022-03-15-privatepreview",
+    "StateStoreParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "recipe": {
+          "name": "recipe-test"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprstatestore0",
+        "name": "daprstatestore0",
+        "type": "Applications.Dapr/stateStores",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "kind": "state.sqlserver",
+          "recipe": {
+            "name": "recipe-test"
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/stateStores/daprstatestore0",
+        "name": "daprstatestore0",
+        "type": "Applications.Dapr/stateStores",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "recipe": {
+            "name": "recipe-test"
+          }
+        }
+      }
+    }
+  }
+}

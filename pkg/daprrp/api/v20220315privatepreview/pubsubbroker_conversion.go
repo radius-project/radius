@@ -129,7 +129,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		ComponentName:        to.Ptr(daprPubSub.Properties.ComponentName),
 		ProvisioningState:    fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
 		},
 	}
 

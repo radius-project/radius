@@ -106,7 +106,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 	dst.Properties = &DaprStateStoreProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprStateStore.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(daprStateStore.Properties.Environment),
