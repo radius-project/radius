@@ -34,8 +34,7 @@ generate-cadl-installed:
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
 	@echo "$(ARROW) Detecting tsp..."
-	npx$(CMD_EXT) -q tsp --help > /dev/null || { echo "run 'npm install -g @typespec/compiler' to install typespec compiler"; exit 1; }
-	cd typespec/ && npx$(CMD_EXT) tsp install
+	cd typespec/ && npx$(CMD_EXT) -q tsp --help > /dev/null || { echo "run 'npm ci' in typespec directory."; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
