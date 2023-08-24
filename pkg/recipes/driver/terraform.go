@@ -173,3 +173,32 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 
 	return requestDirPath, nil
 }
+
+// # Function Explanation
+//
+// GetRecipeMetadata returns the Terraform Recipe parameters and metadata
+func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, recipe recipes.EnvironmentDefinition, recipeMetadata recipes.ResourceMetadata) (map[string]any, error) {
+	// TODO: to be implemented in follow up PR
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	requestDirPath, err := d.createExecutionDirectory(ctx, recipeMetadata, recipe)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := os.RemoveAll(requestDirPath); err != nil {
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
+		}
+	}()
+
+	recipeData, err := d.terraformExecutor.GetRecipeMetadata(ctx, terraform.Options{
+		RootDir:        requestDirPath,
+		ResourceRecipe: &recipeMetadata,
+		EnvRecipe:      &recipe,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return recipeData, nil
+}

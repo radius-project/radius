@@ -31,4 +31,6 @@ type Engine interface {
 	Execute(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error
+	// Gets the Recipe metadata and parameters from the Bicep registry or TF modules
+	GetRecipeMetadata(ctx context.Context, recipeMetadata recipes.ResourceMetadata) (map[string]any, error)
 }

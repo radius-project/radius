@@ -162,11 +162,13 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			},
 		},
 		{
-			ParentRouter:      envResourceRouter,
-			Path:              "/getmetadata",
-			ResourceType:      env_ctrl.ResourceTypeName,
-			Method:            env_ctrl.OperationGetRecipeMetadata,
-			ControllerFactory: env_ctrl.NewGetRecipeMetadata,
+			ParentRouter: envResourceRouter,
+			Path:         "/getmetadata",
+			ResourceType: env_ctrl.ResourceTypeName,
+			Method:       env_ctrl.OperationGetRecipeMetadata,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return env_ctrl.NewGetRecipeMetadata(opt)
+			},
 		},
 	}
 

@@ -25,6 +25,16 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/corerp/frontend/handler"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"k8s.io/client-go/discovery"
 )
 
 type Service struct {
@@ -52,15 +62,47 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	runtimeClient, err := kubeutil.NewRuntimeClient(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(s.Options.K8sConfig)
+	if err != nil {
+		return err
+	}
+
+	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
+	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
+	configLoader := configloader.NewEnvironmentLoader(clientOptions)
+
+	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
+		Cred:             &aztoken.AnonymousCredential{},
+		BaseURI:          s.Options.UCPConnection.Endpoint(),
+		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
+	})
+
+	engine := engine.NewEngine(engine.Options{
+		ConfigurationLoader: configLoader,
+		Drivers: map[string]driver.Driver{
+			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: s.Options.Config.Terraform.Path,
+				}),
+		},
+	})
+
 	opts := ctrl.Options{
 		Address:       fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port),
 		PathBase:      s.Options.Config.Server.PathBase,
 		DataProvider:  s.StorageProvider,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
+		Engine:        engine,
 	}
 
-	err := s.Start(ctx, server.Options{
+	err = s.Start(ctx, server.Options{
 		Address:           opts.Address,
 		ProviderNamespace: s.ProviderName,
 		Location:          s.Options.Config.Env.RoleLocation,
