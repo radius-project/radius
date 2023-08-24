@@ -336,7 +336,7 @@ type ContainerProperties struct {
 	Identity *IdentitySettings
 
 	// Specifies runtime-specific functionality for the container resource.
-	Runtimes map[string]*ContainerRuntimes
+	Runtimes *RuntimeProperties
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState
@@ -376,16 +376,6 @@ type ContainerResourceList struct {
 
 	// The list of containers.
 	Value []*ContainerResource
-}
-
-type ContainerRuntimes struct {
-	// Specifies Kubernetes specific functionalities for the container resource.
-	Kubernetes map[string]*ContainerRuntimesKubernetes
-}
-
-type ContainerRuntimesKubernetes struct {
-	// The Kubernetes resource definition in YAML format
-	Base *string
 }
 
 // DaprSidecarExtension - Specifies the resource should have a Dapr sidecar injected
@@ -1101,6 +1091,17 @@ type ResourceStatus struct {
 	// Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification
 	OutputResources []map[string]any
+}
+
+type RuntimeProperties struct {
+	// Represents the runtime configuration for the platform-specific functionalities
+	Kubernetes *RuntimePropertiesKubernetes
+}
+
+// RuntimePropertiesKubernetes - Represents the runtime configuration for the platform-specific functionalities
+type RuntimePropertiesKubernetes struct {
+	// The Kubernetes resource definition in the serialized YAML format
+	Base *string
 }
 
 type SecretObjectProperties struct {

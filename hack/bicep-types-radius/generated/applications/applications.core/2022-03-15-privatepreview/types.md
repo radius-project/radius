@@ -185,7 +185,7 @@
 * **extensions**: [ContainerExtension](#containerextension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings)
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **runtimes**: [ContainerPropertiesRuntimes](#containerpropertiesruntimes): Specifies runtime-specific functionality for the container resource.
+* **runtimes**: [RuntimeProperties](#runtimeproperties)
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## ContainerPropertiesConnections
@@ -321,23 +321,13 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
-## ContainerPropertiesRuntimes
+## RuntimeProperties
 ### Properties
-### Additional Properties
-* **Additional Properties Type**: [ContainerRuntimes](#containerruntimes)
+* **kubernetes**: [RuntimePropertiesKubernetes](#runtimepropertieskubernetes): Represents the runtime configuration for the platform-specific functionalities
 
-## ContainerRuntimes
+## RuntimePropertiesKubernetes
 ### Properties
-* **kubernetes**: [ContainerRuntimesKubernetes](#containerruntimeskubernetes): Specifies Kubernetes specific functionalities for the container resource.
-
-## ContainerRuntimesKubernetes
-### Properties
-### Additional Properties
-* **Additional Properties Type**: [ContainerRuntimesKubernetes](#containerruntimeskubernetes)
-
-## ContainerRuntimesKubernetes
-### Properties
-* **base**: string: The Kubernetes resource definition in YAML format
+* **base**: string: The Kubernetes resource definition in the serialized YAML format
 
 ## TrackedResourceTags
 ### Properties

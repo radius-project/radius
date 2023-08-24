@@ -1,0 +1,81 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
+  "name": "container0",
+  "type": "Applications.Core/containers",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "provisioningState": "Succeeded",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "connections": {
+      "inventory": {
+        "source": "inventory_route_id",
+        "disableDefaultEnvVars": true,
+        "iam": {
+          "kind": "azure",
+          "roles": [
+            "read"
+          ]
+        }
+      }
+    },
+    "container": {
+      "image": "radius.azurecr.io/webapptutorial-todoapp",
+      "livenessProbe": {
+        "kind": "tcp",
+        "failureThreshold": 5,
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+        "timeoutSeconds": 5,
+        "containerPort": 8080
+      },
+      "command": [
+        "/bin/sh"
+      ],
+      "args": [
+        "-c",
+        "while true; do echo hello; sleep 10;done"
+      ],
+      "workingDir": "/app"
+    },
+    "identity": {
+      "kind": "azure.com.workload",
+      "oidcIssuer": "https://oidcuri/id",
+      "resource": "resourceid"
+    },
+    "extensions": [
+      {
+        "kind": "manualScaling",
+        "replicas": 2
+      },
+      {
+        "kind": "daprSidecar",
+        "appId": "app-id",
+        "appPort": 80,
+        "config": "config",
+        "protocol": "http"
+      },
+      {
+        "kind": "kubernetesMetadata",
+        "annotations": {
+          "prometheus.io/scrape": "true",
+          "prometheus.io/port": "80"
+        },
+        "labels": {
+          "foo/bar/team": "credit",
+          "foo/bar/contact": "radiususer"
+        }
+      }
+    ],
+    "runtimes": {
+      "kubernetes": {
+        "base": "apiVersion: v1\nkind: Service\nmetadata:\n  name: my-service\nspec:\n  selector:\n    app.kubernetes.io/name: MyApp\n  ports:\n    - protocol: TCP\n      port: 80\n      targetPort: 9376"
+      }
+    }
+  }
+}

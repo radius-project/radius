@@ -18,10 +18,12 @@ package containers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/kubeutil"
 )
 
 // ValidateAndMutateRequest checks if the newResource has a user-defined identity and if so, returns a bad request
@@ -36,6 +38,14 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 		// Model converter will not convert .Properties.Identity to datamodel so that newResource.Properties.Identity is always nil.
 		// This will populate the existing identity to new resource to keep the identity info.
 		newResource.Properties.Identity = oldResource.Properties.Identity
+	}
+
+	runtimes := newResource.Properties.Runtimes
+	if runtimes != nil && runtimes.Kubernetes != nil {
+		_, err := kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
+		if err != nil {
+			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.runtimes.kubernetes.base is invalid: %v", err)), nil
+		}
 	}
 
 	return nil, nil

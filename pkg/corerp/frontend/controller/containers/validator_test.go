@@ -26,6 +26,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const validManifest = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webserver
+  namespace: app-scoped
+  labels:
+    app: webserver
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webserver
+  template:
+    metadata:
+      labels:
+        app: webserver
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webserver
+spec:
+  selector:
+    app.kubernetes.io/name: webserver
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+`
+
 func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 	requestTests := []struct {
 		desc            string
@@ -83,6 +120,72 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				},
 			},
 			resp: nil,
+		},
+		{
+			desc: "valid runtime.kubernetes.base",
+			newResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Runtimes: &datamodel.RuntimeProperties{
+						Kubernetes: &datamodel.KubernetesRuntime{
+							Base: validManifest,
+						},
+					},
+				},
+			},
+			mutatedResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Runtimes: &datamodel.RuntimeProperties{
+						Kubernetes: &datamodel.KubernetesRuntime{
+							Base: validManifest,
+						},
+					},
+				},
+			},
+			resp: nil,
+		},
+		{
+			desc: "empty runtime.kubernetes.base",
+			newResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Runtimes: &datamodel.RuntimeProperties{
+						Kubernetes: &datamodel.KubernetesRuntime{
+							Base: "",
+						},
+					},
+				},
+			},
+			mutatedResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Runtimes: &datamodel.RuntimeProperties{
+						Kubernetes: &datamodel.KubernetesRuntime{
+							Base: "",
+						},
+					},
+				},
+			},
+			resp: nil,
+		},
+		{
+			desc: "invalid runtime.kubernetes.base",
+			newResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Runtimes: &datamodel.RuntimeProperties{
+						Kubernetes: &datamodel.KubernetesRuntime{
+							Base: "invalid",
+						},
+					},
+				},
+			},
+			mutatedResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Runtimes: &datamodel.RuntimeProperties{
+						Kubernetes: &datamodel.KubernetesRuntime{
+							Base: "invalid",
+						},
+					},
+				},
+			},
+			resp: rest.NewBadRequestResponse("$.properties.runtimes.kubernetes.base is invalid: couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }"),
 		},
 	}
 
