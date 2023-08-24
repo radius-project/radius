@@ -955,7 +955,7 @@
   "definitions": {
     "DaprPubSubBrokerProperties": {
       "type": "object",
-      "description": "PubSubBroker link properties",
+      "description": "PubSubBroker portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -1015,7 +1015,7 @@
     },
     "DaprPubSubBrokerResource": {
       "type": "object",
-      "description": "PubSubBroker link",
+      "description": "PubSubBroker portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprPubSubBrokerProperties",
@@ -1115,7 +1115,7 @@
     },
     "DaprSecretStoreProperties": {
       "type": "object",
-      "description": "DaprSecretStore link properties",
+      "description": "DaprSecretStore portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -1168,7 +1168,7 @@
     },
     "DaprSecretStoreResource": {
       "type": "object",
-      "description": "DaprSecretStore link",
+      "description": "DaprSecretStore portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprSecretStoreProperties",
@@ -1261,7 +1261,7 @@
     },
     "DaprStateStoreProperties": {
       "type": "object",
-      "description": "StateStore link properties",
+      "description": "StateStore portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -1321,7 +1321,7 @@
     },
     "DaprStateStoreResource": {
       "type": "object",
-      "description": "StateStore link",
+      "description": "StateStore portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprStateStoreProperties",

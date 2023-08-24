@@ -10,7 +10,7 @@ package v20220315privatepreview
 
 import "time"
 
-// DaprPubSubBrokerProperties - PubSubBroker link properties
+// DaprPubSubBrokerProperties - PubSubBroker portable resource properties
 type DaprPubSubBrokerProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -47,7 +47,7 @@ type DaprPubSubBrokerProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// DaprPubSubBrokerResource - PubSubBroker link
+// DaprPubSubBrokerResource - PubSubBroker portable resource
 type DaprPubSubBrokerResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -116,7 +116,7 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 	Version *string `json:"version,omitempty"`
 }
 
-// DaprSecretStoreProperties - DaprSecretStore link properties
+// DaprSecretStoreProperties - DaprSecretStore portable resource properties
 type DaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -150,7 +150,7 @@ type DaprSecretStoreProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// DaprSecretStoreResource - DaprSecretStore link
+// DaprSecretStoreResource - DaprSecretStore portable resource
 type DaprSecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -216,7 +216,7 @@ type DaprSecretStoreResourceUpdateProperties struct {
 	Version *string `json:"version,omitempty"`
 }
 
-// DaprStateStoreProperties - StateStore link properties
+// DaprStateStoreProperties - StateStore portable resource properties
 type DaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -253,7 +253,7 @@ type DaprStateStoreProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// DaprStateStoreResource - StateStore link
+// DaprStateStoreResource - StateStore portable resource
 type DaprStateStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
