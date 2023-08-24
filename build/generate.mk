@@ -47,6 +47,7 @@ generate-openapi-spec:
 
 	@echo  "Generating openapi specs from typespec models."
 	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
+	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:
