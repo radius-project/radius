@@ -23,9 +23,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
 	msg_conv "github.com/project-radius/radius/pkg/messagingrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/portableresources/renderers"
 )
 
 var _ ctrl.Controller = (*ListSecretsRabbitMQQueue)(nil)

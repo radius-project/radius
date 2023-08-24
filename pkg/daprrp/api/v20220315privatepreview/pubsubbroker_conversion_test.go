@@ -22,7 +22,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
@@ -44,7 +44,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
 						Name:     "test-dpsb",
-						Type:     linkrp.N_DaprPubSubBrokersResourceType,
+						Type:     portableresources.DaprPubSubBrokersResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -62,11 +62,11 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Metadata: map[string]any{
 						"foo": "bar",
 					},
-					Resources: []*linkrp.ResourceReference{
+					Resources: []*portableresources.ResourceReference{
 						{
 							ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async",
 						},
@@ -84,7 +84,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
 						Name:     "test-dpsb",
-						Type:     linkrp.N_DaprPubSubBrokersResourceType,
+						Type:     portableresources.DaprPubSubBrokersResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -102,8 +102,8 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Recipe: linkrp.LinkRecipe{
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
+					Recipe: portableresources.LinkRecipe{
 						Name: "dpsb-recipe",
 					},
 				},
@@ -199,7 +199,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb"),
 				Name: to.Ptr("test-dpsb"),
-				Type: to.Ptr(linkrp.N_DaprPubSubBrokersResourceType),
+				Type: to.Ptr(portableresources.DaprPubSubBrokersResourceType),
 			},
 		},
 		{
@@ -223,7 +223,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb"),
 				Name: to.Ptr("test-dpsb"),
-				Type: to.Ptr(linkrp.N_DaprPubSubBrokersResourceType),
+				Type: to.Ptr(portableresources.DaprPubSubBrokersResourceType),
 			},
 		},
 	}

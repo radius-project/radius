@@ -22,11 +22,10 @@ import (
 	"strings"
 
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	recipe_types "github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/version"
-
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -155,28 +154,20 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 // getLinkType returns the link type for the given resource type.
 func getLinkType(resourceType string) string {
 	switch resourceType {
-	case "daprpubsubbrokers":
-		return linkrp.DaprPubSubBrokersResourceType
-	case "daprsecretstores":
-		return linkrp.DaprSecretStoresResourceType
-	case "daprstatestores":
-		return linkrp.DaprStateStoresResourceType
 	case "mongodatabases":
-		return linkrp.MongoDatabasesResourceType
-	case "rabbitmqmessagequeues":
-		return linkrp.RabbitMQMessageQueuesResourceType
+		return portableresources.MongoDatabasesResourceType
 	case "rediscaches":
-		return linkrp.RedisCachesResourceType
+		return portableresources.RedisCachesResourceType
 	case "sqldatabases":
-		return linkrp.SqlDatabasesResourceType
+		return portableresources.SqlDatabasesResourceType
 	case "rabbitmqqueues":
-		return linkrp.N_RabbitMQQueuesResourceType
+		return portableresources.RabbitMQQueuesResourceType
 	case "pubsubbrokers":
-		return linkrp.N_DaprPubSubBrokersResourceType
+		return portableresources.DaprPubSubBrokersResourceType
 	case "secretstores":
-		return linkrp.N_DaprSecretStoresResourceType
+		return portableresources.DaprSecretStoresResourceType
 	case "statestores":
-		return linkrp.N_DaprStateStoresResourceType
+		return portableresources.DaprStateStoresResourceType
 	default:
 		return ""
 	}

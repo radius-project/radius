@@ -126,11 +126,11 @@ func TestFromSystemDataModel(t *testing.T) {
 }
 
 func TestValidLinkType(t *testing.T) {
-	isValid := isValidLinkType("Applications.Link/mongoDatabases")
+	isValid := isValidLinkType("Applications.Datastores/mongoDatabases")
 	require.Equal(t, true, isValid)
 }
 
 func TestInvalidLinkType(t *testing.T) {
-	isValid := isValidLinkType("Applications.Link/pubSubBroker")
+	isValid := isValidLinkType("Applications.Dapr/pubSubBroker")
 	require.Equal(t, false, isValid)
 }

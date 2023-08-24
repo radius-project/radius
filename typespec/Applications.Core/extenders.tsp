@@ -41,7 +41,7 @@ model ExtenderListSecretResponse {}
 @doc("ExtenderResource link")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
   @path
-  @doc("The name of the ExtenderResource link resource")
+  @doc("The name of the ExtenderResource portable resource")
   @key("extenderName")
   @segment("extenders")
   name: ResourceNameString;
@@ -51,7 +51,7 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
 // we need to extend `Record<unknown>`.
 // Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
-@doc("ExtenderResource link properties")
+@doc("ExtenderResource portable resource properties")
 model ExtenderProperties extends Record<unknown> {
   ...EnvironmentScopedResource;
 

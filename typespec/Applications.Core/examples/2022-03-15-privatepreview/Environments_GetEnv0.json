@@ -29,7 +29,7 @@
             }
           },
           "recipes": {
-            "Applications.Link/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases":{
               "cosmos-recipe": {
                 "templateKind": "bicep",
                 "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"

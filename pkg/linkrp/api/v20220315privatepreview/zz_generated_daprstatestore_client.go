@@ -279,3 +279,4 @@ func (client *DaprStateStoreClient) listByRootScopeHandleResponse(resp *http.Res
 	return result, nil
 }
 
+

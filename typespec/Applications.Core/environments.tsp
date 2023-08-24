@@ -114,7 +114,7 @@ model TerraformRecipeProperties extends RecipeProperties {
 
 @doc("Represents the request body of the getmetadata action.")
 model RecipeGetMetadata {
-  @doc("Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'")
+  @doc("Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'")
   linkType: string;
 
   @doc("The name of the recipe registered to the environment")

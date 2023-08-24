@@ -72,7 +72,7 @@ func (o OperationMethod) HTTPMethod() string {
 	if !ok {
 		// ARM RPC defines CRUD_L operations of one resource type and the custom action should be defined as POST method.
 		// For example, if we want to support `listSecret` API for mongodatabase, this API must be defined as POST method.
-		// POST /subscriptions/{subId}/resourcegroups/{rg}/applications.link/mongodatabases/{mongo}/listSecret
+		// POST /subscriptions/{subId}/resourcegroups/{rg}/applications.datastores/mongodatabases/{mongo}/listSecret
 		return http.MethodPost
 	}
 	return m

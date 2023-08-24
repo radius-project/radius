@@ -19,7 +19,7 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -56,7 +56,7 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	}
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
@@ -105,7 +105,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Application:       to.Ptr(sql.Properties.Application),
 		Username:          to.Ptr(sql.Properties.Username),
 	}
-	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
 	}
 	return nil

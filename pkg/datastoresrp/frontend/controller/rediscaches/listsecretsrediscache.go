@@ -24,9 +24,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	"github.com/project-radius/radius/pkg/datastoresrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/portableresources/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -53,7 +53,7 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWrite
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
-	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Link/redisCaches/<resource_name>/listsecrets
+	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Datastores/redisCaches/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	resource, _, err := ctrl.GetResource(ctx, parsedResourceID)
 	if err != nil {

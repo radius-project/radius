@@ -18,8 +18,8 @@ package v20220315privatepreview
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -55,7 +55,7 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, err
 	}
 
-	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	}
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
@@ -109,7 +109,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
 		TLS:                  to.Ptr(rabbitmq.Properties.TLS),
 	}
-	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+	if rabbitmq.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 	return nil

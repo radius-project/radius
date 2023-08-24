@@ -1,6 +1,6 @@
 # This configuration file is used in development when launching from VS Code.
 #
-# This configures the link RP to...
+# This configures the Portable Resources' Providers to...
 #
 # - Use Kubernetes (namespace: radius-testing) for storage and secrets
 # - Listen on port 8081

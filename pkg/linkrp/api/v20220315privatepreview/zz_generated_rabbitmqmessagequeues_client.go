@@ -329,3 +329,4 @@ func (client *RabbitMqMessageQueuesClient) listSecretsHandleResponse(resp *http.
 	return result, nil
 }
 
+

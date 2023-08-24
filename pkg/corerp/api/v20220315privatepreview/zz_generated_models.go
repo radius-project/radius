@@ -625,7 +625,7 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
-// ExtenderProperties - ExtenderResource link properties
+// ExtenderProperties - ExtenderResource portable resource properties
 type ExtenderProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
@@ -1292,7 +1292,7 @@ type Recipe struct {
 
 // RecipeGetMetadata - Represents the request body of the getmetadata action.
 type RecipeGetMetadata struct {
-	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'
 	LinkType *string
 
 	// REQUIRED; The name of the recipe registered to the environment

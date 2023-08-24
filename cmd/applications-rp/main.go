@@ -32,9 +32,9 @@ import (
 	profilerservice "github.com/project-radius/radius/pkg/profiler/service"
 	"github.com/project-radius/radius/pkg/trace"
 
-	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
-	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
 	"github.com/project-radius/radius/pkg/logging"
+	pr_backend "github.com/project-radius/radius/pkg/portableresources/backend"
+	pr_frontend "github.com/project-radius/radius/pkg/portableresources/frontend"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -53,9 +53,9 @@ func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service,
 	if err != nil {
 		return nil, nil, err
 	}
-	hostings = append(hostings, link_frontend.NewService(options))
+	hostings = append(hostings, pr_frontend.NewService(options))
 	if enableAsyncWorker {
-		hostings = append(hostings, link_backend.NewService(options))
+		hostings = append(hostings, pr_backend.NewService(options))
 	}
 
 	return hostings, &options, nil
@@ -72,9 +72,9 @@ func main() {
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
-	flag.BoolVar(&runLink, "run-link", true, "Flag to run Applications.Link RP (for private preview and dev/test purpose).")
+	flag.BoolVar(&runLink, "run-link", true, "Flag to run portable resources rps(for private preview and dev/test purpose).")
 	defaultLinkConfig := fmt.Sprintf("link-%s.yaml", hostoptions.Environment())
-	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for Applications.Link.")
+	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for portable resource providers.")
 
 	if configFile == "" {
 		log.Fatal("config-file is empty.") //nolint:forbidigo // this is OK inside the main function.
@@ -113,10 +113,10 @@ func main() {
 		hostingSvc = append(hostingSvc, backend.NewService(options))
 	}
 
-	// Configure Applications.Link to run it with Applications.Core RP.
+	// Configure Portable Resources to run it with Applications.Core RP.
 	var linkOpts *hostoptions.HostOptions
 	if runLink && linkConfigFile != "" {
-		logger.Info("Run Applications.Link.")
+		logger.Info("Run Service for Portable Resource Providers.")
 		var linkSvcs []hosting.Service
 		var err error
 		linkSvcs, linkOpts, err = newLinkHosts(linkConfigFile, enableAsyncWorker)

@@ -20,7 +20,7 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -124,23 +124,14 @@ func stringSlice(s []*string) []string {
 
 func isValidLinkType(link string) bool {
 	linkTypes := []string{
-		linkrp.DaprPubSubBrokersResourceType,
-		linkrp.DaprSecretStoresResourceType,
-		linkrp.DaprStateStoresResourceType,
-		linkrp.ExtendersResourceType,
-		linkrp.MongoDatabasesResourceType,
-		linkrp.RabbitMQMessageQueuesResourceType,
-		linkrp.RedisCachesResourceType,
-		linkrp.SqlDatabasesResourceType,
-		// Resources After Split of LinkRP Namespace
-		linkrp.N_RabbitMQQueuesResourceType,
-		linkrp.N_DaprPubSubBrokersResourceType,
-		linkrp.N_DaprSecretStoresResourceType,
-		linkrp.N_DaprStateStoresResourceType,
-		linkrp.N_MongoDatabasesResourceType,
-		linkrp.N_RedisCachesResourceType,
-		linkrp.N_SqlDatabasesResourceType,
-		linkrp.N_ExtendersResourceType,
+		portableresources.DaprPubSubBrokersResourceType,
+		portableresources.DaprSecretStoresResourceType,
+		portableresources.DaprStateStoresResourceType,
+		portableresources.ExtendersResourceType,
+		portableresources.MongoDatabasesResourceType,
+		portableresources.RabbitMQQueuesResourceType,
+		portableresources.RedisCachesResourceType,
+		portableresources.SqlDatabasesResourceType,
 	}
 	return slices.Contains(linkTypes, link)
 }
