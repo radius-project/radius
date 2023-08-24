@@ -47,6 +47,24 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
+// IdentitySettingKind - IdentitySettingKind is the kind of supported external identity setting
+type IdentitySettingKind string
+
+const (
+	// IdentitySettingKindAzureComWorkload - azure ad workload identity
+	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
+	// IdentitySettingKindUndefined - undefined identity
+	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
+)
+
+// PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
+func PossibleIdentitySettingKindValues() []IdentitySettingKind {
+	return []IdentitySettingKind{	
+		IdentitySettingKindAzureComWorkload,
+		IdentitySettingKindUndefined,
+	}
+}
+
 // Origin - The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
 // value is "user,system"
 type Origin string
@@ -70,12 +88,19 @@ func PossibleOriginValues() []Origin {
 type ProvisioningState string
 
 const (
+	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
+	// ProvisioningStateCanceled - Resource creation was canceled.
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
+	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
+	// ProvisioningStateFailed - Resource creation failed.
 	ProvisioningStateFailed ProvisioningState = "Failed"
+	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	// ProvisioningStateSucceeded - Resource has been created.
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	// ProvisioningStateUpdating - The resource is updating
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
 
@@ -98,7 +123,9 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 type ResourceProvisioning string
 
 const (
+	// ResourceProvisioningManual - The resource lifecycle will be managed by the user
 	ResourceProvisioningManual ResourceProvisioning = "manual"
+	// ResourceProvisioningRecipe - The resource lifecycle will be managed by Radius
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
 )
 
@@ -107,6 +134,21 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 	return []ResourceProvisioning{	
 		ResourceProvisioningManual,
 		ResourceProvisioningRecipe,
+	}
+}
+
+// Versions - Supported API versions for the Applications.Dapr resource provider.
+type Versions string
+
+const (
+	// VersionsV20220315Privatepreview - 2022-03-15-privatepreview
+	VersionsV20220315Privatepreview Versions = "2022-03-15-privatepreview"
+)
+
+// PossibleVersionsValues returns the possible values for the Versions const type.
+func PossibleVersionsValues() []Versions {
+	return []Versions{	
+		VersionsV20220315Privatepreview,
 	}
 }
 

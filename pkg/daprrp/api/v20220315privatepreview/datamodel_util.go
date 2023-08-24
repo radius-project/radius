@@ -22,6 +22,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
 
@@ -158,4 +159,24 @@ func fromResourcesDataModel(r []*linkrp.ResourceReference) []*ResourceReference 
 		}
 	}
 	return resources
+}
+
+func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource {
+	var outResources []*OutputResource
+	for _, or := range outputResources {
+		r := &OutputResource{
+			ID: to.Ptr(or.ID.String()),
+		}
+
+		// We will not serialize the following fields if they are empty or nil.
+		if or.LocalID != "" {
+			r.LocalID = to.Ptr(or.LocalID)
+		}
+		if or.RadiusManaged != nil {
+			r.RadiusManaged = or.RadiusManaged
+		}
+
+		outResources = append(outResources, r)
+	}
+	return outResources
 }

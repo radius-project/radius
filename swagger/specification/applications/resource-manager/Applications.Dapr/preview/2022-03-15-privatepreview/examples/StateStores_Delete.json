@@ -1,0 +1,14 @@
+{
+  "operationId": "StateStores_Delete",
+  "title": "Delete a StateStore resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "stateStoreName": "daprstatestore0",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}
