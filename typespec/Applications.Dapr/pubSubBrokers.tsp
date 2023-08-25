@@ -36,7 +36,7 @@ using OpenAPI;
 
 namespace Applications.Dapr;
 
-@doc("PubSubBroker portable resource")
+@doc("Dapr PubSubBroker portable resource")
 model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
   @doc("PubSubBroker name")
   @key("pubSubBrokerName")
@@ -45,7 +45,7 @@ model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
   name: ResourceNameString;
 }
 
-@doc("PubSubBroker portable resource properties")
+@doc("Dapr PubSubBroker portable resource properties")
 model DaprPubSubBrokerProperties {
   ...EnvironmentScopedResource;
   ...DaprResourceProperties;

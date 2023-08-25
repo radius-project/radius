@@ -10,33 +10,29 @@ package v20220315privatepreview
 
 import "time"
 
-// BasicDaprResourceProperties - Basic properties of a Dapr component object.
-type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+// EnvironmentComputeClassification provides polymorphic access to related types.
+// Call the interface's GetEnvironmentCompute() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *EnvironmentCompute, *KubernetesCompute
+type EnvironmentComputeClassification interface {
+	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
+	GetEnvironmentCompute() *EnvironmentCompute
 }
 
-// BasicResourceProperties - Basic properties of a Radius resource.
-type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string `json:"environment,omitempty"`
+// EnvironmentCompute - Represents backing compute resource
+type EnvironmentCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string `json:"kind,omitempty"`
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+	// The resource id of the compute resource for application environment.
+	ResourceID *string `json:"resourceId,omitempty"`
 }
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
@@ -70,6 +66,42 @@ type ErrorDetail struct {
 type ErrorResponse struct {
 	// The error object.
 	Error *ErrorDetail `json:"error,omitempty"`
+}
+
+// IdentitySettings is the external identity setting.
+type IdentitySettings struct {
+	// REQUIRED; kind of identity setting
+	Kind *IdentitySettingKind `json:"kind,omitempty"`
+
+	// The URI for your compute platform's OIDC issuer
+	OidcIssuer *string `json:"oidcIssuer,omitempty"`
+
+	// The resource ID of the provisioned identity
+	Resource *string `json:"resource,omitempty"`
+}
+
+// KubernetesCompute - The Kubernetes compute configuration
+type KubernetesCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The namespace to use for the environment.
+	Namespace *string `json:"namespace,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string `json:"resourceId,omitempty"`
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
+func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Kind: k.Kind,
+		ResourceID: k.ResourceID,
+		Identity: k.Identity,
+	}
 }
 
 // Operation - Details of a REST API operation, returned from the Resource Provider Operations API
@@ -126,6 +158,20 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// OutputResource - Properties of an output resource.
+type OutputResource struct {
+	// The UCP resource ID of the underlying resource.
+	ID *string `json:"id,omitempty"`
+
+	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
+// relationship. LocalIDs do not have any particular format or meaning beyond
+// being compared to determine dependency relationships.
+	LocalID *string `json:"localId,omitempty"`
+
+	// Determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool `json:"radiusManaged,omitempty"`
+}
+
 // RabbitMQListSecretsResult - The secret values for the given RabbitMQQueue resource
 type RabbitMQListSecretsResult struct {
 	// The password used to connect to the RabbitMQ instance
@@ -141,7 +187,7 @@ type RabbitMQQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
 	// The hostname of the RabbitMQ instance
@@ -153,7 +199,7 @@ type RabbitMQQueueProperties struct {
 	// The name of the queue
 	Queue *string `json:"queue,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -162,7 +208,7 @@ type RabbitMQQueueProperties struct {
 	// List of the resource IDs that support the rabbitMQ resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Secrets provided by resources,
+	// The secrets to connect to the RabbitMQ instance
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
 	// Specifies whether to use SSL when connecting to the RabbitMQ instance
@@ -174,7 +220,7 @@ type RabbitMQQueueProperties struct {
 	// The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
 	VHost *string `json:"vHost,omitempty"`
 
-	// READ-ONLY; Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
@@ -214,7 +260,55 @@ type RabbitMQQueueResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// RabbitMQSecrets - The secret values for the given RabbitMQQueue resource
+// RabbitMQQueueResourceUpdate - The type used for update operations of the RabbitMQQueueResource.
+type RabbitMQQueueResourceUpdate struct {
+	// The updatable properties of the RabbitMQQueueResource.
+	Properties *RabbitMQQueueResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// RabbitMQQueueResourceUpdateProperties - The updatable properties of the RabbitMQQueueResource.
+type RabbitMQQueueResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The hostname of the RabbitMQ instance
+	Host *string `json:"host,omitempty"`
+
+	// The port of the RabbitMQ instance. Defaults to 5672
+	Port *int32 `json:"port,omitempty"`
+
+	// The name of the queue
+	Queue *string `json:"queue,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the rabbitMQ resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// The secrets to connect to the RabbitMQ instance
+	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to use SSL when connecting to the RabbitMQ instance
+	TLS *bool `json:"tls,omitempty"`
+
+	// The username to use when connecting to the RabbitMQ instance
+	Username *string `json:"username,omitempty"`
+
+	// The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.
+	VHost *string `json:"vHost,omitempty"`
+}
+
+// RabbitMQSecrets - The connection secrets properties to the RabbitMQ instance
 type RabbitMQSecrets struct {
 	// The password used to connect to the RabbitMQ instance
 	Password *string `json:"password,omitempty"`
@@ -224,15 +318,23 @@ type RabbitMQSecrets struct {
 	URI *string `json:"uri,omitempty"`
 }
 
-// RabbitMqQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitMqQueuesClient.CreateOrUpdate
+// RabbitMqQueuesClientBeginCreateOrUpdateOptions contains the optional parameters for the RabbitMqQueuesClient.BeginCreateOrUpdate
 // method.
-type RabbitMqQueuesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+type RabbitMqQueuesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// RabbitMqQueuesClientDeleteOptions contains the optional parameters for the RabbitMqQueuesClient.Delete method.
-type RabbitMqQueuesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// RabbitMqQueuesClientBeginDeleteOptions contains the optional parameters for the RabbitMqQueuesClient.BeginDelete method.
+type RabbitMqQueuesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RabbitMqQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMqQueuesClient.BeginUpdate method.
+type RabbitMqQueuesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // RabbitMqQueuesClientGetOptions contains the optional parameters for the RabbitMqQueuesClient.Get method.
@@ -240,9 +342,8 @@ type RabbitMqQueuesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMqQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitMqQueuesClient.ListByRootScope
-// method.
-type RabbitMqQueuesClientListByRootScopeOptions struct {
+// RabbitMqQueuesClientListByScopeOptions contains the optional parameters for the RabbitMqQueuesClient.ListByScope method.
+type RabbitMqQueuesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -254,6 +355,15 @@ type RabbitMqQueuesClientListSecretsOptions struct {
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
+type RecipeUpdate struct {
+	// The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
 	// Key/value parameters to pass into the recipe at deployment
@@ -283,8 +393,11 @@ type ResourceReference struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// The compute resource associated with the resource.
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
+
 	// Properties of an output resource
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+	OutputResources []*OutputResource `json:"outputResources,omitempty"`
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
