@@ -76,7 +76,8 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 	}
 
 	for k, resources := range resourceMap {
-		// Do we need to overwrite the namespace? or returning error?
+		// Currently, it returns error immediately if namespaces in resources are set. We may need to override
+		// the namespace of the resources in the manifest.
 		for _, resource := range resources {
 			meta := resource.(metav1.ObjectMetaAccessor)
 			if meta.GetObjectMeta().GetNamespace() != "" {
