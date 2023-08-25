@@ -320,7 +320,9 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 
 	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
 	expectedOutput := map[string]any{
-		"redis_cache_name": "redis-test",
+		"parameters": map[string]any{
+			"redis_cache_name": "redis-test",
+		},
 	}
 	options := terraform.Options{
 		RootDir:        tfDir,
@@ -329,12 +331,67 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	}
 	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(expectedOutput, nil)
 
-	recipeData, err := driver.GetRecipeMetadata(ctx, envRecipe, recipeMetadata)
+	recipeData, err := driver.GetRecipeMetadata(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe:     recipeMetadata,
+			Definition: envRecipe,
+		}})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+}
+
+func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
+	_, driver := setup(t)
+	driver.options.Path = ""
+	_, recipeMetadata, envRecipe := buildTestInputs()
+
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDownloadFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
+
+	_, err := driver.GetRecipeMetadata(testcontext.New(t), ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe:     recipeMetadata,
+			Definition: envRecipe,
+		},
+	})
+	require.Error(t, err)
+	require.Equal(t, err, &expErr)
+}
+
+func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	_, recipeMetadata, envRecipe := buildTestInputs()
+
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	options := terraform.Options{
+		RootDir:        tfDir,
+		ResourceRecipe: &recipeMetadata,
+		EnvRecipe:      &envRecipe,
+	}
+
+	expErr := errors.New("Failed to download module")
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, expErr)
+
+	_, err := driver.GetRecipeMetadata(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe:     recipeMetadata,
+			Definition: envRecipe,
+		}})
+	require.Error(t, err)
+	require.Equal(t, expErr, err)
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {

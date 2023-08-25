@@ -210,7 +210,9 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	return result.Parameters, nil
+	return map[string]any{
+		"parameters": result.Parameters,
+	}, nil
 }
 
 func createWorkingDir(ctx context.Context, tfDir string) (string, error) {

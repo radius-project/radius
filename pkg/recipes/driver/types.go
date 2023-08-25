@@ -32,7 +32,7 @@ type Driver interface {
 	Delete(ctx context.Context, opts DeleteOptions) error
 
 	// Gets the Recipe metadata and parameters from the Bicep registry or TF modules
-	GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition, resourceMetadata recipes.ResourceMetadata) (map[string]any, error)
+	GetRecipeMetadata(ctx context.Context, opts ExecuteOptions) (map[string]any, error)
 }
 
 // BaseOptions is the base options for the driver operations.

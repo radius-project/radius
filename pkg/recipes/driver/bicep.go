@@ -185,9 +185,9 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	return nil
 }
 
-func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, recipe recipes.EnvironmentDefinition, recipeMetadata recipes.ResourceMetadata) (map[string]any, error) {
+func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts ExecuteOptions) (map[string]any, error) {
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, recipe.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.BaseOptions.Definition.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}

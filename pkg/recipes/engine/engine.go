@@ -164,5 +164,10 @@ func (e *engine) GetRecipeMetadata(ctx context.Context, recipeMetadata recipes.R
 		return nil, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
-	return driver.GetRecipeMetadata(ctx, *definition, recipeMetadata)
+	return driver.GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
+		BaseOptions: recipedriver.BaseOptions{
+			Definition: *definition,
+			Recipe:     recipeMetadata,
+		},
+	})
 }
