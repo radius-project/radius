@@ -32,7 +32,11 @@ import (
 // The returned key is in the format of "group/version/kind".
 func GetObjectKey(obj runtime.Object) string {
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	return strings.ToLower(fmt.Sprintf("%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind))
+	group := gvk.Group
+	if group == "" {
+		group = "core"
+	}
+	return strings.ToLower(fmt.Sprintf("%s/%s/%s", group, gvk.Version, gvk.Kind))
 }
 
 // ParseManifest parses the given manifest and returns a map of runtime.Object slice where

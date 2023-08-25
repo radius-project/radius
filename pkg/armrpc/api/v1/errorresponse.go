@@ -32,7 +32,7 @@ type ErrorDetails struct {
 	Details        []ErrorDetails        `json:"details,omitempty"`
 }
 
-// Error returns error message in ErrorDetails to implemnt error interface.
+// Error returns error message in ErrorDetails to implement error interface.
 func (e ErrorDetails) Error() string {
 	return e.Message
 }

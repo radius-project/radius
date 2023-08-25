@@ -126,7 +126,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(deployment, newResource.Name))
 			}
 
-		case "/v1/service":
+		case "core/v1/service":
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Service", len(resources)))
 			}
@@ -135,7 +135,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(srv, newResource.Name))
 			}
 
-		case "/v1/serviceaccount":
+		case "core/v1/serviceaccount":
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("ServiceAccount", len(resources)))
 			}
@@ -145,8 +145,8 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 			}
 
 		// No limitations for ConfigMap and Secret resources.
-		case "/v1/configmap":
-		case "/v1/secret":
+		case "core/v1/configmap":
+		case "core/v1/secret":
 
 		default:
 			errDetails = append(errDetails, v1.ErrorDetails{
