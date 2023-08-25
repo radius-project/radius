@@ -112,7 +112,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
