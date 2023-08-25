@@ -452,27 +452,38 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 }
 
 func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
-	recipeMetadata, recipeDefiniition, _ := getDeleteInputs()
+	recipeMetadata, recipeDefinition, _ := getDeleteInputs()
 
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
+	outputParams := map[string]any{"parameters": recipeMetadata.Parameters}
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefiniition, nil)
-	driver.EXPECT().GetRecipeMetadata(ctx, recipeDefiniition, recipeMetadata).Times(1).Return(recipeMetadata.Parameters, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
+		BaseOptions: recipedriver.BaseOptions{
+			Recipe:     recipeMetadata,
+			Definition: recipeDefinition,
+		},
+	}).Times(1).Return(outputParams, nil)
 
 	recipeData, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
 	require.NoError(t, err)
-	require.Equal(t, recipeMetadata.Parameters, recipeData)
+	require.Equal(t, outputParams, recipeData)
 }
 
 func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
-	recipeMetadata, recipeDefiniition, _ := getDeleteInputs()
+	recipeMetadata, recipeDefinition, _ := getDeleteInputs()
 
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefiniition, nil)
-	driver.EXPECT().GetRecipeMetadata(ctx, recipeDefiniition, recipeMetadata).Times(1).Return(nil, errors.New("driver failure"))
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
+		BaseOptions: recipedriver.BaseOptions{
+			Recipe:     recipeMetadata,
+			Definition: recipeDefinition,
+		},
+	}).Times(1).Return(nil, errors.New("driver failure"))
 
 	_, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
 	require.Error(t, err)

@@ -40,8 +40,10 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				ContextVarExists:   false,
 				RequiredProviders:  []string{"aws"},
 				ResultOutputExists: false,
+				Parameters:         map[string]any{},
 			},
-		}, {
+		},
+		{
 			name:       "aws provider with recipe context variable and output",
 			workingDir: "testdata",
 			moduleName: "test-module-recipe-context-outputs",
@@ -49,8 +51,12 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				ContextVarExists:   true,
 				RequiredProviders:  []string{"aws"},
 				ResultOutputExists: true,
+				Parameters: map[string]any{
+					"context": "contextInformation",
+				},
 			},
-		}, {
+		},
+		{
 			name:       "invalid module name - non existent module directory",
 			workingDir: "testdata",
 			moduleName: "invalid-module",
@@ -65,6 +71,10 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.err)
 				return
+			}
+			// Context parameters aren't treated as user-set parameters so we check for it's existence, but not its value
+			if result.Parameters["context"] != nil {
+				result.Parameters["context"] = "contextInformation"
 			}
 			require.NoError(t, err)
 			require.Equal(t, tc.result, result)
