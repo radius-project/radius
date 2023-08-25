@@ -955,7 +955,7 @@
   "definitions": {
     "DaprPubSubBrokerProperties": {
       "type": "object",
-      "description": "PubSubBroker portable resource properties",
+      "description": "Dapr PubSubBroker portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -1015,7 +1015,7 @@
     },
     "DaprPubSubBrokerResource": {
       "type": "object",
-      "description": "PubSubBroker portable resource",
+      "description": "Dapr PubSubBroker portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprPubSubBrokerProperties",
@@ -1115,7 +1115,7 @@
     },
     "DaprSecretStoreProperties": {
       "type": "object",
-      "description": "DaprSecretStore portable resource properties",
+      "description": "Dapr SecretStore portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -1168,7 +1168,7 @@
     },
     "DaprSecretStoreResource": {
       "type": "object",
-      "description": "DaprSecretStore portable resource",
+      "description": "Dapr SecretStore portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprSecretStoreProperties",
@@ -1261,7 +1261,7 @@
     },
     "DaprStateStoreProperties": {
       "type": "object",
-      "description": "StateStore portable resource properties",
+      "description": "Dapr StateStore portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -1321,7 +1321,7 @@
     },
     "DaprStateStoreResource": {
       "type": "object",
-      "description": "StateStore portable resource",
+      "description": "Dapr StateStore portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/DaprStateStoreProperties",
@@ -1580,7 +1580,7 @@
     },
     "Recipe": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -1598,7 +1598,7 @@
     },
     "RecipeUpdate": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",

@@ -100,7 +100,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		TLS:                  to.Ptr(redis.Properties.TLS),
 		Username:             to.Ptr(redis.Properties.Username),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(redis.Properties.Environment),

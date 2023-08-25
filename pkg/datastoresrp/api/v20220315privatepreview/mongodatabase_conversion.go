@@ -98,7 +98,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Port:      to.Ptr(mongo.Properties.Port),
 		Database:  to.Ptr(mongo.Properties.Database),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(mongo.Properties.Environment),
