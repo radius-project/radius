@@ -277,81 +277,77 @@ func TestValidateManifest(t *testing.T) {
 	}
 
 	manifestTests := []struct {
-		name      string
-		manifest  string
-		resource  *datamodel.ContainerResource
-		errString string
+		name     string
+		manifest string
+		resource *datamodel.ContainerResource
+		result   validationResult
 	}{
 		{
-			name:      "valid manifest with deployments/services/serviceaccounts",
-			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
-			resource:  validResource,
-			errString: "",
+			name:     "valid manifest with deployments/services/serviceaccounts",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: true},
 		},
 		{
-			name:      "valid manifest with deployments/services/secrets/configmaps",
-			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, yamlSeparater),
-			resource:  validResource,
-			errString: "",
+			name:     "valid manifest with deployments/services/secrets/configmaps",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: true},
 		},
 		{
-			name:      "valid manifest with multiple secrets and multiple configmaps",
-			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, yamlSeparater),
-			resource:  validResource,
-			errString: "",
+			name:     "valid manifest with multiple secrets and multiple configmaps",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: true},
 		},
 		{
-			name:      "invalid manifest with multiple deployments",
-			manifest:  strings.Join([]string{fakeDeployment, fakeDeployment}, yamlSeparater),
-			resource:  validResource,
-			errString: "only one Deployment is allowed, but the manifest includes 2 resources",
+			name:     "invalid manifest with multiple deployments",
+			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "Deployment", errMessage: "only one Deployment is allowed, but the manifest includes 2 resources"},
 		},
 		{
-			name:      "invalid manifest with multiple services",
-			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeService}, yamlSeparater),
-			resource:  validResource,
-			errString: "only one Service is allowed, but the manifest includes 2 resources",
+			name:     "invalid manifest with multiple services",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "Service", errMessage: "only one Service is allowed, but the manifest includes 2 resources"},
 		},
 		{
-			name:      "invalid manifest with multiple serviceaccounts",
-			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, yamlSeparater),
-			resource:  validResource,
-			errString: "only one ServiceAccount is allowed, but the manifest includes 2 resources",
+			name:     "invalid manifest with multiple serviceaccounts",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "ServiceAccount", errMessage: "only one ServiceAccount is allowed, but the manifest includes 2 resources"},
 		},
 		{
-			name:      "invalid manifest with resource including namespace",
-			manifest:  strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, yamlSeparater),
-			resource:  validResource,
-			errString: "namespace is not allowed in resources: app-scoped",
+			name:     "invalid manifest with resource including namespace",
+			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "namespace", errMessage: "namespace is not allowed in resources: app-scoped"},
 		},
 		{
-			name:      "invalid manifest with unmatched deployment name",
-			manifest:  strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
-			resource:  validResource,
-			errString: "Deployment name pie in manifest does not match resource name magpie",
+			name:     "invalid manifest with unmatched deployment name",
+			manifest: strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "Deployment", errMessage: "Deployment name pie in manifest does not match resource name magpie"},
 		},
 		{
-			name:      "invalid manifest with unmatched service name",
-			manifest:  strings.Join([]string{fakeDeployment, fmt.Sprintf(fakeServiceTemplate, "pie", ""), fakeServiceAccount}, yamlSeparater),
-			resource:  validResource,
-			errString: "Service name pie in manifest does not match resource name magpie",
+			name:     "invalid manifest with unmatched service name",
+			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(fakeServiceTemplate, "pie", ""), fakeServiceAccount}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "Service", errMessage: "Service name pie in manifest does not match resource name magpie"},
 		},
 		{
-			name:      "invalid manifest with unmatched serviceaccount name",
-			manifest:  strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
-			resource:  validResource,
-			errString: "ServiceAccount name pie in manifest does not match resource name magpie",
+			name:     "invalid manifest with unmatched serviceaccount name",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
+			resource: validResource,
+			result:   validationResult{valid: false, typeName: "ServiceAccount", errMessage: "ServiceAccount name pie in manifest does not match resource name magpie"},
 		},
 	}
 
 	for _, tc := range manifestTests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateBaseManifest([]byte(tc.manifest), tc.resource)
-			if tc.errString != "" {
-				require.EqualError(t, err, tc.errString)
-				return
-			}
-			require.NoError(t, err)
+			result := validateBaseManifest([]byte(tc.manifest), tc.resource)
+			require.Equal(t, tc.result, result)
 		})
 	}
 }
