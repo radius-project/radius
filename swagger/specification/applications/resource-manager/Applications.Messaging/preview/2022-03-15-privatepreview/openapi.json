@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Messaging Management APIs",
+    "title": "Applications.Messaging Resource Management APIs",
     "version": "2022-03-15-privatepreview",
     "description": "REST APIs for Applications.Messaging",
-    "x-cadl-generated": [
+    "x-typespec-generated": [
       {
-        "emitter": "@azure-tools/cadl-autorest"
+        "emitter": "@azure-tools/typespec-autorest"
       }
     ]
   },
@@ -49,17 +49,17 @@
   "paths": {
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues": {
       "get": {
+        "operationId": "RabbitMqQueues_ListByScope",
         "tags": [
           "RabbitMQQueues"
         ],
-        "operationId": "RabbitMqQueues_ListByRootScope",
-        "description": "Lists information about all RabbitMQQueueResources in the given root scope",
+        "description": "List RabbitMQQueueResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           }
         ],
         "responses": {
@@ -83,26 +83,26 @@
     },
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}": {
       "get": {
+        "operationId": "RabbitMqQueues_Get",
         "tags": [
           "RabbitMQQueues"
         ],
-        "operationId": "RabbitMqQueues_Get",
-        "description": "Retrieves information about a RabbitMQQueueResource",
+        "description": "Get a RabbitMQQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQQueueName",
             "in": "path",
+            "description": "The name of the RabbitMQQueue portable resource resource",
             "required": true,
-            "description": "The name of the RabbitMQQueue portable resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -121,34 +121,98 @@
         }
       },
       "put": {
+        "operationId": "RabbitMqQueues_CreateOrUpdate",
         "tags": [
           "RabbitMQQueues"
         ],
-        "operationId": "RabbitMqQueues_CreateOrUpdate",
-        "description": "Creates or updates a RabbitMQQueueResource",
+        "description": "Create a RabbitMQQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQQueueName",
             "in": "path",
+            "description": "The name of the RabbitMQQueue portable resource resource",
             "required": true,
-            "description": "The name of the RabbitMQQueue portable resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           },
           {
             "name": "resource",
             "in": "body",
-            "required": true,
             "description": "Resource create parameters.",
+            "required": true,
             "schema": {
               "$ref": "#/definitions/RabbitMQQueueResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RabbitMQQueueResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQQueueResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RabbitMQQueueResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQQueueResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "RabbitMqQueues_Update",
+        "tags": [
+          "RabbitMQQueues"
+        ],
+        "description": "Update a RabbitMQQueueResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "rabbitMQQueueName",
+            "in": "path",
+            "description": "The name of the RabbitMQQueue portable resource resource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RabbitMQQueueResourceUpdate"
             }
           }
         ],
@@ -159,17 +223,18 @@
               "$ref": "#/definitions/RabbitMQQueueResource"
             }
           },
-          "201": {
-            "description": "ARM create operation completed successfully.",
+          "202": {
+            "description": "Resource update request accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
-            },
-            "schema": {
-              "$ref": "#/definitions/RabbitMQQueueResource"
             }
           },
           "default": {
@@ -178,29 +243,33 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       },
       "delete": {
+        "operationId": "RabbitMqQueues_Delete",
         "tags": [
           "RabbitMQQueues"
         ],
-        "operationId": "RabbitMqQueues_Delete",
-        "description": "Deletes an existing RabbitMQQueueResource",
+        "description": "Delete a RabbitMQQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQQueueName",
             "in": "path",
+            "description": "The name of the RabbitMQQueue portable resource resource",
             "required": true,
-            "description": "The name of the RabbitMQQueue portable resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "type": "string",
             "maxLength": 63,
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
           }
         ],
         "responses": {
@@ -211,9 +280,13 @@
             "description": "Resource deletion accepted.",
             "headers": {
               "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
                 "type": "integer",
-                "format": "int32"
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
               }
             }
           },
@@ -226,29 +299,45 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
       }
     },
     "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets": {
       "post": {
         "operationId": "RabbitMqQueues_ListSecrets",
+        "tags": [
+          "RabbitMQQueues"
+        ],
         "description": "Lists secrets values for the specified RabbitMQQueue resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
+            "$ref": "#/parameters/RootScopeParameter"
           },
           {
             "name": "rabbitMQQueueName",
             "in": "path",
+            "description": "The name of the RabbitMQQueue portable resource resource",
             "required": true,
-            "description": "The name of the RabbitMQQueue portable resource",
-            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
+            "type": "string",
             "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
           }
         ],
         "responses": {
@@ -269,10 +358,10 @@
     },
     "/providers/Applications.Messaging/operations": {
       "get": {
+        "operationId": "Operations_List",
         "tags": [
           "Operations"
         ],
-        "operationId": "Operations_List",
         "description": "List the operations for the provider",
         "parameters": [
           {
@@ -300,57 +389,109 @@
     }
   },
   "definitions": {
-    "Application": {
-      "type": "string",
-      "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-    },
-    "BasicDaprResourceProperties": {
+    "EnvironmentCompute": {
       "type": "object",
+      "description": "Represents backing compute resource",
       "properties": {
-        "componentName": {
+        "kind": {
           "type": "string",
-          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
-          "readOnly": true
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
         }
       },
-      "description": "Basic properties of a Dapr component object.",
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "IdentitySettingKind": {
+      "type": "string",
+      "description": "IdentitySettingKind is the kind of supported external identity setting",
+      "enum": [
+        "undefined",
+        "azure.com.workload"
+      ],
+      "x-ms-enum": {
+        "name": "IdentitySettingKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "undefined",
+            "value": "undefined",
+            "description": "undefined identity"
+          },
+          {
+            "name": "azure.com.workload",
+            "value": "azure.com.workload",
+            "description": "azure ad workload identity"
+          }
+        ]
+      }
+    },
+    "IdentitySettings": {
+      "type": "object",
+      "description": "IdentitySettings is the external identity setting.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IdentitySettingKind",
+          "description": "kind of identity setting"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "description": "The URI for your compute platform's OIDC issuer"
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource ID of the provisioned identity"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "KubernetesCompute": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
       "allOf": [
         {
-          "$ref": "#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/EnvironmentCompute"
         }
-      ]
-    },
-    "BasicResourceProperties": {
-      "type": "object",
-      "properties": {
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
-        }
-      },
-      "description": "Basic properties of a Radius resource.",
-      "required": [
-        "environment"
-      ]
+      ],
+      "x-ms-discriminator-value": "kubernetes"
     },
     "OutputResource": {
       "type": "object",
-      "properties": {},
-      "description": "Properties of an output resource."
-    },
-    "Parameters": {
-      "type": "object",
-      "properties": {},
-      "description": "Key/value parameters to pass into the recipe at deployment"
+      "description": "Properties of an output resource.",
+      "properties": {
+        "localId": {
+          "type": "string",
+          "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+        },
+        "id": {
+          "type": "string",
+          "description": "The UCP resource ID of the underlying resource."
+        },
+        "radiusManaged": {
+          "type": "boolean",
+          "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        }
+      }
     },
     "ProvisioningState": {
       "type": "string",
@@ -366,11 +507,50 @@
       ],
       "x-ms-enum": {
         "name": "ProvisioningState",
-        "modelAsString": true
-      }
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
     },
     "RabbitMQListSecretsResult": {
       "type": "object",
+      "description": "The secret values for the given RabbitMQQueue resource",
       "properties": {
         "password": {
           "type": "string",
@@ -380,20 +560,33 @@
           "type": "string",
           "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
-      },
-      "description": "The secret values for the given RabbitMQQueue resource"
+      }
     },
     "RabbitMQQueueProperties": {
       "type": "object",
+      "description": "RabbitMQQueue portable resource properties",
       "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the rabbitMQ message queue portable resource at the time the operation was called",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
           "readOnly": true
         },
         "secrets": {
           "$ref": "#/definitions/RabbitMQSecrets",
-          "description": "Secrets provided by resources,"
+          "description": "The secrets to connect to the RabbitMQ instance"
         },
         "queue": {
           "type": "string",
@@ -418,34 +611,31 @@
         },
         "resources": {
           "type": "array",
+          "description": "List of the resource IDs that support the rabbitMQ resource",
           "items": {
             "$ref": "#/definitions/ResourceReference"
-          },
-          "x-cadl-name": "ResourceReference[]",
-          "description": "List of the resource IDs that support the rabbitMQ resource"
-        },
-        "resourceProvisioning": {
-          "$ref": "#/definitions/ResourceProvisioning",
-          "description": "Specifies how the underlying service/resource is provisioned and managed."
-        },
-        "recipe": {
-          "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQQueue portable resource"
+          }
         },
         "tls": {
           "type": "boolean",
           "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
         }
       },
-      "description": "RabbitMQQueue portable resource properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
+      "required": [
+        "environment"
       ]
     },
     "RabbitMQQueueResource": {
       "type": "object",
+      "description": "RabbitMQQueue portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/RabbitMQQueueProperties",
@@ -457,7 +647,6 @@
           ]
         }
       },
-      "description": "RabbitMQQueue portable resource",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -466,29 +655,103 @@
     },
     "RabbitMQQueueResourceListResult": {
       "type": "object",
+      "description": "The response of a RabbitMQQueueResource list operation.",
       "properties": {
         "value": {
           "type": "array",
+          "description": "The RabbitMQQueueResource items on this page",
           "items": {
             "$ref": "#/definitions/RabbitMQQueueResource"
-          },
-          "x-cadl-name": "RabbitMQQueueResource[]",
-          "description": "The RabbitMQQueueResource items on this page"
+          }
         },
         "nextLink": {
           "type": "string",
           "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
+          "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a RabbitMQQueueResource list operation.",
       "required": [
         "value"
       ]
     },
+    "RabbitMQQueueResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the RabbitMQQueueResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/RabbitMQQueueResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "RabbitMQQueueResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the RabbitMQQueueResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "secrets": {
+          "$ref": "#/definitions/RabbitMQSecrets",
+          "description": "The secrets to connect to the RabbitMQ instance"
+        },
+        "queue": {
+          "type": "string",
+          "description": "The name of the queue"
+        },
+        "host": {
+          "type": "string",
+          "description": "The hostname of the RabbitMQ instance"
+        },
+        "port": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The port of the RabbitMQ instance. Defaults to 5672"
+        },
+        "vHost": {
+          "type": "string",
+          "description": "The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username to use when connecting to the RabbitMQ instance"
+        },
+        "resources": {
+          "type": "array",
+          "description": "List of the resource IDs that support the rabbitMQ resource",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "tls": {
+          "type": "boolean",
+          "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
     "RabbitMQSecrets": {
       "type": "object",
+      "description": "The connection secrets properties to the RabbitMQ instance",
       "properties": {
         "password": {
           "type": "string",
@@ -498,25 +761,40 @@
           "type": "string",
           "description": "The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value"
         }
-      },
-      "description": "The secret values for the given RabbitMQQueue resource"
+      }
     },
     "Recipe": {
       "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
           "description": "The name of the recipe within the environment to use"
         },
         "parameters": {
-          "$ref": "#/definitions/Parameters",
-          "description": "Key/value parameters to pass into the recipe at deployment"
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
         }
       },
-      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "required": [
         "name"
       ]
+    },
+    "RecipeUpdate": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      }
     },
     "ResourceProvisioning": {
       "type": "string",
@@ -527,48 +805,81 @@
       ],
       "x-ms-enum": {
         "name": "ResourceProvisioning",
-        "modelAsString": true
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "recipe",
+            "value": "recipe",
+            "description": "The resource lifecycle will be managed by Radius"
+          },
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
       }
     },
     "ResourceReference": {
       "type": "object",
+      "description": "Describes a reference to an existing resource",
       "properties": {
         "id": {
           "type": "string",
           "description": "Resource id of an existing resource"
         }
       },
-      "description": "Describes a reference to an existing resource",
       "required": [
         "id"
       ]
     },
     "ResourceStatus": {
       "type": "object",
+      "description": "Status of a resource.",
       "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource associated with the resource."
+        },
         "outputResources": {
           "type": "array",
+          "description": "Properties of an output resource",
           "items": {
             "$ref": "#/definitions/OutputResource"
           },
-          "x-ms-identifiers": [],
-          "x-cadl-name": "OutputResource[]",
-          "description": "Properties of an output resource"
+          "x-ms-identifiers": []
         }
-      },
-      "description": "Status of a resource."
+      }
+    },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for the Applications.Messaging resource provider.",
+      "enum": [
+        "2022-03-15-privatepreview"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2022_03_15_privatepreview",
+            "value": "2022-03-15-privatepreview",
+            "description": "2022-03-15-privatepreview"
+          }
+        ]
+      }
     }
   },
   "parameters": {
-    "RootScopeParam": {
+    "RootScopeParameter": {
       "name": "rootScope",
       "in": "path",
+      "description": "The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
       "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "type": "string",
       "minLength": 1,
       "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
+      "x-ms-skip-url-encoding": true
     }
   }
 }

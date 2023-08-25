@@ -10,33 +10,29 @@ package v20220315privatepreview
 
 import "time"
 
-// BasicDaprResourceProperties - Basic properties of a Dapr component object.
-type BasicDaprResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+// EnvironmentComputeClassification provides polymorphic access to related types.
+// Call the interface's GetEnvironmentCompute() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *EnvironmentCompute, *KubernetesCompute
+type EnvironmentComputeClassification interface {
+	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
+	GetEnvironmentCompute() *EnvironmentCompute
 }
 
-// BasicResourceProperties - Basic properties of a Radius resource.
-type BasicResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string `json:"environment,omitempty"`
+// EnvironmentCompute - Represents backing compute resource
+type EnvironmentCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string `json:"kind,omitempty"`
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
-	Application *string `json:"application,omitempty"`
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+	// The resource id of the compute resource for application environment.
+	ResourceID *string `json:"resourceId,omitempty"`
 }
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
+func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
@@ -72,7 +68,43 @@ type ErrorResponse struct {
 	Error *ErrorDetail `json:"error,omitempty"`
 }
 
-// MongoDatabaseListSecretsResult - The secret values for the given Mongo database resource
+// IdentitySettings is the external identity setting.
+type IdentitySettings struct {
+	// REQUIRED; kind of identity setting
+	Kind *IdentitySettingKind `json:"kind,omitempty"`
+
+	// The URI for your compute platform's OIDC issuer
+	OidcIssuer *string `json:"oidcIssuer,omitempty"`
+
+	// The resource ID of the provisioned identity
+	Resource *string `json:"resource,omitempty"`
+}
+
+// KubernetesCompute - The Kubernetes compute configuration
+type KubernetesCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The namespace to use for the environment.
+	Namespace *string `json:"namespace,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string `json:"resourceId,omitempty"`
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
+func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Kind: k.Kind,
+		ResourceID: k.ResourceID,
+		Identity: k.Identity,
+	}
+}
+
+// MongoDatabaseListSecretsResult - The secret values for the given MongoDatabase resource
 type MongoDatabaseListSecretsResult struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -81,12 +113,12 @@ type MongoDatabaseListSecretsResult struct {
 	Password *string `json:"password,omitempty"`
 }
 
-// MongoDatabaseProperties - Mongo database portable resource properties
+// MongoDatabaseProperties - MongoDatabase portable resource properties
 type MongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
 	// Database name of the target Mongo database
@@ -98,13 +130,13 @@ type MongoDatabaseProperties struct {
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the Mongo database portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// List of the resource IDs that support the Mongo database resource
+	// List of the resource IDs that support the MongoDB resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secret values provided for the resource
@@ -113,14 +145,14 @@ type MongoDatabaseProperties struct {
 	// Username to use when connecting to the target Mongo database
 	Username *string `json:"username,omitempty"`
 
-	// READ-ONLY; Provisioning state of the Mongo database portable resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// MongoDatabaseResource - Mongo database portable resource
+// MongoDatabaseResource - MongoDatabase portable resource
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -153,7 +185,49 @@ type MongoDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// MongoDatabaseSecrets - The secret values for the given Mongo database resource
+// MongoDatabaseResourceUpdate - The type used for update operations of the MongoDatabaseResource.
+type MongoDatabaseResourceUpdate struct {
+	// The updatable properties of the MongoDatabaseResource.
+	Properties *MongoDatabaseResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// MongoDatabaseResourceUpdateProperties - The updatable properties of the MongoDatabaseResource.
+type MongoDatabaseResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
+
+	// Database name of the target Mongo database
+	Database *string `json:"database,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the MongoDB resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
+}
+
+// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -162,16 +236,23 @@ type MongoDatabaseSecrets struct {
 	Password *string `json:"password,omitempty"`
 }
 
+// MongoDatabasesClientBeginCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.BeginCreateOrUpdate
+// method.
+type MongoDatabasesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
 // MongoDatabasesClientBeginDeleteOptions contains the optional parameters for the MongoDatabasesClient.BeginDelete method.
 type MongoDatabasesClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
 
-// MongoDatabasesClientCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.CreateOrUpdate
-// method.
-type MongoDatabasesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// MongoDatabasesClientBeginUpdateOptions contains the optional parameters for the MongoDatabasesClient.BeginUpdate method.
+type MongoDatabasesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // MongoDatabasesClientGetOptions contains the optional parameters for the MongoDatabasesClient.Get method.
@@ -179,9 +260,8 @@ type MongoDatabasesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabasesClientListByRootScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByRootScope
-// method.
-type MongoDatabasesClientListByRootScopeOptions struct {
+// MongoDatabasesClientListByScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByScope method.
+type MongoDatabasesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -244,6 +324,20 @@ type OperationsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
+// OutputResource - Properties of an output resource.
+type OutputResource struct {
+	// The UCP resource ID of the underlying resource.
+	ID *string `json:"id,omitempty"`
+
+	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
+// relationship. LocalIDs do not have any particular format or meaning beyond
+// being compared to determine dependency relationships.
+	LocalID *string `json:"localId,omitempty"`
+
+	// Determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool `json:"radiusManaged,omitempty"`
+}
+
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
@@ -253,7 +347,16 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
-// RedisCacheListSecretsResult - The secret values for the given Redis cache resource
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
+type RecipeUpdate struct {
+	// The name of the recipe within the environment to use
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// RedisCacheListSecretsResult - The secret values for the given RedisCache resource
 type RedisCacheListSecretsResult struct {
 	// The connection string used to connect to the Redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -265,12 +368,12 @@ type RedisCacheListSecretsResult struct {
 	URL *string `json:"url,omitempty"`
 }
 
-// RedisCacheProperties - Redis cache portable resource properties
+// RedisCacheProperties - RedisCache portable resource properties
 type RedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
 	// The host name of the target Redis cache
@@ -279,7 +382,7 @@ type RedisCacheProperties struct {
 	// The port value of the target Redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the Redis cache portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -297,14 +400,14 @@ type RedisCacheProperties struct {
 	// The username for Redis cache
 	Username *string `json:"username,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache portable at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// RedisCacheResource - Redis cache portable resource
+// RedisCacheResource - RedisCache portable resource
 type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -337,7 +440,49 @@ type RedisCacheResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// RedisCacheSecrets - The secret values for the given Redis cache resource
+// RedisCacheResourceUpdate - The type used for update operations of the RedisCacheResource.
+type RedisCacheResourceUpdate struct {
+	// The updatable properties of the RedisCacheResource.
+	Properties *RedisCacheResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// RedisCacheResourceUpdateProperties - The updatable properties of the RedisCacheResource.
+type RedisCacheResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// The host name of the target Redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target Redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the Redis resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secrets provided by resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// Specifies whether to enable SSL connections to the Redis cache
+	TLS *bool `json:"tls,omitempty"`
+
+	// The username for Redis cache
+	Username *string `json:"username,omitempty"`
+}
+
+// RedisCacheSecrets - The secret values for the given RedisCache resource
 type RedisCacheSecrets struct {
 	// The connection string used to connect to the Redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -349,14 +494,23 @@ type RedisCacheSecrets struct {
 	URL *string `json:"url,omitempty"`
 }
 
-// RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate method.
-type RedisCachesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// RedisCachesClientBeginCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.BeginCreateOrUpdate
+// method.
+type RedisCachesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// RedisCachesClientDeleteOptions contains the optional parameters for the RedisCachesClient.Delete method.
-type RedisCachesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// RedisCachesClientBeginDeleteOptions contains the optional parameters for the RedisCachesClient.BeginDelete method.
+type RedisCachesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// RedisCachesClientBeginUpdateOptions contains the optional parameters for the RedisCachesClient.BeginUpdate method.
+type RedisCachesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // RedisCachesClientGetOptions contains the optional parameters for the RedisCachesClient.Get method.
@@ -364,8 +518,8 @@ type RedisCachesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisCachesClientListByRootScopeOptions contains the optional parameters for the RedisCachesClient.ListByRootScope method.
-type RedisCachesClientListByRootScopeOptions struct {
+// RedisCachesClientListByScopeOptions contains the optional parameters for the RedisCachesClient.ListByScope method.
+type RedisCachesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -397,59 +551,62 @@ type ResourceReference struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// The compute resource associated with the resource.
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
+
 	// Properties of an output resource
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+	OutputResources []*OutputResource `json:"outputResources,omitempty"`
 }
 
-// SQLDatabaseListSecretsResult - The secret values for the given SQL database resource
+// SQLDatabaseListSecretsResult - The secret values for the given SqlDatabase resource
 type SQLDatabaseListSecretsResult struct {
-	// Connection string used to connect to the target SQL database
+	// Connection string used to connect to the target Sql database
 	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// Password to use when connecting to the target SQL database
+	// Password to use when connecting to the target Sql database
 	Password *string `json:"password,omitempty"`
 }
 
-// SQLDatabaseProperties - Sql database properties
+// SQLDatabaseProperties - SqlDatabase properties
 type SQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string `json:"application,omitempty"`
 
-	// The name of the SQL database.
+	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
-	// Port value of the target SQL database
+	// Port value of the target Sql database
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the SQL database portable resource
+	// The recipe used to automatically deploy underlying infrastructure for the resource
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed.
 	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
-	// List of the resource IDs that support the SQL database resource
+	// List of the resource IDs that support the SqlDatabase resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
 	// Secret values provided for the resource
 	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
 
-	// The fully qualified domain name of the target SQL database.
+	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
 
-	// Username to use when connecting to the target SQL database
+	// Username to use when connecting to the target Sql database
 	Username *string `json:"username,omitempty"`
 
-	// READ-ONLY; Provisioning state of the SQL database portable resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// SQLDatabaseResource - Sql database portable resource
+// SQLDatabaseResource - SqlDatabase portable resource
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -482,23 +639,74 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// SQLDatabaseSecrets - The secret values for the given SQL database resource
+// SQLDatabaseResourceUpdate - The type used for update operations of the SqlDatabaseResource.
+type SQLDatabaseResourceUpdate struct {
+	// The updatable properties of the SqlDatabaseResource.
+	Properties *SQLDatabaseResourceUpdateProperties `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+}
+
+// SQLDatabaseResourceUpdateProperties - The updatable properties of the SqlDatabaseResource.
+type SQLDatabaseResourceUpdateProperties struct {
+	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	Application *string `json:"application,omitempty"`
+
+	// The name of the Sql database.
+	Database *string `json:"database,omitempty"`
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Port value of the target Sql database
+	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the resource
+	Recipe *RecipeUpdate `json:"recipe,omitempty"`
+
+	// Specifies how the underlying service/resource is provisioned and managed.
+	ResourceProvisioning *ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+
+	// List of the resource IDs that support the SqlDatabase resource
+	Resources []*ResourceReference `json:"resources,omitempty"`
+
+	// Secret values provided for the resource
+	Secrets *SQLDatabaseSecrets `json:"secrets,omitempty"`
+
+	// The fully qualified domain name of the Sql database.
+	Server *string `json:"server,omitempty"`
+
+	// Username to use when connecting to the target Sql database
+	Username *string `json:"username,omitempty"`
+}
+
+// SQLDatabaseSecrets - The secret values for the given SqlDatabase resource
 type SQLDatabaseSecrets struct {
-	// Connection string used to connect to the target SQL database
+	// Connection string used to connect to the target Sql database
 	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// Password to use when connecting to the target SQL database
+	// Password to use when connecting to the target Sql database
 	Password *string `json:"password,omitempty"`
 }
 
-// SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
-type SQLDatabasesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+// SQLDatabasesClientBeginCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginCreateOrUpdate
+// method.
+type SQLDatabasesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
-// SQLDatabasesClientDeleteOptions contains the optional parameters for the SQLDatabasesClient.Delete method.
-type SQLDatabasesClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// SQLDatabasesClientBeginDeleteOptions contains the optional parameters for the SQLDatabasesClient.BeginDelete method.
+type SQLDatabasesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// SQLDatabasesClientBeginUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginUpdate method.
+type SQLDatabasesClientBeginUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // SQLDatabasesClientGetOptions contains the optional parameters for the SQLDatabasesClient.Get method.
@@ -506,8 +714,8 @@ type SQLDatabasesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
-type SQLDatabasesClientListByRootScopeOptions struct {
+// SQLDatabasesClientListByScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByScope method.
+type SQLDatabasesClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
