@@ -157,7 +157,7 @@ func TestParseManifest(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			for k, _ := range objects {
+			for k := range objects {
 				require.Equal(t, tc.types[k], len(objects[k]))
 			}
 		})
