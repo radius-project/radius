@@ -7,7 +7,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties): PubSubBroker portable resource properties
+* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties): Dapr PubSubBroker portable resource properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Dapr/pubSubBrokers' (ReadOnly, DeployTimeConstant): The resource type
@@ -19,7 +19,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties): DaprSecretStore portable resource properties
+* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties): Dapr SecretStore portable resource properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Dapr/secretStores' (ReadOnly, DeployTimeConstant): The resource type
@@ -31,7 +31,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprStateStoreProperties](#daprstatestoreproperties): StateStore portable resource properties
+* **properties**: [DaprStateStoreProperties](#daprstatestoreproperties): Dapr StateStore portable resource properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Dapr/stateStores' (ReadOnly, DeployTimeConstant): The resource type

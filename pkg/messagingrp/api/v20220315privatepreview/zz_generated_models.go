@@ -208,7 +208,7 @@ type RabbitMQQueueProperties struct {
 	// List of the resource IDs that support the rabbitMQ resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Secrets provided by resources,
+	// The secrets to connect to the RabbitMQ instance
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
 	// Specifies whether to use SSL when connecting to the RabbitMQ instance
@@ -295,7 +295,7 @@ type RabbitMQQueueResourceUpdateProperties struct {
 	// List of the resource IDs that support the rabbitMQ resource
 	Resources []*ResourceReference `json:"resources,omitempty"`
 
-	// Secrets provided by resources,
+	// The secrets to connect to the RabbitMQ instance
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
 	// Specifies whether to use SSL when connecting to the RabbitMQ instance
@@ -308,7 +308,7 @@ type RabbitMQQueueResourceUpdateProperties struct {
 	VHost *string `json:"vHost,omitempty"`
 }
 
-// RabbitMQSecrets - The secret values for the given RabbitMQQueue resource
+// RabbitMQSecrets - The connection secrets properties to the RabbitMQ instance
 type RabbitMQSecrets struct {
 	// The password used to connect to the RabbitMQ instance
 	Password *string `json:"password,omitempty"`

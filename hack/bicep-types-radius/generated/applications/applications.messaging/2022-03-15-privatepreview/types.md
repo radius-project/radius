@@ -29,7 +29,7 @@
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **resources**: [ResourceReference](#resourcereference)[]: List of the resource IDs that support the rabbitMQ resource
-* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQQueue resource
+* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The connection secrets properties to the RabbitMQ instance
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **tls**: bool: Specifies whether to use SSL when connecting to the RabbitMQ instance
 * **username**: string: The username to use when connecting to the RabbitMQ instance

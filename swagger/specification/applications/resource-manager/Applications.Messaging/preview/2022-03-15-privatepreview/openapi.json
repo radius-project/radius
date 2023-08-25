@@ -586,7 +586,7 @@
         },
         "secrets": {
           "$ref": "#/definitions/RabbitMQSecrets",
-          "description": "Secrets provided by resources,"
+          "description": "The secrets to connect to the RabbitMQ instance"
         },
         "queue": {
           "type": "string",
@@ -705,7 +705,7 @@
         },
         "secrets": {
           "$ref": "#/definitions/RabbitMQSecrets",
-          "description": "Secrets provided by resources,"
+          "description": "The secrets to connect to the RabbitMQ instance"
         },
         "queue": {
           "type": "string",
@@ -751,7 +751,7 @@
     },
     "RabbitMQSecrets": {
       "type": "object",
-      "description": "The secret values for the given RabbitMQQueue resource",
+      "description": "The connection secrets properties to the RabbitMQ instance",
       "properties": {
         "password": {
           "type": "string",
