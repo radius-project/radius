@@ -41,9 +41,9 @@ generate-tsp-installed:
 generate-openapi-spec:
 	@echo  "Generating openapi specs from cadl models."
 	cd cadl/Applications.Link && npx$(CMD_EXT) cadl compile .
-	cd cadl/UCP && npx$(CMD_EXT) cadl compile . 
 
 	@echo  "Generating openapi specs from typespec models."
+	cd typespec/UCP && npx$(CMD_EXT) tsp compile . 
 	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Messaging && npx$(CMD_EXT) tsp compile .
