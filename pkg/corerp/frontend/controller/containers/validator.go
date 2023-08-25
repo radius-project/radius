@@ -54,7 +54,7 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
 		err := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
 		if err != nil {
-			return rest.NewBadRequestARMResponse(v1.ErrorResponse{err.(v1.ErrorDetails)}), nil
+			return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
 		}
 	}
 
@@ -117,7 +117,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 		}
 
 		switch k {
-		case "deployment":
+		case "apps/v1/deployment":
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Deployment", len(resources)))
 			}
@@ -126,7 +126,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(deployment, newResource.Name))
 			}
 
-		case "service":
+		case "/v1/service":
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Service", len(resources)))
 			}
@@ -135,7 +135,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(srv, newResource.Name))
 			}
 
-		case "serviceaccount":
+		case "/v1/serviceaccount":
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("ServiceAccount", len(resources)))
 			}
@@ -145,8 +145,8 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 			}
 
 		// No limitations for ConfigMap and Secret resources.
-		case "configmap":
-		case "secret":
+		case "/v1/configmap":
+		case "/v1/secret":
 
 		default:
 			errDetails = append(errDetails, v1.ErrorDetails{

@@ -18,15 +18,25 @@ package kubeutil
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/apimachinery/pkg/util/yaml"
 	scheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-// ParseManifest parses the given manifest and returns a list of objects. It returns an error if the manifest is invalid.
+// GetObjectKey returns a object key that uniquely identifies the given Kubernetes object.
+// The returned key is in the format of "group/version/kind".
+func GetObjectKey(obj runtime.Object) string {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	return strings.ToLower(fmt.Sprintf("%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind))
+}
+
+// ParseManifest parses the given manifest and returns a map of runtime.Object slice.
+// It returns an error if the given manifest is invalid.
 func ParseManifest(data []byte) (map[string][]runtime.Object, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
 	deser := scheme.Codecs.UniversalDeserializer()
@@ -45,11 +55,12 @@ func ParseManifest(data []byte) (map[string][]runtime.Object, error) {
 		if err != nil {
 			return nil, err
 		}
-		resourceTypeName := strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind)
-		if v, ok := objects[resourceTypeName]; ok {
-			objects[resourceTypeName] = append(v, obj)
+
+		key := GetObjectKey(obj)
+		if v, ok := objects[key]; ok {
+			objects[key] = append(v, obj)
 		} else {
-			objects[resourceTypeName] = []runtime.Object{obj}
+			objects[key] = []runtime.Object{obj}
 		}
 	}
 

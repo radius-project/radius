@@ -126,8 +126,8 @@ func TestParseManifest(t *testing.T) {
 			name:     "valid manifest with deployments and services",
 			manifest: validManifest,
 			types: map[string]int{
-				"deployment": 1,
-				"service":    1,
+				"apps/v1/deployment": 1,
+				"/v1/service":        1,
 			},
 			errString: "",
 		},
@@ -135,8 +135,8 @@ func TestParseManifest(t *testing.T) {
 			name:     "valid manifest with deployments and secrets",
 			manifest: validManifestWithSecrets,
 			types: map[string]int{
-				"deployment": 1,
-				"secret":     2,
+				"apps/v1/deployment": 1,
+				"/v1/secret":         2,
 			},
 			errString: "",
 		},
