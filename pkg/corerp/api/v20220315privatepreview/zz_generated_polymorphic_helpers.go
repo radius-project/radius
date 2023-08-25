@@ -206,27 +206,6 @@ func unmarshalRecipePropertiesUpdateClassificationMap(rawMsg json.RawMessage) (m
 	return fMap, nil
 }
 
-func unmarshalRuntimesPropertiesClassification(rawMsg json.RawMessage) (RuntimesPropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b RuntimesPropertiesClassification
-	switch m["kind"] {
-	case "kubernetes":
-		b = &KubernetesRuntimeProperties{}
-	default:
-		b = &RuntimesProperties{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
 func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

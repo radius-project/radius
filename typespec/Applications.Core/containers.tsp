@@ -67,14 +67,13 @@ model ContainerProperties {
 }
 
 @doc("The properties for runtime configuration")
-@discriminator("kind")
-model RuntimesProperties {}
+model RuntimesProperties {
+  @doc("The runtime configuration properties for Kubernetes")
+  kubernetes?: KubernetesRuntimeProperties;
+}
 
 @doc("The runtime configuration properties for Kubernetes")
-model KubernetesRuntimeProperties extends RuntimesProperties {
-  @doc("The RuntimeProperties kind")
-  kind: "kubernetes";
-
+model KubernetesRuntimeProperties {
   @doc("The serialized YAML of the Kubernetes deployment object")
   base?: string;
 }

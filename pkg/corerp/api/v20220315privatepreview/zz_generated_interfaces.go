@@ -61,15 +61,6 @@ type RecipePropertiesUpdateClassification interface {
 	GetRecipePropertiesUpdate() *RecipePropertiesUpdate
 }
 
-// RuntimesPropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetRuntimesProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *KubernetesRuntimeProperties, *RuntimesProperties
-type RuntimesPropertiesClassification interface {
-	// GetRuntimesProperties returns the RuntimesProperties content of the underlying type.
-	GetRuntimesProperties() *RuntimesProperties
-}
-
 // VolumeClassification provides polymorphic access to related types.
 // Call the interface's GetVolume() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:

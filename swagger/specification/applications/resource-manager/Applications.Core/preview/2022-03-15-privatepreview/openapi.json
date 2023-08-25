@@ -4151,13 +4151,7 @@
           "type": "string",
           "description": "The serialized YAML of the Kubernetes deployment object"
         }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/RuntimesProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "kubernetes"
+      }
     },
     "ManagedStore": {
       "type": "string",
@@ -4569,15 +4563,11 @@
       "type": "object",
       "description": "The properties for runtime configuration",
       "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Discriminator property for RuntimesProperties."
+        "kubernetes": {
+          "$ref": "#/definitions/KubernetesRuntimeProperties",
+          "description": "The runtime configuration properties for Kubernetes"
         }
-      },
-      "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
+      }
     },
     "SecretObjectProperties": {
       "type": "object",

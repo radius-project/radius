@@ -653,7 +653,7 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "ProvisioningState", &c.ProvisioningState)
 			delete(rawMsg, key)
 		case "runtimes":
-			c.Runtimes, err = unmarshalRuntimesPropertiesClassification(val)
+				err = unpopulate(val, "Runtimes", &c.Runtimes)
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &c.Status)
@@ -820,7 +820,7 @@ func (c *ContainerResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Identity", &c.Identity)
 			delete(rawMsg, key)
 		case "runtimes":
-			c.Runtimes, err = unmarshalRuntimesPropertiesClassification(val)
+				err = unpopulate(val, "Runtimes", &c.Runtimes)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2591,7 +2591,6 @@ func (k *KubernetesNamespaceExtension) UnmarshalJSON(data []byte) error {
 func (k KubernetesRuntimeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "base", k.Base)
-	objectMap["kind"] = "kubernetes"
 	return json.Marshal(objectMap)
 }
 
@@ -2606,9 +2605,6 @@ func (k *KubernetesRuntimeProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "base":
 				err = unpopulate(val, "Base", &k.Base)
-			delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &k.Kind)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -3281,7 +3277,7 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RuntimesProperties.
 func (r RuntimesProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	objectMap["kind"] = r.Kind
+	populate(objectMap, "kubernetes", r.Kubernetes)
 	return json.Marshal(objectMap)
 }
 
@@ -3294,8 +3290,8 @@ func (r *RuntimesProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &r.Kind)
+		case "kubernetes":
+				err = unpopulate(val, "Kubernetes", &r.Kubernetes)
 			delete(rawMsg, key)
 		}
 		if err != nil {

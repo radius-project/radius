@@ -298,7 +298,7 @@ type ContainerProperties struct {
 	Identity *IdentitySettings
 
 	// Specifies Runtime-specific functionality
-	Runtimes RuntimesPropertiesClassification
+	Runtimes *RuntimesProperties
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -370,7 +370,7 @@ type ContainerResourceUpdateProperties struct {
 	Identity *IdentitySettingsUpdate
 
 	// Specifies Runtime-specific functionality
-	Runtimes RuntimesPropertiesClassification
+	Runtimes *RuntimesProperties
 }
 
 // ContainerUpdate - Definition of a container
@@ -1126,18 +1126,8 @@ func (k *KubernetesNamespaceExtension) GetExtension() *Extension {
 
 // KubernetesRuntimeProperties - The runtime configuration properties for Kubernetes
 type KubernetesRuntimeProperties struct {
-	// REQUIRED; Discriminator property for RuntimesProperties.
-	Kind *string
-
 	// The serialized YAML of the Kubernetes deployment object
 	Base *string
-}
-
-// GetRuntimesProperties implements the RuntimesPropertiesClassification interface for type KubernetesRuntimeProperties.
-func (k *KubernetesRuntimeProperties) GetRuntimesProperties() *RuntimesProperties {
-	return &RuntimesProperties{
-		Kind: k.Kind,
-	}
 }
 
 // ManualScalingExtension - ManualScaling Extension
@@ -1383,12 +1373,9 @@ type ResourceStatus struct {
 
 // RuntimesProperties - The properties for runtime configuration
 type RuntimesProperties struct {
-	// REQUIRED; Discriminator property for RuntimesProperties.
-	Kind *string
+	// The runtime configuration properties for Kubernetes
+	Kubernetes *KubernetesRuntimeProperties
 }
-
-// GetRuntimesProperties implements the RuntimesPropertiesClassification interface for type RuntimesProperties.
-func (r *RuntimesProperties) GetRuntimesProperties() *RuntimesProperties { return r }
 
 // SecretObjectProperties - Represents secret object properties
 type SecretObjectProperties struct {

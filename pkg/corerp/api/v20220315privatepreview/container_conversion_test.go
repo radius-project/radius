@@ -106,10 +106,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				if r.Properties.Runtimes != nil {
 					require.NotNil(t, ct.Properties.Runtimes.Kubernetes)
 					require.NotEmpty(t, ct.Properties.Runtimes.Kubernetes.Base)
-
-					kubeRuntime, ok := r.Properties.Runtimes.(*KubernetesRuntimeProperties)
-					require.True(t, ok)
-					require.Equal(t, *kubeRuntime.Base, ct.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
 				}
 			}
 		})
@@ -174,11 +171,8 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 
 				if r.Properties.Runtimes != nil {
 					require.NotNil(t, versioned.Properties.Runtimes)
-					kubeRuntime, ok := versioned.Properties.Runtimes.(*KubernetesRuntimeProperties)
-					require.True(t, ok)
-
-					require.NotEmpty(t, kubeRuntime.Base)
-					require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *kubeRuntime.Base)
+					require.NotEmpty(t, *versioned.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *versioned.Properties.Runtimes.Kubernetes.Base)
 				}
 			}
 		})
