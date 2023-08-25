@@ -16,14 +16,11 @@ type OperationsClientListResponse struct {
 // RabbitMqQueuesClientCreateOrUpdateResponse contains the response from method RabbitMqQueuesClient.CreateOrUpdate.
 type RabbitMqQueuesClientCreateOrUpdateResponse struct {
 	RabbitMQQueueResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
 }
 
 // RabbitMqQueuesClientDeleteResponse contains the response from method RabbitMqQueuesClient.Delete.
 type RabbitMqQueuesClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // RabbitMqQueuesClientGetResponse contains the response from method RabbitMqQueuesClient.Get.
@@ -31,13 +28,18 @@ type RabbitMqQueuesClientGetResponse struct {
 	RabbitMQQueueResource
 }
 
-// RabbitMqQueuesClientListByRootScopeResponse contains the response from method RabbitMqQueuesClient.ListByRootScope.
-type RabbitMqQueuesClientListByRootScopeResponse struct {
+// RabbitMqQueuesClientListByScopeResponse contains the response from method RabbitMqQueuesClient.ListByScope.
+type RabbitMqQueuesClientListByScopeResponse struct {
 	RabbitMQQueueResourceListResult
 }
 
 // RabbitMqQueuesClientListSecretsResponse contains the response from method RabbitMqQueuesClient.ListSecrets.
 type RabbitMqQueuesClientListSecretsResponse struct {
 	RabbitMQListSecretsResult
+}
+
+// RabbitMqQueuesClientUpdateResponse contains the response from method RabbitMqQueuesClient.Update.
+type RabbitMqQueuesClientUpdateResponse struct {
+	RabbitMQQueueResource
 }
 

@@ -11,8 +11,6 @@ package v20220315privatepreview
 // MongoDatabasesClientCreateOrUpdateResponse contains the response from method MongoDatabasesClient.CreateOrUpdate.
 type MongoDatabasesClientCreateOrUpdateResponse struct {
 	MongoDatabaseResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
 }
 
 // MongoDatabasesClientDeleteResponse contains the response from method MongoDatabasesClient.Delete.
@@ -25,14 +23,19 @@ type MongoDatabasesClientGetResponse struct {
 	MongoDatabaseResource
 }
 
-// MongoDatabasesClientListByRootScopeResponse contains the response from method MongoDatabasesClient.ListByRootScope.
-type MongoDatabasesClientListByRootScopeResponse struct {
+// MongoDatabasesClientListByScopeResponse contains the response from method MongoDatabasesClient.ListByScope.
+type MongoDatabasesClientListByScopeResponse struct {
 	MongoDatabaseResourceListResult
 }
 
 // MongoDatabasesClientListSecretsResponse contains the response from method MongoDatabasesClient.ListSecrets.
 type MongoDatabasesClientListSecretsResponse struct {
 	MongoDatabaseListSecretsResult
+}
+
+// MongoDatabasesClientUpdateResponse contains the response from method MongoDatabasesClient.Update.
+type MongoDatabasesClientUpdateResponse struct {
+	MongoDatabaseResource
 }
 
 // OperationsClientListResponse contains the response from method OperationsClient.List.
@@ -43,14 +46,11 @@ type OperationsClientListResponse struct {
 // RedisCachesClientCreateOrUpdateResponse contains the response from method RedisCachesClient.CreateOrUpdate.
 type RedisCachesClientCreateOrUpdateResponse struct {
 	RedisCacheResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
 }
 
 // RedisCachesClientDeleteResponse contains the response from method RedisCachesClient.Delete.
 type RedisCachesClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // RedisCachesClientGetResponse contains the response from method RedisCachesClient.Get.
@@ -58,8 +58,8 @@ type RedisCachesClientGetResponse struct {
 	RedisCacheResource
 }
 
-// RedisCachesClientListByRootScopeResponse contains the response from method RedisCachesClient.ListByRootScope.
-type RedisCachesClientListByRootScopeResponse struct {
+// RedisCachesClientListByScopeResponse contains the response from method RedisCachesClient.ListByScope.
+type RedisCachesClientListByScopeResponse struct {
 	RedisCacheResourceListResult
 }
 
@@ -68,17 +68,19 @@ type RedisCachesClientListSecretsResponse struct {
 	RedisCacheListSecretsResult
 }
 
+// RedisCachesClientUpdateResponse contains the response from method RedisCachesClient.Update.
+type RedisCachesClientUpdateResponse struct {
+	RedisCacheResource
+}
+
 // SQLDatabasesClientCreateOrUpdateResponse contains the response from method SQLDatabasesClient.CreateOrUpdate.
 type SQLDatabasesClientCreateOrUpdateResponse struct {
 	SQLDatabaseResource
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
 }
 
 // SQLDatabasesClientDeleteResponse contains the response from method SQLDatabasesClient.Delete.
 type SQLDatabasesClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // SQLDatabasesClientGetResponse contains the response from method SQLDatabasesClient.Get.
@@ -86,13 +88,18 @@ type SQLDatabasesClientGetResponse struct {
 	SQLDatabaseResource
 }
 
-// SQLDatabasesClientListByRootScopeResponse contains the response from method SQLDatabasesClient.ListByRootScope.
-type SQLDatabasesClientListByRootScopeResponse struct {
+// SQLDatabasesClientListByScopeResponse contains the response from method SQLDatabasesClient.ListByScope.
+type SQLDatabasesClientListByScopeResponse struct {
 	SQLDatabaseResourceListResult
 }
 
 // SQLDatabasesClientListSecretsResponse contains the response from method SQLDatabasesClient.ListSecrets.
 type SQLDatabasesClientListSecretsResponse struct {
 	SQLDatabaseListSecretsResult
+}
+
+// SQLDatabasesClientUpdateResponse contains the response from method SQLDatabasesClient.Update.
+type SQLDatabasesClientUpdateResponse struct {
+	SQLDatabaseResource
 }
 

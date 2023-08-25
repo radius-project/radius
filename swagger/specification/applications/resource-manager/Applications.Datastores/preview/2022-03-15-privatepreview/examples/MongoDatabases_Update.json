@@ -1,0 +1,65 @@
+{
+  "operationId": "MongoDatabases_Update",
+  "title": "Update a MongoDatabase resource",
+  "parameters": {
+    "rootScope": "planes/radius/local/resourceGroups/testGroup",
+    "mongoDatabaseName": "mongo0",
+    "api-version": "2022-03-15-privatepreview",
+    "MongoDatabaseParameters": {
+      "location": "global",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "resourceProvisioning": "manual",
+        "host": "testAccount1.mongo.cosmos.azure.com",
+        "port": 10255,
+        "username": "testUser",
+        "secrets": {
+          "password": "testPassword",
+          "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
+        },
+        "resources": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+          }
+        ]
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+        "name": "mongo0",
+        "type": "Applications.Datastores/mongoDatabases",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "host": "testAccount1.mongo.cosmos.azure.com",
+          "port": 10255,
+          "database": "mongo0"
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+        "name": "mongo0",
+        "type": "Applications.Datastores/mongoDatabases",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "host": "testAccount1.mongo.cosmos.azure.com",
+          "port": 10255,
+          "database": "mongo0"
+        }
+      }
+    }
+  }
+}

@@ -98,7 +98,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Server:               to.Ptr(sql.Properties.Server),
 		Port:                 to.Ptr(sql.Properties.Port),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(sql.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(sql.Properties.Environment),
