@@ -50,7 +50,7 @@ model RabbitMQQueueResource is TrackedResource<RabbitMQQueueProperties> {
 model RabbitMQListSecretsResult is RabbitMQSecrets;
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
-@doc("The secret values for the given RabbitMQQueue resource")
+@doc("The connection secrets properties to the RabbitMQ instance")
 model RabbitMQSecrets {
   @doc("The password used to connect to the RabbitMQ instance")
   password?: string;
@@ -64,7 +64,7 @@ model RabbitMQSecrets {
 model RabbitMQQueueProperties {
   ...EnvironmentScopedResource;
 
-  @doc("Secrets provided by resources,")
+  @doc("The secrets to connect to the RabbitMQ instance")
   secrets?: RabbitMQSecrets;
 
   @doc("The name of the queue")
