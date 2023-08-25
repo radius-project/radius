@@ -1,4 +1,6 @@
 {
+  "operationId": "Planes_ListPlanes",
+  "title": "List planes",
   "parameters": {
     "api-version": "2022-09-01-privatepreview"
   },

@@ -1,4 +1,6 @@
 {
+  "operationId": "Planes_ListPlanesByType",
+  "title": "List planes by planeType",
   "parameters": {
     "planeType": "radius",
     "api-version": "2022-09-01-privatepreview"
