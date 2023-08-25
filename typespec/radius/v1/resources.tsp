@@ -166,7 +166,7 @@ enum ResourceProvisioning {
   manual,
 }
 
-@doc("The recipe used to automatically deploy underlying infrastructure for a link")
+@doc("The recipe used to automatically deploy underlying infrastructure for a portable resource")
 model Recipe {
   @doc("The name of the recipe within the environment to use")
   name: string;
