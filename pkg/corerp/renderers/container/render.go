@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -40,6 +41,7 @@ import (
 	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -162,7 +164,19 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
+
 	properties := resource.Properties
+
+	// If the container has a base manifest, deserialize base manifest and validation should be done by frontend controller.
+	baseManifest := map[string][]runtime.Object{}
+	runtimes := properties.Runtimes
+	var err error
+	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
+		baseManifest, err = kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
+		if err != nil {
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
+		}
+	}
 
 	// this flag is used to indicate whether or not this resource needs a service to be generated.
 	// this flag is triggered when a container has an exposed port(s), but no 'provides' field.
@@ -170,7 +184,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// check if connections are valid
 	for _, connection := range properties.Connections {
-
 		// if source is a URL, it is valid (example: 'http://containerx:3000').
 		if isURL(connection.Source) {
 			continue
@@ -226,7 +239,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
-	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles)
+	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles, baseManifest)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -252,7 +265,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
-		serviceResource, err := r.makeService(resource, options, ctx, containerPorts)
+		serviceResource, err := r.makeService(resource, options, ctx, containerPorts, baseManifest)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -271,7 +284,7 @@ type containerPorts struct {
 	names  []string
 }
 
-func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts, manifest map[string][]runtime.Object) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -309,7 +322,14 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(
+	ctx context.Context,
+	applicationName string,
+	options renderers.RenderOptions,
+	computedValues map[string]rpv1.ComputedValueReference,
+	resource *datamodel.ContainerResource,
+	roles []rpv1.OutputResource,
+	manifest map[string][]runtime.Object) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
