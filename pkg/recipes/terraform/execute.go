@@ -189,23 +189,12 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	localModuleName := options.EnvRecipe.Name
-	if localModuleName == "" {
-		return nil, ErrRecipeNameEmpty
-	}
-	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
-	if err := tfConfig.Save(ctx, workingDir); err != nil {
+	_, err = getTerraformConfig(ctx, workingDir, options)
+	if err != nil {
 		return nil, err
 	}
 
-	logger.Info(fmt.Sprintf("Downloading recipe module: %s", options.ResourceRecipe.Name))
-	if err := downloadModule(ctx, workingDir, execPath); err != nil {
-		return nil, err
-	}
-
-	logger.Info(fmt.Sprintf("Inspecting downloaded recipe: %s", options.ResourceRecipe.Name))
-	// Get the inspection result from downloaded module to extract recipecontext existency and providers.
-	result, err := inspectModule(workingDir, localModuleName)
+	result, err := downloadAndInspect(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -231,42 +220,12 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 func (e *executor) generateConfig(ctx context.Context, workingDir, execPath string, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Generate Terraform json config in the working directory
-	// Use recipe name as a local reference to the module.
-	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
-	// configuration is used as subdirectory name under .terraform/modules directory.
-	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
-	localModuleName := options.EnvRecipe.Name
-	if localModuleName == "" {
-		return "", ErrRecipeNameEmpty
-	}
-
-	// Create Terraform configuration containing module information with the given recipe parameters.
-	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
-
-	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
-	// Terraform Get command uses this config file to download module from the source specified in the config.
-	if err := tfConfig.Save(ctx, workingDir); err != nil {
+	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
+	if err != nil {
 		return "", err
 	}
 
-	// Download the Terraform module to the working directory.
-	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
-	downloadStartTime := time.Now()
-	if err := downloadModule(ctx, workingDir, execPath); err != nil {
-		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
-				options.EnvRecipe, metrics.FailedOperationState))
-		return "", recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
-	}
-	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
-			options.EnvRecipe, metrics.SuccessfulOperationState))
-
-	// Load the downloaded module to retrieve providers and variables required by the module.
-	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
-	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectModule(workingDir, localModuleName)
+	loadedModule, err := downloadAndInspect(ctx, workingDir, execPath, options)
 	if err != nil {
 		return "", err
 	}
@@ -303,12 +262,12 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 			return "", err
 		}
 
-		if err = tfConfig.AddRecipeContext(ctx, localModuleName, recipectx); err != nil {
+		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
 			return "", err
 		}
 	}
 	if loadedModule.ResultOutputExists {
-		if err = tfConfig.AddOutputs(localModuleName); err != nil {
+		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
 			return "", err
 		}
 	}
@@ -321,6 +280,57 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 	}
 
 	return secretSuffix, nil
+}
+
+// downloadAndInspect handles downloading the TF module and retrieving the necessary information
+func downloadAndInspect(ctx context.Context, workingDir string, execPath string, options Options) (*moduleInspectResult, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Download the Terraform module to the working directory.
+	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
+	downloadStartTime := time.Now()
+	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
+				options.EnvRecipe, metrics.FailedOperationState))
+		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+	}
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
+			options.EnvRecipe, metrics.SuccessfulOperationState))
+
+	// Load the downloaded module to retrieve providers and variables required by the module.
+	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
+	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
+	loadedModule, err := inspectModule(workingDir, options.EnvRecipe.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return loadedModule, nil
+}
+
+// getTerraformConfig generates the Terraform json config and saves it
+func getTerraformConfig(ctx context.Context, workingDir string, options Options) (*config.TerraformConfig, error) {
+	// Generate Terraform json config in the working directory
+	// Use recipe name as a local reference to the module.
+	// Modules are downloaded in a subdirectory in the working directory. Name of the module specified in the
+	// configuration is used as subdirectory name under .terraform/modules directory.
+	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
+	localModuleName := options.EnvRecipe.Name
+	if localModuleName == "" {
+		return nil, ErrRecipeNameEmpty
+	}
+
+	// Create Terraform configuration containing module information with the given recipe parameters.
+	tfConfig := config.New(localModuleName, options.EnvRecipe, options.ResourceRecipe)
+
+	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
+	// Terraform Get command uses this config file to download module from the source specified in the config.
+	if err := tfConfig.Save(ctx, workingDir); err != nil {
+		return nil, err
+	}
+	return tfConfig, nil
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.

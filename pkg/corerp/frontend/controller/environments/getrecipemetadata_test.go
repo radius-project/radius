@@ -44,7 +44,55 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
-		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, _, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
+		require.NoError(t, err)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "etag"},
+					Data:     envDataModel,
+				}, nil
+			})
+		ctx := rpctest.NewARMRequestContext(req)
+		recipeMetadata := recipes.ResourceMetadata{
+			Name:          *envInput.Name,
+			EnvironmentID: envDataModel.ID,
+			Parameters:    nil,
+			ResourceID:    envDataModel.ID,
+			ResourceType:  "Applications.Link/mongoDatabases",
+		}
+		recipeData := map[string]any{
+			"parameters": map[string]any{
+				"documentdbName": map[string]any{"type": "string"},
+				"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
+				"mongodbName":    map[string]any{"type": "string"},
+			},
+		}
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(recipeData, nil)
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+			Engine:        mEngine,
+		}
+		ctl, err := NewGetRecipeMetadata(opts)
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, w, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		require.Equal(t, 200, w.Result().StatusCode)
+
+		actualOutput := &v20220315privatepreview.RecipeGetMetadataResponse{}
+		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+		require.Equal(t, expectedOutput, actualOutput)
+	})
+
+	t.Run("get recipe metadata run -- terraform", func(t *testing.T) {
+		_, envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
@@ -170,7 +218,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata engine failure", func(t *testing.T) {
-		envInput, envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, _, envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
