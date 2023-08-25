@@ -240,7 +240,13 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 					},
 				},
 			},
-			resp: rest.NewBadRequestResponse("$.properties.runtimes.base is invalid: couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }"),
+			resp: rest.NewBadRequestARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeInvalidRequestContent,
+					Target:  "$.properties.runtimes.kubernetes.base",
+					Message: "couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }",
+				},
+			}),
 		},
 	}
 
@@ -280,74 +286,173 @@ func TestValidateManifest(t *testing.T) {
 		name     string
 		manifest string
 		resource *datamodel.ContainerResource
-		result   validationResult
+		err      error
 	}{
 		{
 			name:     "valid manifest with deployments/services/serviceaccounts",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: true},
+			err:      nil,
 		},
 		{
 			name:     "valid manifest with deployments/services/secrets/configmaps",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: true},
+			err:      nil,
 		},
 		{
 			name:     "valid manifest with multiple secrets and multiple configmaps",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: true},
+			err:      nil,
 		},
 		{
 			name:     "invalid manifest with multiple deployments",
 			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "Deployment", errMessage: "only one Deployment is allowed, but the manifest includes 2 resources"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "only one Deployment is allowed, but the manifest includes 2 resources.",
+					},
+				},
+			},
 		},
 		{
 			name:     "invalid manifest with multiple services",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "Service", errMessage: "only one Service is allowed, but the manifest includes 2 resources"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "only one Service is allowed, but the manifest includes 2 resources.",
+					},
+				},
+			},
 		},
 		{
 			name:     "invalid manifest with multiple serviceaccounts",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "ServiceAccount", errMessage: "only one ServiceAccount is allowed, but the manifest includes 2 resources"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "only one ServiceAccount is allowed, but the manifest includes 2 resources.",
+					},
+				},
+			},
 		},
 		{
 			name:     "invalid manifest with resource including namespace",
 			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "namespace", errMessage: "namespace is not allowed in resources: app-scoped"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "namespace is not allowed in resources: app-scoped.",
+					},
+				},
+			},
 		},
 		{
 			name:     "invalid manifest with unmatched deployment name",
 			manifest: strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "Deployment", errMessage: "Deployment name pie in manifest does not match resource name magpie"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "Deployment name pie in manifest does not match resource name magpie.",
+					},
+				},
+			},
 		},
 		{
 			name:     "invalid manifest with unmatched service name",
 			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(fakeServiceTemplate, "pie", ""), fakeServiceAccount}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "Service", errMessage: "Service name pie in manifest does not match resource name magpie"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "Service name pie in manifest does not match resource name magpie.",
+					},
+				},
+			},
 		},
 		{
 			name:     "invalid manifest with unmatched serviceaccount name",
 			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
 			resource: validResource,
-			result:   validationResult{valid: false, typeName: "ServiceAccount", errMessage: "ServiceAccount name pie in manifest does not match resource name magpie"},
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "ServiceAccount name pie in manifest does not match resource name magpie.",
+					},
+				},
+			},
+		},
+		{
+			name:     "invalid manifest with multiple errors",
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
+			resource: validResource,
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  manifestTargetProperty,
+				Message: "The manifest includes invalid resources.",
+				Details: []v1.ErrorDetails{
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "only one Service is allowed, but the manifest includes 2 resources.",
+					},
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "ServiceAccount name pie in manifest does not match resource name magpie.",
+					},
+				},
+			},
 		},
 	}
 
 	for _, tc := range manifestTests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := validateBaseManifest([]byte(tc.manifest), tc.resource)
-			require.Equal(t, tc.result, result)
+			err := validateBaseManifest([]byte(tc.manifest), tc.resource)
+			require.Equal(t, tc.err, err)
 		})
 	}
 }
