@@ -309,14 +309,12 @@
 
 
 ## RuntimesProperties
-* **Discriminator**: kind
+### Properties
+* **kubernetes**: [KubernetesRuntimeProperties](#kubernetesruntimeproperties): The runtime configuration properties for Kubernetes
 
-### Base Properties
-### KubernetesRuntimeProperties
-#### Properties
+## KubernetesRuntimeProperties
+### Properties
 * **base**: string: The serialized YAML of the Kubernetes deployment object
-* **kind**: 'kubernetes' (Required): Discriminator property for RuntimesProperties.
-
 
 ## TrackedResourceTags
 ### Properties
