@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -118,4 +119,27 @@ func TestGeneratedConfig(t *testing.T) {
 			require.ErrorContains(t, err, tc.err)
 		})
 	}
+}
+
+func Test_GetTerraformConfig(t *testing.T) {
+	// Create a temporary directory for testing.
+	testDir := t.TempDir()
+
+	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
+	require.NoError(t, err)
+	options := Options{
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	expectedConfig := config.TerraformConfig{
+		Module: map[string]config.TFModuleConfig{
+			"test-recipe": {"source": "test/module/source"}},
+	}
+	tfConfig, err := getTerraformConfig(testcontext.New(t), workingDir, options)
+	require.NoError(t, err)
+	require.Equal(t, &expectedConfig, tfConfig)
 }

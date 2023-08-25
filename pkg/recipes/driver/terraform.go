@@ -174,8 +174,6 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	return requestDirPath, nil
 }
 
-// # Function Explanation
-//
 // GetRecipeMetadata returns the Terraform Recipe parameters and metadata
 func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts ExecuteOptions) (map[string]any, error) {
 	// TODO: to be implemented in follow up PR
