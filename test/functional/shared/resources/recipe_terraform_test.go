@@ -84,7 +84,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 						validation.NewK8sServiceForResource(appName, redisCacheName).ValidateLabels(false),
 					},
 					"radius-system": {
-						validation.NewK8sSecretForResourceWithResourceName(appName, redisCacheName, "tfstate-default-"+secret).ValidateLabels(false),
+						validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
 					},
 				},
 			},
@@ -124,7 +124,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 						validation.NewK8sSecretForResource(name, name),
 					},
 					"radius-system": {
-						validation.NewK8sSecretForResourceWithResourceName(name, name, "tfstate-default-"+secret).ValidateLabels(false),
+						validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
 					},
 				},
 			},

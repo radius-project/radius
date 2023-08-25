@@ -126,7 +126,7 @@ func NewK8sSecretForResource(application string, name string) K8sObject {
 }
 
 // NewK8sSecretForResourceWithResourceName creates a K8sObject for a secret with the Labels set to the application and name.
-func NewK8sSecretForResourceWithResourceName(application string, name string, resourceName string) K8sObject {
+func NewK8sSecretForResourceWithResourceName(resourceName string) K8sObject {
 	return K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
@@ -134,7 +134,6 @@ func NewK8sSecretForResourceWithResourceName(application string, name string, re
 			Resource: "secrets",
 		},
 		Kind:         "Secret",
-		Labels:       kuberneteskeys.MakeSelectorLabels(application, name),
 		ResourceName: resourceName,
 	}
 }
