@@ -74,7 +74,7 @@ model RuntimesProperties {
 
 @doc("The runtime configuration properties for Kubernetes")
 model KubernetesRuntimeProperties {
-  @doc("The serialized YAML of the Kubernetes deployment object")
+  @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
   base?: string;
 }
 

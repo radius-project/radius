@@ -1126,7 +1126,8 @@ func (k *KubernetesNamespaceExtension) GetExtension() *Extension {
 
 // KubernetesRuntimeProperties - The runtime configuration properties for Kubernetes
 type KubernetesRuntimeProperties struct {
-	// The serialized YAML of the Kubernetes deployment object
+	// The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount,
+// Secrets, and ConfigMaps.
 	Base *string
 }
 

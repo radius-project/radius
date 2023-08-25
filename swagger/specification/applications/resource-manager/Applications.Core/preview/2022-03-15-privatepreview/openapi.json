@@ -4149,7 +4149,7 @@
       "properties": {
         "base": {
           "type": "string",
-          "description": "The serialized YAML of the Kubernetes deployment object"
+          "description": "The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps."
         }
       }
     },
