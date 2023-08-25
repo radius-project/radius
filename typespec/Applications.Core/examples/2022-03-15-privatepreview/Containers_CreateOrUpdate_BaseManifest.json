@@ -26,8 +26,9 @@
           "workingDir": "/app"
         },
         "runtimes": {
-          "kind": "kubernetes",
-          "base": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webserver\n  namespace: app-scoped\n  labels:\n    app: webserver\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: webserver\n  template:\n    metadata:\n      labels:\n        app: webserver\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.14.2\n        ports:\n        - containerPort: 80\n"
+          "kubernetes": {
+            "base": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webserver\n  namespace: app-scoped\n  labels:\n    app: webserver\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: webserver\n  template:\n    metadata:\n      labels:\n        app: webserver\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.14.2\n        ports:\n        - containerPort: 80\n"
+          }
         }
       }
     }
@@ -57,6 +58,11 @@
               "while true; do echo hello; sleep 10;done"
             ],
             "workingDir": "/app"
+          },
+          "runtimes": {
+            "kubernetes": {
+              "base": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webserver\n  namespace: app-scoped\n  labels:\n    app: webserver\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: webserver\n  template:\n    metadata:\n      labels:\n        app: webserver\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.14.2\n        ports:\n        - containerPort: 80\n"
+            }
           },
           "identity": {
             "kind": "azure.com.workload",
