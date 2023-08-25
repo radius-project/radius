@@ -18,6 +18,7 @@ package containers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -28,22 +29,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const fakeDeployment = `
+const fakeDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webserver
+  name: %s
+  %s
   labels:
-    app: webserver
+    app: magpie
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: webserver
+      app: magpie
   template:
     metadata:
       labels:
-        app: webserver
+        app: magpie
     spec:
       containers:
       - name: nginx
@@ -52,72 +54,61 @@ spec:
         - containerPort: 80
 `
 
-const fakeService = `
+const fakeServiceTemplate = `
 apiVersion: v1
 kind: Service
 metadata:
-  name: webserver
+  name: %s
+  %s
 spec:
   selector:
-    app.kubernetes.io/name: webserver
+    app.kubernetes.io/name: magpie
   ports:
     - protocol: TCP
       port: 80
       targetPort: 9376
 `
 
-const fakeServiceWithNamespace = `
-apiVersion: v1
-kind: Service
-metadata:
-  name: webserver
-  namespace: app-scoped
-spec:
-  selector:
-    app.kubernetes.io/name: webserver
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 9376
-`
-
-const fakeServiceAccount = `
+const fakeServiceAccountTemplate = `
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: webserver
+  name: %s
   labels:
-    app.kubernetes.io/name: webserver
+    app.kubernetes.io/name: magpie
     app.kubernetes.io/part-of: radius
-
 `
 
 const yamlSeparater = "\n---\n"
 
-const fakeSecret = `
+const fakeSecretTemplate = `
 apiVersion: v1
 kind: Secret
 metadata:
-  name: secret-admin
+  name: %s
 type: Opaque
 stringData:
   username: admin
   password: password
 `
 
-const fakeConfigMap = `
+const fakeConfigMapTemplate = `
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: webserver
+  name: %s
   labels:
-    app.kubernetes.io/name: webserver
+    app.kubernetes.io/name: magpie
     app.kubernetes.io/part-of: radius
 data:
   appsettings.Production.json: config
 `
 
 func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
+	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "")
+	fakeService := fmt.Sprintf(fakeServiceTemplate, "magpie", "")
+	fakeServiceAccount := fmt.Sprintf(fakeServiceAccountTemplate, "magpie")
+
 	requestTests := []struct {
 		desc            string
 		newResource     *datamodel.ContainerResource
@@ -180,7 +171,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			newResource: &datamodel.ContainerResource{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
-						Name: "webserver",
+						Name: "magpie",
 					},
 				},
 				Properties: datamodel.ContainerProperties{
@@ -194,7 +185,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			mutatedResource: &datamodel.ContainerResource{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
-						Name: "webserver",
+						Name: "magpie",
 					},
 				},
 				Properties: datamodel.ContainerProperties{
@@ -269,10 +260,17 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 }
 
 func TestValidateManifest(t *testing.T) {
+	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "")
+	fakeService := fmt.Sprintf(fakeServiceTemplate, "magpie", "")
+	fakeServiceAccount := fmt.Sprintf(fakeServiceAccountTemplate, "magpie")
+	fakeSecret := fmt.Sprintf(fakeSecretTemplate, "magpie")
+	fakeConfigMap := fmt.Sprintf(fakeConfigMapTemplate, "magpie")
+	fakeServiceWithNamespace := fmt.Sprintf(fakeServiceTemplate, "magpie", "namespace: app-scoped")
+
 	validResource := &datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				Name: "webserver",
+				Name: "magpie",
 			},
 		},
 		Properties: datamodel.ContainerProperties{},
@@ -325,6 +323,24 @@ func TestValidateManifest(t *testing.T) {
 			manifest:  strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, yamlSeparater),
 			resource:  validResource,
 			errString: "namespace is not allowed in resources: app-scoped",
+		},
+		{
+			name:      "invalid manifest with unmatched deployment name",
+			manifest:  strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
+			resource:  validResource,
+			errString: "",
+		},
+		{
+			name:      "invalid manifest with unmatched service name",
+			manifest:  strings.Join([]string{fakeDeployment, fmt.Sprintf(fakeServiceTemplate, "pie", ""), fakeServiceAccount}, yamlSeparater),
+			resource:  validResource,
+			errString: "",
+		},
+		{
+			name:      "invalid manifest with unmatched serviceaccount name",
+			manifest:  strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
+			resource:  validResource,
+			errString: "",
 		},
 	}
 
