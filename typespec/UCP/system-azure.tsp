@@ -98,7 +98,10 @@ model InternalCredentialStorageProperties extends CredentialStorageProperties {
   secretName: string;
 }
 
-alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<TResource, AzurePlaneNameParameter>;
+alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<
+  TResource,
+  AzurePlaneNameParameter
+>;
 
 @autoRoute
 @armResourceOperations
@@ -125,6 +128,7 @@ interface AzureCredentials {
   @armResourceCreateOrUpdate(AzureCredentialResource)
   createOrUpdate(
     ...AzureCredentialBaseParameter<AzureCredentialResource>,
+
     @doc("Resource create parameters.")
     @body
     resource: AzureCredentialResource,
@@ -133,7 +137,9 @@ interface AzureCredentials {
   @doc("Delete an Azure credential")
   @delete
   @armResourceDelete(AzureCredentialResource)
-  delete(
-    ...AzureCredentialBaseParameter<AzureCredentialResource>,
-  ): ArmDeletedResponse | ArmDeleteAcceptedLroResponse | ArmDeletedNoContentResponse | ErrorResponse;
+  delete(...AzureCredentialBaseParameter<AzureCredentialResource>):
+    | ArmDeletedResponse
+    | ArmDeleteAcceptedLroResponse
+    | ArmDeletedNoContentResponse
+    | ErrorResponse;
 }

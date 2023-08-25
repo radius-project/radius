@@ -82,6 +82,7 @@ interface ResourceGroups {
   @armResourceCreateOrUpdate(ResourceGroupResource)
   createOrUpdate(
     ...ResourceGroupBaseParameters<ResourceGroupResource>,
+
     @doc("Resource create parameters.")
     @body
     resource: ResourceGroupResource,
@@ -90,7 +91,9 @@ interface ResourceGroups {
   @doc("Delete a resource group")
   @delete
   @armResourceDelete(ResourceGroupResource)
-  delete(
-    ...ResourceGroupBaseParameters<ResourceGroupResource>,
-  ): ArmDeletedResponse | ArmDeleteAcceptedLroResponse | ArmDeletedNoContentResponse | ErrorResponse;
+  delete(...ResourceGroupBaseParameters<ResourceGroupResource>):
+    | ArmDeletedResponse
+    | ArmDeleteAcceptedLroResponse
+    | ArmDeletedNoContentResponse
+    | ErrorResponse;
 }

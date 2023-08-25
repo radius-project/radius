@@ -125,6 +125,7 @@ interface Planes {
   @armResourceCreateOrUpdate(PlaneResource)
   createOrUpdate(
     ...PlaneBaseParameters<PlaneResource>,
+
     @doc("Resource create parameters.")
     @body
     resource: PlaneResource,
@@ -133,7 +134,9 @@ interface Planes {
   @doc("Delete a plane")
   @delete
   @armResourceDelete(PlaneResource)
-  delete(
-    ...PlaneBaseParameters<PlaneResource>,
-  ): ArmDeletedResponse | ArmDeleteAcceptedLroResponse | ArmDeletedNoContentResponse | ErrorResponse;
+  delete(...PlaneBaseParameters<PlaneResource>):
+    | ArmDeletedResponse
+    | ArmDeleteAcceptedLroResponse
+    | ArmDeletedNoContentResponse
+    | ErrorResponse;
 }

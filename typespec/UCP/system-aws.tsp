@@ -39,21 +39,21 @@ namespace Ucp;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 model AwsCredentialResource is TrackedResource<AwsCredentialProperties> {
-    @key("credentialName")
-    @doc("The AWS credential name.")
-    @path
-    @segment("providers/System.AWS/credentials")
-    name: ResourceNameString;
+  @key("credentialName")
+  @doc("The AWS credential name.")
+  @path
+  @segment("providers/System.AWS/credentials")
+  name: ResourceNameString;
 }
 
 @doc("The parameter for AWS plane name")
 model AwsPlaneNameParameter {
-    @doc("The name of AWS plane")
-    @path
-    @segment("planes/aws")
-    @extension("x-ms-skip-url-encoding", true)
-    @extension("x-ms-parameter-location", "method")
-    planeName: ResourceNameString;
+  @doc("The name of AWS plane")
+  @path
+  @segment("planes/aws")
+  @extension("x-ms-skip-url-encoding", true)
+  @extension("x-ms-parameter-location", "method")
+  planeName: ResourceNameString;
 }
 
 @discriminator("kind")
@@ -66,23 +66,25 @@ model AwsCredentialProperties {
 
 @doc("AWS credential storage properties")
 model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
-    @doc("Access Key kind")
-    kind: "AccessKey";
+  @doc("Access Key kind")
+  kind: "AccessKey";
 
-    @doc("Access key ID for AWS identity")
-    @secret
-    accessKeyId: string;
+  @doc("Access key ID for AWS identity")
+  @secret
+  accessKeyId: string;
 
-    @doc("Secret Access Key for AWS identity")
-    @secret
-    secretAccessKey: string;
+  @doc("Secret Access Key for AWS identity")
+  @secret
+  secretAccessKey: string;
 
-    @doc("The storage properties")
-    storage: CredentialStorageProperties;
+  @doc("The storage properties")
+  storage: CredentialStorageProperties;
 }
 
-
-alias AwsCredentialBaseParameter<TResource> = CredentialBaseParameters<TResource, AwsPlaneNameParameter>;
+alias AwsCredentialBaseParameter<TResource> = CredentialBaseParameters<
+  TResource,
+  AwsPlaneNameParameter
+>;
 
 @autoRoute
 @armResourceOperations
@@ -109,6 +111,7 @@ interface AwsCredentials {
   @armResourceCreateOrUpdate(AwsCredentialResource)
   createOrUpdate(
     ...AwsCredentialBaseParameter<AwsCredentialResource>,
+
     @doc("Resource create parameters.")
     @body
     resource: AwsCredentialResource,
@@ -117,7 +120,9 @@ interface AwsCredentials {
   @doc("Delete an AWS credential")
   @delete
   @armResourceDelete(AwsCredentialResource)
-  delete(
-    ...AwsCredentialBaseParameter<AwsCredentialResource>,
-  ): ArmDeletedResponse | ArmDeleteAcceptedLroResponse | ArmDeletedNoContentResponse | ErrorResponse;
+  delete(...AwsCredentialBaseParameter<AwsCredentialResource>):
+    | ArmDeletedResponse
+    | ArmDeleteAcceptedLroResponse
+    | ArmDeletedNoContentResponse
+    | ErrorResponse;
 }
