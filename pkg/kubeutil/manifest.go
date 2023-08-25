@@ -35,7 +35,8 @@ func GetObjectKey(obj runtime.Object) string {
 	return strings.ToLower(fmt.Sprintf("%s/%s/%s", gvk.Group, gvk.Version, gvk.Kind))
 }
 
-// ParseManifest parses the given manifest and returns a map of runtime.Object slice.
+// ParseManifest parses the given manifest and returns a map of runtime.Object slice where
+// the key is in the format of "group/version/kind".
 // It returns an error if the given manifest is invalid.
 func ParseManifest(data []byte) (map[string][]runtime.Object, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
