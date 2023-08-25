@@ -46,7 +46,7 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 	}
 
 	runtimes := newResource.Properties.Runtimes
-	if runtimes != nil && runtimes.Kubernetes != nil {
+	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
 		result := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
 		if !result.valid {
 			return rest.NewBadRequestResponse(fmt.Sprintf("$.properties.runtimes.base is invalid: %s", result)), nil
