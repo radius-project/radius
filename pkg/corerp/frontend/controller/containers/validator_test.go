@@ -18,20 +18,21 @@ package containers
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
-const validManifest = `
+const fakeDeployment = `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: webserver
-  namespace: app-scoped
   labels:
     app: webserver
 spec:
@@ -49,7 +50,9 @@ spec:
         image: nginx:1.14.2
         ports:
         - containerPort: 80
----
+`
+
+const fakeService = `
 apiVersion: v1
 kind: Service
 metadata:
@@ -61,6 +64,57 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 9376
+`
+
+const fakeServiceWithNamespace = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: webserver
+  namespace: app-scoped
+spec:
+  selector:
+    app.kubernetes.io/name: webserver
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+`
+
+const fakeServiceAccount = `
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: webserver
+  labels:
+    app.kubernetes.io/name: webserver
+    app.kubernetes.io/part-of: radius
+
+`
+
+const yamlSeparater = "\n---\n"
+
+const fakeSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-admin
+type: Opaque
+stringData:
+  username: admin
+  password: password
+`
+
+const fakeConfigMap = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webserver
+  labels:
+    app.kubernetes.io/name: webserver
+    app.kubernetes.io/part-of: radius
+data:
+  appsettings.Production.json: config
 `
 
 func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
@@ -124,19 +178,29 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 		{
 			desc: "valid runtime.kubernetes.base",
 			newResource: &datamodel.ContainerResource{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						Name: "webserver",
+					},
+				},
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: validManifest,
+							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
 						},
 					},
 				},
 			},
 			mutatedResource: &datamodel.ContainerResource{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						Name: "webserver",
+					},
+				},
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: validManifest,
+							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
 						},
 					},
 				},
@@ -185,7 +249,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 					},
 				},
 			},
-			resp: rest.NewBadRequestResponse("$.properties.runtimes.kubernetes.base is invalid: couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }"),
+			resp: rest.NewBadRequestResponse("$.properties.runtimes.base is invalid: couldn't get version/kind; json parse error: json: cannot unmarshal string into Go value of type struct { APIVersion string \"json:\\\"apiVersion,omitempty\\\"\"; Kind string \"json:\\\"kind,omitempty\\\"\" }"),
 		},
 	}
 
@@ -200,6 +264,78 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				require.Nil(t, r)
 				require.Equal(t, tc.mutatedResource, tc.newResource)
 			}
+		})
+	}
+}
+
+func TestValidateManifest(t *testing.T) {
+	validResource := &datamodel.ContainerResource{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				Name: "webserver",
+			},
+		},
+		Properties: datamodel.ContainerProperties{},
+	}
+
+	manifestTests := []struct {
+		name      string
+		manifest  string
+		resource  *datamodel.ContainerResource
+		errString string
+	}{
+		{
+			name:      "valid manifest with deployments/services/serviceaccounts",
+			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
+			resource:  validResource,
+			errString: "",
+		},
+		{
+			name:      "valid manifest with deployments/services/secrets/configmaps",
+			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, yamlSeparater),
+			resource:  validResource,
+			errString: "",
+		},
+		{
+			name:      "valid manifest with multiple secrets and multiple configmaps",
+			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, yamlSeparater),
+			resource:  validResource,
+			errString: "",
+		},
+		{
+			name:      "invalid manifest with multiple deployments",
+			manifest:  strings.Join([]string{fakeDeployment, fakeDeployment}, yamlSeparater),
+			resource:  validResource,
+			errString: "only one Deployment is allowed, but the manifest includes 2 resources",
+		},
+		{
+			name:      "invalid manifest with multiple services",
+			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeService}, yamlSeparater),
+			resource:  validResource,
+			errString: "only one Service is allowed, but the manifest includes 2 resources",
+		},
+		{
+			name:      "invalid manifest with multiple serviceaccounts",
+			manifest:  strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, yamlSeparater),
+			resource:  validResource,
+			errString: "only one ServiceAccount is allowed, but the manifest includes 2 resources",
+		},
+		{
+			name:      "invalid manifest with resource including namespace",
+			manifest:  strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, yamlSeparater),
+			resource:  validResource,
+			errString: "namespace is not allowed in resources: app-scoped",
+		},
+	}
+
+	for _, tc := range manifestTests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateBaseManifest([]byte(tc.manifest), tc.resource)
+			if tc.errString != "" {
+				require.EqualError(t, err, tc.errString)
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
