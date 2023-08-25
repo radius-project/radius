@@ -328,19 +328,19 @@ func TestValidateManifest(t *testing.T) {
 			name:      "invalid manifest with unmatched deployment name",
 			manifest:  strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
 			resource:  validResource,
-			errString: "",
+			errString: "Deployment name pie in manifest does not match resource name magpie",
 		},
 		{
 			name:      "invalid manifest with unmatched service name",
 			manifest:  strings.Join([]string{fakeDeployment, fmt.Sprintf(fakeServiceTemplate, "pie", ""), fakeServiceAccount}, yamlSeparater),
 			resource:  validResource,
-			errString: "",
+			errString: "Service name pie in manifest does not match resource name magpie",
 		},
 		{
 			name:      "invalid manifest with unmatched serviceaccount name",
 			manifest:  strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
 			resource:  validResource,
-			errString: "",
+			errString: "ServiceAccount name pie in manifest does not match resource name magpie",
 		},
 	}
 
