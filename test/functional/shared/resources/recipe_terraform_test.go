@@ -55,8 +55,8 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	appName := "corerp-resources-terraform-redis-app"
 	envName := "corerp-resources-terraform-redis-env"
 	redisCacheName := "tf-redis-cache"
-	// secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Core/extenders/"+name, envName, appName)
-	// require.NoError(t, err)
+	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Core/extenders/"+name, envName, appName)
+	require.NoError(t, err)
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
@@ -83,9 +83,9 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 					appName: {
 						validation.NewK8sServiceForResource(appName, redisCacheName).ValidateLabels(false),
 					},
-					// "radius-system": {
-					// 	validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
-					// },
+					"radius-system": {
+						validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
+					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
