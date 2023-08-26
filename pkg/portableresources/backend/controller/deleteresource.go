@@ -23,7 +23,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
+	ext_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
 	ds_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
 	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
@@ -121,7 +121,7 @@ func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
 	case strings.ToLower(portableresources.DaprPubSubBrokersResourceType):
 		return &dapr_dm.DaprPubSubBroker{}, nil
 	case strings.ToLower(portableresources.ExtendersResourceType):
-		return &corerp_dm.Extender{}, nil
+		return &ext_dm.Extender{}, nil
 	default:
 		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}

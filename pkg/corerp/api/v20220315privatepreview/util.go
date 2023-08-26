@@ -20,7 +20,6 @@ import (
 	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/portableresources"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -120,20 +119,6 @@ func stringSlice(s []*string) []string {
 		r = append(r, *v)
 	}
 	return r
-}
-
-func isValidLinkType(link string) bool {
-	linkTypes := []string{
-		portableresources.DaprPubSubBrokersResourceType,
-		portableresources.DaprSecretStoresResourceType,
-		portableresources.DaprStateStoresResourceType,
-		portableresources.ExtendersResourceType,
-		portableresources.MongoDatabasesResourceType,
-		portableresources.RabbitMQQueuesResourceType,
-		portableresources.RedisCachesResourceType,
-		portableresources.SqlDatabasesResourceType,
-	}
-	return slices.Contains(linkTypes, link)
 }
 
 func isValidTemplateKind(templateKind string) bool {

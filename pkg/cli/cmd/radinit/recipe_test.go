@@ -73,7 +73,7 @@ func Test_getResourceTypeFromPath(t *testing.T) {
 	}
 }
 
-func Test_getLinkType(t *testing.T) {
+func Test_getPortableResourceType(t *testing.T) {
 	tests := []struct {
 		name         string
 		resourceType string
@@ -122,8 +122,8 @@ func Test_getLinkType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getLinkType(tt.resourceType); got != tt.want {
-				t.Errorf("getLinkType() = %v, want %v", got, tt.want)
+			if got := getPortableResourceType(tt.resourceType); got != tt.want {
+				t.Errorf("getPortableResourceType() = %v, want %v", got, tt.want)
 			}
 		})
 	}

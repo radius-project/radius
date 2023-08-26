@@ -36,18 +36,6 @@ const (
 	ResourceProvisioningManual ResourceProvisioning = "manual"
 )
 
-// PortableResourceTypes combines the portable resource namespaces into a single string with a comma separator
-var PortableResourceTypes = strings.Join([]string{
-	DaprPubSubBrokersResourceType,
-	DaprSecretStoresResourceType,
-	DaprStateStoresResourceType,
-	RabbitMQQueuesResourceType,
-	MongoDatabasesResourceType,
-	RedisCachesResourceType,
-	SqlDatabasesResourceType,
-	ExtendersResourceType,
-}, ", ")
-
 type RecipeData struct {
 	RecipeProperties
 
@@ -117,4 +105,26 @@ type Kubernetes struct {
 	Namespace string `json:"namespace"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
+}
+
+// IsValidPortableResourceType checks if the provided resource type is a valid portable resource type.
+// Returns true if the resource type is valid, false otherwise.
+func IsValidPortableResourceType(resourceType string) bool {
+	portableResourceTypes := []string{
+		DaprPubSubBrokersResourceType,
+		DaprSecretStoresResourceType,
+		DaprStateStoresResourceType,
+		RabbitMQQueuesResourceType,
+		MongoDatabasesResourceType,
+		RedisCachesResourceType,
+		SqlDatabasesResourceType,
+		ExtendersResourceType,
+	}
+	for _, s := range portableResourceTypes {
+		if strings.EqualFold(s, resourceType) {
+			return true
+		}
+	}
+
+	return false
 }

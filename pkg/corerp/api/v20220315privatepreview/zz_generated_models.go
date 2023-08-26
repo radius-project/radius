@@ -636,7 +636,7 @@ type ExtenderProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
-	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
 	Recipe *Recipe
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -652,7 +652,7 @@ type ExtenderProperties struct {
 	Status *ResourceStatus
 }
 
-// ExtenderResource link
+// ExtenderResource portable resource
 type ExtenderResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -702,7 +702,7 @@ type ExtenderResourceUpdateProperties struct {
 	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
-	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
 	Recipe *RecipeUpdate
 
 	// Specifies how the underlying service/resource is provisioned and managed.

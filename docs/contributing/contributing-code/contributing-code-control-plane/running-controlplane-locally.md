@@ -22,7 +22,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 - UCP: port 9000
 - AppCore Namespace: port 8080
-- AppLink Namespace: port 8081
+- AppPortableResource Namespace: port 8081 (Applications.Datastores, Applications.Dapr and Applications.Messaging are hosted)
 - Deployment Engine: port 5017
 
 ## Prerequisites

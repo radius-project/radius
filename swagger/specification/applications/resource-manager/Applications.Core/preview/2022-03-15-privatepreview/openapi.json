@@ -3422,7 +3422,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -3442,7 +3442,7 @@
     },
     "ExtenderResource": {
       "type": "object",
-      "description": "ExtenderResource link",
+      "description": "ExtenderResource portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/ExtenderProperties",
@@ -3517,7 +3517,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",

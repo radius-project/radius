@@ -79,7 +79,7 @@ type ResourceData struct {
 	ComputedValues  map[string]any
 	SecretValues    map[string]rpv1.SecretValueReference
 	AppID           *resources.ID                // Application ID for which the resource is created
-	RecipeData      portableresources.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
+	RecipeData      portableresources.RecipeData // Relevant only for portable resources created with recipes to find relevant connections created by that recipe
 }
 
 // Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
@@ -550,7 +550,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = &parsedID
-	} else if strings.Contains(strings.ToLower(portableresources.PortableResourceTypes), strings.ToLower(resourceID.TypeSegments()[0].Type)) {
+	} else if portableresources.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
 		// Application id is optional for portable resource types
 		appID = nil
 	} else {

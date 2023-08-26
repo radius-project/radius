@@ -116,15 +116,15 @@ func processRepositories(repos []string, tag string) map[string]map[string]corer
 			continue
 		}
 
-		linkType := getLinkType(resourceType)
-		// If the link type is empty, it means we don't support the resource type.
-		if linkType == "" {
+		portableResourceType := getPortableResourceType(resourceType)
+		// If the PortableResource type is empty, it means we don't support the resource type.
+		if portableResourceType == "" {
 			continue
 		}
 
 		repoPath := DevRecipesRegistry + "/" + repo
 
-		recipes[linkType] = map[string]corerp.RecipePropertiesClassification{
+		recipes[portableResourceType] = map[string]corerp.RecipePropertiesClassification{
 			name: &corerp.BicepRecipeProperties{
 				TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
 				TemplatePath: to.Ptr(repoPath + ":" + tag),
@@ -151,8 +151,8 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 	return resourceType
 }
 
-// getLinkType returns the link type for the given resource type.
-func getLinkType(resourceType string) string {
+// getPortableResourceType returns the resource type for the given resource.
+func getPortableResourceType(resourceType string) string {
 	switch resourceType {
 	case "mongodatabases":
 		return portableresources.MongoDatabasesResourceType
@@ -168,6 +168,8 @@ func getLinkType(resourceType string) string {
 		return portableresources.DaprSecretStoresResourceType
 	case "statestores":
 		return portableresources.DaprStateStoresResourceType
+	case "extenders":
+		return portableresources.ExtendersResourceType
 	default:
 		return ""
 	}

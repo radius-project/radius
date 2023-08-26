@@ -73,7 +73,7 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	cmd.Flags().String("template-version", "", "specify the version for the terraform module.")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
-	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
+	cmd.Flags().String("link-type", "", "specify the type of the portable resource this recipe can be consumed by")
 	_ = cmd.MarkFlagRequired("link-type")
 	commonflags.AddParameterFlag(cmd)
 

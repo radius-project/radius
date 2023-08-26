@@ -47,7 +47,7 @@ import (
 
 const serviceName = "applications.core"
 
-func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions, error) {
+func newPortableResourceHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions, error) {
 	hostings := []hosting.Service{}
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
@@ -65,16 +65,16 @@ func main() {
 	var configFile string
 	var enableAsyncWorker bool
 
-	var runLink bool
-	var linkConfigFile string
+	var runPortableResource bool
+	var portableResourceConfigFile string
 
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
-	flag.BoolVar(&runLink, "run-link", true, "Flag to run portable resources rps(for private preview and dev/test purpose).")
-	defaultLinkConfig := fmt.Sprintf("link-%s.yaml", hostoptions.Environment())
-	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for portable resource providers.")
+	flag.BoolVar(&runPortableResource, "run-portableresource", true, "Flag to run portable resources RPs(for private preview and dev/test purpose).")
+	defaultPortableRsConfig := fmt.Sprintf("portableresource-%s.yaml", hostoptions.Environment())
+	flag.StringVar(&portableResourceConfigFile, "portableresource-config", defaultPortableRsConfig, "The service configuration file for portable resource providers.")
 
 	if configFile == "" {
 		log.Fatal("config-file is empty.") //nolint:forbidigo // this is OK inside the main function.
@@ -114,16 +114,16 @@ func main() {
 	}
 
 	// Configure Portable Resources to run it with Applications.Core RP.
-	var linkOpts *hostoptions.HostOptions
-	if runLink && linkConfigFile != "" {
+	var portableResourceOpts *hostoptions.HostOptions
+	if runPortableResource && portableResourceConfigFile != "" {
 		logger.Info("Run Service for Portable Resource Providers.")
-		var linkSvcs []hosting.Service
+		var portableResourceSvcs []hosting.Service
 		var err error
-		linkSvcs, linkOpts, err = newLinkHosts(linkConfigFile, enableAsyncWorker)
+		portableResourceSvcs, portableResourceOpts, err = newPortableResourceHosts(portableResourceConfigFile, enableAsyncWorker)
 		if err != nil {
 			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 		}
-		hostingSvc = append(hostingSvc, linkSvcs...)
+		hostingSvc = append(hostingSvc, portableResourceSvcs...)
 	}
 
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
@@ -135,9 +135,9 @@ func main() {
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
 		options.Config.SecretProvider.ETCD.Client = client
-		if linkOpts != nil {
-			linkOpts.Config.StorageProvider.ETCD.Client = client
-			linkOpts.Config.SecretProvider.ETCD.Client = client
+		if portableResourceOpts != nil {
+			portableResourceOpts.Config.StorageProvider.ETCD.Client = client
+			portableResourceOpts.Config.SecretProvider.ETCD.Client = client
 		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}

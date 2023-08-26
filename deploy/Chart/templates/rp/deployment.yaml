@@ -32,8 +32,8 @@ spec:
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
-        - --run-link
-        - --link-config=/etc/config/link-self-host.yaml
+        - --run-portableresource
+        - --portableresource-config=/etc/config/portableresource-self-host.yaml
         env:
         - name: SKIP_ARM
           value: 'false'
@@ -52,7 +52,7 @@ spec:
           name: applications-rp
           protocol: TCP
         - containerPort: 5444
-          name: applink-rp
+          name: app-pr-rp
           protocol: TCP
         {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}

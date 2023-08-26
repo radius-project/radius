@@ -17,9 +17,7 @@ package logging
 
 const (
 	AppCoreLoggerName string = "applications.core"
-	AppLinkLoggerName string = "applications.datastores"
-
-	ServiceName string = "rp"
+	ServiceName       string = "rp"
 )
 
 // Field names for structured logging

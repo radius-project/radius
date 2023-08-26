@@ -162,7 +162,7 @@ func getTestResourceID(id string) resources.ID {
 	return resourceID
 }
 
-func buildMongoDBLinkWithRecipe() dsrp_dm.MongoDatabase {
+func buildMongoDBWithRecipe() dsrp_dm.MongoDatabase {
 	return dsrp_dm.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -196,7 +196,7 @@ func buildMongoDBLinkWithRecipe() dsrp_dm.MongoDatabase {
 }
 
 func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
-	testResource := buildMongoDBLinkWithRecipe()
+	testResource := buildMongoDBWithRecipe()
 
 	secretValues := map[string]rpv1.SecretValueReference{}
 	secretValues[pr_renderers.ConnectionStringValue] = rpv1.SecretValueReference{
@@ -275,7 +275,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/applications.datastores/mongoDatabases/test-mongo")
+		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo")
 		requiredResources := []resources.ID{depId1, depId2}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -339,7 +339,7 @@ func Test_Render(t *testing.T) {
 		mongoResource := dsrp_dm.MongoDatabase{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/applications.datastores/mongoDatabases/test-mongo",
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo",
 				},
 			},
 			Properties: dsrp_dm.MongoDatabaseProperties{
@@ -1042,7 +1042,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
 		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo")
-		mongoResource := buildMongoDBLinkWithRecipe()
+		mongoResource := buildMongoDBWithRecipe()
 		mongoResource.LinkMetadata.RecipeData = portableresources.RecipeData{}
 		mr := store.Object{
 			Metadata: store.Metadata{

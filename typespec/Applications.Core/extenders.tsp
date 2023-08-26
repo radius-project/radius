@@ -38,7 +38,7 @@ namespace Applications.Core;
 @doc("Response for list secrets API call")
 model ExtenderListSecretResponse {}
 
-@doc("ExtenderResource link")
+@doc("ExtenderResource portable resource")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
   @path
   @doc("The name of the ExtenderResource portable resource")
@@ -58,7 +58,7 @@ model ExtenderProperties extends Record<unknown> {
   @doc("The secrets for referenced resource")
   secrets?: {};
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the extender link")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the extender portable resource")
   recipe?: Recipe;
 
   @doc("Specifies how the underlying service/resource is provisioned and managed.")

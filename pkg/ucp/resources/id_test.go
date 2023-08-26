@@ -1139,7 +1139,7 @@ func Test_Type(t *testing.T) {
 			expected: ResourceGroupType,
 		},
 		{
-			desc:     "LinkRP resource",
+			desc:     "Datasource RP resource",
 			id:       "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			expected: "Applications.Datastores/mongoDatabases",
 		},

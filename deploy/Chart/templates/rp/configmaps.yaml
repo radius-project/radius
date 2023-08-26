@@ -53,7 +53,7 @@ data:
     terraform:
       path: "/terraform"
 
-  link-self-host.yaml: |-
+  portableresource-self-host.yaml: |-
     # Radius configuration file.
     # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
     environment:
