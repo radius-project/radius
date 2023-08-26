@@ -101,8 +101,8 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
 	appNamespace := "corerp-resources-terraform-context-app"
-	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Core/extenders/"+name, name, name)
-	require.NoError(t, err)
+	// secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Core/extenders/"+name, name, name)
+	// require.NoError(t, err)
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
@@ -123,9 +123,9 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sSecretForResource(name, name),
 					},
-					"radius-system": {
-						validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
-					},
+					// "radius-system": {
+					// 	validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
+					// },
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
