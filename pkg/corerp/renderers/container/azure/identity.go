@@ -196,3 +196,27 @@ func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamode
 
 	return &or
 }
+
+// MakeFederatedIdentitySA creates a ServiceAccount with descriptive labels and placeholder annotations for Azure Workload
+// Identity, and returns an OutputResource with the ServiceAccount and a dependency on the FederatedIdentity.
+func MakeFederatedIdentityK8sServiceAccount(appName, name, namespace string, resource *datamodel.ContainerResource) *corev1.ServiceAccount {
+	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
+	labels[AzureWorkloadIdentityUseKey] = "true"
+
+	return &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kubernetes.NormalizeResourceName(name),
+			Namespace: namespace,
+			Labels:    labels,
+			Annotations: map[string]string{
+				// ResourceTransformer transforms these values before deploying resource.
+				azureWorkloadIdentityClientID: "placeholder",
+				azureWorkloadIdentityTenantID: "placeholder",
+			},
+		},
+	}
+}

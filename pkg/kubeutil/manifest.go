@@ -27,6 +27,18 @@ import (
 	scheme "k8s.io/client-go/kubernetes/scheme"
 )
 
+// ObjectManifest is a map of runtime.Object slice where the key is in the format of "group/version/kind".
+type ObjectManifest map[string][]runtime.Object
+
+func (m ObjectManifest) Get(key string) []runtime.Object {
+	obj, ok := m[key]
+	if ok {
+		return obj
+	} else {
+		return []runtime.Object{}
+	}
+}
+
 // GetObjectKey returns a object key that uniquely identifies the given Kubernetes object.
 // The returned key is in the format of "group/version/kind".
 func GetObjectKey(obj runtime.Object) string {
@@ -41,11 +53,11 @@ func GetObjectKey(obj runtime.Object) string {
 // ParseManifest parses the given manifest and returns a map of runtime.Object slice where
 // the key is in the format of "group/version/kind".
 // It returns an error if the given manifest is invalid.
-func ParseManifest(data []byte) (map[string][]runtime.Object, error) {
+func ParseManifest(data []byte) (ObjectManifest, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
 	deser := scheme.Codecs.UniversalDeserializer()
 
-	objects := map[string][]runtime.Object{}
+	objects := ObjectManifest{}
 	for {
 		ext := runtime.RawExtension{}
 		if err := decoder.Decode(&ext); err != nil {

@@ -73,6 +73,7 @@ const (
 	LocalIDRedisService                 = "KubernetesRedisService"
 	LocalIDScrapedSecret                = "KubernetesScrapedSecret"
 	LocalIDSecret                       = "Secret"
+	LocalIDConfigMap                    = "ConfigMap"
 	LocalIDSecretProviderClass          = "SecretProviderClass"
 	LocalIDServiceAccount               = "ServiceAccount"
 	LocalIDKubernetesRole               = "KubernetesRole"

@@ -31,7 +31,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -168,7 +167,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	properties := resource.Properties
 
 	// If the container has a base manifest, deserialize base manifest and validation should be done by frontend controller.
-	baseManifest := map[string][]runtime.Object{}
+	baseManifest := kubeutil.ObjectManifest{}
 	runtimes := properties.Runtimes
 	var err error
 	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
@@ -273,6 +272,19 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, serviceResource)
 	}
 
+	// Populate the remaining objects in base manifest.
+	for k, resources := range baseManifest {
+		if k != "core/v1/secret" && k != "core/v1/configmap" {
+			continue
+		}
+
+		for _, resource := range resources {
+			objMeta := resource.(metav1.ObjectMetaAccessor).GetObjectMeta().(*metav1.ObjectMeta)
+			o := rpv1.NewKubernetesOutputResource(rpv1.LocalIDScrapedSecret, resource, *objMeta)
+			outputResources = append(outputResources, o)
+		}
+	}
+
 	return renderers.RendererOutput{
 		Resources:      outputResources,
 		ComputedValues: computedValues,
@@ -284,7 +296,7 @@ type containerPorts struct {
 	names  []string
 }
 
-func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts, manifest map[string][]runtime.Object) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts, manifest kubeutil.ObjectManifest) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -301,7 +313,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		})
 	}
 
-	service := &corev1.Service{
+	service := corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
 			APIVersion: "v1",
@@ -319,7 +331,15 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		},
 	}
 
-	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
+	if resources := manifest.Get("core/v1/service"); len(resources) > 0 {
+		baseDeployment := resources[0].(*corev1.Service)
+		err = kubeutil.MergePatchObject(baseDeployment, &service, &service)
+		if err != nil {
+			return rpv1.OutputResource{}, fmt.Errorf("failed to merge patch service: %w", err)
+		}
+	}
+
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, &service, service.ObjectMeta), nil
 }
 
 func (r Renderer) makeDeployment(
@@ -329,7 +349,7 @@ func (r Renderer) makeDeployment(
 	computedValues map[string]rpv1.ComputedValueReference,
 	resource *datamodel.ContainerResource,
 	roles []rpv1.OutputResource,
-	manifest map[string][]runtime.Object) ([]rpv1.OutputResource, map[string][]byte, error) {
+	manifest kubeutil.ObjectManifest) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -553,8 +573,18 @@ func (r Renderer) makeDeployment(
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
-		outputResources = append(outputResources, *saAccount)
+		saAccount := azrenderer.MakeFederatedIdentityK8sServiceAccount(applicationName, serviceAccountName, options.Environment.Namespace, resource)
+		if resources := manifest.Get("apps/v1/serviceaccount"); len(resources) > 0 {
+			baseDeployment := resources[0].(*corev1.ServiceAccount)
+			err = kubeutil.MergePatchObject(baseDeployment, saAccount, saAccount)
+			if err != nil {
+				return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to merge patch deployment: %w", err)
+			}
+		}
+
+		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, saAccount, saAccount.ObjectMeta)
+		or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
+		outputResources = append(outputResources, or)
 
 		// This is required to enable workload identity.
 		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
@@ -649,6 +679,14 @@ func (r Renderer) makeDeployment(
 				},
 			},
 		},
+	}
+
+	if resources := manifest.Get("apps/v1/deployment"); len(resources) > 0 {
+		baseDeployment := resources[0].(*appsv1.Deployment)
+		err = kubeutil.MergePatchObject(baseDeployment, &deployment, &deployment)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to merge patch deployment: %w", err)
+		}
 	}
 
 	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
