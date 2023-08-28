@@ -1,4 +1,4 @@
 {
     "name":"mongo-terraform",
-    "linkType":"Applications.Link/mongoDatabases"
+    "linkType":"Applications.Datastores/mongoDatabases"
 }
