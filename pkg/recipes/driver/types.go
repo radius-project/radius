@@ -31,6 +31,7 @@ type Driver interface {
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, opts DeleteOptions) error
 
+	// GarbageCollectResources handles the clean up of any obsolete resources.
 	GarbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error
 }
 

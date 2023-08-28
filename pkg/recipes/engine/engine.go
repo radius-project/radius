@@ -137,6 +137,7 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 	return definition, nil
 }
 
+// GarbageCollectResources get the kind of the driver used in recipe deployment and uses that driver to call GarbageCollectResources() driver function to cleanup any obsolete resources.
 func (e *engine) GarbageCollectResources(ctx context.Context, recipe recipes.ResourceMetadata, diff []rpv1.OutputResource) error {
 	if reflect.DeepEqual(recipes.ResourceMetadata{}, recipe) {
 		return nil

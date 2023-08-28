@@ -30,6 +30,6 @@ type Engine interface {
 	Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error
-
+	// GarbageCollectResources handles the clean up of any obsolete resources.
 	GarbageCollectResources(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error
 }

@@ -277,6 +277,7 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 	return recipeResponse, nil
 }
 
+// GarbageCollectResources handles the clean up of any obsolete resources.
 func (d *bicepDriver) GarbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	for _, resource := range diff {
