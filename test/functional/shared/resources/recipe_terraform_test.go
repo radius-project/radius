@@ -55,7 +55,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	appName := "corerp-resources-terraform-redis-app"
 	envName := "corerp-resources-terraform-redis-env"
 	redisCacheName := "tf-redis-cache"
-	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/"+name, envName, appName)
+	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -89,7 +89,7 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/" + name
+				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 				testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 			},
 		},
@@ -101,7 +101,7 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
 	appNamespace := "corerp-resources-terraform-context-app"
-	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/"+name, name, name)
+	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, name, name)
 	require.NoError(t, err)
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -201,7 +201,7 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 			},
 			SkipObjectValidation: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/default/providers/Applications.Link/extenders/" + name
+				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 				testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 			},
 		},

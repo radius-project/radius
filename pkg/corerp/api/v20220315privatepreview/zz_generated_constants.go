@@ -136,6 +136,27 @@ func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 	}
 }
 
+// ImagePullPolicy - The image pull policy for the container
+type ImagePullPolicy string
+
+const (
+	// ImagePullPolicyAlways - Always
+	ImagePullPolicyAlways ImagePullPolicy = "Always"
+	// ImagePullPolicyIfNotPresent - IfNotPresent
+	ImagePullPolicyIfNotPresent ImagePullPolicy = "IfNotPresent"
+	// ImagePullPolicyNever - Never
+	ImagePullPolicyNever ImagePullPolicy = "Never"
+)
+
+// PossibleImagePullPolicyValues returns the possible values for the ImagePullPolicy const type.
+func PossibleImagePullPolicyValues() []ImagePullPolicy {
+	return []ImagePullPolicy{	
+		ImagePullPolicyAlways,
+		ImagePullPolicyIfNotPresent,
+		ImagePullPolicyNever,
+	}
+}
+
 // ManagedStore - The managed store for the ephemeral volume
 type ManagedStore string
 
