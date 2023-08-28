@@ -541,12 +541,14 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 		}
 		resourceExists := false
 		for idx, actualResource := range actualResources {
-			if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
-				resourceExists = true
-				actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
-				break
-			} else if expectedResource.Kind == "Secret" && expectedResource.SkipLabelValidation {
+			if expectedResource.SkipLabelValidation {
 				if actualResource.GetName() == expectedResource.ResourceName {
+					resourceExists = true
+					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
+					break
+				}
+			} else {
+				if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 					break
