@@ -223,6 +223,9 @@ type Container struct {
 	// environment
 	Env map[string]*string
 
+	// The pull policy for the container image
+	ImagePullPolicy *ImagePullPolicy
+
 	// liveness probe properties
 	LivenessProbe HealthProbePropertiesClassification
 
@@ -386,6 +389,9 @@ type ContainerUpdate struct {
 
 	// The registry and image to download and run in your container
 	Image *string
+
+	// The pull policy for the container image
+	ImagePullPolicy *ImagePullPolicy
 
 	// liveness probe properties
 	LivenessProbe HealthProbePropertiesClassification
