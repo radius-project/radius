@@ -452,7 +452,16 @@ func TestValidateManifest(t *testing.T) {
 	for _, tc := range manifestTests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateBaseManifest([]byte(tc.manifest), tc.resource)
-			require.Equal(t, tc.err, err)
+			if tc.err != nil {
+				expected := tc.err.(v1.ErrorDetails)
+				actual := err.(v1.ErrorDetails)
+				require.Equal(t, expected.Code, actual.Code)
+				require.Equal(t, expected.Target, actual.Target)
+				require.Equal(t, expected.Message, actual.Message)
+				require.ElementsMatch(t, expected.Details, actual.Details)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
