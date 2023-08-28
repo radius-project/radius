@@ -81,6 +81,9 @@ func (s *Service) Run(ctx context.Context) error {
 		BaseURI:          s.Options.UCPConnection.Endpoint(),
 		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
 	})
+	if err != nil {
+		return err
+	}
 
 	engine := engine.NewEngine(engine.Options{
 		ConfigurationLoader: configLoader,
