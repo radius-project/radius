@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: Purge test resources
+name: Purge AWS test resources
 on:
   workflow_dispatch:
 
