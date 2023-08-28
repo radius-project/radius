@@ -18,7 +18,7 @@ git clone <forked repo url>
 
 ## Configuring remote repositories
 
-We will now configure the remote repositories and we will refer to the forked repo as "origin" and the main repo as "upstream". You could use your own names here if you want.
+Configure the remote repositories, referring to the forked repo as `origin` and the main repo as `upstream` (you may choose your own custom names if desired).
 
 ### Adding remote repositories
 
