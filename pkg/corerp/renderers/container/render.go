@@ -47,6 +47,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -159,6 +160,8 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 // Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
 // RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
@@ -282,6 +285,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			meta := resource.(metav1.ObjectMetaAccessor)
 			objMeta := meta.GetObjectMeta().(*metav1.ObjectMeta)
 			objMeta.Namespace = options.Environment.Namespace
+			logger.Info(fmt.Sprintf("Adding base manifest resource, kind: %s, name: %s", k, objMeta.Name))
 			o := rpv1.NewKubernetesOutputResource(rpv1.LocalIDScrapedSecret, resource, *objMeta)
 			outputResources = append(outputResources, o)
 		}
