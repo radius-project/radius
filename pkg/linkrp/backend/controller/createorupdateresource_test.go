@@ -341,7 +341,13 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					"p1": "v1",
 				},
 			}
-
+			id := resources.MustParse(oldOutputResourceResourceID)
+			//require.NoError(t, err)
+			outputResources := []rpv1.OutputResource{
+				{
+					ID: id,
+				},
+			}
 			if stillPassing && tt.recipeErr != nil {
 				stillPassing = false
 				eng.EXPECT().
@@ -391,13 +397,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 			if stillPassing && tt.resourceClientErr != nil {
 				stillPassing = false
-				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID).
+				eng.EXPECT().GarbageCollectResources(gomock.Any(), recipeMetadata, outputResources).
 					Return(tt.resourceClientErr).
 					Times(1)
 			} else if stillPassing {
-				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID).
+				eng.EXPECT().
+					GarbageCollectResources(gomock.Any(), recipeMetadata, outputResources).
 					Return(nil).
 					Times(1)
 			}

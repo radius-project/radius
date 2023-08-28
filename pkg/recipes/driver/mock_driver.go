@@ -10,6 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	recipes "github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
 // MockDriver is a mock of Driver interface.
@@ -62,4 +63,18 @@ func (m *MockDriver) Execute(arg0 context.Context, arg1 ExecuteOptions) (*recipe
 func (mr *MockDriverMockRecorder) Execute(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockDriver)(nil).Execute), arg0, arg1)
+}
+
+// GarbageCollectResources mocks base method.
+func (m *MockDriver) GarbageCollectResources(arg0 context.Context, arg1 []v1.OutputResource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GarbageCollectResources", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// GarbageCollectResources indicates an expected call of GarbageCollectResources.
+func (mr *MockDriverMockRecorder) GarbageCollectResources(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GarbageCollectResources", reflect.TypeOf((*MockDriver)(nil).GarbageCollectResources), arg0, arg1)
 }

@@ -19,6 +19,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	reflect "reflect"
 	"time"
 
 	"github.com/project-radius/radius/pkg/metrics"
@@ -67,15 +68,9 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (
 // executeCore function is the core logic of the Execute function.
 // Any changes to the core logic of the Execute function should be made here.
 func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
-	// Load Recipe Definition from the environment.
-	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
+	definition, driver, err := e.getRecipeDefinitionAndDriver(ctx, recipe)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	driver, ok := e.options.Drivers[definition.Driver]
-	if !ok {
-		return nil, definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
@@ -117,16 +112,9 @@ func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, ou
 // deleteCore function is the core logic of the Delete function.
 // Any changes to the core logic of the Delete function should be made here.
 func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) (*recipes.EnvironmentDefinition, error) {
-	// Load Recipe Definition from the environment.
-	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
+	definition, driver, err := e.getRecipeDefinitionAndDriver(ctx, recipe)
 	if err != nil {
 		return nil, err
-	}
-
-	// Determine Recipe driver type
-	driver, ok := e.options.Drivers[definition.Driver]
-	if !ok {
-		return definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
@@ -147,4 +135,30 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 	}
 
 	return definition, nil
+}
+
+func (e *engine) GarbageCollectResources(ctx context.Context, recipe recipes.ResourceMetadata, diff []rpv1.OutputResource) error {
+	if reflect.DeepEqual(recipes.ResourceMetadata{}, recipe) {
+		return nil
+	}
+	_, driver, err := e.getRecipeDefinitionAndDriver(ctx, recipe)
+	if err != nil {
+		return err
+	}
+	return driver.GarbageCollectResources(ctx, diff)
+}
+
+func (e *engine) getRecipeDefinitionAndDriver(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, recipedriver.Driver, error) {
+	// Load Recipe Definition from the environment.
+	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Determine Recipe driver type
+	driver, ok := e.options.Drivers[definition.Driver]
+	if !ok {
+		return nil, nil, fmt.Errorf("could not find driver %s", definition.Driver)
+	}
+	return definition, driver, nil
 }

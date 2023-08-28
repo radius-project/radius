@@ -27,7 +27,9 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	recipedriver "github.com/project-radius/radius/pkg/recipes/driver"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -454,4 +456,65 @@ func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 		},
 	}
 	return recipeMetadata, recipeDefinition, outputResources
+}
+
+func Test_GarbageCollectResources(t *testing.T) {
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: to.Ptr(true),
+		},
+	}
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		Parameters: map[string]any{
+			"resourceName": "resource1",
+		},
+	}
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		ResourceType: "Applications.Link/mongoDatabases",
+	}
+	ctx := testcontext.New(t)
+	engine, configLoader, driver := setup(t)
+
+	tests := []struct {
+		desc string
+		err  error
+	}{
+		{
+			desc: "success",
+			err:  nil,
+		},
+		{
+			desc: "deletion failed",
+			err:  errors.New("test-error"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			configLoader.EXPECT().
+				LoadRecipe(ctx, &recipeMetadata).
+				Times(1).
+				Return(recipeDefinition, nil)
+			driver.EXPECT().
+				GarbageCollectResources(ctx, outputResources).
+				Times(1).Return(tt.err)
+			err := engine.GarbageCollectResources(ctx, recipeMetadata, outputResources)
+			if tt.err != nil {
+				require.Equal(t, tt.err.Error(), "test-error")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

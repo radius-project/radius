@@ -276,3 +276,17 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 
 	return recipeResponse, nil
 }
+
+func (d *bicepDriver) GarbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, resource := range diff {
+		logger.Info(fmt.Sprintf("Deleting output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
+		err := d.ResourceClient.Delete(ctx, resource.ID.String())
+		if err != nil {
+			return recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
+	}
+
+	return nil
+}

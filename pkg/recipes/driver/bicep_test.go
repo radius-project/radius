@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -427,4 +428,52 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+}
+
+func Test_GarbageCollectResources(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: to.Ptr(true),
+		},
+	}
+	tests := []struct {
+		desc        string
+		err         error
+		expectedErr *recipes.RecipeError
+	}{
+		{
+			desc:        "success",
+			err:         nil,
+			expectedErr: nil,
+		},
+		{
+			desc: "deletion failed",
+			err:  errors.New("test-err"),
+			expectedErr: &recipes.RecipeError{
+				ErrorDetails: v1.ErrorDetails{
+					Code:    recipes.RecipeGarbageCollectionFailed,
+					Message: "test-err",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").Return(tt.err).Times(1)
+			err := driver.GarbageCollectResources(ctx, outputResources)
+			if tt.err != nil {
+				require.Equal(t, err, tt.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

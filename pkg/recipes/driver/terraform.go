@@ -26,6 +26,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/recipes"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 
 	"github.com/project-radius/radius/pkg/recipes/terraform"
 	"github.com/project-radius/radius/pkg/sdk"
@@ -172,4 +173,8 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	}
 
 	return requestDirPath, nil
+}
+
+func (d *terraformDriver) GarbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error {
+	return nil
 }

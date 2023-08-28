@@ -19,7 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
+	"reflect"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -29,7 +29,6 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Link resources.
@@ -94,7 +93,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	// Now we need to clean up any obsolete output resources.
 	diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
-	err = c.garbageCollectResources(ctx, diff)
+	err = c.engine.GarbageCollectResources(ctx, c.getResourceMetadata(data), diff)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -120,24 +119,10 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []rpv1.Output
 }
 
 func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P) (*recipes.RecipeOutput, error) {
-	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
-	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
-	if !supportsRecipes {
+	request := c.getResourceMetadata(data)
+	if reflect.DeepEqual(recipes.ResourceMetadata{}, request) {
 		return nil, nil
 	}
-
-	input := recipeDataModel.Recipe()
-	if input == nil {
-		return nil, nil
-	}
-	request := recipes.ResourceMetadata{
-		Name:          input.Name,
-		Parameters:    input.Parameters,
-		EnvironmentID: data.ResourceMetadata().Environment,
-		ApplicationID: data.ResourceMetadata().Application,
-		ResourceID:    data.GetBaseResource().ID,
-	}
-
 	return c.engine.Execute(ctx, request)
 }
 
@@ -151,16 +136,22 @@ func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Cont
 	return &config.Runtime, nil
 }
 
-func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	for _, resource := range diff {
-		logger.Info(fmt.Sprintf("Deleting output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
-		err := c.client.Delete(ctx, resource.ID.String())
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
+func (c *CreateOrUpdateResource[P, T]) getResourceMetadata(data P) recipes.ResourceMetadata {
+	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
+	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
+	if !supportsRecipes {
+		return recipes.ResourceMetadata{}
 	}
 
-	return nil
+	input := recipeDataModel.Recipe()
+	if input == nil {
+		return recipes.ResourceMetadata{}
+	}
+	return recipes.ResourceMetadata{
+		Name:          input.Name,
+		Parameters:    input.Parameters,
+		EnvironmentID: data.ResourceMetadata().Environment,
+		ApplicationID: data.ResourceMetadata().Application,
+		ResourceID:    data.GetBaseResource().ID,
+	}
 }
