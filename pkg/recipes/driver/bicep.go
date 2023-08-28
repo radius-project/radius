@@ -164,10 +164,8 @@ func (d *bicepDriver) Delete(ctx context.Context, outputResources []rpv1.OutputR
 			}
 
 			// Only AWS resources are retried on deletion failure
-			maxDeletionRetries := 1
-			if strings.EqualFold(outputResource.ResourceType.Provider, "aws") {
-				maxDeletionRetries = 5
-			}
+			maxDeletionRetries := 5
+			// todo: change this to pass retry logic to pipeline
 
 			for attempt := 1; attempt <= maxDeletionRetries; attempt++ {
 				err := d.ResourceClient.Delete(groupCtx, id, resourcemodel.APIVersionUnknown)

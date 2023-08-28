@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -27,10 +26,8 @@ import (
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Link resources.
@@ -95,10 +92,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	}
 
 	// Now we need to clean up any obsolete output resources.
-
-	// call delete function on engine instead of calling garbagecollect
 	diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
-	err = c.garbageCollectResources(ctx, req.ResourceID, diff)
+	c.engine.Delete(ctx, recipes.ResourceMetadata{}, diff)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -153,19 +148,4 @@ func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Cont
 	}
 
 	return &config.Runtime, nil
-}
-
-func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, id string, diff []rpv1.OutputResource) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	for _, resource := range diff {
-		id := resource.Identity.GetID()
-		logger.Info(fmt.Sprintf("Deleting output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
-		err := c.client.Delete(ctx, id, resourcemodel.APIVersionUnknown)
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", id), ucplog.LogFieldTargetResourceID, id)
-	}
-
-	return nil
 }
