@@ -469,6 +469,7 @@ func (c Container) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "command", c.Command)
 	populate(objectMap, "env", c.Env)
 	populate(objectMap, "image", c.Image)
+	populate(objectMap, "imagePullPolicy", c.ImagePullPolicy)
 	populate(objectMap, "livenessProbe", c.LivenessProbe)
 	populate(objectMap, "ports", c.Ports)
 	populate(objectMap, "readinessProbe", c.ReadinessProbe)
@@ -497,6 +498,9 @@ func (c *Container) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "image":
 				err = unpopulate(val, "Image", &c.Image)
+			delete(rawMsg, key)
+		case "imagePullPolicy":
+				err = unpopulate(val, "ImagePullPolicy", &c.ImagePullPolicy)
 			delete(rawMsg, key)
 		case "livenessProbe":
 			c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
@@ -837,6 +841,7 @@ func (c ContainerUpdate) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "command", c.Command)
 	populate(objectMap, "env", c.Env)
 	populate(objectMap, "image", c.Image)
+	populate(objectMap, "imagePullPolicy", c.ImagePullPolicy)
 	populate(objectMap, "livenessProbe", c.LivenessProbe)
 	populate(objectMap, "ports", c.Ports)
 	populate(objectMap, "readinessProbe", c.ReadinessProbe)
@@ -865,6 +870,9 @@ func (c *ContainerUpdate) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "image":
 				err = unpopulate(val, "Image", &c.Image)
+			delete(rawMsg, key)
+		case "imagePullPolicy":
+				err = unpopulate(val, "ImagePullPolicy", &c.ImagePullPolicy)
 			delete(rawMsg, key)
 		case "livenessProbe":
 			c.LivenessProbe, err = unmarshalHealthProbePropertiesClassification(val)
