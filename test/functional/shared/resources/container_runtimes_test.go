@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+	"github.com/stretchr/testify/require"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -83,6 +84,8 @@ func Test_Container_YAMLManifest(t *testing.T) {
 				if err == nil {
 					t.Logf("Config map: %v", cm)
 				}
+
+				require.True(t, false)
 
 			},
 		},
