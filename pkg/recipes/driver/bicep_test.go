@@ -437,14 +437,14 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	recipe := recipes.ResourceMetadata{
 		Name:          "redis-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.link/mongoDatabases/test-mongo-recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/mongoDatabases/test-mongo-recipe",
 		Parameters: map[string]any{
 			"documentdbName": "documentName",
 			"location":       "eastus",
@@ -476,14 +476,14 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/test-non-existent-recipe",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	recipe := recipes.ResourceMetadata{
 		Name:          "redis-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.link/mongoDatabases/test-mongo-recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/mongoDatabases/test-mongo-recipe",
 		Parameters: map[string]any{
 			"documentdbName": "documentName",
 			"location":       "eastus",

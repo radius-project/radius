@@ -64,7 +64,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			EnvironmentID: envDataModel.ID,
 			Parameters:    nil,
 			ResourceID:    envDataModel.ID,
-			ResourceType:  "Applications.Link/mongoDatabases",
+			ResourceType:  "Applications.Datastores/mongoDatabases",
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -112,7 +112,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			EnvironmentID: envDataModel.ID,
 			Parameters:    nil,
 			ResourceID:    envDataModel.ID,
-			ResourceType:  "Applications.Link/mongoDatabases",
+			ResourceType:  "Applications.Datastores/mongoDatabases",
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -238,7 +238,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			EnvironmentID: envDataModel.ID,
 			Parameters:    nil,
 			ResourceID:    envDataModel.ID,
-			ResourceType:  "Applications.Link/mongoDatabases",
+			ResourceType:  "Applications.Datastores/mongoDatabases",
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
 		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(nil, engineErr)
