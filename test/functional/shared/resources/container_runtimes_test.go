@@ -17,12 +17,15 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_Container_YAMLManifest(t *testing.T) {
@@ -52,6 +55,35 @@ func Test_Container_YAMLManifest(t *testing.T) {
 						validation.NewK8sPodForResource(name, "ctnr-manifest"),
 					},
 				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
+				if err == nil {
+					t.Logf("Deployment: %v", deploy)
+				}
+
+				srv, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
+				if err == nil {
+					t.Logf("Service: %v", srv)
+				}
+
+				sa, err := test.Options.K8sClient.CoreV1().ServiceAccounts(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
+				if err == nil {
+					t.Logf("Service account: %v", sa)
+				}
+
+				for _, name := range []string{"ctnr-manifest-secret0", "ctnr-manifest-secret1"} {
+					secret, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
+					if err == nil {
+						t.Logf("Secret: %v", secret)
+					}
+				}
+
+				cm, err := test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "ctnr-manifest-config", metav1.GetOptions{})
+				if err == nil {
+					t.Logf("Config map: %v", cm)
+				}
+
 			},
 		},
 	})

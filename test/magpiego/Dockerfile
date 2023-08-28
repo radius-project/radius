@@ -1,6 +1,6 @@
 # Issues on M1 mac: https://github.com/docker/for-mac/issues/5831
 # it is a multistage docker creation for small magpie image
-FROM amd64/golang:1.20-alpine
+FROM amd64/golang:1.21-alpine
 WORKDIR /usr/src/tmpapp
 
 # Download necessary Go modules

@@ -279,7 +279,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		for _, resource := range resources {
-			objMeta := resource.(metav1.ObjectMetaAccessor).GetObjectMeta().(*metav1.ObjectMeta)
+			meta := resource.(metav1.ObjectMetaAccessor)
+			objMeta := meta.GetObjectMeta().(*metav1.ObjectMeta)
+			objMeta.Namespace = options.Environment.Namespace
 			o := rpv1.NewKubernetesOutputResource(rpv1.LocalIDScrapedSecret, resource, *objMeta)
 			outputResources = append(outputResources, o)
 		}

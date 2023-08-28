@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/project-radius/radius/test/magpiego/bindings"
@@ -15,6 +17,7 @@ var server *http.Server
 const (
 	backendURI = "/backend"
 	healthURI  = "/healthz"
+	envURI     = "/envvars"
 	port       = "3000"
 )
 
@@ -73,6 +76,7 @@ func setupServeMux() chi.Router {
 	router := chi.NewRouter()
 	router.Get(backendURI, backendHandler)
 	router.Get(healthURI, statusHandler)
+	router.Get(envURI, envVarsHandler)
 	return router
 }
 
@@ -111,6 +115,23 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 		log.Println("The readiness check failed")
 		writeResponse(res, 500, b)
 	}
+}
+
+func envVarsHandler(res http.ResponseWriter, req *http.Request) {
+	envVars := map[string]string{}
+	for _, envVar := range os.Environ() {
+		env := strings.Split(envVar, "=")
+		envVars[env[0]] = env[1]
+	}
+
+	body, err := json.Marshal(envVars)
+	if err != nil {
+		writeResponse(res, 500, []byte("error marshaling env vars to json"))
+		return
+	}
+
+	log.Printf("/envvars call responded with %d for request - %+v", http.StatusOK, req)
+	writeResponse(res, 200, body)
 }
 
 func backendHandler(res http.ResponseWriter, req *http.Request) {
