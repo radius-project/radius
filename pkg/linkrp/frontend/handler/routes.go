@@ -260,7 +260,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	pubsubPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/pubsubbrokers", validator)
 	pubsubResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers", validator)
-	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{daprPubSubBrokerName}", validator)
+	pubsubResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/pubsubbrokers/{pubSubBrokerName}", validator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -357,7 +357,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	secretStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/secretstores", validator)
 	secretStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores", validator)
-	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{daprSecretStoreName}", validator)
+	secretStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/secretstores/{secretStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
@@ -454,7 +454,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 
 	stateStorePlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.dapr/statestores", validator)
 	stateStoreResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores", validator)
-	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{daprStateStoreName}", validator)
+	stateStoreResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.dapr/statestores/{stateStoreName}", validator)
 
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{

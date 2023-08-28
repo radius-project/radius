@@ -123,7 +123,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		Metadata:             daprSecretStore.Properties.Metadata,
 		ComponentName:        to.Ptr(daprSecretStore.Properties.ComponentName),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
 		},
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {

@@ -454,4 +454,3 @@ func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
 		Transport: transport,
 	}
 }
-

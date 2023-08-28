@@ -61,6 +61,21 @@ model ContainerProperties {
   @doc("Extensions spec of the resource")
   @extension("x-ms-identifiers", [])
   extensions?: Extension[];
+
+  @doc("Specifies Runtime-specific functionality")
+  runtimes?: RuntimesProperties;
+}
+
+@doc("The properties for runtime configuration")
+model RuntimesProperties {
+  @doc("The runtime configuration properties for Kubernetes")
+  kubernetes?: KubernetesRuntimeProperties;
+}
+
+@doc("The runtime configuration properties for Kubernetes")
+model KubernetesRuntimeProperties {
+  @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
+  base?: string;
 }
 
 @doc("Specifies a listening port for the container")
@@ -134,7 +149,7 @@ model ExecHealthProbeProperties extends HealthProbeProperties {
 @doc("Specifies a volume for a container")
 model Volume {
   @doc("The path where the volume is mounted")
-  mountPath: string;
+  mountPath?: string;
 }
 
 @doc("Specifies an ephemeral volume for a container")

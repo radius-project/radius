@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Core Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST API for Applications.Core",
+    "description": "REST APIs for Applications.Core",
     "x-typespec-generated": [
       {
         "emitter": "@azure-tools/typespec-autorest"
@@ -456,6 +456,9 @@
         "x-ms-examples": {
           "Create or update an container resource": {
             "$ref": "./examples/Containers_CreateOrUpdate.json"
+          },
+          "Create or update an container resource with base manifest": {
+            "$ref": "./examples/Containers_CreateOrUpdate_BaseManifest.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2942,6 +2945,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "runtimes": {
+          "$ref": "#/definitions/RuntimesProperties",
+          "description": "Specifies Runtime-specific functionality"
         }
       },
       "required": [
@@ -3041,6 +3048,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "runtimes": {
+          "$ref": "#/definitions/RuntimesProperties",
+          "description": "Specifies Runtime-specific functionality"
         }
       }
     },
@@ -3078,7 +3089,7 @@
           "type": "object",
           "description": "container volumes",
           "additionalProperties": {
-            "$ref": "#/definitions/VolumeUpdate"
+            "$ref": "#/definitions/Volume"
           }
         },
         "command": {
@@ -3346,22 +3357,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/Volume"
-        }
-      ],
-      "x-ms-discriminator-value": "ephemeral"
-    },
-    "EphemeralVolumeUpdate": {
-      "type": "object",
-      "description": "Specifies an ephemeral volume for a container",
-      "properties": {
-        "managedStore": {
-          "$ref": "#/definitions/ManagedStore",
-          "description": "Backing store for the ephemeral volume"
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/VolumeUpdate"
         }
       ],
       "x-ms-discriminator-value": "ephemeral"
@@ -4122,10 +4117,6 @@
           }
         }
       },
-      "required": [
-        "annotations",
-        "labels"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/Extension"
@@ -4151,6 +4142,16 @@
         }
       ],
       "x-ms-discriminator-value": "kubernetesNamespace"
+    },
+    "KubernetesRuntimeProperties": {
+      "type": "object",
+      "description": "The runtime configuration properties for Kubernetes",
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps."
+        }
+      }
     },
     "ManagedStore": {
       "type": "string",
@@ -4233,26 +4234,6 @@
       "allOf": [
         {
           "$ref": "#/definitions/Volume"
-        }
-      ],
-      "x-ms-discriminator-value": "persistent"
-    },
-    "PersistentVolumeUpdate": {
-      "type": "object",
-      "description": "Specifies a persistent volume for a container",
-      "properties": {
-        "permission": {
-          "$ref": "#/definitions/VolumePermission",
-          "description": "Container read/write access to the volume"
-        },
-        "source": {
-          "type": "string",
-          "description": "The source of the volume"
-        }
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/VolumeUpdate"
         }
       ],
       "x-ms-discriminator-value": "persistent"
@@ -4412,7 +4393,7 @@
     },
     "Recipe": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -4471,7 +4452,6 @@
       "required": [
         "templateKind",
         "templatePath",
-        "templateVersion",
         "parameters"
       ]
     },
@@ -4524,7 +4504,7 @@
     },
     "RecipeUpdate": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -4576,6 +4556,16 @@
             "$ref": "#/definitions/OutputResource"
           },
           "x-ms-identifiers": []
+        }
+      }
+    },
+    "RuntimesProperties": {
+      "type": "object",
+      "description": "The properties for runtime configuration",
+      "properties": {
+        "kubernetes": {
+          "$ref": "#/definitions/KubernetesRuntimeProperties",
+          "description": "The runtime configuration properties for Kubernetes"
         }
       }
     },
@@ -4856,9 +4846,6 @@
           "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
         }
       },
-      "required": [
-        "templateVersion"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/RecipeProperties"
@@ -4956,8 +4943,7 @@
       },
       "discriminator": "kind",
       "required": [
-        "kind",
-        "mountPath"
+        "kind"
       ]
     },
     "VolumePermission": {
@@ -5118,24 +5104,6 @@
           }
         ]
       }
-    },
-    "VolumeUpdate": {
-      "type": "object",
-      "description": "Specifies a volume for a container",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Discriminator property for Volume."
-        },
-        "mountPath": {
-          "type": "string",
-          "description": "The path where the volume is mounted"
-        }
-      },
-      "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
     }
   },
   "parameters": {

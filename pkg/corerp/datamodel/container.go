@@ -75,6 +75,19 @@ type ContainerProperties struct {
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
 	Identity    *rpv1.IdentitySettings          `json:"identity,omitempty"`
+	Runtimes    *RuntimeProperties              `json:"runtimes,omitempty"`
+}
+
+// KubernetesRuntime represents the Kubernetes runtime configuration.
+type KubernetesRuntime struct {
+	// Base represents the Kubernetes resource definition in the serialized YAML format
+	Base string `json:"base,omitempty"`
+}
+
+// RuntimeProperties represents the runtime configuration for the platform-specific functionalities.
+type RuntimeProperties struct {
+	// Kubernetes represents the Kubernetes runtime configuration.
+	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

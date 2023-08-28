@@ -131,6 +131,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
+			Runtimes:   toRuntimeProperties(src.Properties.Runtimes),
 		},
 	}
 
@@ -255,6 +256,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		},
 		Extensions: extensions,
 		Identity:   identity,
+		Runtimes:   fromRuntimeProperties(c.Properties.Runtimes),
 	}
 
 	return nil
@@ -466,6 +468,32 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 		m = ManagedStoreDisk
 	}
 	return &m
+}
+
+func toRuntimeProperties(runtime *RuntimesProperties) *datamodel.RuntimeProperties {
+	if runtime == nil {
+		return nil
+	}
+	r := &datamodel.RuntimeProperties{}
+	if runtime.Kubernetes != nil {
+		r.Kubernetes = &datamodel.KubernetesRuntime{
+			Base: to.String(runtime.Kubernetes.Base),
+		}
+	}
+	return r
+}
+
+func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) *RuntimesProperties {
+	if runtime == nil {
+		return nil
+	}
+	r := &RuntimesProperties{}
+	if runtime.Kubernetes != nil {
+		r.Kubernetes = &KubernetesRuntimeProperties{
+			Base: to.Ptr(runtime.Kubernetes.Base),
+		}
+	}
+	return r
 }
 
 func toPermissionDataModel(rbac *VolumePermission) datamodel.VolumePermission {
