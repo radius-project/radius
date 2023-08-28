@@ -106,7 +106,10 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
 		showRecipeName := "redistesttf"
-		moduleServer := functional.GetTerraformRecipeModuleServerURL()
+		moduleServer := os.Getenv("TF_RECIPE_MODULE_SERVER_URL")
+		if moduleServer == "" {
+			moduleServer = "http://localhost:8999"
+		}
 		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
 		showRecipeLinkType := "Applications.Link/redisCaches"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeLinkType)

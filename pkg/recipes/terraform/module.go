@@ -78,7 +78,16 @@ func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, er
 
 	// Extract the list of parameters.
 	for variable, value := range mod.Variables {
-		result.Parameters[variable] = value
+		tfVar := map[string]any{
+			"Name":        value.Name,
+			"Type":        value.Type,
+			"Description": value.Description,
+			"Default":     value.Default,
+			"Required":    value.Required,
+			"Sensitive":   value.Sensitive,
+			"Pos":         value.Pos,
+		}
+		result.Parameters[variable] = tfVar
 	}
 
 	return result, nil
