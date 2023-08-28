@@ -297,6 +297,9 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
+	// Specifies Runtime-specific functionality
+	Runtimes *RuntimesProperties
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
@@ -365,6 +368,9 @@ type ContainerResourceUpdateProperties struct {
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettingsUpdate
+
+	// Specifies Runtime-specific functionality
+	Runtimes *RuntimesProperties
 }
 
 // ContainerUpdate - Definition of a container
@@ -1118,6 +1124,13 @@ func (k *KubernetesNamespaceExtension) GetExtension() *Extension {
 	}
 }
 
+// KubernetesRuntimeProperties - The runtime configuration properties for Kubernetes
+type KubernetesRuntimeProperties struct {
+	// The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount,
+// Secrets, and ConfigMaps.
+	Base *string
+}
+
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
 	// REQUIRED; Discriminator property for Extension.
@@ -1357,6 +1370,12 @@ type ResourceStatus struct {
 
 	// Properties of an output resource
 	OutputResources []*OutputResource
+}
+
+// RuntimesProperties - The properties for runtime configuration
+type RuntimesProperties struct {
+	// The runtime configuration properties for Kubernetes
+	Kubernetes *KubernetesRuntimeProperties
 }
 
 // SecretObjectProperties - Represents secret object properties

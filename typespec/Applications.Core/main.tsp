@@ -33,7 +33,7 @@ using Azure.ResourceManager;
 @service({
   title: "Applications.Core Management APIs",
 })
-@doc("REST API for Applications.Core")
+@doc("REST APIs for Applications.Core")
 @versioned(Versions)
 namespace Applications.Core;
 

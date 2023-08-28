@@ -206,6 +206,7 @@
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings): IdentitySettings is the external identity setting.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **runtimes**: [RuntimesProperties](#runtimesproperties): The properties for runtime configuration
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## ContainerPropertiesConnections
@@ -306,6 +307,14 @@
 * **permission**: 'read' | 'write': The persistent volume permission
 * **source**: string (Required): The source of the volume
 
+
+## RuntimesProperties
+### Properties
+* **kubernetes**: [KubernetesRuntimeProperties](#kubernetesruntimeproperties): The runtime configuration properties for Kubernetes
+
+## KubernetesRuntimeProperties
+### Properties
+* **base**: string: The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.
 
 ## TrackedResourceTags
 ### Properties
