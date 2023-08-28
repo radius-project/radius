@@ -533,17 +533,14 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 }
 
 func matchesActualLabels(expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
-	log.Print("matching labels")
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {
-		log.Print("###########")
 		if expectedResource.SkipLabelValidation && expectedResource.Kind != "Secret" {
 			continue
 		}
 		resourceExists := false
 		for idx, actualResource := range actualResources {
-			log.Print("***********")
 			if expectedResource.SkipLabelValidation {
 				if actualResource.GetName() == expectedResource.ResourceName {
 					resourceExists = true
@@ -566,7 +563,6 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 	for _, remainingResource := range remaining {
 		log.Printf("Failed to validate resource of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
 	}
-	log.Printf("returning matching labels %d", len(remaining))
 	return len(remaining) == 0
 }
 
