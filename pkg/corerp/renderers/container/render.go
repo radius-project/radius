@@ -160,6 +160,9 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 
 func populateDefaultResources(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) {
 	name := kubernetes.NormalizeResourceName(r.Name)
+
+	// If the container has a base manifest, get the deployment resource from the base manifest.
+	// Otherwise, populate default resources.
 	resources := manifest.Get(kubeutil.DeploymentV1)
 	defaultDeployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
@@ -189,6 +192,8 @@ func populateDefaultResources(manifest kubeutil.ObjectManifest, appName string, 
 	defaultDeployment.ObjectMeta = getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
 	manifest[kubeutil.DeploymentV1] = []runtime.Object{defaultDeployment}
 
+	// If the service has a base manifest, get the service resource from the base manifest.
+	// Otherwise, populate default resources.
 	resources = manifest.Get(kubeutil.ServiceV1)
 	defaultService := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -209,6 +214,8 @@ func populateDefaultResources(manifest kubeutil.ObjectManifest, appName string, 
 	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
 	manifest[kubeutil.ServiceV1] = []runtime.Object{defaultService}
 
+	// If the service account has a base manifest, get the service account resource from the base manifest.
+	// Otherwise, populate default resources.
 	resources = manifest.Get(kubeutil.ServiceAccountV1)
 	defaultAccount := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
@@ -490,7 +497,7 @@ func (r Renderer) makeDeployment(
 	}
 
 	container.Image = properties.Container.Image
-	container.Ports = ports
+	container.Ports = append(container.Ports, ports...)
 	container.Command = properties.Container.Command
 	container.Args = properties.Container.Args
 	container.WorkingDir = properties.Container.WorkingDir
