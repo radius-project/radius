@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Core Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST API for Applications.Core",
+    "description": "REST APIs for Applications.Core",
     "x-typespec-generated": [
       {
         "emitter": "@azure-tools/typespec-autorest"
@@ -456,6 +456,9 @@
         "x-ms-examples": {
           "Create or update an container resource": {
             "$ref": "./examples/Containers_CreateOrUpdate.json"
+          },
+          "Create or update an container resource with base manifest": {
+            "$ref": "./examples/Containers_CreateOrUpdate_BaseManifest.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2787,6 +2790,10 @@
           "type": "string",
           "description": "The registry and image to download and run in your container"
         },
+        "imagePullPolicy": {
+          "$ref": "#/definitions/ImagePullPolicy",
+          "description": "The pull policy for the container image"
+        },
         "env": {
           "type": "object",
           "description": "environment",
@@ -2942,6 +2949,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "runtimes": {
+          "$ref": "#/definitions/RuntimesProperties",
+          "description": "Specifies Runtime-specific functionality"
         }
       },
       "required": [
@@ -3041,6 +3052,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "runtimes": {
+          "$ref": "#/definitions/RuntimesProperties",
+          "description": "Specifies Runtime-specific functionality"
         }
       }
     },
@@ -3051,6 +3066,10 @@
         "image": {
           "type": "string",
           "description": "The registry and image to download and run in your container"
+        },
+        "imagePullPolicy": {
+          "$ref": "#/definitions/ImagePullPolicy",
+          "description": "The pull policy for the container image"
         },
         "env": {
           "type": "object",
@@ -4031,6 +4050,36 @@
         }
       }
     },
+    "ImagePullPolicy": {
+      "type": "string",
+      "description": "The image pull policy for the container",
+      "enum": [
+        "Always",
+        "IfNotPresent",
+        "Never"
+      ],
+      "x-ms-enum": {
+        "name": "ImagePullPolicy",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Always",
+            "value": "Always",
+            "description": "Always"
+          },
+          {
+            "name": "IfNotPresent",
+            "value": "IfNotPresent",
+            "description": "IfNotPresent"
+          },
+          {
+            "name": "Never",
+            "value": "Never",
+            "description": "Never"
+          }
+        ]
+      }
+    },
     "KeyObjectProperties": {
       "type": "object",
       "description": "Represents key object properties",
@@ -4131,6 +4180,16 @@
         }
       ],
       "x-ms-discriminator-value": "kubernetesNamespace"
+    },
+    "KubernetesRuntimeProperties": {
+      "type": "object",
+      "description": "The runtime configuration properties for Kubernetes",
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps."
+        }
+      }
     },
     "ManagedStore": {
       "type": "string",
@@ -4372,7 +4431,7 @@
     },
     "Recipe": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -4483,7 +4542,7 @@
     },
     "RecipeUpdate": {
       "type": "object",
-      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
       "properties": {
         "name": {
           "type": "string",
@@ -4535,6 +4594,16 @@
             "$ref": "#/definitions/OutputResource"
           },
           "x-ms-identifiers": []
+        }
+      }
+    },
+    "RuntimesProperties": {
+      "type": "object",
+      "description": "The properties for runtime configuration",
+      "properties": {
+        "kubernetes": {
+          "$ref": "#/definitions/KubernetesRuntimeProperties",
+          "description": "The runtime configuration properties for Kubernetes"
         }
       }
     },

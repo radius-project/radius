@@ -206,6 +206,7 @@
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings): IdentitySettings is the external identity setting.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **runtimes**: [RuntimesProperties](#runtimesproperties): The properties for runtime configuration
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## ContainerPropertiesConnections
@@ -230,6 +231,7 @@
 * **command**: string[]: Entrypoint array. Overrides the container image's ENTRYPOINT
 * **env**: [ContainerEnv](#containerenv): environment
 * **image**: string (Required): The registry and image to download and run in your container
+* **imagePullPolicy**: 'Always' | 'IfNotPresent' | 'Never': The image pull policy for the container
 * **livenessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
 * **ports**: [ContainerPorts](#containerports): container ports
 * **readinessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
@@ -307,6 +309,14 @@
 * **source**: string (Required): The source of the volume
 
 
+## RuntimesProperties
+### Properties
+* **kubernetes**: [KubernetesRuntimeProperties](#kubernetesruntimeproperties): The runtime configuration properties for Kubernetes
+
+## KubernetesRuntimeProperties
+### Properties
+* **base**: string: The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.
+
 ## TrackedResourceTags
 ### Properties
 ### Additional Properties
@@ -369,7 +379,7 @@
 * **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **secrets**: any: Any object
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.

@@ -223,6 +223,9 @@ type Container struct {
 	// environment
 	Env map[string]*string
 
+	// The pull policy for the container image
+	ImagePullPolicy *ImagePullPolicy
+
 	// liveness probe properties
 	LivenessProbe HealthProbePropertiesClassification
 
@@ -297,6 +300,9 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
+	// Specifies Runtime-specific functionality
+	Runtimes *RuntimesProperties
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
@@ -365,6 +371,9 @@ type ContainerResourceUpdateProperties struct {
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettingsUpdate
+
+	// Specifies Runtime-specific functionality
+	Runtimes *RuntimesProperties
 }
 
 // ContainerUpdate - Definition of a container
@@ -380,6 +389,9 @@ type ContainerUpdate struct {
 
 	// The registry and image to download and run in your container
 	Image *string
+
+	// The pull policy for the container image
+	ImagePullPolicy *ImagePullPolicy
 
 	// liveness probe properties
 	LivenessProbe HealthProbePropertiesClassification
@@ -1118,6 +1130,13 @@ func (k *KubernetesNamespaceExtension) GetExtension() *Extension {
 	}
 }
 
+// KubernetesRuntimeProperties - The runtime configuration properties for Kubernetes
+type KubernetesRuntimeProperties struct {
+	// The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount,
+// Secrets, and ConfigMaps.
+	Base *string
+}
+
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
 	// REQUIRED; Discriminator property for Extension.
@@ -1262,7 +1281,7 @@ type ProvidersUpdate struct {
 	Azure *ProvidersAzureUpdate
 }
 
-// Recipe - The recipe used to automatically deploy underlying infrastructure for a link
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string
@@ -1326,7 +1345,7 @@ type RecipePropertiesUpdate struct {
 // GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type RecipePropertiesUpdate.
 func (r *RecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate { return r }
 
-// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a link
+// RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type RecipeUpdate struct {
 	// The name of the recipe within the environment to use
 	Name *string
@@ -1357,6 +1376,12 @@ type ResourceStatus struct {
 
 	// Properties of an output resource
 	OutputResources []*OutputResource
+}
+
+// RuntimesProperties - The properties for runtime configuration
+type RuntimesProperties struct {
+	// The runtime configuration properties for Kubernetes
+	Kubernetes *KubernetesRuntimeProperties
 }
 
 // SecretObjectProperties - Represents secret object properties

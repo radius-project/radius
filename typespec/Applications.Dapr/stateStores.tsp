@@ -35,7 +35,7 @@ using OpenAPI;
 
 namespace Applications.Dapr;
 
-@doc("StateStore portable resource")
+@doc("Dapr StateStore portable resource")
 model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
   @doc("StateStore name")
   @key("stateStoreName")
@@ -44,7 +44,7 @@ model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
   name: ResourceNameString;
 }
 
-@doc("StateStore portable resource properties")
+@doc("Dapr StateStore portable resource properties")
 model DaprStateStoreProperties {
   ...EnvironmentScopedResource;
   ...DaprResourceProperties;
