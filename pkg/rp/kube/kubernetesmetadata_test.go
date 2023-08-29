@@ -17,7 +17,6 @@ limitations under the License.
 package kube
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -80,7 +79,7 @@ func Test_Render_WithEnvironment_KubernetesMetadata(t *testing.T) {
 	}
 
 	// Testing for cascading, overriding, and reserved keys
-	metaMap, specMap := input.Merge(context.Background())
+	metaMap, specMap := input.Merge()
 
 	// Verify
 	require.Equal(t, metaMap, expectedMetadataMap)
