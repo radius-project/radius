@@ -45,6 +45,11 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
+var (
+	secretNamespace = "radius-system"
+	secretPrefix    = "tfstate-default-"
+)
+
 // Test_TerraformRecipe_Redis covers the following terraform recipe scenario:
 //
 // - Create an extender resource using a Terraform recipe that deploys Redis on Kubernetes.
@@ -55,8 +60,10 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 	appName := "corerp-resources-terraform-redis-app"
 	envName := "corerp-resources-terraform-redis-env"
 	redisCacheName := "tf-redis-cache"
-	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
+
+	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, envName, appName)
 	require.NoError(t, err)
+
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName, "redisCacheName="+redisCacheName),
@@ -81,19 +88,30 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appName: {
-						validation.NewK8sServiceForResource(appName, redisCacheName).ValidateLabels(false),
+						validation.NewK8sServiceForResource(appName, redisCacheName).
+							ValidateLabels(false),
 					},
-					"radius-system": {
-						validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
+					secretNamespace: {
+						validation.NewK8sSecretForResourceWithResourceName(secretPrefix + secretSuffix).
+							ValidateLabels(false),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-				testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
+					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, secretNamespace, secret.Namespace)
+				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
 			},
 		},
 	})
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+	}
+
 	test.Test(t)
 }
 
@@ -101,8 +119,10 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-context.bicep"
 	name := "corerp-resources-terraform-context"
 	appNamespace := "corerp-resources-terraform-context-app"
-	secret, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, name, name)
+
+	secretSuffix, err := getSecretSuffix("/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/"+name, name, name)
 	require.NoError(t, err)
+
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL()),
@@ -123,8 +143,9 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sSecretForResource(name, name),
 					},
-					"radius-system": {
-						validation.NewK8sSecretForResourceWithResourceName("tfstate-default-" + secret).ValidateLabels(false),
+					secretNamespace: {
+						validation.NewK8sSecretForResourceWithResourceName(secretPrefix + secretSuffix).
+							ValidateLabels(false),
 					},
 				},
 			},
@@ -165,10 +186,21 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					replaced := strings.ReplaceAll(string(decoded), "resourcegroups/"+rgName, "resourcegroups/radiusGroup")
 					require.Equalf(t, tc.expected, replaced, "secret data mismatch, key: %s", tc.key)
 				}
+
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
+					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, secretNamespace, secret.Namespace)
+				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
 			},
-			SkipResourceDeletion: true,
 		},
 	})
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+		testSecretDeletion(t, ctx, test, name, name, resourceID)
+	}
+
 	test.Test(t)
 }
 
@@ -202,10 +234,23 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 			SkipObjectValidation: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
 				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-				testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+				secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
+				require.NoError(t, err)
+
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
+					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, secretNamespace, secret.Namespace)
+				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
 			},
 		},
 	})
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+	}
+
 	test.Test(t)
 }
 
@@ -213,8 +258,8 @@ func testSecretDeletion(t *testing.T, ctx context.Context, test shared.RPTest, a
 	secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
 	require.NoError(t, err)
 
-	secret, err := test.Options.K8sClient.CoreV1().Secrets(appName).
-		Get(ctx, "tfstate-default-"+secretSuffix, metav1.GetOptions{})
+	secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
+		Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
 	require.Error(t, err)
 	require.True(t, apierrors.IsNotFound(err))
 	require.Equal(t, secret, &corev1.Secret{})
