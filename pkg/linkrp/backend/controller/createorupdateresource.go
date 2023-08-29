@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -29,7 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/recipes/engine"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update Applications.Link resources.
@@ -151,18 +149,4 @@ func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Cont
 	}
 
 	return &config.Runtime, nil
-}
-
-func (c *CreateOrUpdateResource[P, T]) garbageCollectResources(ctx context.Context, diff []rpv1.OutputResource) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	for _, resource := range diff {
-		logger.Info(fmt.Sprintf("Deleting output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
-		err := c.client.Delete(ctx, resource.ID.String())
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", resource.ID), ucplog.LogFieldTargetResourceID, resource.ID)
-	}
-
-	return nil
 }
