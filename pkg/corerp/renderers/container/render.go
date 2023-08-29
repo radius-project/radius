@@ -376,8 +376,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		deploymentResource.Dependencies = append(deploymentResource.Dependencies, localID)
-
 		for _, resource := range resources {
 			meta := resource.(metav1.ObjectMetaAccessor)
 			objMeta := meta.GetObjectMeta().(*metav1.ObjectMeta)
@@ -388,6 +386,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			fmt.Printf("#### reminaing objects: %s", b)
 
 			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
+			deploymentResource.Dependencies = append(deploymentResource.Dependencies, localID)
 			outputResources = append(outputResources, o)
 		}
 	}
