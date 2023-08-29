@@ -27,7 +27,7 @@ import (
 
 type Engine interface {
 	// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
-	Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error)
+	Execute(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error
 }

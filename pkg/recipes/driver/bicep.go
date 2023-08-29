@@ -138,7 +138,11 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
-
+	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+	err = d.deleteGCOutputResources(ctx, diff)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
+	}
 	return recipeResponse, nil
 }
 
@@ -275,4 +279,37 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 	}
 
 	return recipeResponse, nil
+}
+
+func (d *bicepDriver) getGCOutputResources(after []string, before []string) []string {
+	diff := []string{}
+	for _, beforeResource := range before {
+		found := false
+		for _, afterResource := range after {
+			if beforeResource == afterResource {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			diff = append(diff, beforeResource)
+		}
+	}
+
+	return diff
+}
+
+func (d *bicepDriver) deleteGCOutputResources(ctx context.Context, diff []string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, resource := range diff {
+		logger.Info(fmt.Sprintf("Deleting output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
+		err := d.ResourceClient.Delete(ctx, resource)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
+	}
+
+	return nil
 }

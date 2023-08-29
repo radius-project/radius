@@ -428,3 +428,37 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
 }
+
+func Test_GetGCOutputResources(t *testing.T) {
+	d := &bicepDriver{}
+	before := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	after := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
+	}
+	exp := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	res := d.getGCOutputResources(after, before)
+	require.Equal(t, exp, res)
+}
+
+func Test_DeleteGCOutputResources(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	gcOutputResources := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	for _, resource := range gcOutputResources {
+		client.EXPECT().
+			Delete(ctx, resource).
+			Return(nil).
+			Times(1)
+	}
+	err := driver.deleteGCOutputResources(ctx, gcOutputResources)
+	require.NoError(t, err)
+}

@@ -72,7 +72,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	previousOutputResources := c.copyOutputResources(data)
 
 	// Now we're ready to process recipes (if needed).
-	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data)
+	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
 			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
@@ -93,11 +93,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	}
 
 	// Now we need to clean up any obsolete output resources.
-	diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
-	err = c.garbageCollectResources(ctx, diff)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	// diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
+	// err = c.garbageCollectResources(ctx, diff)
+	// if err != nil {
+	// 	return ctrl.Result{}, err
+	// }
 
 	update := &store.Object{
 		Metadata: store.Metadata{
@@ -113,13 +113,15 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	return ctrl.Result{}, err
 }
 
-func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []rpv1.OutputResource {
-	previousOutputResources := make([]rpv1.OutputResource, len(data.OutputResources()))
-	copy(previousOutputResources, data.OutputResources())
+func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []string {
+	previousOutputResources := []string{}
+	for _, outputResource := range data.OutputResources() {
+		previousOutputResources = append(previousOutputResources, outputResource.ID.String())
+	}
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P, prevState []string) (*recipes.RecipeOutput, error) {
 	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
 	if !supportsRecipes {
@@ -138,7 +140,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		ResourceID:    data.GetBaseResource().ID,
 	}
 
-	return c.engine.Execute(ctx, request)
+	return c.engine.Execute(ctx, request, prevState)
 }
 
 func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {

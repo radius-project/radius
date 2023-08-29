@@ -226,20 +226,6 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			processorErr,
 		},
 		{
-			"resourceclient-err",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
-			},
-			nil,
-			false,
-			nil,
-			nil,
-			nil,
-			errors.New("resource client failed"),
-			nil,
-			errors.New("resource client failed"),
-		},
-		{
 			"save-err",
 			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
 				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
@@ -341,16 +327,19 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					"p1": "v1",
 				},
 			}
+			prevState := []string{
+				oldOutputResourceResourceID,
+			}
 
 			if stillPassing && tt.recipeErr != nil {
 				stillPassing = false
 				eng.EXPECT().
-					Execute(gomock.Any(), recipeMetadata).
+					Execute(gomock.Any(), recipeMetadata, prevState).
 					Return(&recipes.RecipeOutput{}, tt.recipeErr).
 					Times(1)
 			} else if stillPassing {
 				eng.EXPECT().
-					Execute(gomock.Any(), recipeMetadata).
+					Execute(gomock.Any(), recipeMetadata, prevState).
 					Return(&recipes.RecipeOutput{}, nil).
 					Times(1)
 			}
@@ -387,19 +376,6 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			// No mock for the processor...
 			if stillPassing && tt.processorErr != nil {
 				stillPassing = false
-			}
-
-			if stillPassing && tt.resourceClientErr != nil {
-				stillPassing = false
-				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID).
-					Return(tt.resourceClientErr).
-					Times(1)
-			} else if stillPassing {
-				client.EXPECT().
-					Delete(gomock.Any(), oldOutputResourceResourceID).
-					Return(nil).
-					Times(1)
 			}
 
 			if stillPassing && tt.saveErr != nil {
