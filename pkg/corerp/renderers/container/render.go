@@ -674,6 +674,7 @@ func (r Renderer) makeDeployment(
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
+		serviceAccountBase.ObjectMeta = getObjectMeta(serviceAccountBase.ObjectMeta, applicationName, resource.Name, resource.ResourceTypeName(), options)
 		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
 		outputResources = append(outputResources, *saAccount)
 

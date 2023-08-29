@@ -173,9 +173,9 @@ func SetWorkloadIdentityServiceAccount(base *corev1.ServiceAccount) *rpv1.Output
 		panic("base ServiceAccount is nil")
 	}
 
-	base.Labels[AzureWorkloadIdentityUseKey] = "true"
-	base.Annotations[azureWorkloadIdentityClientID] = "placeholder"
-	base.Annotations[azureWorkloadIdentityTenantID] = "placeholder"
+	base.ObjectMeta.Labels[AzureWorkloadIdentityUseKey] = "true"
+	base.ObjectMeta.Annotations[azureWorkloadIdentityClientID] = "placeholder"
+	base.ObjectMeta.Annotations[azureWorkloadIdentityTenantID] = "placeholder"
 
 	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, base, base.ObjectMeta)
 	or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
