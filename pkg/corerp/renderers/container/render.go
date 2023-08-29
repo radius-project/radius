@@ -19,6 +19,7 @@ package container
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -351,6 +352,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			return renderers.RendererOutput{}, err
 		}
 
+		s, _ := json.Marshal(serviceResource)
+		fmt.Printf("serviceresource : %s\n", string(s))
+
 		outputResources = append(outputResources, serviceResource)
 	}
 
@@ -676,6 +680,8 @@ func (r Renderer) makeDeployment(
 		// 3. Create Per-container service account.
 		serviceAccountBase.ObjectMeta = getObjectMeta(serviceAccountBase.ObjectMeta, applicationName, resource.Name, resource.ResourceTypeName(), options)
 		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
+		s, _ := json.Marshal(saAccount)
+		fmt.Printf("saAccount : %s\n", string(s))
 		outputResources = append(outputResources, *saAccount)
 
 		// This is required to enable workload identity.
@@ -771,6 +777,9 @@ func (r Renderer) makeDeployment(
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
 		deps = append(deps, rpv1.LocalIDSecret)
 	}
+
+	s, _ := json.Marshal(deployment)
+	fmt.Printf("serviceresource : %s\n", string(s))
 
 	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
 	deploymentOutput.CreateResource.Dependencies = deps
