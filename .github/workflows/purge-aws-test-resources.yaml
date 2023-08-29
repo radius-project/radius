@@ -17,6 +17,9 @@
 name: Purge AWS test resources
 on:
   workflow_dispatch:
+  schedule:
+    # Run at 12:00AM PST every day.
+    - cron: "0 7 * * 0-6"
 
 env:
   AWS_REGION: us-west-2
