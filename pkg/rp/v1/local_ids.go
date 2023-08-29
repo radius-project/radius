@@ -110,3 +110,14 @@ func GenerateLocalIDForRoleAssignment(id string, roleName string) string {
 	binary.BigEndian.PutUint32(hash[:], h.Sum32())
 	return base + base64.StdEncoding.EncodeToString(hash[:])
 }
+
+func NewLocalID(prefix string, name string) string {
+	// The technique here uses a stable hashing algorithm with 32 bits of entropy. These values
+	// only need to be unique within a *single* Radius resource.
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(name))
+
+	hash := [4]byte{}
+	binary.BigEndian.PutUint32(hash[:], h.Sum32())
+	return prefix + base64.StdEncoding.EncodeToString(hash[:])
+}

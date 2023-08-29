@@ -191,6 +191,30 @@ func populateDefaultResources(manifest kubeutil.ObjectManifest, appName string, 
 		defaultDeployment = resources[0].(*appsv1.Deployment)
 	}
 	defaultDeployment.ObjectMeta = getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	if defaultDeployment.Spec.Selector == nil {
+		defaultDeployment.Spec.Selector = &metav1.LabelSelector{}
+	}
+	podTemplate := &defaultDeployment.Spec.Template
+	if podTemplate.ObjectMeta.Labels == nil {
+		podTemplate.ObjectMeta.Labels = map[string]string{}
+	}
+	if podTemplate.ObjectMeta.Annotations == nil {
+		podTemplate.ObjectMeta.Annotations = map[string]string{}
+	}
+	if len(podTemplate.Spec.Containers) < 1 {
+		podTemplate.Spec.Containers = []corev1.Container{}
+	}
+
+	found := false
+	for _, container := range podTemplate.Spec.Containers {
+		if container.Name == name {
+			found = true
+			break
+		}
+	}
+	if !found {
+		podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, corev1.Container{Name: name})
+	}
 	manifest[kubeutil.DeploymentV1] = []runtime.Object{defaultDeployment}
 
 	// If the service has a base manifest, get the service resource from the base manifest.
@@ -365,13 +389,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Populate the remaining objects in base manifest.
 	for k, resources := range baseManifest {
-		localID := ""
+		localIDPrefix := ""
 
 		switch k {
 		case kubeutil.SecretV1:
-			localID = rpv1.LocalIDSecret
+			localIDPrefix = rpv1.LocalIDSecret
 		case kubeutil.ConfigMapV1:
-			localID = rpv1.LocalIDConfigMap
+			localIDPrefix = rpv1.LocalIDConfigMap
 		default:
 			continue
 		}
@@ -385,6 +409,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			b, _ := json.Marshal(resource)
 			fmt.Printf("#### reminaing objects: %s", b)
 
+			localID := rpv1.NewLocalID(localIDPrefix, objMeta.Name)
 			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
 			deploymentResource.Dependencies = append(deploymentResource.Dependencies, localID)
 			outputResources = append(outputResources, o)
@@ -477,6 +502,7 @@ func (r Renderer) makeDeployment(
 	for i, c := range podSpec.Containers {
 		if strings.EqualFold(c.Name, normalizedName) {
 			container = &podSpec.Containers[i]
+			break
 		}
 	}
 

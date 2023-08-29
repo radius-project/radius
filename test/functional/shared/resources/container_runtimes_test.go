@@ -24,7 +24,6 @@ import (
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
-	"github.com/stretchr/testify/require"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -84,8 +83,47 @@ func Test_Container_YAMLManifest(t *testing.T) {
 				if err == nil {
 					t.Logf("Config map: %+v", cm)
 				}
+			},
+		},
+	})
 
-				require.True(t, false)
+	test.Test(t)
+}
+
+func Test_Container_YAMLManifest_SideCar(t *testing.T) {
+	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
+	name := "corerp-resources-container-sidecar"
+	appNamespace := "corerp-resources-container-sidecar"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "ctnr-sidecar",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-sidecar"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-sidecar", metav1.GetOptions{})
+				if err == nil {
+					t.Logf("Deployment: %+v", deploy)
+				}
+
 			},
 		},
 	})
