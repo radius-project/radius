@@ -78,7 +78,7 @@ func MakeRoleAssignments(azResourceID string, roleNames []string) ([]rpv1.Output
 	outputResources := []rpv1.OutputResource{}
 	for _, roleName := range roleNames {
 		roleAssignment := rpv1.OutputResource{
-			LocalID: rpv1.GenerateLocalIDForRoleAssignment(azResourceID, roleName),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, azResourceID+roleName),
 			CreateResource: &rpv1.Resource{
 				Data: map[string]string{
 					handlers.RoleNameKey:         roleName,

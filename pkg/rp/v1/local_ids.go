@@ -82,6 +82,7 @@ const (
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
 	LocalIDFederatedIdentity            = "FederatedIdentity"
+	LocalIDRoleAssignmentPrefix         = "RoleAssignment-"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys         = "RoleAssignment-KVKeys"
@@ -89,28 +90,13 @@ const (
 	LocalIDKeyVaultSecret               = "KeyVaultSecret"
 )
 
-// GenerateLocalIDForRoleAssignment generates a unique string based on the input parameters id and roleName
-//
-//	using a stable hashing algorithm.
+// NewLocalID generates a unique string based on the input parameters id and roleName
+// using a stable hashing algorithm.
 //
 // Most LocalIDs are a 1:1 mapping with Radius resource.  This is a little tricky for role assignments
 // because we need to key them on the resource ID of the target resource X the role being assigned.
 // For example if the user switches their keyvault 'a' for a different instance 'b' we want to delete
 // the original role assignments and create new ones.
-func GenerateLocalIDForRoleAssignment(id string, roleName string) string {
-	base := "RoleAssignment-"
-
-	// The technique here uses a stable hashing algorithm with 32 bits of entropy. These values
-	// only need to be unique within a *single* Radius resource.
-	h := fnv.New32a()
-	_, _ = h.Write([]byte(id))
-	_, _ = h.Write([]byte(roleName))
-
-	hash := [4]byte{}
-	binary.BigEndian.PutUint32(hash[:], h.Sum32())
-	return base + base64.StdEncoding.EncodeToString(hash[:])
-}
-
 func NewLocalID(prefix string, name string) string {
 	// The technique here uses a stable hashing algorithm with 32 bits of entropy. These values
 	// only need to be unique within a *single* Radius resource.
