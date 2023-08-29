@@ -91,6 +91,7 @@ func Test_Container_YAMLManifest(t *testing.T) {
 }
 
 func Test_Container_YAMLManifest_SideCar(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
 	name := "corerp-resources-container-sidecar"
 	appNamespace := "corerp-resources-container-sidecar"

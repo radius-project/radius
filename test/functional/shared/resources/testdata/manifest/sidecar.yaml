@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ctnr-sidecar
+  labels:
+    app: ctnr-sidecar
+  annotations:
+    source: base-manifest-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ctnr-sidecar
+  template:
+    metadata:
+      labels:
+        app: ctnr-sidecar
+    spec:
+      containers:
+        - name: log-collector
+          image: fluent/fluent-bit:latest
