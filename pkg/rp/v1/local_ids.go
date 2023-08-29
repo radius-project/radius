@@ -90,17 +90,19 @@ const (
 	LocalIDKeyVaultSecret               = "KeyVaultSecret"
 )
 
-// NewLocalID generates a unique string based on the input parameter name using a stable hashing algorithm.
+// NewLocalID generates a unique string based on the input parameter ids using a stable hashing algorithm.
 //
 // Most LocalIDs are a 1:1 mapping with Radius resource.  This is a little tricky for role assignments
 // because we need to key them on the resource ID of the target resource X the role being assigned.
 // For example if the user switches their keyvault 'a' for a different instance 'b' we want to delete
 // the original role assignments and create new ones.
-func NewLocalID(prefix string, name string) string {
+func NewLocalID(prefix string, ids ...string) string {
 	// The technique here uses a stable hashing algorithm with 32 bits of entropy. These values
 	// only need to be unique within a *single* Radius resource.
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(name))
+	for _, id := range ids {
+		_, _ = h.Write([]byte(id))
+	}
 
 	hash := [4]byte{}
 	binary.BigEndian.PutUint32(hash[:], h.Sum32())

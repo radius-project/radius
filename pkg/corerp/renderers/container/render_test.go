@@ -767,7 +767,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	require.Equal(t, 2, len(matches))
 	expected := []rpv1.OutputResource{
 		{
-			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String()+"TestRole1"),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
@@ -781,7 +781,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 		{
-			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String()+"TestRole2"),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
@@ -895,7 +895,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	expected := []rpv1.OutputResource{
 		{
 
-			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, testARMID+expectedRole),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, testARMID, expectedRole),
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,

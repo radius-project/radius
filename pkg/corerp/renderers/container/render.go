@@ -1056,7 +1056,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 
 	outputResources := []rpv1.OutputResource{}
 	for _, roleName := range roleNames {
-		localID := rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, armResourceIdentifier+roleName)
+		localID := rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, armResourceIdentifier, roleName)
 		roleAssignment := rpv1.OutputResource{
 
 			LocalID: localID,
