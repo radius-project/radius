@@ -338,7 +338,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
-		serviceResource, err := r.makeService(resource, options, ctx, containerPorts, baseManifest)
+		basesrv := baseManifest.Get(kubeutil.ServiceV1)[0].(*corev1.Service)
+		serviceResource, err := r.makeService(basesrv, resource, options, ctx, containerPorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -381,13 +382,12 @@ type containerPorts struct {
 	names  []string
 }
 
-func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts, manifest kubeutil.ObjectManifest) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
 	}
 
-	service := manifest.Get(kubeutil.ServiceV1)[0].(*corev1.Service)
 NEXTPORT:
 	for i, port := range containerPorts.values {
 		newPort := corev1.ServicePort{
@@ -398,7 +398,7 @@ NEXTPORT:
 		}
 
 		// Update it and skip to the next port if the port already exists.
-		for _, p := range service.Spec.Ports {
+		for _, p := range base.Spec.Ports {
 			if p.Name == containerPorts.names[i] {
 				p = newPort
 				continue NEXTPORT
@@ -406,13 +406,13 @@ NEXTPORT:
 		}
 
 		// Add new port if it doesn't exist.
-		service.Spec.Ports = append(service.Spec.Ports, newPort)
+		base.Spec.Ports = append(base.Spec.Ports, newPort)
 	}
 
-	service.Spec.Selector = kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
-	service.Spec.Type = corev1.ServiceTypeClusterIP
+	base.Spec.Selector = kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
+	base.Spec.Type = corev1.ServiceTypeClusterIP
 
-	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, base, base.ObjectMeta), nil
 }
 
 func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
