@@ -19,6 +19,7 @@ package container
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -305,6 +306,9 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 			Ports:    ports,
 		},
 	}
+
+	s, _ := json.Marshal(service)
+	fmt.Printf("service: %s", string(s))
 
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
@@ -653,6 +657,9 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)
 	deploymentOutput.CreateResource.Dependencies = deps
+
+	s, _ := json.Marshal(deployment)
+	fmt.Printf("deployment: %s", string(s))
 
 	outputResources = append(outputResources, deploymentOutput)
 	return outputResources, secretData, nil
