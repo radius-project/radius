@@ -90,8 +90,7 @@ const (
 	LocalIDKeyVaultSecret               = "KeyVaultSecret"
 )
 
-// NewLocalID generates a unique string based on the input parameters id and roleName
-// using a stable hashing algorithm.
+// NewLocalID generates a unique string based on the input parameter name using a stable hashing algorithm.
 //
 // Most LocalIDs are a 1:1 mapping with Radius resource.  This is a little tricky for role assignments
 // because we need to key them on the resource ID of the target resource X the role being assigned.
