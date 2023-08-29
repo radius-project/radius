@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
+	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
 	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
 	"github.com/project-radius/radius/test/testcontext"
 )
@@ -51,16 +52,17 @@ var (
 	}
 )
 
-func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider) {
+func setup(t *testing.T) (providers.MockProvider, map[string]providers.Provider, *backends.MockBackend) {
 	ctrl := gomock.NewController(t)
 	mProvider := providers.NewMockProvider(ctrl)
+	mBackend := backends.NewMockBackend(ctrl)
 	providers := map[string]providers.Provider{
 		providers.AWSProviderName:        mProvider,
 		providers.AzureProviderName:      mProvider,
 		providers.KubernetesProviderName: mProvider,
 	}
 
-	return *mProvider, providers
+	return *mProvider, providers, mBackend
 }
 
 func getTestRecipeContext() *recipecontext.Context {
@@ -98,14 +100,26 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	}
 
 	resourceRecipe := recipes.ResourceMetadata{
-		Name:       testRecipeName,
-		Parameters: resourceParams,
+		Name:          testRecipeName,
+		Parameters:    resourceParams,
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Environments/testEnv/env",
+		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Applications/testApp/app",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis",
 	}
 
 	return envRecipe, resourceRecipe
 }
 
-func TestAddRecipeContext(t *testing.T) {
+func Test_AddRecipeContext(t *testing.T) {
+	_, _, mBackend := setup(t)
+	_, resourceRecipe := getTestInputs()
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
 	configTests := []struct {
 		name               string
 		configPath         string
@@ -114,6 +128,7 @@ func TestAddRecipeContext(t *testing.T) {
 		recipeContext      *recipecontext.Context
 		expectedConfigFile string
 		err                string
+		expectedBackend    map[string]any
 	}{
 		{
 			name: "recipe context, env, and resource metadata params are given",
@@ -170,7 +185,7 @@ func TestAddRecipeContext(t *testing.T) {
 				Parameters: resourceParams,
 			},
 			recipeContext:      nil,
-			expectedConfigFile: "testdata/main-nocontext.tf.json",
+			expectedConfigFile: "testdata/main-module.tf.json",
 		},
 		{
 			name: "without template version",
@@ -214,7 +229,10 @@ func TestAddRecipeContext(t *testing.T) {
 				err := tfconfig.AddRecipeContext(ctx, testRecipeName, tc.recipeContext)
 				require.NoError(t, err)
 			}
-			err := tfconfig.Save(ctx, tc.configPath)
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err := tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, tc.configPath)
 			if tc.err != "" {
 				require.ErrorContains(t, err, tc.err)
 				return
@@ -232,10 +250,16 @@ func TestAddRecipeContext(t *testing.T) {
 	}
 }
 
-func TestAddProviders(t *testing.T) {
-	mProvider, supportedProviders := setup(t)
+func Test_AddProviders(t *testing.T) {
+	mProvider, supportedProviders, mBackend := setup(t)
 	envRecipe, resourceRecipe := getTestInputs()
-
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
 	configTests := []struct {
 		name               string
 		modProviders       []map[string]any
@@ -275,6 +299,7 @@ func TestAddProviders(t *testing.T) {
 				providers.KubernetesProviderName,
 				"sql",
 			},
+
 			expectedConfigFile: "testdata/main-provider-valid.tf.json",
 		},
 		{
@@ -353,15 +378,15 @@ func TestAddProviders(t *testing.T) {
 			if tc.modProviderErr != nil {
 				mProvider.EXPECT().BuildConfig(ctx, &tc.envConfig).Times(1).Return(nil, tc.modProviderErr)
 			}
-
 			err := tfconfig.AddProviders(ctx, tc.requiredProviders, supportedProviders, &tc.envConfig)
 			if tc.modProviderErr != nil {
 				require.ErrorContains(t, err, tc.modProviderErr.Error())
 				return
 			}
-
 			require.NoError(t, err)
-
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
 			err = tfconfig.Save(ctx, workingDir)
 			require.NoError(t, err)
 
@@ -375,7 +400,75 @@ func TestAddProviders(t *testing.T) {
 	}
 }
 
-func TestSave_overwrite(t *testing.T) {
+func Test_AddOutputs(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+	_, _, mBackend := setup(t)
+	expectedBackend := map[string]any{
+		"kubernetes": map[string]any{
+			"config_path":   "/home/radius/.kube/config",
+			"secret_suffix": "test-secret-suffix",
+			"namespace":     "radius-system",
+		},
+	}
+	tests := []struct {
+		desc                 string
+		moduleName           string
+		expectedOutputConfig map[string]any
+		expectedConfigFile   string
+		expectedErr          bool
+	}{
+		{
+			desc:       "valid output",
+			moduleName: testRecipeName,
+			expectedOutputConfig: map[string]any{
+				"result": map[string]any{
+					"value":     "${module.redis-azure.result}",
+					"sensitive": true,
+				},
+			},
+			expectedConfigFile: "testdata/main-outputs.tf.json",
+			expectedErr:        false,
+		},
+		{
+			desc:               "empty module name",
+			moduleName:         "",
+			expectedConfigFile: "testdata/main-module.tf.json",
+			expectedErr:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			tfconfig := New(testRecipeName, &envRecipe, &resourceRecipe)
+
+			err := tfconfig.AddOutputs(tc.moduleName)
+			if tc.expectedErr {
+				require.Error(t, err)
+				require.Nil(t, tfconfig.Output)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedOutputConfig, tfconfig.Output)
+			}
+
+			ctx := testcontext.New(t)
+			workingDir := t.TempDir()
+			mBackend.EXPECT().BuildBackend(&resourceRecipe).AnyTimes().Return(expectedBackend, nil)
+			_, err = tfconfig.AddTerraformBackend(&resourceRecipe, mBackend)
+			require.NoError(t, err)
+			err = tfconfig.Save(ctx, workingDir)
+			require.NoError(t, err)
+
+			// Assert generated config file matches expected config in JSON format.
+			actualConfig, err := os.ReadFile(getMainConfigFilePath(workingDir))
+			require.NoError(t, err)
+			expectedConfig, err := os.ReadFile(tc.expectedConfigFile)
+			require.NoError(t, err)
+			require.Equal(t, string(expectedConfig), string(actualConfig))
+		})
+	}
+}
+
+func Test_Save_overwrite(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()
@@ -388,7 +481,7 @@ func TestSave_overwrite(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSave_Failure(t *testing.T) {
+func Test_Save_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
 	testDir := t.TempDir()
 	envRecipe, resourceRecipe := getTestInputs()

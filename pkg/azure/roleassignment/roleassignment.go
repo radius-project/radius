@@ -31,11 +31,10 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-// # Function Explanation
-//
 // Create checks if a role assignment already exists for a given managed identity, and if not, creates a new role
 // assignment. If an error is encountered, it is retried up to 100 times.
 // principalID - The principal ID assigned to the role. This maps to the ID inside the Active Directory. It can point to a user, service principal, or security group.
@@ -121,8 +120,6 @@ func Create(ctx context.Context, armConfig *armauth.ArmConfig, subscriptionID, p
 	return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
 }
 
-// # Function Explanation
-//
 // Delete parses the roleID, creates a role assignments client, and deletes the role assignment with the given roleID,
 // returning an error if one occurs.
 func Delete(ctx context.Context, armConfig *armauth.ArmConfig, roleID string) error {
@@ -131,7 +128,7 @@ func Delete(ctx context.Context, armConfig *armauth.ArmConfig, roleID string) er
 		return err
 	}
 
-	subscriptionID := rID.FindScope(resources.SubscriptionsSegment)
+	subscriptionID := rID.FindScope(resources_azure.ScopeSubscriptions)
 	if subscriptionID == "" {
 		return fmt.Errorf("invalid role id: %s", roleID)
 	}
@@ -150,8 +147,6 @@ func Delete(ctx context.Context, armConfig *armauth.ArmConfig, roleID string) er
 	return nil
 }
 
-// # Function Explanation
-//
 // GetRoleDefinitionID checks if the provided roleNameOrID is a role definition ID or a role name, and returns the
 // corresponding role definition ID.
 // roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"

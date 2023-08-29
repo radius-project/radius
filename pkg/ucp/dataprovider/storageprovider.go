@@ -38,8 +38,6 @@ type storageProvider struct {
 	options   StorageProviderOptions
 }
 
-// # Function Explanation
-//
 // NewStorageProvider creates a new instance of the "storageProvider" struct with the given
 // "StorageProviderOptions" and returns it.
 func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
@@ -49,8 +47,6 @@ func NewStorageProvider(opts StorageProviderOptions) DataStorageProvider {
 	}
 }
 
-// # Function Explanation
-//
 // GetStorageClient checks if a StorageClient for the given resourceType already exists in the map, and
 // if so, returns it. If not, it creates a new StorageClient using the storageClientFactory and adds it to the map,
 // returning it. If an error occurs, it returns an error.

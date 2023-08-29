@@ -39,8 +39,6 @@ type Client struct {
 	K8sClient controller_runtime.Client
 }
 
-// # Function Explanation
-//
 // Save saves the secret as a k8s secret resource. It checks if the given name and value are valid, checks if the secret already exists,
 // and creates or updates the secret accordingly, returning an error if one occurs.
 func (c *Client) Save(ctx context.Context, name string, value []byte) error {
@@ -83,8 +81,6 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	return c.K8sClient.Update(ctx, secret)
 }
 
-// # Function Explanation
-//
 // Delete validates the name argument and deletes the secret object from the Kubernetes cluster, returning an error if the
 // secret object is not found or if any other error occurs.
 func (c *Client) Delete(ctx context.Context, name string) error {
@@ -112,8 +108,6 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // Get checks if the provided name is valid and if it exists in the RadiusNamespace, and returns the data associated with
 // the secret if found, otherwise it returns an error.
 func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {

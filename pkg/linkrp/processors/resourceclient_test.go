@@ -33,8 +33,8 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -52,39 +52,11 @@ const (
 
 func Test_Delete_InvalidResourceID(t *testing.T) {
 	c := NewResourceClient(nil, nil, nil, nil)
-	err := c.Delete(context.Background(), "invalid", "")
+	err := c.Delete(context.Background(), "invalid")
 	require.Error(t, err)
 }
 
 func Test_Delete_ARM(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleDeleteSuccess(t))
-
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
-		c.armClientOptions = newClientOptions(server.Client(), server.URL)
-
-		err := c.Delete(context.Background(), ARMResourceID, ARMAPIVersion)
-		require.NoError(t, err)
-	})
-
-	t.Run("success (ucp absolute ID)", func(t *testing.T) {
-		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleDeleteSuccess(t)) // Note, the /planes... prefix is not part of the request.
-
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
-		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
-		c.armClientOptions = newClientOptions(server.Client(), server.URL)
-
-		err := c.Delete(context.Background(), AzureUCPResourceID, ARMAPIVersion)
-		require.NoError(t, err)
-	})
-
 	t.Run("failure - delete fails", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMResourceID, handleJSONResponse(t, v1.ErrorResponse{
@@ -99,7 +71,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID, ARMAPIVersion)
+		err := c.Delete(context.Background(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -127,7 +99,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID, "")
+		err := c.Delete(context.Background(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -150,7 +122,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID, "")
+		err := c.Delete(context.Background(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -164,7 +136,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID, "")
+		err := c.Delete(context.Background(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -182,7 +154,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID, "")
+		err := c.Delete(context.Background(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", type was not found")
@@ -206,7 +178,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID, "")
+		err := c.Delete(context.Background(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", no supported API versions")
@@ -214,34 +186,6 @@ func Test_Delete_ARM(t *testing.T) {
 }
 
 func Test_Delete_Kubernetes(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
-		}).Build()
-
-		c := NewResourceClient(nil, nil, client, nil)
-
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "v1")
-		require.NoError(t, err)
-	})
-
-	t.Run("success (non-core)", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithObjects(&appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
-		}).Build()
-
-		c := NewResourceClient(nil, nil, client, nil)
-
-		err := c.Delete(context.Background(), KubernetesNonCoreGroupResourceID, "v1")
-		require.NoError(t, err)
-	})
-
 	// Note: unfortunately there isn't a great way to test a deletion failure with the runtime client.
 
 	t.Run("success - lookup API Version (preferred namespaced resources)", func(t *testing.T) {
@@ -252,7 +196,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 			},
 		}).Build()
 
-		dc := &discoveryClient{
+		dc := &k8sutil.DiscoveryClient{
 			Resources: []*metav1.APIResourceList{
 				{
 					GroupVersion: "v1",
@@ -269,7 +213,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, client, dc)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
+		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
 	})
 
@@ -280,7 +224,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 			},
 		}).Build()
 
-		dc := &discoveryClient{
+		dc := &k8sutil.DiscoveryClient{
 			Resources: []*metav1.APIResourceList{
 				{
 					GroupVersion: "v1",
@@ -297,7 +241,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, client, dc)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
+		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
 	})
 
@@ -309,13 +253,13 @@ func Test_Delete_Kubernetes(t *testing.T) {
 			},
 		}).Build()
 
-		dc := &discoveryClient{
+		dc := &k8sutil.DiscoveryClient{
 			Resources: []*metav1.APIResourceList{},
 		}
 
 		c := NewResourceClient(nil, nil, client, dc)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID, "")
+		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"core/Secret\", type was not found")
 	})
@@ -334,7 +278,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID, "")
+		err = c.Delete(context.Background(), AWSResourceID)
 		require.NoError(t, err)
 	})
 
@@ -354,7 +298,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID, "")
+		err = c.Delete(context.Background(), AWSResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -418,50 +362,7 @@ type wrapper struct {
 	Client *http.Client
 }
 
-// # Function Explanation
-//
 // Do is a method that sends an HTTP request and returns an HTTP response and an error if one occurs.
 func (w *wrapper) Do(req *http.Request) (*http.Response, error) {
 	return w.Client.Do(req)
-}
-
-type discoveryClient struct {
-	Groups    *metav1.APIGroupList
-	Resources []*metav1.APIResourceList
-	APIGroup  []*metav1.APIGroup
-}
-
-// # Function Explanation
-//
-// ServerGroups returns a list of API groups supported by the server.
-func (d *discoveryClient) ServerGroups() (*metav1.APIGroupList, error) {
-	return d.Groups, nil
-}
-
-// # Function Explanation
-//
-// This function returns a slice of API resource lists.
-func (d *discoveryClient) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
-	return d.Resources, nil
-}
-
-// # Function Explanation
-//
-// This function returns a slice of API resource lists.
-func (d *discoveryClient) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
-	return d.Resources, nil
-}
-
-// # Function Explanation
-//
-// ServerGroupsAndResources returns a list of API groups and resources associated with the discovery client.
-func (d *discoveryClient) ServerGroupsAndResources() ([]*metav1.APIGroup, []*metav1.APIResourceList, error) {
-	return d.APIGroup, d.Resources, nil
-}
-
-// # Function Explanation
-//
-// ServerResourcesForGroupVersion returns nil for the API resource list.
-func (d *discoveryClient) ServerResourcesForGroupVersion(groupVersion string) (*metav1.APIResourceList, error) {
-	return nil, nil
 }

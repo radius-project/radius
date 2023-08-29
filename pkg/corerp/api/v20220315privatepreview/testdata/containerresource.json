@@ -6,11 +6,7 @@
     "status": {
       "outputResources": [
         {
-          "LocalID": "Deployment",
-          "ResourceType": {
-            "Type": "containers",
-            "Provider": "aks"
-          }
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
       ]
     },

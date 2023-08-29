@@ -56,8 +56,6 @@ type ResourceList struct {
 	Value []Resource `json:"value" yaml:"value"`
 }
 
-// # Function Explanation
-//
 // LookupResourceProvider searches through the ResourceProviders configured in UCP.
 func (plane *Plane) LookupResourceProvider(key string) string {
 	var value string

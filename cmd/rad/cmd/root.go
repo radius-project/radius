@@ -86,11 +86,12 @@ import (
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
 var RootCmd = &cobra.Command{
-	Use:           "rad",
-	Short:         "Radius CLI",
-	Long:          `Radius CLI`,
-	SilenceErrors: true,
-	SilenceUsage:  true,
+	Use:               "rad",
+	Short:             "Radius CLI",
+	Long:              `Radius CLI`,
+	SilenceErrors:     true,
+	SilenceUsage:      true,
+	DisableAutoGenTag: true,
 }
 
 const (

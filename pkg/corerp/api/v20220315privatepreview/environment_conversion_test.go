@@ -28,6 +28,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -259,10 +260,6 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid template kind. Allowed formats: \"bicep\", \"terraform\""},
 		},
 		{
-			filename: "environmentresource-invalid-property-templateversion.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "templateVersion is not allowed for templateKind: 'bicep'. Instead, specify the Bicep module version as part as part of the Bicep module registry address in templatePath."},
-		},
-		{
 			filename: "environmentresource-terraformrecipe-localpath.json",
 			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
 		},
@@ -330,21 +327,31 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "kubernetes", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
 				require.Equal(t, 1, len(versioned.Properties.Recipes))
-				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath))
-				require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind))
-				require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].Parameters)
+				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplatePath))
+				require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplateKind))
+				require.Equal(t, map[string]any{"throughput": float64(400)}, versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().Parameters)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 				require.Equal(t, "/planes/aws/aws/accounts/140313373712/regions/us-west-2", string(*versioned.Properties.Providers.Aws.Scope))
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, 1, len(versioned.Properties.Extensions))
+				recipeDetails := versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"]
 				if tt.filename == "environmentresourcedatamodel.json" {
-					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplatePath))
-					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateKind))
-					require.Equal(t, "1.1.0", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].TemplateVersion))
+					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplatePath))
+					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplateKind))
+
+					switch c := recipeDetails.(type) {
+					case *TerraformRecipeProperties:
+						require.Equal(t, "1.1.0", string(*c.TemplateVersion))
+					}
 				}
 				if tt.filename == "environmentresourcedatamodelemptyext.json" {
-					require.Nil(t, versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateVersion)
+					switch c := recipeDetails.(type) {
+					case *TerraformRecipeProperties:
+						require.Nil(t, c.TemplateVersion)
+					}
+
 				}
+
 			}
 		})
 	}
@@ -362,14 +369,11 @@ func TestConvertDataModelToVersioned_EmptyTemplateKind(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, r.ID, string(*versioned.ID))
 	require.Equal(t, r.Name, string(*versioned.Name))
 	require.Equal(t, r.Type, string(*versioned.Type))
 	require.Equal(t, string(r.Properties.Compute.Kind), string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
 	require.Equal(t, r.Properties.Compute.KubernetesCompute.ResourceID, string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
 	require.Equal(t, len(r.Properties.Recipes), len(versioned.Properties.Recipes))
-	require.Equal(t, r.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath))
-	require.Equal(t, r.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind))
 	require.Equal(t, r.Properties.Providers.Azure.Scope, string(*versioned.Properties.Providers.Azure.Scope))
 }
 
@@ -392,8 +396,8 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "kubernetes", string(*versioned.Properties.Compute.GetEnvironmentCompute().Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", string(*versioned.Properties.Compute.GetEnvironmentCompute().ResourceID))
 	require.Equal(t, 1, len(versioned.Properties.Recipes))
-	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplatePath))
-	require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].TemplateKind))
+	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplatePath))
+	require.Equal(t, recipes.TemplateKindBicep, string(*versioned.Properties.Recipes[linkrp.MongoDatabasesResourceType]["cosmos-recipe"].GetRecipeProperties().TemplateKind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", string(*versioned.Properties.Providers.Azure.Scope))
 
 	require.Equal(t, &IdentitySettings{
@@ -406,36 +410,12 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
 }
 
-type fakeResource struct{}
-
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
-func (f *fakeResource) GetSystemData() *v1.SystemData {
-	return nil
-}
-
-func (f *fakeResource) GetBaseResource() *v1.BaseResource {
-	return nil
-}
-
-func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
-	return v1.ProvisioningStateAccepted
-}
-
-func (f *fakeResource) SetProvisioningState(state v1.ProvisioningState) {
-}
-
-func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
-}
-
 func TestConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

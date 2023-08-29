@@ -25,6 +25,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -37,6 +38,11 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	}{
 		{
 			filename: "containerresource.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "containerresource-runtimes.json",
 			err:      nil,
 			emptyExt: false,
 		},
@@ -66,7 +72,6 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)
 			} else {
-
 				// assert
 				require.NoError(t, err)
 				ct := dm.(*datamodel.ContainerResource)
@@ -97,13 +102,18 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				} else {
 					require.Equal(t, getTestContainerExtensions(t), ct.Properties.Extensions)
 				}
+
+				if r.Properties.Runtimes != nil {
+					require.NotNil(t, ct.Properties.Runtimes.Kubernetes)
+					require.NotEmpty(t, ct.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
+				}
 			}
 		})
 	}
 }
 
 func TestContainerConvertDataModelToVersioned(t *testing.T) {
-
 	conversionTests := []struct {
 		filename string
 		err      error
@@ -111,6 +121,11 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	}{
 		{
 			filename: "containerresourcedatamodel.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "containerresourcedatamodel-runtime.json",
 			err:      nil,
 			emptyExt: false,
 		},
@@ -147,13 +162,18 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "azure", string(val.IAM.Kind))
 				require.Equal(t, "read", val.IAM.Roles[0])
 				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", r.Properties.Container.Image)
-				require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-				require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
+				require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
 				require.Equal(t, 3, len(versioned.Properties.Extensions))
 				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
 				require.Equal(t, to.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
 				require.Equal(t, to.Ptr("/app"), versioned.Properties.Container.WorkingDir)
+
+				if r.Properties.Runtimes != nil {
+					require.NotNil(t, versioned.Properties.Runtimes)
+					require.NotEmpty(t, *versioned.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *versioned.Properties.Runtimes.Kubernetes.Base)
+				}
 			}
 		})
 	}
@@ -200,7 +220,7 @@ func TestContainerConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

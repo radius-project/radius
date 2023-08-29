@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned Mongo database resource to version-agnostic datamodel and returns it,
 // returning an error if any of the inputs are invalid.
 func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -79,8 +77,6 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Mongo database resource. It returns an error if the
 // DataModelInterface is not a Mongo database.
 func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
@@ -102,7 +98,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Port:      to.Ptr(mongo.Properties.Port),
 		Database:  to.Ptr(mongo.Properties.Database),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(mongo.Properties.Environment),
@@ -115,8 +111,6 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabaseSecrets instance and returns an error if
 // the conversion fails.
 func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
@@ -131,8 +125,6 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned MongoDatabaseSecrets instance to version-agnostic datamodel.
 func (src *MongoDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabaseSecrets{

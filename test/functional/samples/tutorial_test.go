@@ -85,7 +85,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 					},
 					{
 						Name: "db",
-						Type: validation.RedisCachesResource,
+						Type: validation.O_RedisCachesResource,
 					},
 				},
 			},

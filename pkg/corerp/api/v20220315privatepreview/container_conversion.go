@@ -23,8 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
 func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -72,7 +70,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	for key, val := range src.Properties.Container.Ports {
 		port := datamodel.ContainerPort{
 			ContainerPort: to.Int32(val.ContainerPort),
-			Protocol:      toProtocolDataModel(val.Protocol),
+			Protocol:      toPortProtocolDataModel(val.Protocol),
 			Provides:      to.String(val.Provides),
 		}
 
@@ -122,17 +120,19 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			},
 			Connections: connections,
 			Container: datamodel.Container{
-				Image:          to.String(src.Properties.Container.Image),
-				Env:            to.StringMap(src.Properties.Container.Env),
-				LivenessProbe:  livenessProbe,
-				Ports:          ports,
-				ReadinessProbe: readinessProbe,
-				Volumes:        volumes,
-				Command:        stringSlice(src.Properties.Container.Command),
-				Args:           stringSlice(src.Properties.Container.Args),
-				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
+				Image:           to.String(src.Properties.Container.Image),
+				ImagePullPolicy: toImagePullPolicyDataModel(src.Properties.Container.ImagePullPolicy),
+				Env:             to.StringMap(src.Properties.Container.Env),
+				LivenessProbe:   livenessProbe,
+				Ports:           ports,
+				ReadinessProbe:  readinessProbe,
+				Volumes:         volumes,
+				Command:         stringSlice(src.Properties.Container.Command),
+				Args:            stringSlice(src.Properties.Container.Args),
+				WorkingDir:      to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
+			Runtimes:   toRuntimeProperties(src.Properties.Runtimes),
 		},
 	}
 
@@ -147,8 +147,6 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Container resource.
 func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	c, ok := src.(*datamodel.ContainerResource)
@@ -159,7 +157,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	connections := make(map[string]*ConnectionProperties)
 	for key, val := range c.Properties.Connections {
 		roles := []*string{}
-		var kind *Kind
+		var kind *IAMKind
 
 		for _, r := range val.IAM.Roles {
 			roles = append(roles, to.Ptr(r))
@@ -192,11 +190,11 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		readinessProbe = fromHealthProbePropertiesDataModel(c.Properties.Container.ReadinessProbe)
 	}
 
-	ports := make(map[string]*ContainerPort)
+	ports := make(map[string]*ContainerPortProperties)
 	for key, val := range c.Properties.Container.Ports {
-		ports[key] = &ContainerPort{
+		ports[key] = &ContainerPortProperties{
 			ContainerPort: to.Ptr(val.ContainerPort),
-			Protocol:      fromProtocolDataModel(val.Protocol),
+			Protocol:      fromPortProtocolDataModel(val.Protocol),
 			Provides:      to.Ptr(val.Provides),
 		}
 
@@ -217,7 +215,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 	}
 
-	var extensions []ContainerExtensionClassification
+	var extensions []ExtensionClassification
 	if c.Properties.Extensions != nil {
 		for _, e := range c.Properties.Extensions {
 			extensions = append(extensions, fromExtensionClassificationDataModel(e))
@@ -241,27 +239,59 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(c.Properties.Application),
 		Connections:       connections,
 		Container: &Container{
-			Image:          to.Ptr(c.Properties.Container.Image),
-			Env:            *to.StringMapPtr(c.Properties.Container.Env),
-			LivenessProbe:  livenessProbe,
-			Ports:          ports,
-			ReadinessProbe: readinessProbe,
-			Volumes:        volumes,
-			Command:        to.SliceOfPtrs(c.Properties.Container.Command...),
-			Args:           to.SliceOfPtrs(c.Properties.Container.Args...),
-			WorkingDir:     to.Ptr(c.Properties.Container.WorkingDir),
+			Image:           to.Ptr(c.Properties.Container.Image),
+			ImagePullPolicy: fromImagePullPolicyDataModel(c.Properties.Container.ImagePullPolicy),
+			Env:             *to.StringMapPtr(c.Properties.Container.Env),
+			LivenessProbe:   livenessProbe,
+			Ports:           ports,
+			ReadinessProbe:  readinessProbe,
+			Volumes:         volumes,
+			Command:         to.SliceOfPtrs(c.Properties.Container.Command...),
+			Args:            to.SliceOfPtrs(c.Properties.Container.Args...),
+			WorkingDir:      to.Ptr(c.Properties.Container.WorkingDir),
 		},
 		Extensions: extensions,
 		Identity:   identity,
+		Runtimes:   fromRuntimeProperties(c.Properties.Runtimes),
 	}
 
 	return nil
+}
+
+func toImagePullPolicyDataModel(pullPolicy *ImagePullPolicy) string {
+	if pullPolicy == nil {
+		return ""
+	}
+
+	switch *pullPolicy {
+	case ImagePullPolicyAlways:
+		return "Always"
+	case ImagePullPolicyIfNotPresent:
+		return "IfNotPresent"
+	case ImagePullPolicyNever:
+		return "Never"
+	default:
+		return ""
+	}
+}
+
+func fromImagePullPolicyDataModel(pullPolicy string) *ImagePullPolicy {
+	switch pullPolicy {
+	case "Always":
+		return to.Ptr(ImagePullPolicyAlways)
+	case "IfNotPresent":
+		return to.Ptr(ImagePullPolicyIfNotPresent)
+	case "Never":
+		return to.Ptr(ImagePullPolicyNever)
+	default:
+		return nil
+	}
 }
 
 func toHealthProbePropertiesDataModel(h HealthProbePropertiesClassification) datamodel.HealthProbeProperties {
@@ -333,57 +363,73 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 	return nil
 }
 
-func toKindDataModel(kind *Kind) datamodel.IAMKind {
+func toKindDataModel(kind *IAMKind) datamodel.IAMKind {
 	switch *kind {
-	case KindAzure:
+	case IAMKindAzure:
 		return datamodel.KindAzure
 	default:
 		return datamodel.KindAzure
 	}
 }
 
-func fromKindDataModel(kind datamodel.IAMKind) *Kind {
-	var k Kind
+func fromKindDataModel(kind datamodel.IAMKind) *IAMKind {
+	var k IAMKind
 	switch kind {
 	case datamodel.KindAzure:
-		k = KindAzure
+		k = IAMKindAzure
 	default:
-		k = KindAzure
+		k = IAMKindAzure
 	}
 	return &k
 }
 
-func toProtocolDataModel(protocol *Protocol) datamodel.Protocol {
+func toPortProtocolDataModel(protocol *PortProtocol) datamodel.Protocol {
+	if protocol == nil {
+		return datamodel.ProtocolTCP
+	}
+	switch *protocol {
+	case PortProtocolTCP:
+		return datamodel.ProtocolTCP
+	case PortProtocolUDP:
+		return datamodel.ProtocolUDP
+	default:
+		return datamodel.ProtocolTCP
+	}
+}
+
+func toDaprProtocolDataModel(protocol *DaprSidecarExtensionProtocol) datamodel.Protocol {
 	if protocol == nil {
 		return datamodel.ProtocolHTTP
 	}
 	switch *protocol {
-	case ProtocolHTTP:
+	case DaprSidecarExtensionProtocolHTTP:
 		return datamodel.ProtocolHTTP
-	case ProtocolGrpc:
+	case DaprSidecarExtensionProtocolGrpc:
 		return datamodel.ProtocolGrpc
-	case ProtocolTCP:
-		return datamodel.ProtocolTCP
-	case ProtocolUDP:
-		return datamodel.ProtocolUDP
 	default:
 		return datamodel.ProtocolHTTP
 	}
 }
-
-func fromProtocolDataModel(protocol datamodel.Protocol) *Protocol {
-	var p Protocol
+func fromPortProtocolDataModel(protocol datamodel.Protocol) *PortProtocol {
+	var p PortProtocol
 	switch protocol {
-	case datamodel.ProtocolHTTP:
-		p = ProtocolHTTP
-	case datamodel.ProtocolGrpc:
-		p = ProtocolGrpc
 	case datamodel.ProtocolTCP:
-		p = ProtocolTCP
+		p = PortProtocolTCP
 	case datamodel.ProtocolUDP:
-		p = ProtocolUDP
+		p = PortProtocolUDP
 	default:
-		p = ProtocolHTTP
+		p = PortProtocolTCP
+	}
+	return &p
+}
+
+func fromProtocolDataModel(protocol datamodel.Protocol) *DaprSidecarExtensionProtocol {
+	var p DaprSidecarExtensionProtocol
+	switch protocol {
+	case datamodel.ProtocolGrpc:
+		p = DaprSidecarExtensionProtocolGrpc
+	default:
+		p = DaprSidecarExtensionProtocolHTTP
 	}
 	return &p
 }
@@ -456,6 +502,32 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 	return &m
 }
 
+func toRuntimeProperties(runtime *RuntimesProperties) *datamodel.RuntimeProperties {
+	if runtime == nil {
+		return nil
+	}
+	r := &datamodel.RuntimeProperties{}
+	if runtime.Kubernetes != nil {
+		r.Kubernetes = &datamodel.KubernetesRuntime{
+			Base: to.String(runtime.Kubernetes.Base),
+		}
+	}
+	return r
+}
+
+func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) *RuntimesProperties {
+	if runtime == nil {
+		return nil
+	}
+	r := &RuntimesProperties{}
+	if runtime.Kubernetes != nil {
+		r.Kubernetes = &KubernetesRuntimeProperties{
+			Base: to.Ptr(runtime.Kubernetes.Base),
+		}
+	}
+	return r
+}
+
 func toPermissionDataModel(rbac *VolumePermission) datamodel.VolumePermission {
 	if rbac == nil {
 		return datamodel.VolumePermissionRead
@@ -485,7 +557,7 @@ func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission 
 }
 
 // toExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extension {
+func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *ManualScalingExtension:
 		return datamodel.Extension{
@@ -501,10 +573,10 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 				AppID:    to.String(c.AppID),
 				AppPort:  to.Int32(c.AppPort),
 				Config:   to.String(c.Config),
-				Protocol: toProtocolDataModel(c.Protocol),
+				Protocol: toDaprProtocolDataModel(c.Protocol),
 			},
 		}
-	case *ContainerKubernetesMetadataExtension:
+	case *KubernetesMetadataExtension:
 		return datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.KubeMetadataExtension{
@@ -518,7 +590,7 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 }
 
 // fromExtensionClassificationDataModel: Converts from base datamodel to versioned datamodel
-func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtensionClassification {
+func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
 	switch e.Kind {
 	case datamodel.ManualScaling:
 		return &ManualScalingExtension{
@@ -535,7 +607,7 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 		}
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = fromExtensionClassificationFields(e)
-		return &ContainerKubernetesMetadataExtension{
+		return &KubernetesMetadataExtension{
 			Kind:        to.Ptr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),

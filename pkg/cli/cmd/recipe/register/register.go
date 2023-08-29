@@ -29,13 +29,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad recipe register` command.
 //
-// # Function Explanation
-//
+
 // NewCommand creates a new Cobra command and a Runner object to register a recipe to an environment, with parameters
 // specified using a JSON file or key-value-pairs.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -105,8 +105,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad recipe register` command.
 //
-// # Function Explanation
-//
+
 // Validate validates the command line args, sets the workspace, environment, template kind, template path, link type,
 // recipe name, and parameters, and returns an error if any of these fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
@@ -159,8 +158,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad recipe register` command.
 //
-// # Function Explanation
-//
+
 // Run function creates an ApplicationsManagementClient, gets the environment details, adds the recipe properties to the
 // environment recipes, and creates the environment with the updated recipes. It returns an error if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
@@ -176,19 +174,28 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envRecipes := envResource.Properties.Recipes
 	if envRecipes == nil {
-		envRecipes = map[string]map[string]*corerp.EnvironmentRecipeProperties{}
+		envRecipes = map[string]map[string]corerp.RecipePropertiesClassification{}
 	}
-
-	properties := &corerp.EnvironmentRecipeProperties{
-		TemplateKind:    &r.TemplateKind,
-		TemplatePath:    &r.TemplatePath,
-		TemplateVersion: &r.TemplateVersion,
-		Parameters:      bicep.ConvertToMapStringInterface(r.Parameters),
+	var properties corerp.RecipePropertiesClassification
+	switch r.TemplateKind {
+	case recipes.TemplateKindTerraform:
+		properties = &corerp.TerraformRecipeProperties{
+			TemplateKind:    &r.TemplateKind,
+			TemplatePath:    &r.TemplatePath,
+			TemplateVersion: &r.TemplateVersion,
+			Parameters:      bicep.ConvertToMapStringInterface(r.Parameters),
+		}
+	case recipes.TemplateKindBicep:
+		properties = &corerp.BicepRecipeProperties{
+			TemplateKind: &r.TemplateKind,
+			TemplatePath: &r.TemplatePath,
+			Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
+		}
 	}
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		envRecipes[r.LinkType] = map[string]*corerp.EnvironmentRecipeProperties{
+		envRecipes[r.LinkType] = map[string]corerp.RecipePropertiesClassification{
 			r.RecipeName: properties,
 		}
 	}

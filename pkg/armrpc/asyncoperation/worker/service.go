@@ -27,6 +27,7 @@ import (
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,10 +50,10 @@ type Service struct {
 	KubeClient controller_runtime.Client
 	// KubeClientSet is the Kubernetes client.
 	KubeClientSet kubernetes.Interface
+	// KubeDiscoveryClient is the Kubernetes discovery client.
+	KubeDiscoveryClient discovery.ServerResourcesInterface
 }
 
-// # Function Explanation
-//
 // Init initializes worker service - it initializes the StorageProvider, RequestQueue, OperationStatusManager, Controllers, KubeClient and
 // returns an error if any of these operations fail.
 func (s *Service) Init(ctx context.Context) error {
@@ -79,12 +80,20 @@ func (s *Service) Init(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		discoveryClient, err := discovery.NewDiscoveryClientForConfig(s.Options.K8sConfig)
+		if err != nil {
+			return err
+		}
+
+		// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
+		// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
+		discoveryClient.UseLegacyDiscovery = true
+		s.KubeDiscoveryClient = discoveryClient
 	}
 	return nil
 }
 
-// # Function Explanation
-//
 // Start creates and starts a worker, and logs any errors that occur while starting the worker.
 func (s *Service) Start(ctx context.Context, opt Options) error {
 	logger := ucplog.FromContextOrDiscard(ctx)

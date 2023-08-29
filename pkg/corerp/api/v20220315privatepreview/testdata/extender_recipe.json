@@ -1,0 +1,19 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
+  "name": "extender0",
+  "type": "Applications.Core/extenders",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+    "recipe": {
+      "name": "test-recipe"
+    }
+  }
+}

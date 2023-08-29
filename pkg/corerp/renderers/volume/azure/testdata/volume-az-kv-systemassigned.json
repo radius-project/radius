@@ -1,57 +1,55 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/volumes/azkeyvault0",
-    "name": "azkeyvault0",
-    "type": "Applications.Core/volumes",
-    "location": "global",
-    "systemData": {
-        "createdBy": "fakeid@live.com",
-        "createdByType": "User",
-        "createdAt": "2021-09-24T19:09:54.2403864Z",
-        "lastModifiedBy": "fakeid@live.com",
-        "lastModifiedByType": "User",
-        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
-    },
-    "tags": {
-        "env": "dev"
-    },
-    "provisioningState": "Succeeded",
-    "properties": {
-        "status": {
-            "outputResources": [{
-                "LocalID": "Deployment",
-                "ResourceType": {
-                    "Type": "Volume",
-                    "Provider": "kubernetes"
-                }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "kind": "azure.com.keyvault",
-        "azureKeyVault": {
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
-            "identity": {
-                "kind": "azure.com.workload",
-                "oidcIssuer": "https://oidcIssuer/URL"
-            },
-            "secrets": {
-                "mysecret": {
-                    "name": "mysecret",
-                    "encoding": "base64"
-                }
-            },
-            "keys": {
-                "mykey": {
-                    "name": "mykey"
-                }
-            },
-            "certificates": {
-                "mycert": {
-                    "name": "mycert",
-                    "alias": "myalias",
-                    "certType": "certificate",
-                    "encoding": "utf-8"
-                }
-            }
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/volumes/azkeyvault0",
+  "name": "azkeyvault0",
+  "type": "Applications.Core/volumes",
+  "location": "global",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "provisioningState": "Succeeded",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "kind": "azure.com.keyvault",
+    "azureKeyVault": {
+      "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
+      "identity": {
+        "kind": "azure.com.workload",
+        "oidcIssuer": "https://oidcIssuer/URL"
+      },
+      "secrets": {
+        "mysecret": {
+          "name": "mysecret",
+          "encoding": "base64"
+        }
+      },
+      "keys": {
+        "mykey": {
+          "name": "mykey"
+        }
+      },
+      "certificates": {
+        "mycert": {
+          "name": "mycert",
+          "alias": "myalias",
+          "certType": "certificate",
+          "encoding": "utf-8"
+        }
+      }
     }
+  }
 }

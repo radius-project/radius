@@ -24,13 +24,11 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // EnvironmentRecipePropertiesDataModelToVersioned converts version agnostic environment recipe properties datamodel to versioned model.
 func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.EnvironmentRecipeProperties, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.EnvironmentRecipeProperties{}
+		versioned := &v20220315privatepreview.RecipeGetMetadataResponse{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -41,13 +39,11 @@ func EnvironmentRecipePropertiesDataModelToVersioned(model *datamodel.Environmen
 	}
 }
 
-// # Function Explanation
-//
 // RecipeDataModelFromVersioned converts versioned recipe model to datamodel.
 func RecipeDataModelFromVersioned(content []byte, version string) (*datamodel.Recipe, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.Recipe{}
+		am := &v20220315privatepreview.RecipeGetMetadata{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

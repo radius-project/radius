@@ -92,6 +92,15 @@ func Test_Validate(t *testing.T) {
 				Config:         radcli.LoadConfigWithWorkspace(t),
 			},
 		},
+		{
+			Name:          "Delete Command with Bicep filename",
+			Input:         []string{"app.bicep", "--yes"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadConfigWithWorkspaceAndApplication(t),
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }

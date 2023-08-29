@@ -32,7 +32,7 @@ on:
 
 env:
   # Go version
-  GOVER: '^1.20'
+  GOVER: '^1.21'
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -44,6 +44,8 @@ env:
   KIND_VER: 'v0.20.0'
   # Dapr version
   DAPR_VER: '1.11.0'
+  # Kubectl version
+  KUBECTL_VER: 'v1.25.0'
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
@@ -140,22 +142,9 @@ jobs:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
-      - name: Get Go Cache path
-        id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ${{ steps.go-cache-paths.outputs.go-build }}
-            ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -307,7 +296,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,shared,msgrp,daprrp,samples]
+        name: [ucp,shared,msgrp,daprrp,datastoresrp,samples]
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -530,6 +519,18 @@ jobs:
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      - uses: azure/setup-kubectl@v3
+        if: always()
+        with:
+          version: ${{ env.KUBECTL_VER }}
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3

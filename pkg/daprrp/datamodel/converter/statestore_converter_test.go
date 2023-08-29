@@ -23,6 +23,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
+	"github.com/project-radius/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,10 +57,10 @@ func TestDaprStateStoreDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.DaprStateStore{}
-			_ = json.Unmarshal(c, dm)
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
 			am, err := StateStoreDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -106,8 +107,7 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.versionedModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.versionedModelFile)
 			dm, err := StateStoreDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.Equal(t, tc.err, err)

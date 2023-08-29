@@ -36,8 +36,6 @@ type CreateOrUpdateAWSCredential struct {
 	secretClient secret.Client
 }
 
-// # Function Explanation
-//
 // NewCreateOrUpdateAWSCredential creates a new CreateOrUpdateAWSCredential controller which is used to create or update
 // AWS credentials in the secret store.
 func NewCreateOrUpdateAWSCredential(opts armrpc_controller.Options, secretClient secret.Client) (armrpc_controller.Controller, error) {
@@ -52,8 +50,6 @@ func NewCreateOrUpdateAWSCredential(opts armrpc_controller.Options, secretClient
 	}, nil
 }
 
-// # Function Explanation
-//
 // CreateOrUpdateAWSCredential validates the request, saves the AWS credential secret, and saves the resource in the
 // metadata store. If an error occurs, it returns an error response.
 func (c *CreateOrUpdateAWSCredential) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

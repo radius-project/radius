@@ -47,8 +47,7 @@ import (
 
 // NewCommand creates an instance of the command and runner for the `rad init` command.
 //
-// # Function Explanation
-//
+
 // This function "NewCommand" creates a new Cobra command with flags and a runner, which can be used to initialize the
 // Radius control-plane.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -127,8 +126,7 @@ type Runner struct {
 
 // NewRunner creates a new instance of the `rad init` runner.
 //
-// # Function Explanation
-//
+
 // NewRunner creates a new Runner struct with the given factory's ConfigHolder, Output, ConnectionFactory, Prompter,
 // ConfigFileInterface, KubernetesInterface, HelmInterface, DevRecipeClient, AWSClient, and AzureClient.
 func NewRunner(factory framework.Factory) *Runner {
@@ -149,8 +147,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate runs validation for the `rad init` command.
 // Validates the user prompts, values provided and builds the picture for the backend to execute
 //
-// # Function Explanation
-//
+
 // Validate gathers input from the user, creates a workspace and options, and confirms the options with the user before
 // returning the options and workspace. If the user does not confirm the options, the function will loop and gather input again.
 // If an error occurs, the function will return an error.
@@ -194,8 +191,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad init` command.
 // Creates radius resources, azure resources if required based on the user input, command flags
 //
-// # Function Explanation
-//
+
 // Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud
 // providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
 func (r *Runner) Run(ctx context.Context) error {
@@ -252,7 +248,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		var recipes map[string]map[string]*corerp.EnvironmentRecipeProperties
+		var recipes map[string]map[string]corerp.RecipePropertiesClassification
 		if r.Options.Recipes.DevRecipes {
 			recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
 			if err != nil {

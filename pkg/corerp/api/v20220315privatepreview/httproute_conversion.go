@@ -23,8 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
 func (src *HTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
@@ -55,8 +53,6 @@ func (src *HTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned HTTPRoute resource.
 func (dst *HTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 	route, ok := src.(*datamodel.HTTPRoute)
@@ -72,7 +68,7 @@ func (dst *HTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(route.Tags)
 	dst.Properties = &HTTPRouteProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(route.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(route.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(route.Properties.Application),

@@ -34,15 +34,11 @@ type ContainerResource struct {
 	Properties ContainerProperties `json:"properties"`
 }
 
-// # Function Explanation
-//
 // ResourceTypeName returns the qualified name of the resource.
 func (c ContainerResource) ResourceTypeName() string {
 	return ContainerResourceType
 }
 
-// # Function Explanation
-//
 // ApplyDeploymentOutput updates the ContainerResource's Properties, ComputedValues and SecretValues with
 // the DeploymentOutput's DeployedOutputResources, ComputedValues and SecretValues respectively and returns no error.
 func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
@@ -52,22 +48,16 @@ func (c *ContainerResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) erro
 	return nil
 }
 
-// # Function Explanation
-//
 // OutputResources returns the OutputResources from the ContainerResource's Properties Status.
 func (c *ContainerResource) OutputResources() []rpv1.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
-// # Function Explanation
-//
 // ResourceMetadata returns the BasicResourceProperties of the ContainerResource instance.
 func (h *ContainerResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &h.Properties.BasicResourceProperties
 }
 
-// # Function Explanation
-//
 // GetDisableDefaultEnvVars returns the value of the DisableDefaultEnvVars field of the ConnectionProperties struct, or
 // false if the field is nil.
 func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
@@ -85,6 +75,19 @@ type ContainerProperties struct {
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
 	Identity    *rpv1.IdentitySettings          `json:"identity,omitempty"`
+	Runtimes    *RuntimeProperties              `json:"runtimes,omitempty"`
+}
+
+// KubernetesRuntime represents the Kubernetes runtime configuration.
+type KubernetesRuntime struct {
+	// Base represents the Kubernetes resource definition in the serialized YAML format
+	Base string `json:"base,omitempty"`
+}
+
+// RuntimeProperties represents the runtime configuration for the platform-specific functionalities.
+type RuntimeProperties struct {
+	// Kubernetes represents the Kubernetes runtime configuration.
+	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
@@ -96,15 +99,16 @@ type ConnectionProperties struct {
 
 // Container - Definition of a container.
 type Container struct {
-	Image          string                      `json:"image,omitempty"`
-	Env            map[string]string           `json:"env,omitempty"`
-	LivenessProbe  HealthProbeProperties       `json:"livenessProbe,omitempty"`
-	Ports          map[string]ContainerPort    `json:"ports,omitempty"`
-	ReadinessProbe HealthProbeProperties       `json:"readinessProbe,omitempty"`
-	Volumes        map[string]VolumeProperties `json:"volumes,omitempty"`
-	Command        []string                    `json:"command,omitempty"`
-	Args           []string                    `json:"args,omitempty"`
-	WorkingDir     string                      `json:"workingDir,omitempty"`
+	Image           string                      `json:"image,omitempty"`
+	ImagePullPolicy string                      `json:"imagePullPolicy,omitempty"`
+	Env             map[string]string           `json:"env,omitempty"`
+	LivenessProbe   HealthProbeProperties       `json:"livenessProbe,omitempty"`
+	Ports           map[string]ContainerPort    `json:"ports,omitempty"`
+	ReadinessProbe  HealthProbeProperties       `json:"readinessProbe,omitempty"`
+	Volumes         map[string]VolumeProperties `json:"volumes,omitempty"`
+	Command         []string                    `json:"command,omitempty"`
+	Args            []string                    `json:"args,omitempty"`
+	WorkingDir      string                      `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container
@@ -190,8 +194,6 @@ type HealthProbeProperties struct {
 	TCP     *TCPHealthProbeProperties     `json:"tcp,omitempty"`
 }
 
-// # Function Explanation
-//
 // IsEmpty checks if the HealthProbeProperties is empty or not.
 func (h HealthProbeProperties) IsEmpty() bool {
 	return h == HealthProbeProperties{}
@@ -244,8 +246,6 @@ type IAMProperties struct {
 	Roles []string `json:"roles,omitempty"`
 }
 
-// # Function Explanation
-//
 // IsValid checks if the IAMKind is valid by comparing it to the list of valid IAMKinds.
 func (k IAMKind) IsValid() bool {
 	s := Kinds()
@@ -257,8 +257,6 @@ func (k IAMKind) IsValid() bool {
 	return false
 }
 
-// # Function Explanation
-//
 // IsKind compares two IAMKinds and returns true if they are equal.
 func (k IAMKind) IsKind(kind IAMKind) bool {
 	return k == kind
@@ -282,8 +280,6 @@ const (
 	KindRedislabsComRedis       IAMKind = "redislabs.com/Redis"
 )
 
-// # Function Explanation
-//
 // Kinds returns a list of supported IAMKinds.
 func Kinds() []IAMKind {
 	return []IAMKind{

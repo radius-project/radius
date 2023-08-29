@@ -20,8 +20,6 @@ import (
 	"net/http"
 )
 
-// # Function Explanation
-//
 // RemoveRemoteAddr is the middleware to remove remoteaddr to avoid high cardinality in metrics.
 // This is a temporary workaround until opentelemetry-go fixes the issue - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
 func RemoveRemoteAddr(next http.Handler) http.Handler {

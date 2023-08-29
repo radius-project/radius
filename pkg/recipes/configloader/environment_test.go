@@ -37,7 +37,8 @@ const (
 	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0"
 	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis-0"
 
-	recipeName = "cosmosDB"
+	recipeName      = "cosmosDB"
+	terraformRecipe = "terraform-cosmosDB"
 )
 
 func TestGetConfiguration(t *testing.T) {
@@ -219,14 +220,19 @@ func TestGetRecipeDefinition(t *testing.T) {
 					Scope: to.Ptr(azureScope),
 				},
 			},
-			Recipes: map[string]map[string]*model.EnvironmentRecipeProperties{
+			Recipes: map[string]map[string]model.RecipePropertiesClassification{
 				"Applications.Link/mongoDatabases": {
-					recipeName: {
+					recipeName: &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
+					},
+					terraformRecipe: &model.TerraformRecipeProperties{
+						TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+						TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
+						TemplateVersion: to.Ptr("1.1.0"),
 					},
 				},
 			},
@@ -268,7 +274,19 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, recipeDef, &expected)
 	})
-
+	t.Run("success-terraform", func(t *testing.T) {
+		recipeMetadata.Name = terraformRecipe
+		expected := recipes.EnvironmentDefinition{
+			Name:            terraformRecipe,
+			Driver:          recipes.TemplateKindTerraform,
+			ResourceType:    "Applications.Link/mongoDatabases",
+			TemplatePath:    "Azure/cosmosdb/azurerm",
+			TemplateVersion: "1.1.0",
+		}
+		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
+		require.NoError(t, err)
+		require.Equal(t, recipeDef, &expected)
+	})
 	t.Run("no recipes registered to the environment", func(t *testing.T) {
 		envResourceNilRecipe := envResource
 		envResourceNilRecipe.Properties.Recipes = nil

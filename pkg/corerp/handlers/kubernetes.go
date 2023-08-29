@@ -27,7 +27,8 @@ import (
 	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	v1 "k8s.io/api/apps/v1"
@@ -36,6 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/informers"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -50,13 +53,12 @@ const (
 	DefaultCacheResyncInterval = time.Second * time.Duration(30)
 )
 
-// # Function Explanation
-//
 // NewKubernetesHandler creates a new KubernetesHandler which is used to handle Kubernetes resources.
-func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) ResourceHandler {
+func NewKubernetesHandler(client client.Client, clientSet k8s.Interface, discoveryClient discovery.ServerResourcesInterface) ResourceHandler {
 	return &kubernetesHandler{
 		client:              client,
 		clientSet:           clientSet,
+		k8sDiscoveryClient:  discoveryClient,
 		deploymentTimeOut:   MaxDeploymentTimeout,
 		cacheResyncInterval: DefaultCacheResyncInterval,
 	}
@@ -65,13 +67,13 @@ func NewKubernetesHandler(client client.Client, clientSet k8s.Interface) Resourc
 type kubernetesHandler struct {
 	client    client.Client
 	clientSet k8s.Interface
+	// k8sDiscoveryClient is the Kubernetes client to used for API version lookups on Kubernetes resources. Override this for testing.
+	k8sDiscoveryClient discovery.ServerResourcesInterface
 
 	deploymentTimeOut   time.Duration
 	cacheResyncInterval time.Duration
 }
 
-// # Function Explanation
-//
 // Put stores the Kubernetes resource in the cluster and returns the properties of the resource. If the resource is a
 // deployment, it also waits until the deployment is ready.
 func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
@@ -94,27 +96,23 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		return nil, err
 	}
 
-	if options.Resource.Deployed {
-		return properties, nil
-	}
-
 	err = handler.client.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
 		return nil, err
 	}
 
-	options.Resource.Identity = resourcemodel.ResourceIdentity{
-		ResourceType: &resourcemodel.ResourceType{
-			Type:     options.Resource.ResourceType.Type,
-			Provider: resourcemodel.ProviderKubernetes,
-		},
-		Data: resourcemodel.KubernetesIdentity{
-			Name:       item.GetName(),
-			Namespace:  item.GetNamespace(),
-			Kind:       item.GetKind(),
-			APIVersion: item.GetAPIVersion(),
-		},
+	groupVersion, err := schema.ParseGroupVersion(item.GetAPIVersion())
+	if err != nil {
+		return nil, err
 	}
+
+	id := resources_kubernetes.IDFromParts(
+		resources_kubernetes.PlaneNameTODO,
+		groupVersion.Group,
+		item.GetKind(),
+		item.GetNamespace(),
+		item.GetName())
+	options.Resource.ID = id
 
 	// Monitor the created or updated resource until it is ready.
 	switch strings.ToLower(item.GetKind()) {
@@ -411,23 +409,22 @@ func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev
 	return true, nil
 }
 
-// # Function Explanation
-//
 // Delete decodes the identity data from the DeleteOptions, creates an unstructured object from the identity data,
 // and then attempts to delete the object from the Kubernetes cluster, returning an error if one occurs.
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	identity := &resourcemodel.KubernetesIdentity{}
-	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
+	apiVersion, err := handler.lookupKubernetesAPIVersion(ctx, options.Resource.ID)
+	if err != nil {
 		return err
 	}
 
+	group, kind, namespace, name := resources_kubernetes.ToParts(options.Resource.ID)
 	item := unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": identity.APIVersion,
-			"kind":       identity.Kind,
+			"apiVersion": schema.GroupVersion{Group: group, Version: apiVersion}.String(),
+			"kind":       kind,
 			"metadata": map[string]any{
-				"namespace": identity.Namespace,
-				"name":      identity.Name,
+				"namespace": namespace,
+				"name":      name,
 			},
 		},
 	}
@@ -435,17 +432,55 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 	return client.IgnoreNotFound(handler.client.Delete(ctx, &item))
 }
 
-func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructured, error) {
-	if resource.ResourceType.Provider != resourcemodel.ProviderKubernetes {
-		return unstructured.Unstructured{}, fmt.Errorf("invalid resource type provider: %s", resource.ResourceType.Provider)
+func (handler *kubernetesHandler) lookupKubernetesAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+	group, kind, namespace, _ := resources_kubernetes.ToParts(id)
+	var resourceLists []*metav1.APIResourceList
+	var err error
+	if namespace == "" {
+		resourceLists, err = handler.k8sDiscoveryClient.ServerPreferredResources()
+		if err != nil {
+			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+		}
+	} else {
+		resourceLists, err = handler.k8sDiscoveryClient.ServerPreferredNamespacedResources()
+		if err != nil {
+			return "", fmt.Errorf("could not find API version for type %q: %w", id.Type(), err)
+		}
 	}
 
-	obj, ok := resource.Resource.(runtime.Object)
+	for _, resourceList := range resourceLists {
+		// We know the group but not the version. This will give us the the list of resources and their preferred versions.
+		gv, err := schema.ParseGroupVersion(resourceList.GroupVersion)
+		if err != nil {
+			return "", err
+		}
+
+		if group != gv.Group {
+			continue
+		}
+
+		for _, resource := range resourceList.APIResources {
+			if resource.Kind == kind {
+				return gv.Version, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
+}
+
+func convertToUnstructured(resource rpv1.OutputResource) (unstructured.Unstructured, error) {
+	obj, ok := resource.CreateResource.Data.(runtime.Object)
 	if !ok {
 		return unstructured.Unstructured{}, errors.New("inner type was not a runtime.Object")
 	}
 
-	c, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource.Resource)
+	resourceType := resource.GetResourceType()
+	if resourceType.Provider != resourcemodel.ProviderKubernetes {
+		return unstructured.Unstructured{}, fmt.Errorf("invalid resource type provider: %s", resourceType.Provider)
+	}
+
+	c, err := runtime.DefaultUnstructuredConverter.ToUnstructured(resource.CreateResource.Data)
 	if err != nil {
 		return unstructured.Unstructured{}, fmt.Errorf("could not convert object %v to unstructured: %w", obj.GetObjectKind(), err)
 	}

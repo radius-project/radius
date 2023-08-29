@@ -15,12 +15,7 @@
     "status": {
       "outputResources": [
         {
-          "LocalID": "AzureSqlServer",
-          "Dependencies": null,
-          "ResourceType": {
-            "type": "azure.sql",
-            "provider": "azure"
-          }
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
       ]
     },

@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -112,21 +113,12 @@ func TestPlaneConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "https://applications.core.radius.azure.com", *r.Properties.ResourceProviders["Applications.Core"])
 }
 
-type fakeResource struct{}
-
-// # Function Explanation
-// 
-// FakeResource's ResourceTypeName function returns a string "FakeResource" when called.
-func (f *fakeResource) ResourceTypeName() string {
-	return "FakeResource"
-}
-
 func TestPlaneConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

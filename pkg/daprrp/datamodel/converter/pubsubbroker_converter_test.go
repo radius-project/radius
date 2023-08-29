@@ -25,6 +25,8 @@ import (
 	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
 	"github.com/project-radius/radius/pkg/to"
+	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,15 +68,7 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 					Version:           to.Ptr("v1"),
 					ComponentName:     to.Ptr("test-dpsb"),
 					ProvisioningState: to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
-					Status: &v20220315privatepreview.ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-								"Identity": nil,
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&v20220315privatepreview.ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -112,15 +106,7 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 					Version:              to.Ptr("v1"),
 					ComponentName:        to.Ptr("test-dpsb"),
 					ProvisioningState:    to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
-					Status: &v20220315privatepreview.ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-								"Identity": nil,
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&v20220315privatepreview.ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -150,10 +136,10 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.dataModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.DaprPubSubBroker{}
-			_ = json.Unmarshal(c, dm)
+			err = json.Unmarshal(c, dm)
+			require.NoError(t, err)
 
 			am, err := PubSubBrokerDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
@@ -208,8 +194,7 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := v20220315privatepreview.LoadTestData(tc.versionedModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.versionedModelFile)
 			dm, err := PubSubBrokerDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.Equal(t, tc.err, err)

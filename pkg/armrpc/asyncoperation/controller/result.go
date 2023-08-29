@@ -32,8 +32,6 @@ type Result struct {
 	state *v1.ProvisioningState
 }
 
-// # Function Explanation
-//
 // NewCanceledResult creates a new Result object with a canceled status and the given message.
 func NewCanceledResult(message string) Result {
 	r := Result{}
@@ -41,8 +39,6 @@ func NewCanceledResult(message string) Result {
 	return r
 }
 
-// # Function Explanation
-//
 // NewFailedResult creates a new Result object with the given error details and sets the failed flag to true.
 func NewFailedResult(err v1.ErrorDetails) Result {
 	r := Result{}
@@ -57,14 +53,9 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 	}
 	r.Requeue = requeue
 	r.SetProvisioningState(v1.ProvisioningStateFailed)
-	r.Error = &v1.ErrorDetails{
-		Code:    err.Code,
-		Message: err.Message,
-	}
+	r.Error = &err
 }
 
-// # Function Explanation
-//
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field
 // to an ErrorDetails object with the given message.
 func (r *Result) SetCanceled(message string) {
@@ -79,15 +70,11 @@ func (r *Result) SetCanceled(message string) {
 	}
 }
 
-// # Function Explanation
-//
 // SetProvisioningState sets the state of a Result object to the given ProvisioningState.
 func (r *Result) SetProvisioningState(s v1.ProvisioningState) {
 	r.state = &s
 }
 
-// # Function Explanation
-//
 // ProvisioningState returns the provisioning state of the request object, which is either v1.ProvisioningStateSucceeded
 // or the value of the state field if it is not nil.
 func (r *Result) ProvisioningState() v1.ProvisioningState {

@@ -27,9 +27,8 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/project-radius/radius/test/testutil"
@@ -399,18 +398,12 @@ func TestUpsertSecret(t *testing.T) {
 		require.Equal(t, "MTAwMDAwMDAtMTAwMC0xMDAwLTAwMDAtMDAwMDAwMDAwMDAw", string(ksecret.Data["servicePrincipalPassword"]))
 		require.Equal(t, rpv1.OutputResource{
 			LocalID: "Secret",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.Secret,
-					Provider: resourcemodel.ProviderKubernetes,
-				},
-				Data: resourcemodel.KubernetesIdentity{
-					Kind:       resourcekinds.Secret,
-					APIVersion: "v1",
-					Name:       "secret0",
-					Namespace:  "app0-ns",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"",
+				resources_kubernetes.KindSecret,
+				"app0-ns",
+				"secret0"),
 		}, newResource.Properties.Status.OutputResources[0])
 	})
 

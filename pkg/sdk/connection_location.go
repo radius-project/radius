@@ -56,8 +56,6 @@ type locationRewriteRoundTripper struct {
 	Authority string
 }
 
-// # Function Explanation
-//
 // RoundTrip is the implementation of http.RoundTripper. It rewrites response headers with a given scheme and authority.
 func (t *locationRewriteRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
 	// Send the request and then rewrite response headers.

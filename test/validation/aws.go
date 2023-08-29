@@ -30,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,8 +59,6 @@ type AWSResourceSet struct {
 	Resources []AWSResource
 }
 
-// # Function Explanation
-//
 // ValidateAWSResources checks that the expected AWS resources exist and have the expected properties.
 func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
@@ -82,8 +81,6 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
-// # Function Explanation
-//
 // DeleteAWSResource checks if the given AWS resource exists, deletes it if it does and waits until the delete is complete,
 //
 //	returning an error if any of these steps fail.
@@ -128,8 +125,6 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 	return nil
 }
 
-// # Function Explanation
-//
 // IsAWSResourceNotFound checks if the given AWS resource is not found.
 func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) (bool, error) {
 	// Verify that the resource is indeed deleted
@@ -147,8 +142,6 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 
 }
 
-// # Function Explanation
-//
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.
 func GetResourceIdentifier(ctx context.Context, resourceType string, name string) (string, error) {
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
@@ -170,8 +163,6 @@ func GetResourceIdentifier(ctx context.Context, resourceType string, name string
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name, nil
 }
 
-// # Function Explanation
-//
 // GetResourceTypeName retrieves the AWS resource type name from the resource identifier and context. It returns an
 // error if the resource identifier or context is invalid.
 func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, error) {
@@ -185,7 +176,7 @@ func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, er
 		return "", err
 	}
 
-	resourceType := resources.ToAWSResourceType(resourceID)
+	resourceType := resources_aws.ToAWSResourceType(resourceID)
 	return resourceType, nil
 }
 

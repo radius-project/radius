@@ -39,8 +39,6 @@ type GetAWSResource struct {
 	awsClients ucp_aws.Clients
 }
 
-// # Function Explanation
-//
 // NewGetAWSResource creates a new GetAWSResource controller with the given options and AWS clients, and returns it or an
 // error if one occurs.
 func NewGetAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
@@ -50,8 +48,6 @@ func NewGetAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Client
 	}, nil
 }
 
-// # Function Explanation
-//
 // Run() reads the region from the request, gets the resource from AWS using the region and resource type and
 // ID, and returns a response containing the resource's properties.
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {

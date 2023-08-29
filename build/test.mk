@@ -68,6 +68,9 @@ test-functional-msgrp: ## Runs Messaging RP functional tests
 test-functional-daprrp: ## Runs Dapr RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
+test-functional-datastoresrp: ## Runs Datastores RP functional tests
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
@@ -75,7 +78,7 @@ test-functional-ucp: ## Runs UCP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
-	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
+	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
 
 .PHONY: oav-installed
 oav-installed:

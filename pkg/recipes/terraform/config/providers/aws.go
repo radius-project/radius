@@ -27,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/credentials"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -49,8 +50,6 @@ type awsProvider struct {
 	secretProvider *ucp_provider.SecretProvider
 }
 
-// # Function Explanation
-//
 // NewAWSProvider creates a new AWSProvider instance.
 func NewAWSProvider(ucpConn sdk.Connection, secretProvider *ucp_provider.SecretProvider) Provider {
 	return &awsProvider{ucpConn: ucpConn, secretProvider: secretProvider}
@@ -94,7 +93,7 @@ func (p *awsProvider) parseScope(ctx context.Context, envConfig *recipes.Configu
 		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, error parsing: %s", scope, err.Error())
 	}
 
-	region := parsedScope.FindScope(resources.RegionsSegment)
+	region := parsedScope.FindScope(resources_aws.ScopeRegions)
 	if region == "" {
 		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, region is required in the scope", scope)
 	}

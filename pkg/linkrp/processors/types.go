@@ -50,8 +50,6 @@ type ValidationError struct {
 	Message string
 }
 
-// # Function Explanation
-//
 // Error returns a string containing the error message for ValidationError.
 func (e *ValidationError) Error() string {
 	return e.Message
@@ -64,7 +62,7 @@ type ResourceClient interface {
 	// Delete deletes a resource by id.
 	//
 	// If the API version is omitted, then an attempt will be made to look up the API version.
-	Delete(ctx context.Context, id string, apiVersion string) error
+	Delete(ctx context.Context, id string) error
 }
 
 // ResourceError represents an error that occured while processing a resource.
@@ -73,15 +71,11 @@ type ResourceError struct {
 	Inner error
 }
 
-// # Function Explanation
-//
 // Error returns a string describing the error that occurred when attempting to delete a resource.
 func (e *ResourceError) Error() string {
 	return fmt.Sprintf("failed to delete resource %q: %v", e.ID, e.Inner)
 }
 
-// # Function Explanation
-//
 // Unwrap returns the underlying error of ResourceError.
 func (e *ResourceError) Unwrap() error {
 	return e.Inner

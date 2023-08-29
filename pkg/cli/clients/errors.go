@@ -27,8 +27,7 @@ import (
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
 //
-// # Function Explanation
-//
+
 // "Is404Error" checks if the given error is a 404 error by checking if it is a ResponseError with an ErrorCode of
 // "NotFound" or an ErrorResponse with an Error Code of "NotFound".
 func Is404Error(err error) bool {

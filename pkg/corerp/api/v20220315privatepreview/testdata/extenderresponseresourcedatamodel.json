@@ -1,32 +1,31 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
-    "name": "extender0",
-    "type": "Applications.Core/extenders",
-    "systemData": {
-        "createdBy": "fakeid@live.com",
-        "createdByType": "User",
-        "createdAt": "2021-09-24T19:09:54.2403864Z",
-        "lastModifiedBy": "fakeid@live.com",
-        "lastModifiedByType": "User",
-        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
+  "name": "extender0",
+  "type": "Applications.Core/extenders",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
     },
-    "tags": {
-        "env": "dev"
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+    "additionalProperties": {
+      "fromNumber": "222-222-2222"
     },
-    "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "Extender",
-                "Provider": "ExtenderProvider"
-              }
-            }]
-        },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "additionalProperties":{
-            "fromNumber": "222-222-2222"
-        }           
-    }
+    "resourceProvisioning": "manual"
+  }
 }

@@ -21,8 +21,8 @@ import (
 	"hash/fnv"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,17 +30,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-// # Function Explanation
-//
 // FindDeployment searches through a slice of OutputResource objects and returns the first Deployment object and its
 // associated OutputResource object.
 func FindDeployment(resources []rpv1.OutputResource) (*appsv1.Deployment, rpv1.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceType.Type != resourcekinds.Deployment {
+		if r.GetResourceType().Type != resources_kubernetes.ResourceTypeDeployment {
 			continue
 		}
 
-		deployment, ok := r.Resource.(*appsv1.Deployment)
+		deployment, ok := r.CreateResource.Data.(*appsv1.Deployment)
 		if !ok {
 			continue
 		}
@@ -51,17 +49,15 @@ func FindDeployment(resources []rpv1.OutputResource) (*appsv1.Deployment, rpv1.O
 	return nil, rpv1.OutputResource{}
 }
 
-// # Function Explanation
-//
 // FindService searches through a slice of OutputResource objects and returns the first Service object found and the
 // OutputResource object it was found in.
 func FindService(resources []rpv1.OutputResource) (*corev1.Service, rpv1.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceType.Type != resourcekinds.Service {
+		if r.GetResourceType().Type != resources_kubernetes.ResourceTypeService {
 			continue
 		}
 
-		service, ok := r.Resource.(*corev1.Service)
+		service, ok := r.CreateResource.Data.(*corev1.Service)
 		if !ok {
 			continue
 		}
@@ -72,17 +68,16 @@ func FindService(resources []rpv1.OutputResource) (*corev1.Service, rpv1.OutputR
 	return nil, rpv1.OutputResource{}
 }
 
-// # Function Explanation
-//
 // FindSecret iterates through a slice of OutputResource objects and returns the first Secret object found and its
 // corresponding OutputResource object.
 func FindSecret(resources []rpv1.OutputResource) (*corev1.Secret, rpv1.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceType.Type != resourcekinds.Secret {
+		resourceType := r.GetResourceType()
+		if resourceType.Type != resources_kubernetes.ResourceTypeSecret {
 			continue
 		}
 
-		secret, ok := r.Resource.(*corev1.Secret)
+		secret, ok := r.CreateResource.Data.(*corev1.Secret)
 		if !ok {
 			continue
 		}
@@ -93,17 +88,38 @@ func FindSecret(resources []rpv1.OutputResource) (*corev1.Secret, rpv1.OutputRes
 	return nil, rpv1.OutputResource{}
 }
 
-// # Function Explanation
-//
-// FindHttpRouteByLocalID searches through a slice of OutputResources to find a HTTPProxy resource
-// with the given localID.
-func FindHttpRouteByLocalID(resources []rpv1.OutputResource, localID string) (*contourv1.HTTPProxy, rpv1.OutputResource) {
+// FindContourHTTPProxyByLocalID searches through a slice of OutputResources to find a HTTPProxy resource.
+func FindContourHTTPProxy(resources []rpv1.OutputResource) (*contourv1.HTTPProxy, rpv1.OutputResource) {
 	for _, r := range resources {
-		if r.ResourceType.Type != resourcekinds.KubernetesHTTPRoute || r.LocalID != localID {
+		if r.GetResourceType().Type != resources_kubernetes.ResourceTypeContourHTTPProxy {
 			continue
 		}
 
-		httpRoute, ok := r.Resource.(*contourv1.HTTPProxy)
+		httpProxy, ok := r.CreateResource.Data.(*contourv1.HTTPProxy)
+		if !ok {
+			continue
+		}
+
+		// If VirtualHost exists, then this is a root HTTPProxy (gateway)
+		if httpProxy.Spec.VirtualHost == nil {
+			continue
+		}
+
+		return httpProxy, r
+	}
+
+	return nil, rpv1.OutputResource{}
+}
+
+// FindContourHTTPProxyByLocalID searches through a slice of OutputResources to find a HTTPProxy resource
+// with the given localID.
+func FindContourHTTPProxyByLocalID(resources []rpv1.OutputResource, localID string) (*contourv1.HTTPProxy, rpv1.OutputResource) {
+	for _, r := range resources {
+		if r.GetResourceType().Type != resources_kubernetes.ResourceTypeContourHTTPProxy || r.LocalID != localID {
+			continue
+		}
+
+		httpRoute, ok := r.CreateResource.Data.(*contourv1.HTTPProxy)
 		if !ok {
 			continue
 		}
@@ -119,34 +135,6 @@ func FindHttpRouteByLocalID(resources []rpv1.OutputResource, localID string) (*c
 	return nil, rpv1.OutputResource{}
 }
 
-// # Function Explanation
-//
-// FindGateway iterates through a slice of OutputResources and returns the first HTTPProxy resource found with a
-// VirtualHost set.
-func FindGateway(resources []rpv1.OutputResource) (*contourv1.HTTPProxy, rpv1.OutputResource) {
-	for _, r := range resources {
-		if r.ResourceType.Type != resourcekinds.Gateway {
-			continue
-		}
-
-		gateway, ok := r.Resource.(*contourv1.HTTPProxy)
-		if !ok {
-			continue
-		}
-
-		// If VirtualHost exists, then this is a root HTTPProxy (gateway)
-		if gateway.Spec.VirtualHost == nil {
-			continue
-		}
-
-		return gateway, r
-	}
-
-	return nil, rpv1.OutputResource{}
-}
-
-// # Function Explanation
-//
 // GetShortenedTargetPortName takes in a string and returns a shortened version of it by using a hashing algorithm.
 // This generates a unique port name based on a resource id and can be used to link up a Service and Deployment.
 func GetShortenedTargetPortName(name string) string {
@@ -157,15 +145,11 @@ func GetShortenedTargetPortName(name string) string {
 	return "a" + fmt.Sprint(h.Sum32())
 }
 
-// # Function Explanation
-//
 // IsValidObjectName checks if the given string is a valid Kubernetes object name.
 func IsValidObjectName(name string) bool {
 	return len(validation.IsDNS1123Label(name)) == 0
 }
 
-// # Function Explanation
-//
 // IsValidDaprObjectName checks if the given string is a valid Dapr object name and returns a boolean value.
 func IsValidDaprObjectName(name string) bool {
 	return len(validation.IsDNS1123Subdomain(name)) == 0

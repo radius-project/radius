@@ -42,8 +42,6 @@ type CreateOrUpdateResource[P interface {
 	configurationLoader configloader.ConfigurationLoader
 }
 
-// # Function Explanation
-//
 // NewCreateOrUpdateResource creates a new controller for creating or updating a resource with the given processor, engine,
 // client, configurationLoader and options. The processor function will be called to process updates to the resource.
 func NewCreateOrUpdateResource[P interface {
@@ -53,8 +51,6 @@ func NewCreateOrUpdateResource[P interface {
 	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client, configurationLoader}, nil
 }
 
-// # Function Explanation
-//
 // Run retrieves an existing resource, executes a recipe if needed, loads runtime configuration,
 // processes the resource, cleans up any obsolete output resources, and saves the updated resource.
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
@@ -76,6 +72,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	// Now we're ready to process recipes (if needed).
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data)
 	if err != nil {
+		if recipeError, ok := err.(*recipes.RecipeError); ok {
+			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
+		}
 		return ctrl.Result{}, err
 	}
 

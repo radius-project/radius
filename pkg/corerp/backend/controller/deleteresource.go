@@ -32,15 +32,11 @@ type DeleteResource struct {
 	ctrl.BaseController
 }
 
-// # Function Explanation
-//
 // NewDeleteResource creates a new DeleteResource controller with the given options.
 func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
-// # Function Explanation
-//
 // Run retrieves a resource from storage, parses its ID, gets its data model, converts it to a deployment
 // data model, deletes the resource from the deployment processor, and deletes the resource from storage.
 // It returns an error if any of these steps fail.

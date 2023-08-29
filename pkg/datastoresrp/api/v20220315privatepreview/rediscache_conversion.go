@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned Redis cache resource to version-agnostic datamodel
 // and returns an error if the inputs are invalid.
 func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -79,8 +77,6 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Redis cache resource.
 func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	redis, ok := src.(*datamodel.RedisCache)
@@ -104,7 +100,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		TLS:                  to.Ptr(redis.Properties.TLS),
 		Username:             to.Ptr(redis.Properties.Username),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(redis.Properties.Environment),
@@ -114,8 +110,6 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts from version-agnostic datamodel to the versioned Redis cacheSecrets instance
 // and returns an error if the conversion fails.
 func (dst *RedisCacheSecrets) ConvertFrom(src v1.DataModelInterface) error {
@@ -131,8 +125,6 @@ func (dst *RedisCacheSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertTo converts from the versioned RedisCacheSecrets instance to version-agnostic datamodel.
 func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RedisCacheSecrets{

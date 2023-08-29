@@ -20,8 +20,6 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -40,24 +38,8 @@ func TestDaprStateStore_ApplyDeploymentOutput(t *testing.T) {
 			do: &rpv1.DeploymentOutput{
 				DeployedOutputResources: []rpv1.OutputResource{
 					{
-						LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
-						ResourceType: resourcemodel.ResourceType{
-							Type:     resourcekinds.DaprStateStoreAzureStorage,
-							Provider: resourcemodel.ProviderAzure,
-						},
-						Identity: resourcemodel.ResourceIdentity{
-							ResourceType: &resourcemodel.ResourceType{
-								Type:     resourcekinds.DaprStateStoreAzureStorage,
-								Provider: resourcemodel.ProviderAzure,
-							},
-							Data: resourcemodel.ARMIdentity{},
-						},
+						LocalID:       rpv1.LocalIDDaprStateStoreAzureStorage,
 						RadiusManaged: to.Ptr(true),
-						Dependencies: []rpv1.Dependency{
-							{
-								LocalID: "",
-							},
-						},
 					},
 				},
 				ComputedValues: map[string]any{
@@ -72,24 +54,8 @@ func TestDaprStateStore_ApplyDeploymentOutput(t *testing.T) {
 			do: &rpv1.DeploymentOutput{
 				DeployedOutputResources: []rpv1.OutputResource{
 					{
-						LocalID: rpv1.LocalIDDaprStateStoreAzureStorage,
-						ResourceType: resourcemodel.ResourceType{
-							Type:     resourcekinds.DaprStateStoreAzureStorage,
-							Provider: resourcemodel.ProviderAzure,
-						},
-						Identity: resourcemodel.ResourceIdentity{
-							ResourceType: &resourcemodel.ResourceType{
-								Type:     resourcekinds.DaprStateStoreAzureStorage,
-								Provider: resourcemodel.ProviderAzure,
-							},
-							Data: resourcemodel.ARMIdentity{},
-						},
+						LocalID:       rpv1.LocalIDDaprStateStoreAzureStorage,
 						RadiusManaged: to.Ptr(true),
-						Dependencies: []rpv1.Dependency{
-							{
-								LocalID: "",
-							},
-						},
 					},
 				},
 				ComputedValues: map[string]any{},

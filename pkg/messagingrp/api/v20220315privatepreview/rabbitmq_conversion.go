@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/to"
 )
 
-// # Function Explanation
-//
 // ConvertTo converts a versioned RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
 // and returns it or an error if the inputs are invalid.
 func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
@@ -81,8 +79,6 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts a version-agnostic DataModelInterface to a versioned RabbitMQQueueResource,
 // returning an error if the conversion fails.
 func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
@@ -99,7 +95,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQQueueProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(rabbitmq.Properties.Environment),
@@ -119,8 +115,6 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertFrom converts a version-agnostic datamodel.RabbitMQSecrets to a versioned RabbitMQSecrets,
 // returning an error if the conversion fails.
 func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
@@ -133,8 +127,6 @@ func (dst *RabbitMQSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-// # Function Explanation
-//
 // ConvertTo converts a versioned RabbitMQSecrets object to a version-agnostic datamodel.RabbitMQSecrets object.
 func (src *RabbitMQSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{

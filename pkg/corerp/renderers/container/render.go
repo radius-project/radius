@@ -40,11 +40,12 @@ import (
 	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
+	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
 )
 
 const (
@@ -60,13 +61,11 @@ const (
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
 
 	defaultServiceAccountName = "default"
-	httpScheme = "http"
-	httpsScheme = "https"
-	httpsPort = 443
+	httpScheme                = "http"
+	httpsScheme               = "https"
+	httpsPort                 = 443
 )
 
-// # Function Explanation
-//
 // GetSupportedKinds returns a list of supported volume kinds.
 func GetSupportedKinds() []string {
 	keys := []string{}
@@ -81,8 +80,6 @@ type Renderer struct {
 	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
 }
 
-// # Function Explanation
-//
 // GetDependencyIDs parses the connections, ports and volumes of a container resource to return the Radius and Azure
 // resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
@@ -102,7 +99,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 		if isURL(connection.Source) {
 			continue
 		}
-		
+
 		// if the source is not a URL, it either a resourceID or invalid.
 		resourceID, err := resources.ParseResource(connection.Source)
 		if err != nil {
@@ -115,7 +112,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 			continue
 		}
 
-		if resourceID.IsRadiusRPResource() {
+		if resources_radius.IsRadiusResource(resourceID) {
 			radiusResourceIDs = append(radiusResourceIDs, resourceID)
 			continue
 		}
@@ -134,7 +131,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
 
-		if resourceID.IsRadiusRPResource() {
+		if resources_radius.IsRadiusResource(resourceID) {
 			radiusResourceIDs = append(radiusResourceIDs, resourceID)
 			continue
 		}
@@ -148,7 +145,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 				return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
 
-			if resourceID.IsRadiusRPResource() {
+			if resources_radius.IsRadiusResource(resourceID) {
 				radiusResourceIDs = append(radiusResourceIDs, resourceID)
 				continue
 			}
@@ -158,8 +155,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-// # Function Explanation
-//
 // Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
 // RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -181,7 +176,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			continue
 		}
 
-		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id). 
+		// If source is not a URL, it must be either resource ID, invalid string, or empty (example: containerhttproute.id).
 		_, err := resources.ParseResource(connection.Source)
 		if err != nil {
 			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid source: %s. Must be either a URL or a valid resourceID", connection.Source))
@@ -247,7 +242,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	if needsServiceGeneration {
 		containerPorts := containerPorts{
 			values: []int32{},
-			names: []string{},
+			names:  []string{},
 		}
 
 		for portName, port := range resource.Properties.Container.Ports {
@@ -273,7 +268,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 type containerPorts struct {
 	values []int32
-	names []string
+	names  []string
 }
 
 func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
@@ -289,7 +284,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 			Name:       containerPorts.names[i],
 			Port:       port,
 			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
-			Protocol:  corev1.ProtocolTCP,
+			Protocol:   corev1.ProtocolTCP,
 		})
 	}
 
@@ -307,11 +302,11 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeSelectorLabels(appId.Name(), resource.Name),
 			Type:     corev1.ServiceTypeClusterIP,
-			Ports: ports,
+			Ports:    ports,
 		},
 	}
 
-	return rpv1.NewKubernetesOutputResource(resourcekinds.Service, rpv1.LocalIDService, service, service.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
@@ -360,16 +355,19 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	}
 
 	container := corev1.Container{
-		Name:  kubernetes.NormalizeResourceName(resource.Name),
-		Image: properties.Container.Image,
-		// TODO: use better policies than this when we have a good versioning story
-		ImagePullPolicy: corev1.PullPolicy("Always"),
-		Ports:           ports,
-		Env:             []corev1.EnvVar{},
-		VolumeMounts:    []corev1.VolumeMount{},
-		Command:         properties.Container.Command,
-		Args:            properties.Container.Args,
-		WorkingDir:      properties.Container.WorkingDir,
+		Name:         kubernetes.NormalizeResourceName(resource.Name),
+		Image:        properties.Container.Image,
+		Ports:        ports,
+		Env:          []corev1.EnvVar{},
+		VolumeMounts: []corev1.VolumeMount{},
+		Command:      properties.Container.Command,
+		Args:         properties.Container.Args,
+		WorkingDir:   properties.Container.WorkingDir,
+	}
+
+	// If the user has specified an image pull policy, use it. Else, we will use Kubernetes default.
+	if properties.Container.ImagePullPolicy != "" {
+		container.ImagePullPolicy = corev1.PullPolicy(properties.Container.ImagePullPolicy)
 	}
 
 	var err error
@@ -405,7 +403,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 	outputResources := []rpv1.OutputResource{}
 
-	deps := []rpv1.Dependency{}
+	deps := []string{}
 
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
@@ -482,7 +480,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return []rpv1.OutputResource{}, nil, err
 				}
 				outputResources = append(outputResources, *secretProvider)
-				deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDSecretProviderClass})
+				deps = append(deps, rpv1.LocalIDSecretProviderClass)
 
 				// Create volume spec which associated with secretProviderClass.
 				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent.MountPath, spcName)
@@ -505,12 +503,8 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				if value.(string) == rpv1.LocalIDAzureFileShareStorageAccount {
 					// The storage account was not created when the computed value was rendered
 					// Lookup the actual storage account name from the local id
-					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
-					r, err := resources.ParseResource(id)
-					if err != nil {
-						return []rpv1.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
-					}
-					value = r.Name()
+					id := properties.OutputResources[value.(string)]
+					value = id.Name()
 				}
 				secretData[key] = []byte(value.(string))
 			}
@@ -550,11 +544,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		// This is required to enable workload identity.
 		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
 
-		deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDServiceAccount})
+		deps = append(deps, rpv1.LocalIDServiceAccount)
 
 		// 4. Add RBAC resources to the dependencies.
 		for _, role := range roles {
-			deps = append(deps, rpv1.Dependency{LocalID: role.LocalID})
+			deps = append(deps, role.LocalID)
 		}
 
 		computedValues[handlers.IdentityProperties] = rpv1.ComputedValueReference{
@@ -601,11 +595,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// Create the role and role bindings for SA.
 	role := makeRBACRole(applicationName, kubeIdentityName, options.Environment.Namespace, resource)
 	outputResources = append(outputResources, *role)
-	deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDKubernetesRole})
+	deps = append(deps, rpv1.LocalIDKubernetesRole)
 
 	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, serviceAccountName, options.Environment.Namespace, resource)
 	outputResources = append(outputResources, *roleBinding)
-	deps = append(deps, rpv1.Dependency{LocalID: rpv1.LocalIDKubernetesRoleBinding})
+	deps = append(deps, rpv1.LocalIDKubernetesRoleBinding)
 
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
@@ -654,13 +648,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	if len(secretData) > 0 {
 		hash := r.hashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
-		deps = append(deps, rpv1.Dependency{
-			LocalID: rpv1.LocalIDSecret,
-		})
+		deps = append(deps, rpv1.LocalIDSecret)
 	}
 
-	deploymentOutput := rpv1.NewKubernetesOutputResource(resourcekinds.Deployment, rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)
-	deploymentOutput.Dependencies = deps
+	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	deploymentOutput.CreateResource.Dependencies = deps
 
 	outputResources = append(outputResources, deploymentOutput)
 	return outputResources, secretData, nil
@@ -691,10 +683,10 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 					return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
 				}
 
-				env["CONNECTIONS_" + name + "_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
-				env["CONNECTIONS_" + name + "_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
-				env["CONNECTIONS_" + name + "_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
-				
+				env["CONNECTIONS_"+name+"_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
+				env["CONNECTIONS_"+name+"_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
+				env["CONNECTIONS_"+name+"_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
+
 				continue
 			}
 
@@ -826,8 +818,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 		Data: secrets,
 	}
 
-	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
-	output := rpv1.NewKubernetesOutputResource(resourcekinds.Secret, rpv1.LocalIDSecret, &secret, secret.ObjectMeta)
+	output := rpv1.NewKubernetesOutputResource(rpv1.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
 }
 
@@ -888,12 +879,10 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, connection.Source))
 		}
 
-		// Now we know the resource ID to assign roles against.
-		arm, ok := target.Data.(resourcemodel.ARMIdentity)
-		if !ok {
+		if !resources_azure.IsAzureResource(target) {
 			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target))
 		}
-		armResourceIdentifier = arm.ID
+		armResourceIdentifier = target.String()
 
 		roleNames = roleAssignmentData.RoleNames
 	}
@@ -902,20 +891,18 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 	for _, roleName := range roleNames {
 		localID := rpv1.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
 		roleAssignment := rpv1.OutputResource{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			LocalID:  localID,
-			Deployed: false,
-			Resource: map[string]string{
-				handlers.RoleNameKey:         roleName,
-				handlers.RoleAssignmentScope: armResourceIdentifier,
-			},
-			Dependencies: []rpv1.Dependency{
-				{
-					LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
+
+			LocalID: localID,
+			CreateResource: &rpv1.Resource{
+				Data: map[string]string{
+					handlers.RoleNameKey:         roleName,
+					handlers.RoleAssignmentScope: armResourceIdentifier,
 				},
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
+					Provider: resourcemodel.ProviderAzure,
+				},
+				Dependencies: []string{rpv1.LocalIDUserAssignedManagedIdentity},
 			},
 		}
 
@@ -938,7 +925,7 @@ func getSortedKeys(env map[string]corev1.EnvVar) []string {
 
 func isURL(input string) bool {
 	_, err := url.ParseRequestURI(input)
-	
+
 	// if first character is a slash, it's not a URL. It's a path.
 	if input == "" || err != nil || input[0] == '/' {
 		return false

@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"strings"
 	"strconv"
+	"strings"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,16 +32,14 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 )
 
 type Renderer struct {
 }
 
-// # Function Explanation
-//
 // GetDependencyIDs parses the gateway data model to get the resource IDs of the httpRoutes and the secretStore resource ID
 // from the certificateFrom property, and returns them as two slices of resource IDs.
 func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
@@ -54,7 +52,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	// Get all httpRoutes that are used by this gateway
 	for _, route := range gtwyProperties.Routes {
 		// Skip if destination is a URL. DNS-SD will resolve the route.
-		if (isURL(route.Destination)) {
+		if isURL(route.Destination) {
 			continue
 		}
 
@@ -79,8 +77,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-// # Function Explanation
-//
 // Render creates a gateway object and http route objects based on the given parameters, and returns them along
 // with a computed value for the gateway's public endpoint.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -132,8 +128,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-// # Function Explanation
-//
 // MakeGateway validates the Gateway resource and its dependencies, and creates a Contour HTTPProxy resource
 // to act as the Gateway.
 func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (rpv1.OutputResource, error) {
@@ -186,19 +180,14 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretResource := secretStoreResource.OutputResources[rpv1.LocalIDSecret].Data
-			secretResourceData, ok := secretResource.(map[string]any)
+			secretResourceID, ok := secretStoreResource.OutputResources[rpv1.LocalIDSecret]
 			if !ok {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
-			secretName, ok := secretResourceData["name"]
-			if !ok {
-				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
-			}
-
-			secretNamespace, ok := secretResourceData["namespace"]
-			if !ok {
+			secretName := secretResourceID.Name()
+			secretNamespace := secretResourceID.FindScope(resources_kubernetes.ScopeNamespaces)
+			if secretNamespace == "" {
 				return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("secretStore resource %s not found", secretStoreResourceId))
 			}
 
@@ -300,11 +289,9 @@ func MakeGateway(ctx context.Context, options renderers.RenderOptions, gateway *
 		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 
-	return rpv1.NewKubernetesOutputResource(resourcekinds.Gateway, rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
-// # Function Explanation
-//
 // MakeHttpRoutes creates HTTPProxy objects for each route in the gateway and returns them as OutputResources. It returns
 // an error if it fails to get the route name.
 func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]rpv1.OutputResource, error) {
@@ -404,7 +391,7 @@ func MakeHttpRoutes(ctx context.Context, options renderers.RenderOptions, resour
 
 	var outputResources []rpv1.OutputResource
 	for localID, object := range objects {
-		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, localID, object, object.ObjectMeta))
+		outputResources = append(outputResources, rpv1.NewKubernetesOutputResource(localID, object, object.ObjectMeta))
 	}
 
 	return outputResources, nil
@@ -503,7 +490,7 @@ func isURL(input string) bool {
 	_, err := url.ParseRequestURI(input)
 
 	// if first character is a slash, it's not a URL. It's a path.
-	if (err != nil || input[0] == '/') {
+	if err != nil || input[0] == '/' {
 		return false
 	}
 	return true
@@ -549,4 +536,3 @@ func parseURL(sourceURL string) (scheme string, hostname string, port int32, err
 
 	return scheme, hostname, port, nil
 }
-

@@ -32,17 +32,23 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 
-	"github.com/project-radius/radius/pkg/resourcekinds"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// # Function Explanation
-//
+const (
+	// AnyResourceType is used to designate a resource handler that can handle any type that belongs to a provider. AnyResourceType
+	// should only be used to register handlers, and not as part of an output resource.
+	AnyResourceType = "*"
+)
+
 // NewApplicationModel configures RBAC support on connections based on connection kind, configures the providers supported by the appmodel,
 // registers the renderers and handlers for various resources, and checks for duplicate registrations.
-func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sClientSet kubernetes.Interface) (ApplicationModel, error) {
+func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sClientSet kubernetes.Interface, discoveryClient discovery.ServerResourcesInterface) (ApplicationModel, error) {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
@@ -107,118 +113,47 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	outputResourceModel := []OutputResourceModel{
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Kubernetes,
+				Type:     AnyResourceType,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Deployment,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Service,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Secret,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Gateway,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.Volume,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.KubernetesHTTPRoute,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.SecretProviderClass,
+				Type:     resources_kubernetes.ResourceTypeSecretProviderClass,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceTransformer: azcontainer.TransformSecretProviderClass,
-			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.ServiceAccount,
+				Type:     resources_kubernetes.ResourceTypeServiceAccount,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceTransformer: azcontainer.TransformFederatedIdentitySA,
-			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.KubernetesRole,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.KubernetesRoleBinding,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient),
 		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
-		// Azure CosmosDB and Azure Redis models are consumed by deployment processor to fetch secrets for container dependencies.
-		// Any new SecretValueTransformer for a link should be added here to support connections from container.
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: resourcemodel.ProviderAzure,
-			},
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
+				Type:     resources_azure.ResourceTypeManagedIdentityUserAssignedManagedIdentity,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureFederatedIdentity,
+				Type:     resources_azure.ResourceTypeManagedIdentityUserAssignedManagedIdentityFederatedIdentityCredential,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureFederatedIdentity(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
+				Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),

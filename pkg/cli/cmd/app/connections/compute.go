@@ -18,9 +18,7 @@ package connections
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
@@ -197,14 +195,31 @@ func nodeFromID(id string) node {
 	}
 }
 
+// nodeFromParsedID creates a node from a resource ID.
+func nodeFromParsedID(id resources.ID) node {
+	return node{
+		ID:   id.String(),
+		Name: id.Name(),
+		Type: id.Type(),
+	}
+}
+
 // resourceEntryFromID creates a resourceEntry from a resource ID.
 func resourceEntryFromID(id string) resourceEntry {
 	return resourceEntry{node: nodeFromID(id)}
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
-func outputResourceEntryFromID(id string) outputResourceEntry {
-	return outputResourceEntry{node: nodeFromID(id)}
+func outputResourceEntryFromID(id resources.ID) outputResourceEntry {
+	entry := outputResourceEntry{node: nodeFromParsedID(id)}
+	if len(id.ScopeSegments()) > 0 && id.IsUCPQualfied() {
+		entry.Provider = id.ScopeSegments()[0].Type
+	} else if len(id.ScopeSegments()) > 0 {
+		// Relative Resource ID (ARM)
+		entry.Provider = resourcemodel.ProviderAzure
+	}
+
+	return entry
 }
 
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
@@ -240,9 +255,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []outputReso
 	for _, or := range ors {
 		// This is the wire format returned by the API for an output resource.
 		type outputResourceWireFormat struct {
-			Identity map[string]string `json:"Identity"`
-			LocalID  string            `json:"LocalID"`
-			Provider string            `json:"Provider"`
+			ID resources.ID `json:"id"`
 		}
 
 		data := outputResourceWireFormat{}
@@ -253,30 +266,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []outputReso
 		}
 
 		// Now build the entry from the API data
-		entry := outputResourceEntry{}
-		switch data.Provider {
-		case resourcemodel.ProviderAzure:
-			fallthrough
-		case resourcemodel.ProviderAWS:
-			entry = outputResourceEntryFromID(data.Identity["id"])
-			entry.Provider = data.Provider
-
-		case resourcemodel.ProviderKubernetes:
-			resourceType := data.Identity["kind"]
-			group, _, found := strings.Cut(data.Identity["apiVersion"], "/")
-			if found && group != "" {
-				resourceType = fmt.Sprintf("%s/%s", group, data.Identity["kind"])
-			}
-
-			// NOTE: we don't have a resource ID for a Kubernetes resource (yet).
-			entry.ID = ""
-			entry.Name = data.Identity["name"]
-			entry.Type = resourceType
-			entry.Provider = data.Provider
-
-		default:
-			entry = outputResourceEntry{node: node{Error: fmt.Sprintf("unknown provider '%s'", data.Provider)}}
-		}
+		entry := outputResourceEntryFromID(data.ID)
 
 		entries = append(entries, entry)
 	}

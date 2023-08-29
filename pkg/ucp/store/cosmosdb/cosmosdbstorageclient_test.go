@@ -743,12 +743,12 @@ func TestGetPartitionKey(t *testing.T) {
 	}{
 		{
 			"env-partition-key",
-			"subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"00000000000000001000000000000001",
 		},
 		{
 			"env-no-subscription-partition-key",
-			"resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"",
 		},
 		{

@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	recipes "github.com/project-radius/radius/pkg/recipes"
+	terraform_json "github.com/hashicorp/terraform-json"
 )
 
 // MockTerraformExecutor is a mock of TerraformExecutor interface.
@@ -35,11 +35,25 @@ func (m *MockTerraformExecutor) EXPECT() *MockTerraformExecutorMockRecorder {
 	return m.recorder
 }
 
+// Delete mocks base method.
+func (m *MockTerraformExecutor) Delete(arg0 context.Context, arg1 Options) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockTerraformExecutorMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockTerraformExecutor)(nil).Delete), arg0, arg1)
+}
+
 // Deploy mocks base method.
-func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*recipes.RecipeOutput, error) {
+func (m *MockTerraformExecutor) Deploy(arg0 context.Context, arg1 Options) (*terraform_json.State, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deploy", arg0, arg1)
-	ret0, _ := ret[0].(*recipes.RecipeOutput)
+	ret0, _ := ret[0].(*terraform_json.State)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

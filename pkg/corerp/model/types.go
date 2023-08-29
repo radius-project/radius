@@ -35,15 +35,11 @@ type ApplicationModel struct {
 	supportedProviders   map[string]bool
 }
 
-// # Function Explanation
-//
 // GetRadiusResources returns the RadiusResourceModels from the ApplicationModel instance.
 func (m ApplicationModel) GetRadiusResources() []RadiusResourceModel {
 	return m.radiusResources
 }
 
-// # Function Explanation
-//
 // GetOutputResources returns the OutputResourceModels from the ApplicationModel instance.
 func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 	return m.outputResources
@@ -51,8 +47,7 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 
 // LookupRadiusResourceModel is a case insensitive lookup for resourceType
 //
-// # Function Explanation
-//
+
 // LookupRadiusResourceModel does a case-insensitive-lookup for resourceType and returns it,
 // or an error if the resource type is unsupported.
 func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*RadiusResourceModel, error) {
@@ -64,21 +59,23 @@ func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*Radiu
 	return &resource, nil
 }
 
-// # Function Explanation
-//
 // LookupOutputResourceModel looks up an OutputResourceModel from the outputResourceLookup map and returns it,
 // or an error if the resourceType is unsupported.
 func (m ApplicationModel) LookupOutputResourceModel(resourceType resourcemodel.ResourceType) (*OutputResourceModel, error) {
 	resource, ok := m.outputResourceLookup[resourceType]
-	if !ok {
-		return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
+	if ok {
+		return &resource, nil
 	}
 
-	return &resource, nil
+	// As a fallback, see if there is a handler for any resource type that belongs to the provider.
+	resource, ok = m.outputResourceLookup[resourcemodel.ResourceType{Provider: resourceType.Provider, Type: AnyResourceType}]
+	if ok {
+		return &resource, nil
+	}
+
+	return nil, fmt.Errorf("output resource kind '%s' is unsupported", resourceType)
 }
 
-// # Function Explanation
-//
 // IsProviderSupported checks if the given provider is supported by the application model.
 func (m ApplicationModel) IsProviderSupported(provider string) bool {
 	return m.supportedProviders[provider]
@@ -97,8 +94,6 @@ type OutputResourceModel struct {
 	ResourceTransformer func(context.Context, *handlers.PutOptions) error
 }
 
-// # Function Explanation
-//
 // NewModel creates a new ApplicationModel instance by mapping the RadiusResourceModel and OutputResourceModel slices to
 // lookup maps and setting the supportedProviders map.
 func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputResourceModel, supportedProviders map[string]bool) ApplicationModel {

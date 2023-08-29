@@ -21,66 +21,87 @@ import (
 
 	"github.com/project-radius/radius/pkg/algorithm/graph"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
-	// LocalID is a logical identifier scoped to the owning Radius resource.
+	// LocalID is a logical identifier scoped to the owning Radius resource. This is only needed or used
+	// when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning
+	// beyond being compared to determine dependency relationships.
 	LocalID string `json:"localID"`
 
-	// Identity uniquely identifies the underlying resource within its platform..
-	Identity resourcemodel.ResourceIdentity `json:"identity"`
+	// ID is the UCP resource ID of the underlying resource.
+	ID resources.ID `json:"id"`
 
-	// Resource type specifies the 'provider' and 'kind' used to look up the resource handler for processing
-	ResourceType resourcemodel.ResourceType `json:"resourceType"`
+	// RadiusManaged determines whether Radius manages the lifecycle of the underlying resource.
+	RadiusManaged *bool `json:"radiusManaged"`
 
-	// Resource type defined by the provider for this resource. Example for Azure, a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
-	ProviderResourceType string `json:"providerResourceType"`
-
-	RadiusManaged *bool                `json:"radiusManaged"`
-	Deployed      bool                 `json:"deployed"`
-	Resource      any                  `json:"resource,omitempty"`
-	Dependencies  []Dependency         // resources that are required to be deployed before this resource can be deployed - used for parent/child resources.
-	Status        OutputResourceStatus `json:"status,omitempty"`
+	// CreateResource describes data that will be used to create a resource. This is never saved to the database.
+	CreateResource *Resource `json:"-"`
 }
 
-type Dependency struct {
-	// LocalID is the LocalID of the dependency.
-	LocalID string
+// Resource describes data that will be used to create a resource. This data is not saved to the database.
+type Resource struct {
+	// Data is the arbitrary data that will be passed to the handler.
+	Data any
+	// ResourceType is the type of resource that will be created. This is used for dispatching to the correct handler.
+	ResourceType resourcemodel.ResourceType
+	// Dependencies is the set of LocalIDs of the resources that are required to be deployed before this resource can be deployed.
+	Dependencies []string
 }
 
-// OutputResourceStatus represents the status of the Output Resource
-type OutputResourceStatus struct {
-	ProvisioningState        string `json:"provisioningState"`
-	ProvisioningErrorDetails string `json:"provisioningErrorDetails"`
+// GetResourceType returns the ResourceType of the OutputResource.
+func (or OutputResource) GetResourceType() resourcemodel.ResourceType {
+	// There are two possible states:
+	//
+	// 1) The resource already exists in which case we have a resource ID.
+	// 2) The resource will be created, in which case we know the resource type, but don't have an ID.
+	if or.CreateResource != nil {
+		return or.CreateResource.ResourceType
+	}
+
+	if or.ID.IsUCPQualfied() && len(or.ID.ScopeSegments()) > 0 {
+		return resourcemodel.ResourceType{
+			Provider: or.ID.ScopeSegments()[0].Type,
+			Type:     or.ID.Type(),
+		}
+	} else if len(or.ID.ScopeSegments()) > 0 {
+		// Legacy ARM case
+		return resourcemodel.ResourceType{
+			Provider: resourcemodel.ProviderAzure,
+			Type:     or.ID.Type(),
+		}
+	}
+
+	return resourcemodel.ResourceType{}
 }
 
-// # Function Explanation
-//
 // Key localID of the output resource is used as the key in DependencyItem for output resources.
 func (resource OutputResource) Key() string {
 	return resource.LocalID
 }
 
-// # Function Explanation
-//
 // GetDependencies returns a slice of strings containing the LocalIDs of the OutputResource's dependencies, or an error if
 // any of the dependencies are missing a LocalID.
 func (resource OutputResource) GetDependencies() ([]string, error) {
+	if resource.CreateResource == nil {
+		return nil, nil
+	}
+
 	dependencies := []string{}
-	for _, dependency := range resource.Dependencies {
-		if dependency.LocalID == "" {
+	for _, dependency := range resource.CreateResource.Dependencies {
+		if dependency == "" {
 			return dependencies, errors.New("missing localID for outputresource")
 		}
-		dependencies = append(dependencies, dependency.LocalID)
+		dependencies = append(dependencies, dependency)
 	}
 	return dependencies, nil
 }
 
-// # Function Explanation
-//
 // IsRadiusManaged checks if the RadiusManaged field of the OutputResource struct is set and returns its value.
 func (resource OutputResource) IsRadiusManaged() bool {
 	if resource.RadiusManaged == nil {
@@ -90,8 +111,6 @@ func (resource OutputResource) IsRadiusManaged() bool {
 	return *resource.RadiusManaged
 }
 
-// # Function Explanation
-//
 // OrderOutputResources orders the given OutputResources based on their dependencies (i.e. deployment order)
 // and returns the ordered OutputResources or an error.
 func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, error) {
@@ -118,71 +137,39 @@ func OrderOutputResources(outputResources []OutputResource) ([]OutputResource, e
 	return orderedOutput, nil
 }
 
-// # Function Explanation
-//
 // NewKubernetesOutputResource creates an OutputResource object with the given resourceType, localID, obj and objectMeta.
-func NewKubernetesOutputResource(resourceType string, localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
-	rt := resourcemodel.ResourceType{
-		Type:     resourceType,
-		Provider: resourcemodel.ProviderKubernetes,
-	}
+func NewKubernetesOutputResource(localID string, obj runtime.Object, objectMeta metav1.ObjectMeta) OutputResource {
+	gvk := obj.GetObjectKind().GroupVersionKind()
 	return OutputResource{
-		LocalID:      localID,
-		Deployed:     false,
-		ResourceType: rt,
-		Identity:     resourcemodel.NewKubernetesIdentity(&rt, obj, objectMeta),
-		Resource:     obj,
-		Dependencies: []Dependency{},
+		LocalID: localID,
+		ID:      resources_kubernetes.IDFromMeta(resources_kubernetes.PlaneNameTODO, gvk, objectMeta),
+		CreateResource: &Resource{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resources_kubernetes.ResourceTypeFromGVK(gvk),
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			Data: obj,
+		},
 	}
 }
 
-// # Function Explanation
-//
 // GetGCOutputResources [GC stands for Garbage Collection] compares two slices of OutputResource and
 // returns a slice of OutputResource that contains the elements that are in the "before" slice but not in the "after".
 func GetGCOutputResources(after []OutputResource, before []OutputResource) []OutputResource {
-	afterMap := map[string][]OutputResource{}
-
-	for _, outputResource := range after {
-		id := outputResource.LocalID
-		orArr := []OutputResource{}
-
-		if arr, ok := afterMap[id]; ok {
-			orArr = arr
-		}
-
-		orArr = append(orArr, outputResource)
-		afterMap[id] = orArr
-	}
-
+	// We can easily determine which resources have changed via a brute-force search comparing IDs.
+	// The lists of resources we work with are small, so this is fine.
 	diff := []OutputResource{}
-	for _, outputResource := range before {
-		id := outputResource.LocalID
-
-		// If there is a resource or a group of resources in before(old) outputResources
-		// array with a LocalID that is not in the after(new) outputResources array, then
-		// we have to to delete those resources.
-		if _, found := afterMap[id]; !found {
-			diff = append(diff, outputResource)
-			continue
-		}
-
-		// Otherwise we have to check each resource for their equivalence on the type and ID.
-		//
-		// If there is no match, we have to delete that resource. Meaning that new outputResources
-		// doesn't have that resource in the old array.
+	for _, beforeResource := range before {
 		found := false
-		for _, innerOutputResource := range afterMap[id] {
-			if outputResource.ResourceType.Type == innerOutputResource.ResourceType.Type &&
-				outputResource.ResourceType.Provider == innerOutputResource.ResourceType.Provider &&
-				outputResource.Identity.GetID() == innerOutputResource.Identity.GetID() {
+		for _, afterResource := range after {
+			if resources.IDEquals(beforeResource.ID, afterResource.ID) {
 				found = true
 				break
 			}
 		}
 
 		if !found {
-			diff = append(diff, outputResource)
+			diff = append(diff, beforeResource)
 		}
 	}
 

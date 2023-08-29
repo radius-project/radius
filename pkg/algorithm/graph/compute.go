@@ -22,8 +22,6 @@ import (
 	"strings"
 )
 
-// # Function Explanation
-//
 // ComputeDependencyGraph creates a DependencyGraph from a slice of DependencyItems, validating that all dependencies exist
 //
 //	in the graph and returning an error if any are missing.
@@ -81,8 +79,6 @@ func ComputeDependencyGraph(items []DependencyItem) (DependencyGraph, error) {
 	return DependencyGraph{keys: keys, setsByKey: setsByKey}, nil
 }
 
-// # Function Explanation
-//
 // Order orders the DependencyItems in the DependencyGraph in a topological order and returns them in a slice,
 // or returns an error if a cycle is detected.
 func (dg DependencyGraph) Order() ([]DependencyItem, error) {

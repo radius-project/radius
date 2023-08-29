@@ -23,12 +23,11 @@ import (
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/recipes"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// # Function Explanation
-//
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
 // if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
 // the data fails to be unmarshalled.
@@ -47,12 +46,12 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), nil)
 	}
 
 	bytes, err := getBytes(ctx, repo, digest)
 	if err != nil {
-		return v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()))
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), nil)
 	}
 
 	err = json.Unmarshal(bytes, data)

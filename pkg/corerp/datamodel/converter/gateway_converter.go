@@ -24,8 +24,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
-// # Function Explanation
-//
 // GatewayDataModelToVersioned converts version agnostic Gateway datamodel to versioned model.
 func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (v1.VersionedModelInterface, error) {
 	switch version {
@@ -39,8 +37,6 @@ func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (v1.V
 	}
 }
 
-// # Function Explanation
-//
 // GatewayDataModelFromVersioned converts versioned Gateway model to datamodel.
 func GatewayDataModelFromVersioned(content []byte, version string) (*datamodel.Gateway, error) {
 	switch version {

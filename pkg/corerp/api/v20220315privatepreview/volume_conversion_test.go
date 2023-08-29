@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/test/testutil"
+	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +63,6 @@ func TestVolumeConvertDataModelToVersioned(t *testing.T) {
 	expected := &VolumeResource{}
 	err = json.Unmarshal(testutil.ReadFixture("volume-az-kv.json"), expected)
 	require.NoError(t, err)
-	expected.Properties.GetVolumeProperties().Status.OutputResources[0]["Identity"] = nil
 
 	// act
 	versioned := &VolumeResource{}
@@ -82,7 +82,7 @@ func TestVolumeConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

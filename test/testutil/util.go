@@ -19,10 +19,9 @@ package testutil
 import (
 	"encoding/json"
 	"os"
+	"path"
 )
 
-// # Function Explanation
-//
 // MustGetTestData reads testdata and unmarshals it to the given type, panicking if an error occurs.
 func MustGetTestData[T any](file string) *T {
 	var data T
@@ -33,11 +32,17 @@ func MustGetTestData[T any](file string) *T {
 	return &data
 }
 
-// # Function Explanation
-//
 // ReadFixture reads testdata fixtures, panicking if an error occurs.
+//
+// The prefix `./testdata/` is automatically added to the filename. Tests can 'escape' the testdata directory by
+// prefixing the filename with `../`.
+//
+// Example:
+//
+//	ReadFixture("foo.json") -> ./testdata/foo.json
 func ReadFixture(filename string) []byte {
-	raw, err := os.ReadFile("./testdata/" + filename)
+	p := path.Clean("./testdata/" + filename)
+	raw, err := os.ReadFile(p)
 	if err != nil {
 		panic(err)
 	}
