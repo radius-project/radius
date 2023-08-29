@@ -308,7 +308,7 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 	}
 
 	s, _ := json.Marshal(service)
-	fmt.Printf("service: %s", string(s))
+	fmt.Printf("\n\n ### service: %s\n", string(s))
 
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
 }
@@ -659,7 +659,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	deploymentOutput.CreateResource.Dependencies = deps
 
 	s, _ := json.Marshal(deployment)
-	fmt.Printf("deployment: %s", string(s))
+	fmt.Printf("\n\n ### deployment: %s", string(s))
 
 	outputResources = append(outputResources, deploymentOutput)
 	return outputResources, secretData, nil

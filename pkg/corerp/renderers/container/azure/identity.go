@@ -193,7 +193,7 @@ func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamode
 	}
 
 	s, _ := json.Marshal(sa)
-	fmt.Printf("sa: %s", string(s))
+	fmt.Printf("\n\n ### serviceaccount: %s", string(s))
 
 	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, sa, sa.ObjectMeta)
 	or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
