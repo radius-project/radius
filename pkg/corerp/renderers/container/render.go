@@ -355,6 +355,14 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, serviceResource)
 	}
 
+	// Fetch deployment resource from outputResources.
+	var deploymentResource *rpv1.Resource
+	for _, r := range outputResources {
+		if r.LocalID == rpv1.LocalIDDeployment {
+			deploymentResource = r.CreateResource
+		}
+	}
+
 	// Populate the remaining objects in base manifest.
 	for k, resources := range baseManifest {
 		localID := ""
@@ -367,6 +375,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		default:
 			continue
 		}
+
+		deploymentResource.Dependencies = append(deploymentResource.Dependencies, localID)
 
 		for _, resource := range resources {
 			meta := resource.(metav1.ObjectMetaAccessor)
