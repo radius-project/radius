@@ -44,10 +44,10 @@ Run one of the following two commands:
 
 ```sh
 # Choose this by default
-rad init --dev
+rad init
 
 # Choose this if you want to do advanced setup
-rad init
+rad init --full
 ```
 
 This will install Radius and configure an environment for you. The database that's used **will NOT** be shared with your debug setup, so it mostly doesn't matter what choices you make.
