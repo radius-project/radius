@@ -199,6 +199,9 @@ model Container {
   @doc("The registry and image to download and run in your container")
   image: string;
 
+  @doc("The pull policy for the container image")
+  imagePullPolicy?: ImagePullPolicy;
+
   @doc("environment")
   env?: Record<string>;
 
@@ -222,6 +225,18 @@ model Container {
 
   @doc("Working directory for the container")
   workingDir?: string;
+}
+
+@doc("The image pull policy for the container")
+enum ImagePullPolicy {
+  @doc("Always")
+  Always,
+
+  @doc("IfNotPresent")
+  IfNotPresent,
+
+  @doc("Never")
+  Never,
 }
 
 @doc("The protocol in use by the port")
