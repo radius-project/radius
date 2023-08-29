@@ -27,7 +27,7 @@ import (
 
 type Engine interface {
 	// Execute gathers environment configuration, recipe definition and calls the driver to deploy the recipe.
-	// prevState is added to the driver execute options, which is used to get the obsolete resources for cleanup.
+	// prevState is added to the driver execute options, which is used to get the obsolete resources for cleanup. It consists list of recipe output resource IDs that were created in the previous deployment.
 	Execute(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error

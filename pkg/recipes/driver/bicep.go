@@ -139,8 +139,13 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
 
+	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included
+	// in the currently deployed resources compared to the list of resources from the previous deployment needs to be deleted
+	// as bicep does not take care of automatically deleting the unused resources.
+	// Identify the output resources that are no longer relevant to the recipe.
 	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
 
+	// Deleting obsolete output resources.
 	err = d.deleteGCOutputResources(ctx, diff)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
