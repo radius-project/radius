@@ -121,6 +121,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, showRecipeTemplate)
 		require.Contains(t, output, showRecipeLinkType)
 		require.Contains(t, output, "redis_cache_name")
+		require.Contains(t, output, "string")
 	})
 
 	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
