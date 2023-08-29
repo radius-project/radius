@@ -69,7 +69,7 @@ test-functional-daprrp: ## Runs Dapr RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
 test-functional-datastoresrp: ## Runs Datastores RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
