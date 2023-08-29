@@ -15,7 +15,7 @@ We the maintainers have discretion over what features and pull requests we accep
 
 > 💡 If you're new to Go or new to open source, our [first commit guide](./../contributing-code/contributing-code-first-commit/) can walk you through the process of making code changes and submitting a pull request.
 
-Please open pull requests against the `main` branch (the default) unless otherwise instructed.
+Please submit pull requests using a forked repo and open pull requests against the `main` branch (the default) unless otherwise instructed.
 
 When opening a pull request, the form will be pre-populated with our template. Please fill out the template to provide structure to your PR message. If you've already written a good commit message (see below) it will be easy to use with our template.
 
