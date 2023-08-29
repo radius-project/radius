@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
 // ARMRequestCtx is a middleware handler that adds an ARM request context to an incoming request. It takes in a pathBase

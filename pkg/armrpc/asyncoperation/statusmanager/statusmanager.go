@@ -23,13 +23,13 @@ import (
 	"strings"
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/trace"
-	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/trace"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 
 	"github.com/google/uuid"
 )
@@ -50,7 +50,7 @@ type QueueOperationOptions struct {
 	RetryAfter time.Duration
 }
 
-//go:generate mockgen -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
+//go:generate mockgen -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
 
 // StatusManager is an interface to manage async operation status.
 type StatusManager interface {

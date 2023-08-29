@@ -36,7 +36,7 @@ type Options struct {
 	Out io.Writer
 }
 
-//go:generate mockgen -destination=./mock_logstream.go -package=logstream -self_package github.com/project-radius/radius/pkg/cli/kubernetes/logstream github.com/project-radius/radius/pkg/cli/kubernetes/logstream Interface
+//go:generate mockgen -destination=./mock_logstream.go -package=logstream -self_package github.com/radius-project/radius/pkg/cli/kubernetes/logstream github.com/radius-project/radius/pkg/cli/kubernetes/logstream Interface
 
 // Interface is the interface type for streaming application logs.
 type Interface interface {

@@ -22,7 +22,7 @@ import (
 
 	"time"
 
-	"github.com/project-radius/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/ucp/queue/client"
 	"github.com/stretchr/testify/require"
 )
 

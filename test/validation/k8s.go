@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	kuberneteskeys "github.com/project-radius/radius/pkg/kubernetes"
+	kuberneteskeys "github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -418,7 +418,7 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 }
 
 func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
-	// Need to retry because of AKS error: https://github.com/project-radius/radius/issues/2484
+	// Need to retry because of AKS error: https://github.com/radius-project/radius/issues/2484
 	retries := 3
 	for i := 1; i <= retries; i++ {
 		actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{

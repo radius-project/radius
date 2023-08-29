@@ -16,7 +16,7 @@
 
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
-IMAGE_SRC?=https://github.com/project-radius/radius
+IMAGE_SRC?=https://github.com/radius-project/radius
 
 ##@ Docker Images
 

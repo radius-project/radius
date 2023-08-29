@@ -24,11 +24,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"

@@ -19,7 +19,7 @@ package kube
 import (
 	"strings"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/labels"
 )
 

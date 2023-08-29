@@ -74,7 +74,7 @@ type StatusMessage struct {
 	RemotePort    uint16
 }
 
-//go:generate mockgen -destination=./mock_portforward.go -package=portforward -self_package github.com/project-radius/radius/pkg/cli/kubernetes/portforward github.com/project-radius/radius/pkg/cli/kubernetes/portforward Interface
+//go:generate mockgen -destination=./mock_portforward.go -package=portforward -self_package github.com/radius-project/radius/pkg/cli/kubernetes/portforward github.com/radius-project/radius/pkg/cli/kubernetes/portforward Interface
 
 // Interface is the interface type for port-forwarding.
 type Interface interface {

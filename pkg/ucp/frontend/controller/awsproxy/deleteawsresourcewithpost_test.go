@@ -29,10 +29,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/stretchr/testify/require"
 )
 

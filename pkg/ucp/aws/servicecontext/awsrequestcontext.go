@@ -19,8 +19,8 @@ package servicecontext
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 )
 
 // AWSRequestContext is the context for AWS request.

@@ -19,8 +19,8 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // WithLogger adds logger to the context based on the Resource ID (if present).

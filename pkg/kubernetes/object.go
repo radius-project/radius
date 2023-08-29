@@ -21,8 +21,8 @@ import (
 	"hash/fnv"
 	"strings"
 
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	appsv1 "k8s.io/api/apps/v1"

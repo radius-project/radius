@@ -19,8 +19,8 @@ package deploy
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 type PublicEndpoint struct {

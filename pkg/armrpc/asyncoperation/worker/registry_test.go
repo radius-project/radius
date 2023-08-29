@@ -21,10 +21,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/stretchr/testify/require"
 )
 

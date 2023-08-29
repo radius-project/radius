@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 )
 
 type mockProvider struct {

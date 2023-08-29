@@ -32,7 +32,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-logr/logr"
 
-	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/stretchr/testify/require"
 )
 

@@ -19,10 +19,10 @@ package v1
 import (
 	"errors"
 
-	"github.com/project-radius/radius/pkg/algorithm/graph"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+	"github.com/radius-project/radius/pkg/algorithm/graph"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )

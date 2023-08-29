@@ -17,8 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/portableresources"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // LinkMetadata represents internal DataModel properties common to all portable resource types.

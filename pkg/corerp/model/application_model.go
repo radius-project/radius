@@ -19,21 +19,21 @@ package model
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers/container"
-	azcontainer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
-	"github.com/project-radius/radius/pkg/corerp/renderers/daprextension"
-	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
-	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
-	"github.com/project-radius/radius/pkg/corerp/renderers/kubernetesmetadata"
-	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
-	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers/container"
+	azcontainer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
+	"github.com/radius-project/radius/pkg/corerp/renderers/daprextension"
+	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
+	"github.com/radius-project/radius/pkg/corerp/renderers/httproute"
+	"github.com/radius-project/radius/pkg/corerp/renderers/kubernetesmetadata"
+	"github.com/radius-project/radius/pkg/corerp/renderers/manualscale"
+	"github.com/radius-project/radius/pkg/corerp/renderers/volume"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -71,7 +71,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		datamodel.KindAzure: {
 			// RBAC for non-Radius Azure resources. Supports user specified roles.
-			// More information can be found here: https://github.com/project-radius/radius/issues/1321
+			// More information can be found here: https://github.com/radius-project/radius/issues/1321
 		},
 	}
 

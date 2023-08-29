@@ -17,14 +17,14 @@ limitations under the License.
 package hostoptions
 
 import (
-	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
-	profilerprovider "github.com/project-radius/radius/pkg/profiler/provider"
-	"github.com/project-radius/radius/pkg/trace"
-	"github.com/project-radius/radius/pkg/ucp/config"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
+	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
+	"github.com/radius-project/radius/pkg/trace"
+	"github.com/radius-project/radius/pkg/ucp/config"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	sprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // ProviderConfig includes the resource provider configuration.

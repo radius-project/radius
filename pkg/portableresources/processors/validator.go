@@ -21,9 +21,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/portableresources"
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const (

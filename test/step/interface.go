@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/test"
+	"github.com/radius-project/radius/test"
 )
 
 type Executor interface {

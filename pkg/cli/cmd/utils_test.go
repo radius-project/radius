@@ -20,11 +20,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 

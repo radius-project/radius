@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	deployment "github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 

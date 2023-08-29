@@ -19,7 +19,7 @@ package providers
 import (
 	"testing"
 
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 )

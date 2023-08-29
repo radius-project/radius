@@ -25,14 +25,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	corerpv20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/portableresources"
-	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	corerpv20220315 "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/portableresources"
+	ucpv20220901 "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 type UCPApplicationsManagementClient struct {

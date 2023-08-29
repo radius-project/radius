@@ -20,10 +20,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 

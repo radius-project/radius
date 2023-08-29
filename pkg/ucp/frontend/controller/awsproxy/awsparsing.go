@@ -23,12 +23,12 @@ import (
 	"net/http"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_aws "github.com/project-radius/radius/pkg/ucp/resources/aws"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 )
 
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the

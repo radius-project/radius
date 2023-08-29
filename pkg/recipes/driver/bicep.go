@@ -27,22 +27,22 @@ import (
 
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/portableresources/datamodel"
-	"github.com/project-radius/radius/pkg/portableresources/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/rp/util"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	clients "github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/rp/util"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	clients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
-	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
-//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
+//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5

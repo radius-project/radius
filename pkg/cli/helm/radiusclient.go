@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output"
 	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -91,7 +91,7 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
 	// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
-	// https://github.com/project-radius/radius/issues/712
+	// https://github.com/radius-project/radius/issues/712
 	// We need the CRDs to be public to do this (or consider unpacking the chart
 	// for the CRDs)
 

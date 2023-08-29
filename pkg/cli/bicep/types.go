@@ -22,8 +22,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 // Interface is the interface for preparing Bicep or ARM-JSON templates for deployment. This interface
@@ -34,7 +34,7 @@ type Interface interface {
 
 var _ Interface = (*Impl)(nil)
 
-//go:generate mockgen -destination=./mock_bicep.go -package=bicep -self_package github.com/project-radius/radius/pkg/cli/bicep github.com/project-radius/radius/pkg/cli/bicep Interface
+//go:generate mockgen -destination=./mock_bicep.go -package=bicep -self_package github.com/radius-project/radius/pkg/cli/bicep github.com/radius-project/radius/pkg/cli/bicep Interface
 
 // Impl is the implementation of Interface.
 type Impl struct {

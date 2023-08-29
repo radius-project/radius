@@ -27,7 +27,7 @@ Radius is currently in an invitation-only private release and we are working har
 
 ## Quickstarts and samples
 
-See the [Radius quickstarts](https://docs.radapp.dev/getting-started/quickstarts/) and [samples repository](https://github.com/project-radius/samples) for tutorials and code examples that can help you get started with Radius.
+See the [Radius quickstarts](https://docs.radapp.dev/getting-started/quickstarts/) and [samples repository](https://github.com/radius-project/samples) for tutorials and code examples that can help you get started with Radius.
 
 ## Getting help
 
@@ -37,7 +37,7 @@ See the [Radius quickstarts](https://docs.radapp.dev/getting-started/quickstarts
 
 ## Community
 
-We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the monthly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/project-radius/community).
+We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the monthly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/radius-project/community).
 
 ### Contact us
 
@@ -47,7 +47,7 @@ Please visit our [Discord server](https://discord.gg/SRG3ePMKNy) to contact us a
 
 Every month we host a community call to showcase new features, review upcoming milestones, and engage in a Q&A. All are welcome!
 
-📞 Visit our [community meetings](https://github.com/project-radius/community/#community-meetings) page for upcoming dates and the meeting link.
+📞 Visit our [community meetings](https://github.com/radius-project/community/#community-meetings) page for upcoming dates and the meeting link.
 
 ## Contributing to Radius
 
@@ -57,17 +57,17 @@ To contribute to Radius documentation visit [Radius documentation](https://docs.
 
 ## Repositories
 
-[Radius](https://github.com/project-radius/radius) is the main Radius repository. It contains all of Radius code and documentation.
+[Radius](https://github.com/radius-project/radius) is the main Radius repository. It contains all of Radius code and documentation.
 In addition, we have the below repositories.
 
 | Repo | Description |
 |:-----|:------------|
-| [Docs](https://github.com/project-radius/docs) | This repository contains the Radius documentation source for Radius.
-| [Samples](https://github.com/project-radius/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Recipes](https://github.com/project-radius/recipes) | This repo contains commonly used Recipe templates for Radius environments.
-| [Website](https://github.com/project-radius/website) | This repository contains the source code for the Radius website.
-| [Bicep](https://github.com/project-radius/bicep) | This repository contains source code for Bicep, which is a DSL for deploying cloud resources types. 
-| [AWS Bicep Types](https://github.com/project-radius/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
+| [Docs](https://github.com/radius-project/docs) | This repository contains the Radius documentation source for Radius.
+| [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
+| [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius environments.
+| [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
+| [Bicep](https://github.com/radius-project/bicep) | This repository contains source code for Bicep, which is a DSL for deploying cloud resources types. 
+| [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
 
 
 ## Security

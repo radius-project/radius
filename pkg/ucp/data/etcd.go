@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-radius/radius/pkg/ucp/hosting"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 )

@@ -21,11 +21,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/ucp/queue/apiserver"
-	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	qinmem "github.com/project-radius/radius/pkg/ucp/queue/inmemory"
-	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/ucp/queue/apiserver"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	qinmem "github.com/radius-project/radius/pkg/ucp/queue/inmemory"
+	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )

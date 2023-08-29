@@ -17,7 +17,7 @@ limitations under the License.
 package azure
 
 import (
-	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubernetes"
 )
 
 const (

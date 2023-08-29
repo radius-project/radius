@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"

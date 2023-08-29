@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 func workaround28169(r *http.Request) {

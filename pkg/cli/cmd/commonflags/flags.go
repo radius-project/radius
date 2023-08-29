@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 

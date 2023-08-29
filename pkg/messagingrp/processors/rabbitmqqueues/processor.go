@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	"github.com/project-radius/radius/pkg/portableresources/processors"
-	"github.com/project-radius/radius/pkg/portableresources/renderers"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 )
 
 const (

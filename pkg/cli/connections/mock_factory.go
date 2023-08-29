@@ -19,9 +19,9 @@ package connections
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
 var _ Factory = (*MockFactory)(nil)

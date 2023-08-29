@@ -19,9 +19,9 @@ package converter
 import (
 	"encoding/json"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/messagingrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
 )
 
 // RabbitMQQueueDataModelToVersioned converts a version-agnostic datamodel.RabbitMQQueue to a versioned model interface

@@ -19,7 +19,7 @@ package v1
 import (
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
 // EnvironmentComputeKind is the type of compute resource.

@@ -23,7 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-//go:generate mockgen -destination=./client_mock.go -package=aws -self_package github.com/project-radius/radius/pkg/cli/aws github.com/project-radius/radius/pkg/cli/aws Client
+//go:generate mockgen -destination=./client_mock.go -package=aws -self_package github.com/radius-project/radius/pkg/cli/aws github.com/radius-project/radius/pkg/cli/aws Client
 
 // Client is an interface that abstracts `rad init`'s interactions with AWS. This is for testing purposes. This is only exported because mockgen requires it.
 type Client interface {

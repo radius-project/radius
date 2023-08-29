@@ -22,14 +22,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
-	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	armrpcv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)

@@ -22,13 +22,13 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/test/radcli"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -158,19 +158,19 @@ func Test_Run(t *testing.T) {
 		t.Run("Success: Prompt Confirmed", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-	
+
 			promptMock := prompt.NewMockInterface(ctrl)
 			promptMock.EXPECT().
 				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container", "containers")).
 				Return(prompt.ConfirmYes, nil).
 				Times(1)
-	
+
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				DeleteResource(gomock.Any(), "containers", "test-container").
 				Return(true, nil).
 				Times(1)
-	
+
 			workspace := &workspaces.Workspace{
 				Connection: map[string]any{
 					"kind":    "kubernetes",
@@ -189,29 +189,29 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 				InputPrompter:     promptMock,
 			}
-	
+
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-	
+
 			expected := []any{
 				output.LogOutput{
 					Format: "Resource deleted",
 				},
 			}
-	
+
 			require.Equal(t, expected, outputSink.Writes)
 		})
-	
+
 		t.Run("Success: Prompt Cancelled", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-	
+
 			promptMock := prompt.NewMockInterface(ctrl)
 			promptMock.EXPECT().
 				GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-container", "containers")).
 				Return(prompt.ConfirmNo, nil).
 				Times(1)
-	
+
 			workspace := &workspaces.Workspace{
 				Connection: map[string]any{
 					"kind":    "kubernetes",
@@ -222,14 +222,14 @@ func Test_Run(t *testing.T) {
 			}
 			outputSink := &output.MockOutput{}
 			runner := &Runner{
-				InputPrompter:   promptMock,
-				Workspace:       workspace,
-				Format:          "table",
-				Output:          outputSink,
-				ResourceType:      "containers",
-				ResourceName:      "test-container",
+				InputPrompter: promptMock,
+				Workspace:     workspace,
+				Format:        "table",
+				Output:        outputSink,
+				ResourceType:  "containers",
+				ResourceName:  "test-container",
 			}
-	
+
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 

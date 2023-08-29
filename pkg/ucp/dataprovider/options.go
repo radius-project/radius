@@ -17,7 +17,7 @@ limitations under the License.
 package dataprovider
 
 import (
-	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 

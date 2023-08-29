@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/ucp/httpbaseline"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/ucp/httpbaseline"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

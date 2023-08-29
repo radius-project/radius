@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 type Service struct {
