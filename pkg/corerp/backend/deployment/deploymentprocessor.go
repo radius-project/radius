@@ -239,7 +239,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
 
 	for _, or := range rendererOutput.Resources {
-		fmt.Printf("## Pre Output resource: %v\n", or)
+		fmt.Printf("## Pre Output resource: %+v\n", or)
 	}
 
 	// Order output resources in deployment dependency order
@@ -249,7 +249,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}
 
 	for _, or := range orderedOutputResources {
-		fmt.Printf("## Ordered Output resource: %v\n", or)
+		fmt.Printf("## Ordered Output resource: %+v\n", or)
 	}
 
 	deployedOutputResources := []rpv1.OutputResource{}
