@@ -90,13 +90,6 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	// Now we need to clean up any obsolete output resources.
-	// diff := rpv1.GetGCOutputResources(data.OutputResources(), previousOutputResources)
-	// err = c.garbageCollectResources(ctx, diff)
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	// }
-
 	update := &store.Object{
 		Metadata: store.Metadata{
 			ID: req.ResourceID,

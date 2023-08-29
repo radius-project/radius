@@ -138,11 +138,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
+
 	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+
 	err = d.deleteGCOutputResources(ctx, diff)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
 	}
+
 	return recipeResponse, nil
 }
 
@@ -281,19 +284,23 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 	return recipeResponse, nil
 }
 
-func (d *bicepDriver) getGCOutputResources(after []string, before []string) []string {
+// getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
+// returns a slice of resource ids that contains the elements that are in the "previous" slice but not in the "current".
+func (d *bicepDriver) getGCOutputResources(current []string, previous []string) []string {
+	// We can easily determine which resources have changed via a brute-force search comparing IDs.
+	// The lists of resources we work with are small, so this is fine.
 	diff := []string{}
-	for _, beforeResource := range before {
+	for _, prevResource := range previous {
 		found := false
-		for _, afterResource := range after {
-			if beforeResource == afterResource {
+		for _, currentResource := range current {
+			if prevResource == currentResource {
 				found = true
 				break
 			}
 		}
 
 		if !found {
-			diff = append(diff, beforeResource)
+			diff = append(diff, prevResource)
 		}
 	}
 

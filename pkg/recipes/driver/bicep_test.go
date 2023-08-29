@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -449,16 +450,40 @@ func Test_GetGCOutputResources(t *testing.T) {
 func Test_DeleteGCOutputResources(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
-	gcOutputResources := []string{
-		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
-		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	tests := []struct {
+		desc              string
+		err               error
+		gcOutputResources []string
+	}{
+		{
+			desc: "success",
+			err:  nil,
+			gcOutputResources: []string{
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+			},
+		},
+		{
+			desc: "deletion failed",
+			err:  errors.New("test-error"),
+			gcOutputResources: []string{
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+			},
+		},
 	}
-	for _, resource := range gcOutputResources {
-		client.EXPECT().
-			Delete(ctx, resource).
-			Return(nil).
-			Times(1)
+	for _, tt := range tests {
+		for _, resource := range tt.gcOutputResources {
+			client.EXPECT().
+				Delete(ctx, resource).
+				Return(tt.err).
+				Times(1)
+		}
+		err := driver.deleteGCOutputResources(ctx, tt.gcOutputResources)
+		if tt.err != nil {
+			require.Equal(t, err, tt.err)
+		} else {
+			require.NoError(t, err)
+		}
 	}
-	err := driver.deleteGCOutputResources(ctx, gcOutputResources)
-	require.NoError(t, err)
+
 }
