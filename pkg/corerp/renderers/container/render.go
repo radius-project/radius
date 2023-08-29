@@ -550,7 +550,7 @@ func (r Renderer) makeDeployment(
 
 	// This is the default service account name. If a volume is associated with federated identity, new service account
 	// will be created and set for container pods.
-	serviceAccountName := defaultServiceAccountName
+	podSpec.ServiceAccountName = defaultServiceAccountName
 
 	// Add volumes
 	volumes := []corev1.Volume{}
@@ -671,7 +671,8 @@ func (r Renderer) makeDeployment(
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(kubeIdentityName, &options.Environment)
+		podSpec.ServiceAccountName = kubeIdentityName
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(podSpec.ServiceAccountName, &options.Environment)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, err
 		}
@@ -738,7 +739,7 @@ func (r Renderer) makeDeployment(
 	outputResources = append(outputResources, *role)
 	deps = append(deps, rpv1.LocalIDKubernetesRole)
 
-	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, serviceAccountName, options.Environment.Namespace, resource)
+	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, podSpec.ServiceAccountName, options.Environment.Namespace, resource)
 	outputResources = append(outputResources, *roleBinding)
 	deps = append(deps, rpv1.LocalIDKubernetesRoleBinding)
 
@@ -751,7 +752,6 @@ func (r Renderer) makeDeployment(
 		MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
 	}
 
-	podSpec.ServiceAccountName = serviceAccountName
 	podSpec.Volumes = append(podSpec.Volumes, volumes...)
 
 	// See: https://github.com/kubernetes/kubernetes/issues/92226 and
