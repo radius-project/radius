@@ -396,7 +396,8 @@ func (r Renderer) makeService(base *corev1.Service, resource *datamodel.Containe
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
 	}
 
-NEXTPORT:
+	// Ensure that we don't have any duplicate ports.
+SKIPINSERT:
 	for i, port := range containerPorts.values {
 		newPort := corev1.ServicePort{
 			Name:       containerPorts.names[i],
@@ -405,11 +406,11 @@ NEXTPORT:
 			Protocol:   corev1.ProtocolTCP,
 		}
 
-		// Update it and skip to the next port if the port already exists.
-		for _, p := range base.Spec.Ports {
-			if p.Name == containerPorts.names[i] {
-				p = newPort
-				continue NEXTPORT
+		// Skip to add new port. Instead, upsert port if it already exists.
+		for j, p := range base.Spec.Ports {
+			if strings.EqualFold(p.Name, newPort.Name) || p.Port == newPort.Port || p.TargetPort.IntVal == newPort.TargetPort.IntVal {
+				base.Spec.Ports[j] = newPort
+				continue SKIPINSERT
 			}
 		}
 
@@ -462,7 +463,7 @@ func (r Renderer) makeDeployment(
 
 	container := &podSpec.Containers[0]
 	for i, c := range podSpec.Containers {
-		if c.Name == normalizedName {
+		if strings.EqualFold(c.Name, normalizedName) {
 			container = &podSpec.Containers[i]
 		}
 	}
