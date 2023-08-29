@@ -26,8 +26,9 @@ import (
 //go:generate mockgen -destination=./mock_engine.go -package=engine -self_package github.com/project-radius/radius/pkg/recipes/engine github.com/project-radius/radius/pkg/recipes/engine Engine
 
 type Engine interface {
-	// Execute gathers environment configuration and recipe definition and calls the driver to deploy the recipe.
-	Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error)
+	// Execute gathers environment configuration, recipe definition and calls the driver to deploy the recipe.
+	// prevState is added to the driver execute options, which is used to get the obsolete resources for cleanup. It consists list of recipe output resource IDs that were created in the previous deployment.
+	Execute(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, error)
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error
 }

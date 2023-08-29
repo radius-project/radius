@@ -59,6 +59,9 @@ func Test_Engine_Execute_Success(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
 			Kubernetes: &recipes.KubernetesRuntime{
@@ -104,11 +107,12 @@ func Test_Engine_Execute_Success(t *testing.T) {
 				Recipe:        recipeMetadata,
 				Definition:    *recipeDefinition,
 			},
+			PrevState: prevState,
 		}).
 		Times(1).
 		Return(recipeResult, nil)
 
-	result, err := engine.Execute(ctx, recipeMetadata)
+	result, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
@@ -122,6 +126,9 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
+	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -158,11 +165,12 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 				Recipe:        recipeMetadata,
 				Definition:    *recipeDefinition,
 			},
+			PrevState: prevState,
 		}).
 		Times(1).
 		Return(nil, errors.New("failed to execute recipe"))
 
-	result, err := engine.Execute(ctx, recipeMetadata)
+	result, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "failed to execute recipe")
@@ -177,6 +185,9 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
+	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -224,11 +235,12 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 				Recipe:        recipeMetadata,
 				Definition:    *recipeDefinition,
 			},
+			PrevState: prevState,
 		}).
 		Times(1).
 		Return(recipeResult, nil)
 
-	result, err := engine.Execute(ctx, recipeMetadata)
+	result, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
@@ -252,12 +264,14 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(recipeDefinition, nil)
-	_, err := engine.Execute(ctx, recipeMetadata)
+	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "could not find driver invalid")
 }
@@ -274,11 +288,14 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
-	_, err := engine.Execute(ctx, recipeMetadata)
+	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
 }
 
@@ -294,6 +311,9 @@ func Test_Engine_Load_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
@@ -307,7 +327,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		LoadConfiguration(ctx, recipeMetadata).
 		Times(1).
 		Return(nil, errors.New("unable to fetch namespace information"))
-	_, err := engine.Execute(ctx, recipeMetadata)
+	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
 }
 
