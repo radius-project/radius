@@ -42,7 +42,9 @@ Include a level of detail that makese sense based on the complexity of problem a
 
 ## Creating the pull request
 
-Push your changes and then [open a pull request](https://github.com/project-radius/radius/compare).
+At this point, you have reviewed the forked repo workflow.
+
+Push your changes to your forked repo and then [open a pull request](https://github.com/project-radius/radius/compare).
 
 If you formatted your commit message correctly then everything should be good to go.
 
