@@ -568,7 +568,7 @@ func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 		return false, err
 	}
 
-	return respFromCtx.StatusCode == 204, nil
+	return respFromCtx.StatusCode == 200 || respFromCtx.StatusCode == 204, nil
 
 }
 
