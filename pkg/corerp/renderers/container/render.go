@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -157,6 +158,74 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
+func populateDefaultResources(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) {
+	name := kubernetes.NormalizeResourceName(r.Name)
+	resources := manifest.Get(kubeutil.DeploymentV1)
+	defaultDeployment := &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "apps/v1",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      map[string]string{},
+					Annotations: map[string]string{},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: name,
+						},
+					},
+				},
+			},
+		},
+	}
+	if len(resources) > 0 {
+		defaultDeployment = resources[0].(*appsv1.Deployment)
+	}
+	defaultDeployment.ObjectMeta = getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	manifest[kubeutil.DeploymentV1] = []runtime.Object{defaultDeployment}
+
+	resources = manifest.Get(kubeutil.ServiceV1)
+	defaultService := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{},
+			Type:     corev1.ServiceTypeClusterIP,
+		},
+	}
+	if len(resources) > 0 {
+		defaultService = resources[0].(*corev1.Service)
+	}
+	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	manifest[kubeutil.ServiceV1] = []runtime.Object{defaultService}
+
+	resources = manifest.Get(kubeutil.ServiceAccountV1)
+	defaultAccount := &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+	if len(resources) > 0 {
+		defaultAccount = resources[0].(*corev1.ServiceAccount)
+	}
+	defaultAccount.ObjectMeta = getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	manifest[kubeutil.ServiceAccountV1] = []runtime.Object{defaultAccount}
+}
+
 // Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
 // RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -179,6 +248,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
 		}
 	}
+
+	appId, err := resources.ParseResource(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
+	}
+
+	populateDefaultResources(baseManifest, appId.Name(), resource, &options)
 
 	// this flag is used to indicate whether or not this resource needs a service to be generated.
 	// this flag is triggered when a container has an exposed port(s), but no 'provides' field.
@@ -209,11 +285,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		if port.Provides == "" {
 			needsServiceGeneration = true
 		}
-	}
-
-	appId, err := resources.ParseResource(properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
 
 	outputResources := []rpv1.OutputResource{}
@@ -277,7 +348,14 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// Populate the remaining objects in base manifest.
 	for k, resources := range baseManifest {
-		if k != "core/v1/secret" && k != "core/v1/configmap" {
+		localID := ""
+
+		switch k {
+		case kubeutil.SecretV1:
+			localID = rpv1.LocalIDSecret
+		case kubeutil.ConfigMapV1:
+			localID = rpv1.LocalIDConfigMap
+		default:
 			continue
 		}
 
@@ -286,7 +364,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			objMeta := meta.GetObjectMeta().(*metav1.ObjectMeta)
 			objMeta.Namespace = options.Environment.Namespace
 			logger.Info(fmt.Sprintf("Adding base manifest resource, kind: %s, name: %s", k, objMeta.Name))
-			o := rpv1.NewKubernetesOutputResource(rpv1.LocalIDScrapedSecret, resource, *objMeta)
+
+			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
 			outputResources = append(outputResources, o)
 		}
 	}
@@ -308,44 +387,41 @@ func (r Renderer) makeService(resource *datamodel.ContainerResource, options ren
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
 	}
 
-	// create the ports that will be exposed by the service.
-	ports := []corev1.ServicePort{}
+	service := manifest.Get(kubeutil.ServiceV1)[0].(*corev1.Service)
+NEXTPORT:
 	for i, port := range containerPorts.values {
-		ports = append(ports, corev1.ServicePort{
+		newPort := corev1.ServicePort{
 			Name:       containerPorts.names[i],
 			Port:       port,
 			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
 			Protocol:   corev1.ProtocolTCP,
-		})
-	}
-
-	service := corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        kubernetes.NormalizeResourceName(resource.Name),
-			Namespace:   options.Environment.Namespace,
-			Labels:      renderers.GetLabels(ctx, options, appId.Name(), resource.Name, resource.ResourceTypeName()),
-			Annotations: renderers.GetAnnotations(ctx, options),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeSelectorLabels(appId.Name(), resource.Name),
-			Type:     corev1.ServiceTypeClusterIP,
-			Ports:    ports,
-		},
-	}
-
-	if resources := manifest.Get("core/v1/service"); len(resources) > 0 {
-		baseDeployment := resources[0].(*corev1.Service)
-		err = kubeutil.MergePatchObject(baseDeployment, &service, &service)
-		if err != nil {
-			return rpv1.OutputResource{}, fmt.Errorf("failed to merge patch service: %w", err)
 		}
+
+		// Update it and skip to the next port if the port already exists.
+		for _, p := range service.Spec.Ports {
+			if p.Name == containerPorts.names[i] {
+				p = newPort
+				continue NEXTPORT
+			}
+		}
+
+		// Add new port if it doesn't exist.
+		service.Spec.Ports = append(service.Spec.Ports, newPort)
 	}
 
-	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, &service, service.ObjectMeta), nil
+	service.Spec.Selector = kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
+	service.Spec.Type = corev1.ServiceTypeClusterIP
+
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
+}
+
+func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:        kubernetes.NormalizeResourceName(resourceName),
+		Namespace:   options.Environment.Namespace,
+		Labels:      labels.Merge(metaObj.Labels, renderers.GetLabels(options, appName, resourceName, resourceType)),
+		Annotations: labels.Merge(metaObj.Labels, renderers.GetAnnotations(options)),
+	}
 }
 
 func (r Renderer) makeDeployment(
@@ -366,6 +442,19 @@ func (r Renderer) makeDeployment(
 
 	dependencies := options.Dependencies
 	properties := resource.Properties
+
+	normalizedName := kubernetes.NormalizeResourceName(resource.Name)
+
+	deployment := manifest.Get(kubeutil.DeploymentV1)[0].(*appsv1.Deployment)
+	serviceAccountBase := manifest.Get(kubeutil.ServiceAccountV1)[0].(*corev1.ServiceAccount)
+	podSpec := &deployment.Spec.Template.Spec
+
+	container := &podSpec.Containers[0]
+	for i, c := range podSpec.Containers {
+		if c.Name == normalizedName {
+			container = &podSpec.Containers[i]
+		}
+	}
 
 	ports := []corev1.ContainerPort{}
 	for _, port := range properties.Container.Ports {
@@ -400,16 +489,11 @@ func (r Renderer) makeDeployment(
 		}
 	}
 
-	container := corev1.Container{
-		Name:         kubernetes.NormalizeResourceName(resource.Name),
-		Image:        properties.Container.Image,
-		Ports:        ports,
-		Env:          []corev1.EnvVar{},
-		VolumeMounts: []corev1.VolumeMount{},
-		Command:      properties.Container.Command,
-		Args:         properties.Container.Args,
-		WorkingDir:   properties.Container.WorkingDir,
-	}
+	container.Image = properties.Container.Image
+	container.Ports = ports
+	container.Command = properties.Container.Command
+	container.Args = properties.Container.Args
+	container.WorkingDir = properties.Container.WorkingDir
 
 	// If the user has specified an image pull policy, use it. Else, we will use Kubernetes default.
 	if properties.Container.ImagePullPolicy != "" {
@@ -461,7 +545,7 @@ func (r Renderer) makeDeployment(
 	volumes := []corev1.Volume{}
 
 	// Create Kubernetes resource name scoped in Kubernetes namespace
-	kubeIdentityName := kubernetes.NormalizeResourceName(resource.Name)
+	kubeIdentityName := normalizedName
 
 	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
 	// To avoid the naming conflicts, we add the application name prefix to resource name.
@@ -576,26 +660,15 @@ func (r Renderer) makeDeployment(
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		serviceAccountName = kubeIdentityName
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(serviceAccountName, &options.Environment)
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(kubeIdentityName, &options.Environment)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		saAccount := azrenderer.MakeFederatedIdentityK8sServiceAccount(applicationName, serviceAccountName, options.Environment.Namespace, resource)
-		if resources := manifest.Get("apps/v1/serviceaccount"); len(resources) > 0 {
-			baseDeployment := resources[0].(*corev1.ServiceAccount)
-			err = kubeutil.MergePatchObject(baseDeployment, saAccount, saAccount)
-			if err != nil {
-				return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to merge patch deployment: %w", err)
-			}
-		}
-
-		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, saAccount, saAccount.ObjectMeta)
-		or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
-		outputResources = append(outputResources, or)
+		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
+		outputResources = append(outputResources, *saAccount)
 
 		// This is required to enable workload identity.
 		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
@@ -657,48 +730,24 @@ func (r Renderer) makeDeployment(
 	outputResources = append(outputResources, *roleBinding)
 	deps = append(deps, rpv1.LocalIDKubernetesRoleBinding)
 
-	deployment := appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(resource.Name),
-			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: map[string]string{},
-				},
-				Spec: corev1.PodSpec{
-					// See: https://github.com/kubernetes/kubernetes/issues/92226 and
-					// 		https://github.com/project-radius/radius/issues/3002
-					//
-					// Service links are a flawed and Kubernetes-only feature that we don't
-					// want to leak into Radius containers.
-					EnableServiceLinks: to.Ptr(false),
-
-					ServiceAccountName: serviceAccountName,
-					Containers:         []corev1.Container{container},
-					Volumes:            volumes,
-				},
-			},
-		},
+	deployment.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+		Labels:      podLabels,
+		Annotations: map[string]string{},
 	}
 
-	if resources := manifest.Get("apps/v1/deployment"); len(resources) > 0 {
-		baseDeployment := resources[0].(*appsv1.Deployment)
-		err = kubeutil.MergePatchObject(baseDeployment, &deployment, &deployment)
-		if err != nil {
-			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to merge patch deployment: %w", err)
-		}
+	deployment.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
 	}
+
+	podSpec.ServiceAccountName = serviceAccountName
+	podSpec.Volumes = append(podSpec.Volumes, volumes...)
+
+	// See: https://github.com/kubernetes/kubernetes/issues/92226 and
+	// 		https://github.com/project-radius/radius/issues/3002
+	//
+	// Service links are a flawed and Kubernetes-only feature that we don't
+	// want to leak into Radius containers.
+	podSpec.EnableServiceLinks = to.Ptr(false)
 
 	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
 	// when the secret changes. Normally referencing an environment variable from a secret will **NOT** cause
@@ -715,7 +764,7 @@ func (r Renderer) makeDeployment(
 		deps = append(deps, rpv1.LocalIDSecret)
 	}
 
-	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
 	deploymentOutput.CreateResource.Dependencies = deps
 
 	outputResources = append(outputResources, deploymentOutput)

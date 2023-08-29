@@ -21,7 +21,6 @@ import (
 	"errors"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -103,15 +103,20 @@ func TestMakeRoleAssignments(t *testing.T) {
 	}, or[1].CreateResource.Data)
 }
 
-func TestMakeFederatedIdentitySA(t *testing.T) {
-	fi := MakeFederatedIdentitySA("app", "sa", "default", &datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "test-cntr",
-				Type: "applications.core/containers",
-			},
+func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
+	base := &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
 		},
-	})
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-cntr",
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
+		},
+	}
+
+	fi := SetWorkloadIdentityServiceAccount(base)
 
 	putOptions := &handlers.PutOptions{
 		Resource: fi,

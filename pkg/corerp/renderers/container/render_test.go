@@ -641,8 +641,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	require.Equal(t, properties.Container.Image, container.Image)
 	require.Empty(t, container.ImagePullPolicy)
 
-	expectedEnv := []corev1.EnvVar{}
-	require.Equal(t, expectedEnv, container.Env)
+	require.Nil(t, container.Env)
 }
 
 // This test is testing that we hash the connection data and include it in the output. We don't care about the content
