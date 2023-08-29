@@ -18,7 +18,6 @@ package azure
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -177,9 +176,6 @@ func SetWorkloadIdentityServiceAccount(base *corev1.ServiceAccount) *rpv1.Output
 	base.ObjectMeta.Labels[AzureWorkloadIdentityUseKey] = "true"
 	base.ObjectMeta.Annotations[azureWorkloadIdentityClientID] = "placeholder"
 	base.ObjectMeta.Annotations[azureWorkloadIdentityTenantID] = "placeholder"
-
-	s, _ := json.Marshal(base)
-	fmt.Printf("\n\n ### serviceaccount : %s\n", string(s))
 
 	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, base, base.ObjectMeta)
 	or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}

@@ -374,6 +374,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			objMeta.Namespace = options.Environment.Namespace
 			logger.Info(fmt.Sprintf("Adding base manifest resource, kind: %s, name: %s", k, objMeta.Name))
 
+			b, _ := json.Marshal(resource)
+			fmt.Printf("#### reminaing objects: %s", b)
+
 			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
 			outputResources = append(outputResources, o)
 		}
