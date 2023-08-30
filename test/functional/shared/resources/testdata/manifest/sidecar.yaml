@@ -18,4 +18,5 @@ spec:
     spec:
       containers:
         - name: log-collector
-          image: fluent/fluent-bit:latest
+          # TODO: change it to ghcr.io/project-radius/fluent-bit:2.1.8
+          image: radiusdev.azurecr.io/fluent/fluent-bit:2.1.8
