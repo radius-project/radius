@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -58,31 +59,30 @@ func Test_Container_YAMLManifest(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
-				if err == nil {
-					t.Logf("Deployment: %+v", deploy)
-				}
+				require.NoError(t, err)
+				require.Equal(t, "base-manifest-test", deploy.ObjectMeta.Annotations["source"])
+				require.ElementsMatch(t,
+					[]string{"TEST_SECRET_KEY", "TEST_CONFIGMAP_KEY"},
+					[]string{
+						deploy.Spec.Template.Spec.Containers[0].Env[0].Name,
+						deploy.Spec.Template.Spec.Containers[0].Env[1].Name,
+					})
 
 				srv, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
-				if err == nil {
-					t.Logf("Service: %+v", srv)
-				}
+				require.NoError(t, err)
+				require.Equal(t, "base-manifest-test", srv.ObjectMeta.Annotations["source"])
 
 				sa, err := test.Options.K8sClient.CoreV1().ServiceAccounts(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
-				if err == nil {
-					t.Logf("Service account: %+v", sa)
-				}
+				require.NoError(t, err)
+				require.Equal(t, "base-manifest-test", sa.ObjectMeta.Annotations["source"])
 
 				for _, name := range []string{"ctnr-manifest-secret0", "ctnr-manifest-secret1"} {
-					secret, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
-					if err == nil {
-						t.Logf("Secret: %+v", secret)
-					}
+					_, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
+					require.NoError(t, err)
 				}
 
-				cm, err := test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "ctnr-manifest-config", metav1.GetOptions{})
-				if err == nil {
-					t.Logf("Config map: %+v", cm)
-				}
+				_, err = test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "ctnr-manifest-config", metav1.GetOptions{})
+				require.NoError(t, err)
 			},
 		},
 	})
@@ -91,7 +91,6 @@ func Test_Container_YAMLManifest(t *testing.T) {
 }
 
 func Test_Container_YAMLManifest_SideCar(t *testing.T) {
-	t.Skip()
 	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
 	name := "corerp-resources-container-sidecar"
 	appNamespace := "corerp-resources-container-sidecar"
@@ -121,10 +120,15 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
 				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-sidecar", metav1.GetOptions{})
-				if err == nil {
-					t.Logf("Deployment: %+v", deploy)
-				}
+				require.NoError(t, err)
 
+				require.Len(t, deploy.Spec.Template.Spec.Containers, 2)
+
+				// Ensure that Pod includes sidecar.
+				require.ElementsMatch(t, []string{"ctnr-sidecar", "log-collector"}, []string{
+					deploy.Spec.Template.Spec.Containers[0].Name,
+					deploy.Spec.Template.Spec.Containers[1].Name,
+				})
 			},
 		},
 	})

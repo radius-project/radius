@@ -63,11 +63,6 @@ const (
 
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
-
-	defaultServiceAccountName = "default"
-	httpScheme                = "http"
-	httpsScheme               = "https"
-	httpsPort                 = 443
 )
 
 // GetSupportedKinds returns a list of supported volume kinds.
@@ -384,6 +379,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	for _, r := range outputResources {
 		if r.LocalID == rpv1.LocalIDDeployment {
 			deploymentResource = r.CreateResource
+			break
 		}
 	}
 
@@ -401,13 +397,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		for _, resource := range resources {
-			meta := resource.(metav1.ObjectMetaAccessor)
-			objMeta := meta.GetObjectMeta().(*metav1.ObjectMeta)
+			objMeta := resource.(metav1.ObjectMetaAccessor).GetObjectMeta().(*metav1.ObjectMeta)
 			objMeta.Namespace = options.Environment.Namespace
 			logger.Info(fmt.Sprintf("Adding base manifest resource, kind: %s, name: %s", k, objMeta.Name))
-
-			b, _ := json.Marshal(resource)
-			fmt.Printf("#### reminaing objects: %s", b)
 
 			localID := rpv1.NewLocalID(localIDPrefix, objMeta.Name)
 			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
@@ -469,7 +461,7 @@ func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceTyp
 		Name:        kubernetes.NormalizeResourceName(resourceName),
 		Namespace:   options.Environment.Namespace,
 		Labels:      labels.Merge(metaObj.Labels, renderers.GetLabels(options, appName, resourceName, resourceType)),
-		Annotations: labels.Merge(metaObj.Labels, renderers.GetAnnotations(options)),
+		Annotations: labels.Merge(metaObj.Annotations, renderers.GetAnnotations(options)),
 	}
 }
 
@@ -582,17 +574,14 @@ func (r Renderer) makeDeployment(
 	}
 
 	outputResources := []rpv1.OutputResource{}
-
 	deps := []string{}
 
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
-	// This is the default service account name. If a volume is associated with federated identity, new service account
-	// will be created and set for container pods.
-	podSpec.ServiceAccountName = defaultServiceAccountName
-
 	// Add volumes
 	volumes := []corev1.Volume{}
+
+	podSpec.ServiceAccountName = normalizedName
 
 	// Create Kubernetes resource name scoped in Kubernetes namespace
 	kubeIdentityName := normalizedName
@@ -721,11 +710,10 @@ func (r Renderer) makeDeployment(
 		serviceAccountBase.ObjectMeta = getObjectMeta(serviceAccountBase.ObjectMeta, applicationName, resource.Name, resource.ResourceTypeName(), options)
 		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
 		outputResources = append(outputResources, *saAccount)
+		deps = append(deps, rpv1.LocalIDServiceAccount)
 
 		// This is required to enable workload identity.
 		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
-
-		deps = append(deps, rpv1.LocalIDServiceAccount)
 
 		// 4. Add RBAC resources to the dependencies.
 		for _, role := range roles {
@@ -771,6 +759,11 @@ func (r Renderer) makeDeployment(
 				return nil
 			},
 		}
+	} else {
+		// Create ServiceAccount per container resource.
+		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, serviceAccountBase, serviceAccountBase.ObjectMeta)
+		outputResources = append(outputResources, or)
+		deps = append(deps, rpv1.LocalIDServiceAccount)
 	}
 
 	// Create the role and role bindings for SA.
