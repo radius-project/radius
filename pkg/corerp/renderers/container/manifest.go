@@ -17,16 +17,21 @@ limitations under the License.
 package container
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/kubeutil"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest, error) {
@@ -42,26 +47,6 @@ func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest,
 	}
 
 	return baseManifest, nil
-}
-
-func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.Service {
-	// If the service has a base manifest, get the service resource from the base manifest.
-	// Otherwise, populate default resources.
-	defaultService := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{},
-			Type:     corev1.ServiceTypeClusterIP,
-		},
-	}
-	if resource := manifest.GetFirst(kubeutil.ServiceV1); resource != nil {
-		defaultService = resource.(*corev1.Service)
-	}
-	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
-	return defaultService
 }
 
 func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *appsv1.Deployment {
@@ -128,6 +113,25 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 	return defaultDeployment
 }
 
+func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.Service {
+	// If the service has a base manifest, get the service resource from the base manifest.
+	// Otherwise, populate default resources.
+	defaultService := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{},
+			Type:     corev1.ServiceTypeClusterIP,
+		},
+	}
+	if resource := manifest.GetFirst(kubeutil.ServiceV1); resource != nil {
+		defaultService = resource.(*corev1.Service)
+	}
+	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
+	return defaultService
+}
 func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.ServiceAccount {
 	// If the service account has a base manifest, get the service account resource from the base manifest.
 	// Otherwise, populate default resources.
@@ -145,4 +149,62 @@ func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *
 	defaultAccount.ObjectMeta = getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
 
 	return defaultAccount
+}
+
+func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:        kubernetes.NormalizeResourceName(resourceName),
+		Namespace:   options.Environment.Namespace,
+		Labels:      labels.Merge(metaObj.Labels, renderers.GetLabels(options, appName, resourceName, resourceType)),
+		Annotations: labels.Merge(metaObj.Annotations, renderers.GetAnnotations(options)),
+	}
+}
+
+func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest, outputResources []rpv1.OutputResource, options renderers.RenderOptions) []rpv1.OutputResource {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// Find deployment resource from outputResources to add base manifest resources as a dependency.
+	var deploymentResource *rpv1.Resource
+	for _, r := range outputResources {
+		if r.LocalID == rpv1.LocalIDDeployment {
+			deploymentResource = r.CreateResource
+			break
+		}
+	}
+
+	// Populate the remaining objects in base manifest into outputResources.
+	// These resources must be deployed before Deployment resource by adding them as a dependency.
+	for k, resources := range base {
+		localIDPrefix := ""
+
+		switch k {
+		case kubeutil.SecretV1:
+			localIDPrefix = rpv1.LocalIDSecret
+		case kubeutil.ConfigMapV1:
+			localIDPrefix = rpv1.LocalIDConfigMap
+		case kubeutil.ServiceAccountV1:
+			// If the container resource requires identity, serviceaccount has been created by makeDeployment().
+			// So it skips adding ServiceAccount in this case.
+			if deploymentResource.ExistDependency(rpv1.LocalIDServiceAccount) {
+				continue
+			}
+			localIDPrefix = rpv1.LocalIDServiceAccount
+
+		default:
+			continue
+		}
+
+		for _, resource := range resources {
+			objMeta := resource.(metav1.ObjectMetaAccessor).GetObjectMeta().(*metav1.ObjectMeta)
+			objMeta.Namespace = options.Environment.Namespace
+			logger.Info(fmt.Sprintf("Adding base manifest resource, kind: %s, name: %s", k, objMeta.Name))
+
+			localID := rpv1.NewLocalID(localIDPrefix, objMeta.Name)
+			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
+			deploymentResource.Dependencies = append(deploymentResource.Dependencies, localID)
+			outputResources = append(outputResources, o)
+		}
+	}
+
+	return outputResources
 }

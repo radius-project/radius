@@ -46,7 +46,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
 	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -154,8 +153,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 // Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
 // RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
@@ -230,7 +227,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
-	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles, baseManifest)
+	deploymentResources, secretData, err := r.makeDeployment(ctx, baseManifest, appId.Name(), options, computedValues, resource, roles)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -265,48 +262,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, serviceResource)
 	}
 
-	// Find deployment resource from outputResources to add base manifest resources as a dependency.
-	var deploymentResource *rpv1.Resource
-	for _, r := range outputResources {
-		if r.LocalID == rpv1.LocalIDDeployment {
-			deploymentResource = r.CreateResource
-			break
-		}
-	}
-
-	// Populate the remaining objects in base manifest into outputResources.
-	// These resources must be deployed before Deployment resource by adding them as a dependency.
-	for k, resources := range baseManifest {
-		localIDPrefix := ""
-
-		switch k {
-		case kubeutil.SecretV1:
-			localIDPrefix = rpv1.LocalIDSecret
-		case kubeutil.ConfigMapV1:
-			localIDPrefix = rpv1.LocalIDConfigMap
-		case kubeutil.ServiceAccountV1:
-			// If the container resource requires identity, serviceaccount has been created by makeDeployment().
-			// So it skips adding ServiceAccount in this case.
-			if deploymentResource.ExistDependency(rpv1.LocalIDServiceAccount) {
-				continue
-			}
-			localIDPrefix = rpv1.LocalIDServiceAccount
-
-		default:
-			continue
-		}
-
-		for _, resource := range resources {
-			objMeta := resource.(metav1.ObjectMetaAccessor).GetObjectMeta().(*metav1.ObjectMeta)
-			objMeta.Namespace = options.Environment.Namespace
-			logger.Info(fmt.Sprintf("Adding base manifest resource, kind: %s, name: %s", k, objMeta.Name))
-
-			localID := rpv1.NewLocalID(localIDPrefix, objMeta.Name)
-			o := rpv1.NewKubernetesOutputResource(localID, resource, *objMeta)
-			deploymentResource.Dependencies = append(deploymentResource.Dependencies, localID)
-			outputResources = append(outputResources, o)
-		}
-	}
+	// Populate the remaining resources from the base manifest.
+	outputResources = populateAllBaseResources(ctx, baseManifest, outputResources, options)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -353,23 +310,14 @@ SKIPINSERT:
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, base, base.ObjectMeta), nil
 }
 
-func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:        kubernetes.NormalizeResourceName(resourceName),
-		Namespace:   options.Environment.Namespace,
-		Labels:      labels.Merge(metaObj.Labels, renderers.GetLabels(options, appName, resourceName, resourceType)),
-		Annotations: labels.Merge(metaObj.Annotations, renderers.GetAnnotations(options)),
-	}
-}
-
 func (r Renderer) makeDeployment(
 	ctx context.Context,
+	manifest kubeutil.ObjectManifest,
 	applicationName string,
 	options renderers.RenderOptions,
 	computedValues map[string]rpv1.ComputedValueReference,
 	resource *datamodel.ContainerResource,
-	roles []rpv1.OutputResource,
-	manifest kubeutil.ObjectManifest) ([]rpv1.OutputResource, map[string][]byte, error) {
+	roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
