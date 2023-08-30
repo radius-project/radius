@@ -222,13 +222,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}
 
 	// If the container has a base manifest, deserialize base manifest and validation should be done by frontend controller.
-	baseManifest := kubeutil.ObjectManifest{}
-	runtimes := properties.Runtimes
-	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
-		baseManifest, err = kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
-		if err != nil {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
-		}
+	baseManifest, err := fetchBaseManifest(resource)
+	if err != nil {
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
 	}
 
 	computedValues := map[string]rpv1.ComputedValueReference{}

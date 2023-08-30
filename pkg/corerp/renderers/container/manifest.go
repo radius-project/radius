@@ -23,10 +23,26 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/kubeutil"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest, error) {
+	baseManifest := kubeutil.ObjectManifest{}
+	runtimes := r.Properties.Runtimes
+	var err error
+
+	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
+		baseManifest, err = kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return baseManifest, nil
+}
 
 func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.Service {
 	// If the service has a base manifest, get the service resource from the base manifest.
