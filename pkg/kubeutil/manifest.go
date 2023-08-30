@@ -30,6 +30,7 @@ import (
 // ObjectManifest is a map of runtime.Object slice where the key is in the format of "group/version/kind".
 type ObjectManifest map[string][]runtime.Object
 
+// Get returns a runtime.Object slice for the given key.
 func (m ObjectManifest) Get(key string) []runtime.Object {
 	obj, ok := m[key]
 	if ok {
@@ -39,6 +40,7 @@ func (m ObjectManifest) Get(key string) []runtime.Object {
 	}
 }
 
+// GetFirst returns the first runtime.Object for the given key.
 func (m ObjectManifest) GetFirst(key string) runtime.Object {
 	obj, ok := m[key]
 	if ok {

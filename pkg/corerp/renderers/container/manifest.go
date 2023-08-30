@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+// fetchBaseManifest fetches the base manifest from the container resource.
 func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest, error) {
 	baseManifest := kubeutil.ObjectManifest{}
 	runtimes := r.Properties.Runtimes
@@ -49,11 +50,12 @@ func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest,
 	return baseManifest, nil
 }
 
+// getDeploymentBase returns the deployment resource based on the given base manifest.
+// If the container has a base manifest, get the deployment resource from the base manifest.
+// Otherwise, populate default resources.
 func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *appsv1.Deployment {
 	name := kubernetes.NormalizeResourceName(r.Name)
 
-	// If the container has a base manifest, get the deployment resource from the base manifest.
-	// Otherwise, populate default resources.
 	defaultDeployment := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -113,9 +115,10 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 	return defaultDeployment
 }
 
+// getServiceBase returns the service resource based on the given base manifest.
+// If the service has a base manifest, get the service resource from the base manifest.
+// Otherwise, populate default resources.
 func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.Service {
-	// If the service has a base manifest, get the service resource from the base manifest.
-	// Otherwise, populate default resources.
 	defaultService := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -132,9 +135,11 @@ func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamod
 	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
 	return defaultService
 }
+
+// getServiceAccountBase returns the service account resource based on the given base manifest.
+// If the service account has a base manifest, get the service account resource from the base manifest.
+// Otherwise, populate default resources.
 func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.ServiceAccount {
-	// If the service account has a base manifest, get the service account resource from the base manifest.
-	// Otherwise, populate default resources.
 	defaultAccount := &corev1.ServiceAccount{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ServiceAccount",
@@ -160,6 +165,8 @@ func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceTyp
 	}
 }
 
+// populateAllBaseResources populates all remaining resources from manifest into outputResources.
+// These resources must be deployed before Deployment resource by adding them as a dependency.
 func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest, outputResources []rpv1.OutputResource, options renderers.RenderOptions) []rpv1.OutputResource {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -182,13 +189,6 @@ func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest,
 			localIDPrefix = rpv1.LocalIDSecret
 		case kubeutil.ConfigMapV1:
 			localIDPrefix = rpv1.LocalIDConfigMap
-		case kubeutil.ServiceAccountV1:
-			// If the container resource requires identity, serviceaccount has been created by makeDeployment().
-			// So it skips adding ServiceAccount in this case.
-			if deploymentResource.ExistDependency(rpv1.LocalIDServiceAccount) {
-				continue
-			}
-			localIDPrefix = rpv1.LocalIDServiceAccount
 
 		default:
 			continue

@@ -324,6 +324,7 @@ func (r Renderer) makeDeployment(
 		Type string
 	}{}
 
+	// If the container requires azure role, it needs to configure workload identity (aka federated identity).
 	identityRequired := len(roles) > 0
 
 	dependencies := options.Dependencies
@@ -427,6 +428,7 @@ func (r Renderer) makeDeployment(
 
 	// Create Kubernetes resource name scoped in Kubernetes namespace
 	kubeIdentityName := normalizedName
+	podSpec.ServiceAccountName = normalizedName
 
 	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
 	// To avoid the naming conflicts, we add the application name prefix to resource name.
@@ -531,6 +533,7 @@ func (r Renderer) makeDeployment(
 		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
+	serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)
 	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
@@ -541,15 +544,13 @@ func (r Renderer) makeDeployment(
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		podSpec.ServiceAccountName = kubeIdentityName
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(podSpec.ServiceAccountName, &options.Environment)
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(kubeIdentityName, &options.Environment)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)
 		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
 		outputResources = append(outputResources, *saAccount)
 		deps = append(deps, rpv1.LocalIDServiceAccount)
@@ -601,6 +602,12 @@ func (r Renderer) makeDeployment(
 				return nil
 			},
 		}
+	} else {
+		// If the container doesn't require identity, we'll use the default service account
+		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, serviceAccountBase, serviceAccountBase.ObjectMeta)
+		or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
+		outputResources = append(outputResources, or)
+		deps = append(deps, rpv1.LocalIDServiceAccount)
 	}
 
 	// Create the role and role bindings for SA.
