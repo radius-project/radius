@@ -154,7 +154,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 		{
 			desc:     "missing user managed identity",
 			resource: &corev1.ServiceAccount{},
-			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
+			err:      nil,
 		},
 		{
 			desc:     "missing client ID",
@@ -185,7 +185,11 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 				DependencyProperties: tc.dep,
 			})
 
-			require.ErrorContains(t, err, tc.err.Error())
+			if tc.err != nil {
+				require.EqualError(t, err, tc.err.Error())
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

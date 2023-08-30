@@ -139,14 +139,20 @@ func TransformFederatedIdentitySA(ctx context.Context, options *handlers.PutOpti
 		return err
 	}
 
-	sa.Annotations[azureWorkloadIdentityClientID] = clientID
-	sa.Annotations[azureWorkloadIdentityTenantID] = tenantID
+	if clientID != "" && tenantID != "" {
+		sa.Annotations[azureWorkloadIdentityClientID] = clientID
+		sa.Annotations[azureWorkloadIdentityTenantID] = tenantID
+	}
 
 	return nil
 }
 
 func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantID string, err error) {
-	mi := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
+	mi, ok := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
+	if !ok {
+		return "", "", nil
+	}
+
 	if mi == nil {
 		err = errors.New("cannot find LocalIDUserAssignedManagedIdentity")
 		return
