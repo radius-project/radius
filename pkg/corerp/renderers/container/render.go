@@ -19,7 +19,6 @@ package container
 import (
 	"context"
 	"crypto/sha1"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -270,7 +269,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, serviceResource)
 	}
 
-	// Find deployment resource from outputResources to add base manifest resources as dependencies.
+	// Find deployment resource from outputResources to add base manifest resources as a dependency.
 	var deploymentResource *rpv1.Resource
 	for _, r := range outputResources {
 		if r.LocalID == rpv1.LocalIDDeployment {
@@ -279,7 +278,8 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	// Populate the remaining objects in base manifest.
+	// Populate the remaining objects in base manifest into outputResources.
+	// These resources must be deployed before Deployment resource by adding them as a dependency.
 	for k, resources := range baseManifest {
 		localIDPrefix := ""
 
@@ -353,9 +353,6 @@ SKIPINSERT:
 
 	base.Spec.Selector = kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
 	base.Spec.Type = corev1.ServiceTypeClusterIP
-
-	s, _ := json.Marshal(base)
-	fmt.Printf("\n\n ### serviceresource : %s\n", string(s))
 
 	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, base, base.ObjectMeta), nil
 }
@@ -705,9 +702,6 @@ func (r Renderer) makeDeployment(
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
 		deps = append(deps, rpv1.LocalIDSecret)
 	}
-
-	s, _ := json.Marshal(deployment)
-	fmt.Printf("\n\n ### deployment : %s\n", string(s))
 
 	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
 	deploymentOutput.CreateResource.Dependencies = deps

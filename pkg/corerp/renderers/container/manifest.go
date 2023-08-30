@@ -17,6 +17,8 @@ limitations under the License.
 package container
 
 import (
+	"strings"
+
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -98,7 +100,7 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 
 	found := false
 	for _, container := range podTemplate.Spec.Containers {
-		if container.Name == name {
+		if strings.EqualFold(container.Name, name) {
 			found = true
 			break
 		}
