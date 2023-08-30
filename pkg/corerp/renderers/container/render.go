@@ -28,11 +28,9 @@ import (
 	"strconv"
 	"strings"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -154,105 +152,6 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface
 	return radiusResourceIDs, azureResourceIDs, nil
 }
 
-func populateDefaultResources(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) {
-	name := kubernetes.NormalizeResourceName(r.Name)
-
-	// If the container has a base manifest, get the deployment resource from the base manifest.
-	// Otherwise, populate default resources.
-	resources := manifest.Get(kubeutil.DeploymentV1)
-	defaultDeployment := &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      map[string]string{},
-					Annotations: map[string]string{},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: name,
-						},
-					},
-				},
-			},
-		},
-	}
-	if len(resources) > 0 {
-		defaultDeployment = resources[0].(*appsv1.Deployment)
-	}
-	defaultDeployment.ObjectMeta = getObjectMeta(defaultDeployment.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
-	if defaultDeployment.Spec.Selector == nil {
-		defaultDeployment.Spec.Selector = &metav1.LabelSelector{}
-	}
-	podTemplate := &defaultDeployment.Spec.Template
-	if podTemplate.ObjectMeta.Labels == nil {
-		podTemplate.ObjectMeta.Labels = map[string]string{}
-	}
-	if podTemplate.ObjectMeta.Annotations == nil {
-		podTemplate.ObjectMeta.Annotations = map[string]string{}
-	}
-	if len(podTemplate.Spec.Containers) < 1 {
-		podTemplate.Spec.Containers = []corev1.Container{}
-	}
-
-	found := false
-	for _, container := range podTemplate.Spec.Containers {
-		if container.Name == name {
-			found = true
-			break
-		}
-	}
-	if !found {
-		podTemplate.Spec.Containers = append(podTemplate.Spec.Containers, corev1.Container{Name: name})
-	}
-	manifest[kubeutil.DeploymentV1] = []runtime.Object{defaultDeployment}
-
-	// If the service has a base manifest, get the service resource from the base manifest.
-	// Otherwise, populate default resources.
-	resources = manifest.Get(kubeutil.ServiceV1)
-	defaultService := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{},
-			Type:     corev1.ServiceTypeClusterIP,
-		},
-	}
-	if len(resources) > 0 {
-		defaultService = resources[0].(*corev1.Service)
-	}
-	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
-	manifest[kubeutil.ServiceV1] = []runtime.Object{defaultService}
-
-	// If the service account has a base manifest, get the service account resource from the base manifest.
-	// Otherwise, populate default resources.
-	resources = manifest.Get(kubeutil.ServiceAccountV1)
-	defaultAccount := &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceAccount",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-	if len(resources) > 0 {
-		defaultAccount = resources[0].(*corev1.ServiceAccount)
-	}
-	defaultAccount.ObjectMeta = getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
-	manifest[kubeutil.ServiceAccountV1] = []runtime.Object{defaultAccount}
-}
-
 // Render creates role assignments, a deployment, and a secret for a given container resource, and returns a
 // RendererOutput containing the resources and computed values.
 func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
@@ -265,23 +164,10 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	properties := resource.Properties
 
-	// If the container has a base manifest, deserialize base manifest and validation should be done by frontend controller.
-	baseManifest := kubeutil.ObjectManifest{}
-	runtimes := properties.Runtimes
-	var err error
-	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
-		baseManifest, err = kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
-		if err != nil {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
-		}
-	}
-
 	appId, err := resources.ParseResource(properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
-
-	populateDefaultResources(baseManifest, appId.Name(), resource, &options)
 
 	// this flag is used to indicate whether or not this resource needs a service to be generated.
 	// this flag is triggered when a container has an exposed port(s), but no 'provides' field.
@@ -336,6 +222,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, roles...)
 	}
 
+	// If the container has a base manifest, deserialize base manifest and validation should be done by frontend controller.
+	baseManifest := kubeutil.ObjectManifest{}
+	runtimes := properties.Runtimes
+	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
+		baseManifest, err = kubeutil.ParseManifest([]byte(runtimes.Kubernetes.Base))
+		if err != nil {
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
+		}
+	}
+
 	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
@@ -365,7 +261,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
-		basesrv := baseManifest.Get(kubeutil.ServiceV1)[0].(*corev1.Service)
+		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
 		serviceResource, err := r.makeService(basesrv, resource, options, ctx, containerPorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
@@ -374,7 +270,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, serviceResource)
 	}
 
-	// Fetch deployment resource from outputResources.
+	// Find deployment resource from outputResources to add base manifest resources as dependencies.
 	var deploymentResource *rpv1.Resource
 	for _, r := range outputResources {
 		if r.LocalID == rpv1.LocalIDDeployment {
@@ -392,6 +288,14 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 			localIDPrefix = rpv1.LocalIDSecret
 		case kubeutil.ConfigMapV1:
 			localIDPrefix = rpv1.LocalIDConfigMap
+		case kubeutil.ServiceAccountV1:
+			// If the container resource requires identity, serviceaccount has been created by makeDeployment().
+			// So it skips adding ServiceAccount in this case.
+			if deploymentResource.ExistDependency(rpv1.LocalIDServiceAccount) {
+				continue
+			}
+			localIDPrefix = rpv1.LocalIDServiceAccount
+
 		default:
 			continue
 		}
@@ -486,8 +390,7 @@ func (r Renderer) makeDeployment(
 
 	normalizedName := kubernetes.NormalizeResourceName(resource.Name)
 
-	deployment := manifest.Get(kubeutil.DeploymentV1)[0].(*appsv1.Deployment)
-	serviceAccountBase := manifest.Get(kubeutil.ServiceAccountV1)[0].(*corev1.ServiceAccount)
+	deployment := getDeploymentBase(manifest, applicationName, resource, &options)
 	podSpec := &deployment.Spec.Template.Spec
 
 	container := &podSpec.Containers[0]
@@ -707,7 +610,7 @@ func (r Renderer) makeDeployment(
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		serviceAccountBase.ObjectMeta = getObjectMeta(serviceAccountBase.ObjectMeta, applicationName, resource.Name, resource.ResourceTypeName(), options)
+		serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)
 		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
 		outputResources = append(outputResources, *saAccount)
 		deps = append(deps, rpv1.LocalIDServiceAccount)
@@ -759,11 +662,6 @@ func (r Renderer) makeDeployment(
 				return nil
 			},
 		}
-	} else {
-		// Create ServiceAccount per container resource.
-		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, serviceAccountBase, serviceAccountBase.ObjectMeta)
-		outputResources = append(outputResources, or)
-		deps = append(deps, rpv1.LocalIDServiceAccount)
 	}
 
 	// Create the role and role bindings for SA.

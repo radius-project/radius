@@ -39,6 +39,15 @@ func (m ObjectManifest) Get(key string) []runtime.Object {
 	}
 }
 
+func (m ObjectManifest) GetFirst(key string) runtime.Object {
+	obj, ok := m[key]
+	if ok {
+		return obj[0]
+	} else {
+		return nil
+	}
+}
+
 // GetObjectKey returns a object key that uniquely identifies the given Kubernetes object.
 // The returned key is in the format of "group/version/kind".
 func GetObjectKey(obj runtime.Object) string {

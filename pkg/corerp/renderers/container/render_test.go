@@ -296,7 +296,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.NotNil(t, deployment)
 
 		expected := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		expected.CreateResource.Dependencies = []string{rpv1.LocalIDServiceAccount, rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
+		expected.CreateResource.Dependencies = []string{rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
 		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
@@ -330,7 +330,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, expectedEnv, container.Env)
 
 	})
-	require.Len(t, output.Resources, 4)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
@@ -367,7 +367,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		require.NotNil(t, deployment)
 
 		expected := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		expected.CreateResource.Dependencies = []string{rpv1.LocalIDServiceAccount, rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
+		expected.CreateResource.Dependencies = []string{rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
 		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
@@ -392,7 +392,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		require.Equal(t, expectedEnv, container.Env)
 
 	})
-	require.Len(t, output.Resources, 4)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
@@ -437,7 +437,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 		require.Equal(t, expected, port)
 
 	})
-	require.Len(t, output.Resources, 5)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
@@ -493,7 +493,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		}
 		require.Equal(t, expected, port)
 	})
-	require.Len(t, output.Resources, 4)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_Connections(t *testing.T) {
@@ -594,7 +594,7 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
 	})
-	require.Len(t, output.Resources, 5)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
@@ -1541,7 +1541,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
 
 		require.NoError(t, err)
-		require.Len(t, output.Resources, 5)
+		require.Len(t, output.Resources, 4)
 		require.Empty(t, output.SecretValues)
 
 		expectedServicePort := corev1.ServicePort{
