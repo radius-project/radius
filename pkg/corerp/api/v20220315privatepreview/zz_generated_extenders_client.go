@@ -48,7 +48,7 @@ func NewExtendersClient(rootScope string, credential azcore.TokenCredential, opt
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the ExtenderResource link resource
+//   - extenderName - The name of the ExtenderResource portable resource
 //   - resource - Resource create parameters.
 //   - options - ExtendersClientBeginCreateOrUpdateOptions contains the optional parameters for the ExtendersClient.BeginCreateOrUpdate
 //     method.
@@ -114,7 +114,7 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the ExtenderResource link resource
+//   - extenderName - The name of the ExtenderResource portable resource
 //   - options - ExtendersClientBeginDeleteOptions contains the optional parameters for the ExtendersClient.BeginDelete method.
 func (client *ExtendersClient) BeginDelete(ctx context.Context, extenderName string, options *ExtendersClientBeginDeleteOptions) (*runtime.Poller[ExtendersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
@@ -175,7 +175,7 @@ func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, extender
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the ExtenderResource link resource
+//   - extenderName - The name of the ExtenderResource portable resource
 //   - options - ExtendersClientGetOptions contains the optional parameters for the ExtendersClient.Get method.
 func (client *ExtendersClient) Get(ctx context.Context, extenderName string, options *ExtendersClientGetOptions) (ExtendersClientGetResponse, error) {
 	var err error
@@ -284,7 +284,7 @@ func (client *ExtendersClient) listByScopeHandleResponse(resp *http.Response) (E
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the ExtenderResource link resource
+//   - extenderName - The name of the ExtenderResource portable resource
 //   - body - The content of the action request
 //   - options - ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
 func (client *ExtendersClient) ListSecrets(ctx context.Context, extenderName string, body map[string]any, options *ExtendersClientListSecretsOptions) (ExtendersClientListSecretsResponse, error) {
@@ -340,7 +340,7 @@ func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response) (E
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - extenderName - The name of the ExtenderResource link resource
+//   - extenderName - The name of the ExtenderResource portable resource
 //   - properties - The resource properties to be updated.
 //   - options - ExtendersClientBeginUpdateOptions contains the optional parameters for the ExtendersClient.BeginUpdate method.
 func (client *ExtendersClient) BeginUpdate(ctx context.Context, extenderName string, properties ExtenderResourceUpdate, options *ExtendersClientBeginUpdateOptions) (*runtime.Poller[ExtendersClientUpdateResponse], error) {

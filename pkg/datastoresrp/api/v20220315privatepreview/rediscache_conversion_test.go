@@ -27,7 +27,7 @@ import (
 	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
 
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -51,12 +51,12 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
 					BasicResourceProperties: createBasicResourceProperties(),
-					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					ResourceProvisioning:    portableresources.ResourceProvisioningRecipe,
 					Host:                    "",
 					Port:                    0,
 					TLS:                     false,
 					Username:                "",
-					Recipe:                  linkrp.LinkRecipe{Name: "default"},
+					Recipe:                  portableresources.LinkRecipe{Name: "default"},
 				},
 			},
 		},
@@ -67,12 +67,12 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
 					BasicResourceProperties: createBasicResourceProperties(),
-					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					ResourceProvisioning:    portableresources.ResourceProvisioningRecipe,
 					Host:                    "",
 					Port:                    0,
 					TLS:                     false,
 					Username:                "",
-					Recipe:                  linkrp.LinkRecipe{Name: "redis-test"},
+					Recipe:                  portableresources.LinkRecipe{Name: "redis-test"},
 				},
 			},
 		},
@@ -83,12 +83,12 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
 					BasicResourceProperties: createBasicResourceProperties(),
-					ResourceProvisioning:    linkrp.ResourceProvisioningRecipe,
+					ResourceProvisioning:    portableresources.ResourceProvisioningRecipe,
 					Host:                    "myrediscache.redis.cache.windows.net",
 					Port:                    10255,
 					TLS:                     false,
 					Username:                "",
-					Recipe:                  linkrp.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
+					Recipe:                  portableresources.LinkRecipe{Name: "redis-test", Parameters: map[string]any{"port": float64(6081)}},
 				},
 			},
 		},
@@ -99,12 +99,12 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
 					BasicResourceProperties: createBasicResourceProperties(),
-					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
+					ResourceProvisioning:    portableresources.ResourceProvisioningManual,
 					Host:                    "myrediscache.redis.cache.windows.net",
 					Port:                    10255,
 					TLS:                     true,
 					Username:                "admin",
-					Resources:               []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
+					Resources:               []*portableresources.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}},
 					Secrets: datamodel.RedisCacheSecrets{
 						Password:         "testPassword",
 						ConnectionString: "test-connection-string",
@@ -120,7 +120,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				BaseResource: createBaseResource(),
 				Properties: datamodel.RedisCacheProperties{
 					BasicResourceProperties: createBasicResourceProperties(),
-					ResourceProvisioning:    linkrp.ResourceProvisioningManual,
+					ResourceProvisioning:    portableresources.ResourceProvisioningManual,
 					Host:                    "myrediscache.redis.cache.windows.net",
 					Port:                    10255,
 					TLS:                     false,
@@ -178,7 +178,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+				Type: to.Ptr(portableresources.RedisCachesResourceType),
 			},
 		},
 		{
@@ -203,7 +203,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+				Type: to.Ptr(portableresources.RedisCachesResourceType),
 			},
 		},
 		{
@@ -228,7 +228,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+				Type: to.Ptr(portableresources.RedisCachesResourceType),
 			},
 		},
 		{
@@ -259,7 +259,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(linkrp.N_RedisCachesResourceType),
+				Type: to.Ptr(portableresources.RedisCachesResourceType),
 			},
 		},
 	}
@@ -377,7 +377,7 @@ func createBaseResource() v1.BaseResource {
 		TrackedResource: v1.TrackedResource{
 			ID:   RedisID,
 			Name: "redis0",
-			Type: linkrp.N_RedisCachesResourceType,
+			Type: portableresources.RedisCachesResourceType,
 			Tags: map[string]string{},
 		},
 		InternalMetadata: v1.InternalMetadata{

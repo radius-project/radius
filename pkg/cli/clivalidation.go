@@ -261,7 +261,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-// example of resource Type: Applications.Core/httpRoutes, Applications.Link/redisCaches
+// example of resource Type: Applications.Core/httpRoutes, Applications.Datastores/redisCaches
 //
 
 // RequireResourceType checks if the first argument provided is a valid resource type and returns it if it is. If the

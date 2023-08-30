@@ -102,7 +102,7 @@ type EnvironmentsClientUpdateResponse struct {
 
 // ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.BeginCreateOrUpdate.
 type ExtendersClientCreateOrUpdateResponse struct {
-	// ExtenderResource link
+	// ExtenderResource portable resource
 	ExtenderResource
 }
 
@@ -113,7 +113,7 @@ type ExtendersClientDeleteResponse struct {
 
 // ExtendersClientGetResponse contains the response from method ExtendersClient.Get.
 type ExtendersClientGetResponse struct {
-	// ExtenderResource link
+	// ExtenderResource portable resource
 	ExtenderResource
 }
 
@@ -131,7 +131,7 @@ type ExtendersClientListSecretsResponse struct {
 
 // ExtendersClientUpdateResponse contains the response from method ExtendersClient.BeginUpdate.
 type ExtendersClientUpdateResponse struct {
-	// ExtenderResource link
+	// ExtenderResource portable resource
 	ExtenderResource
 }
 

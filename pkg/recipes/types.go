@@ -39,7 +39,7 @@ type RuntimeConfiguration struct {
 
 // KubernetesRuntime represents application and environment namespaces.
 type KubernetesRuntime struct {
-	// Namespace is set to the application namespace when the Link is application-scoped, and set to the environment namespace when the Link is environment scoped
+	// Namespace is set to the application namespace when the portable resource is application-scoped, and set to the environment namespace when it is environment scoped
 	Namespace string `json:"namespace,omitempty"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
@@ -51,7 +51,7 @@ type EnvironmentDefinition struct {
 	Name string
 	// Driver represents the kind of infrastructure language used to define recipe.
 	Driver string
-	// ResourceType represents the type of the link this recipe can be consumed by.
+	// ResourceType represents the type of the portable resource this recipe can be consumed by.
 	ResourceType string
 	// Parameters represents key/value pairs to pass into the recipe template for every resource using this recipe. Specified during recipe registration to environment. Can be overridden by the radius resource consuming this recipe.
 	Parameters map[string]any
@@ -61,13 +61,13 @@ type EnvironmentDefinition struct {
 	TemplateVersion string
 }
 
-// ResourceMetadata represents recipe details provided while creating a Link resource.
+// ResourceMetadata represents recipe details provided while creating a portable resource.
 type ResourceMetadata struct {
 	// Name represents the name of the recipe within the environment
 	Name string
-	// ApplicationID represents fully qualified resource ID for the application that the link is consumed by
+	// ApplicationID represents fully qualified resource ID for the application that the portable resource is consumed by
 	ApplicationID string
-	// EnvironmentID represents fully qualified resource ID for the environment that the link is linked to
+	// EnvironmentID represents fully qualified resource ID for the environment that the portable resource is linked to
 	EnvironmentID string
 	// ResourceID represents fully qualified resource ID for the resource the recipe is deploying
 	ResourceID string

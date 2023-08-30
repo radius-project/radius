@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
+	"github.com/project-radius/radius/pkg/portableresources/renderers"
 )
 
 // Processor is a processor for MongoDB resources.

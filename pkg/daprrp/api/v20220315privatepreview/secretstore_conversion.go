@@ -23,7 +23,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -59,7 +59,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	msgs := []string{}
-	if converted.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if src.Properties.Recipe != nil && (!reflect.ValueOf(*src.Properties.Recipe).IsZero()) {
 			msgs = append(msgs, "recipe details cannot be specified when resourceProvisioning is set to manual")
 		}
@@ -126,7 +126,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
 		},
 	}
-	if daprSecretStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = daprSecretStore.Properties.Metadata
 		dst.Properties.Type = to.Ptr(daprSecretStore.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprSecretStore.Properties.Version)

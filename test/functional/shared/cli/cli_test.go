@@ -61,7 +61,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	templateKind := "bicep"
-	linkType := "Applications.Link/mongoDatabases"
+	linkType := "Applications.Datastores/mongoDatabases"
 	file := "testdata/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
@@ -88,7 +88,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
-		showRecipeLinkType := "Applications.Link/mongoDatabases"
+		showRecipeLinkType := "Applications.Datastores/mongoDatabases"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")

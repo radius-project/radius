@@ -87,7 +87,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
@@ -145,7 +145,7 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
@@ -215,7 +215,7 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		Driver:          recipes.TemplateKindTerraform,
 		TemplatePath:    "Azure/redis/azurerm",
 		TemplateVersion: "1.1.0",
-		ResourceType:    "Applications.Link/mongoDatabases",
+		ResourceType:    "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
@@ -252,7 +252,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       "invalid",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	recipeMetadata := recipes.ResourceMetadata{
@@ -317,7 +317,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
@@ -456,7 +456,7 @@ func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/test-db",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/test-db",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -465,7 +465,7 @@ func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	outputResources := []rpv1.OutputResource{

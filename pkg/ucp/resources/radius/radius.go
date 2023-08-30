@@ -27,12 +27,13 @@ const (
 
 	// NamespaceApplicationsCore defines the namespace for the Radius Applications.Core resource provider.
 	NamespaceApplicationsCore = "Applications.Core"
-	// NamespaceApplicationsLink defines the namespace for the Radius Applications.Link resource provider.
-	NamespaceApplicationsLink = "Applications.Link"
+
 	// NamespaceApplicationsDatastores defines the namespace for the Radius Applications.Datastores resource provider.
 	NamespaceApplicationsDatastores = "Applications.Datastores"
+
 	// NamespaceApplicationsDapr defines the namespace for the Radius Applications.Dapr resource provider.
 	NamespaceApplicationsDapr = "Applications.Dapr"
+
 	// NamespaceApplicationsMessaging defines the namespace for the Radius Applications.Messaging resource provider.
 	NamespaceApplicationsMessaging = "Applications.Messaging"
 )

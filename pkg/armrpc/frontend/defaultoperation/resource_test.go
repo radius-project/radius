@@ -178,7 +178,7 @@ func testResourceDataModelFromVersioned(content []byte, version string) (*TestRe
 // testValidateRequest is an example resource filter.
 //
 // In this case we're validating that the application of an existing resource can't change. This is one of our scenarios
-// for the corerp and linkrp. However we're avoiding calling into that code directly from here to avoid coupling.
+// for the corerp and portable resource providers. However we're avoiding calling into that code directly from here to avoid coupling.
 func testValidateRequest(ctx context.Context, newResource *TestResourceDataModel, oldResource *TestResourceDataModel, options *controller.Options) (rest.Response, error) {
 	if oldResource == nil {
 		return nil, nil

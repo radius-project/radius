@@ -35,7 +35,7 @@ import (
 //
 
 // NewCommand creates a new cobra command for unregistering a recipe from an environment, which takes in a factory and returns a cobra command
-// and a runner. It also sets up flags for output, workspace, resource group, environment name and link type, with link type being a required flag.
+// and a runner. It also sets up flags for output, workspace, resource group, environment name and portable resource type, with link-type being a required flag.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 

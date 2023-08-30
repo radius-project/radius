@@ -6,7 +6,7 @@
 # - Listen on port 9000
 # - Talk to Deployment Engine on port 5017
 # - Talk to Core RP on port 8080
-# - Talk to Link RP on port 8081
+# - Talk to Portable Resources' Providers on port 8081
 # - Disables metrics and profiler
 #
 storageProvider:
@@ -38,7 +38,6 @@ planes:
     properties:
       resourceProviders:
         Applications.Core: "http://localhost:8080"
-        Applications.Link: "http://localhost:8081"
         Applications.Messaging: "http://localhost:8081"
         Applications.Dapr: "http://localhost:8081"
         Applications.Datastores: "http://localhost:8081"

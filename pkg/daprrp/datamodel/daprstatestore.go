@@ -18,9 +18,9 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/portableresources"
+	pr_dm "github.com/project-radius/radius/pkg/portableresources/datamodel"
+	"github.com/project-radius/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -32,7 +32,7 @@ type DaprStateStore struct {
 	Properties DaprStateStoreProperties `json:"properties"`
 
 	// LinkMetadata represents internal DataModel properties common to all portable types.
-	linkrp_dm.LinkMetadata
+	pr_dm.LinkMetadata
 }
 
 // ApplyDeploymentOutput updates the DaprStateStore resource with the DeploymentOutput values.
@@ -58,12 +58,12 @@ func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of the DaprStateStore resource.
 func (daprStateStore *DaprStateStore) ResourceTypeName() string {
-	return linkrp.N_DaprStateStoresResourceType
+	return portableresources.DaprStateStoresResourceType
 }
 
 // Recipe returns the recipe information of the resource. It returns nil if the ResourceProvisioning is set to manual.
-func (r *DaprStateStore) Recipe() *linkrp.LinkRecipe {
-	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (r *DaprStateStore) Recipe() *portableresources.LinkRecipe {
+	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
@@ -74,10 +74,10 @@ type DaprStateStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
-	Metadata             map[string]any              `json:"metadata,omitempty"`
-	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
-	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
-	Type                 string                      `json:"type,omitempty"`
-	Version              string                      `json:"version,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Metadata             map[string]any                         `json:"metadata,omitempty"`
+	Recipe               portableresources.LinkRecipe           `json:"recipe,omitempty"`
+	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
+	Type                 string                                 `json:"type,omitempty"`
+	Version              string                                 `json:"version,omitempty"`
 }

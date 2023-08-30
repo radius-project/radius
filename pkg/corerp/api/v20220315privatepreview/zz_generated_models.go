@@ -625,7 +625,7 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 	}
 }
 
-// ExtenderProperties - ExtenderResource link properties
+// ExtenderProperties - ExtenderResource portable resource properties
 type ExtenderProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
@@ -636,7 +636,7 @@ type ExtenderProperties struct {
 	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
 	Application *string
 
-	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
 	Recipe *Recipe
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -652,7 +652,7 @@ type ExtenderProperties struct {
 	Status *ResourceStatus
 }
 
-// ExtenderResource link
+// ExtenderResource portable resource
 type ExtenderResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -702,7 +702,7 @@ type ExtenderResourceUpdateProperties struct {
 	// Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
-	// The recipe used to automatically deploy underlying infrastructure for the extender link
+	// The recipe used to automatically deploy underlying infrastructure for the extender portable resource
 	Recipe *RecipeUpdate
 
 	// Specifies how the underlying service/resource is provisioned and managed.
@@ -1292,7 +1292,7 @@ type Recipe struct {
 
 // RecipeGetMetadata - Represents the request body of the getmetadata action.
 type RecipeGetMetadata struct {
-	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'
 	LinkType *string
 
 	// REQUIRED; The name of the recipe registered to the environment

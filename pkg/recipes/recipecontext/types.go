@@ -25,9 +25,9 @@ const (
 	RecipeContextParamKey = "context"
 )
 
-// Context represents the context information which accesses Link properties. Recipe template authors
-// can leverage the RecipeContext parameter to access Link properties to generate name and properties
-// that are unique for the Link calling the recipe.
+// Context represents the context information which accesses portable resource properties. Recipe template authors
+// can leverage the RecipeContext parameter to access portable resource properties to generate name and properties
+// that are unique for the portable resource calling the recipe.
 type Context struct {
 	// Resource represents the resource information of the deploying recipe resource.
 	Resource Resource `json:"resource,omitempty"`

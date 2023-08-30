@@ -13,8 +13,8 @@
       "context": {
         "resource": {
           "name": "mongo0",
-          "id": "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
-          "type": "applications.link/mongodatabases"
+          "id": "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+          "type": "applications.datastores/mongodatabases"
         },
         "application": {
           "name": "testApplication",

@@ -20,7 +20,10 @@ import (
 	"time"
 )
 
-var (
+const (
+	// User defined operation names
+	OperationListSecret = "LISTSECRETS"
+
 	// AsyncCreateOrUpdateMongoDatabaseTimeout is the timeout for async create or update Mongo database
 	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(10) * time.Minute
 	// AsyncDeleteMongoDatabaseTimeout is the timeout for async delete Mongo database
@@ -35,4 +38,9 @@ var (
 	AsyncCreateOrUpdateDaprStateStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprStateStoreTimeout is the timeout for async delete Dapr state store
 	AsyncDeleteDaprStateStoreTimeout = time.Duration(30) * time.Minute
+
+	// AsyncCreateOrUpdateSqlTimeout is the timeout for async create or update sql database
+	AsyncCreateOrUpdateSqlDatabaseTimeout = time.Duration(10) * time.Minute
+	// AsyncDeleteSqlDatabaseTimeout is the timeout for async delete sql database
+	AsyncDeleteSqlDatabaseTimeout = time.Duration(15) * time.Minute
 )

@@ -145,7 +145,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 		err = json.Unmarshal(payload, &armerr)
 		require.NoError(t, err)
 		require.Equal(t, v1.CodeNotFound, armerr.Error.Code)
-		require.Contains(t, armerr.Error.Message, "Either recipe with name \"mongodb\" or resource type \"Applications.Link/mongoDatabases\" not found on environment with id")
+		require.Contains(t, armerr.Error.Message, "Either recipe with name \"mongodb\" or resource type \"Applications.Datastores/mongoDatabases\" not found on environment with id")
 	})
 }
 

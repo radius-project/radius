@@ -30,9 +30,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/processors/extenders"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/portableresources"
+	pr_backend_ctrl "github.com/project-radius/radius/pkg/portableresources/backend/controller"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/configloader"
 	"github.com/project-radius/radius/pkg/recipes/driver"
@@ -140,20 +140,20 @@ func (w *Service) Run(ctx context.Context) error {
 	opts.GetDeploymentProcessor = nil
 	extenderCreateOrUpdateController := func(options ctrl.Options) (ctrl.Controller, error) {
 		processor := &extenders.Processor{}
-		return linkrp_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
+		return pr_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
 	}
 
 	// Register controllers to run backend processing for extenders.
-	err = w.Controllers.Register(ctx, linkrp.N_ExtendersResourceType, v1.OperationPut, extenderCreateOrUpdateController, opts)
+	err = w.Controllers.Register(ctx, portableresources.ExtendersResourceType, v1.OperationPut, extenderCreateOrUpdateController, opts)
 	if err != nil {
 		return err
 	}
 	err = w.Controllers.Register(
 		ctx,
-		linkrp.N_ExtendersResourceType,
+		portableresources.ExtendersResourceType,
 		v1.OperationDelete,
 		func(options ctrl.Options) (ctrl.Controller, error) {
-			return linkrp_backend_ctrl.NewDeleteResource(options, engine)
+			return pr_backend_ctrl.NewDeleteResource(options, engine)
 		},
 		opts)
 	if err != nil {
