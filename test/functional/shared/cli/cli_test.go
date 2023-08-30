@@ -111,7 +111,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 			moduleServer = "http://localhost:8999"
 		}
 		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
-		showRecipeLinkType := "Applications.Link/redisCaches"
+		showRecipeLinkType := "Applications.Datastores/redisCaches"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeLinkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
