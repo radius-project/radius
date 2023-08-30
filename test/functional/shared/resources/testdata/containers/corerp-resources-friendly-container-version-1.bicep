@@ -61,7 +61,7 @@ resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Datastores/redisCaches@2022-03-15-privatepreview' = {
   name: 'friendly-rds-rds'
   location: 'global'
   properties: {

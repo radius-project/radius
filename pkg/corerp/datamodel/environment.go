@@ -54,7 +54,7 @@ type EnvironmentRecipeProperties struct {
 
 // Recipe represents input properties for recipe getMetadata api.
 type Recipe struct {
-	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	// Type of the portable resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'
 	LinkType string `json:"linkType,omitempty"`
 
 	// Name of the recipe registered to the environment.

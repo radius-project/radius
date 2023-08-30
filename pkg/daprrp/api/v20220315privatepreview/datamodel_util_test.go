@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/portableresources"
+	"github.com/project-radius/radius/pkg/portableresources/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -117,15 +117,15 @@ func TestFromSystemDataModel(t *testing.T) {
 
 func TestToResourcesDataModel(t *testing.T) {
 	testset := []struct {
-		DMResources        []*linkrp.ResourceReference
+		DMResources        []*portableresources.ResourceReference
 		VersionedResources []*ResourceReference
 	}{
 		{
-			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			DMResources:        []*portableresources.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
 			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
 		},
 		{
-			DMResources:        []*linkrp.ResourceReference{},
+			DMResources:        []*portableresources.ResourceReference{},
 			VersionedResources: []*ResourceReference{},
 		},
 	}
@@ -139,15 +139,15 @@ func TestToResourcesDataModel(t *testing.T) {
 
 func TestFromResourcesDataModel(t *testing.T) {
 	testset := []struct {
-		DMResources        []*linkrp.ResourceReference
+		DMResources        []*portableresources.ResourceReference
 		VersionedResources []*ResourceReference
 	}{
 		{
-			DMResources:        []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
+			DMResources:        []*portableresources.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache"}, {ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1"}},
 			VersionedResources: []*ResourceReference{{ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache")}, {ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache1")}},
 		},
 		{
-			DMResources:        []*linkrp.ResourceReference{},
+			DMResources:        []*portableresources.ResourceReference{},
 			VersionedResources: []*ResourceReference{},
 		},
 	}
@@ -162,17 +162,17 @@ func TestFromResourcesDataModel(t *testing.T) {
 func TestToResourceProvisiongDataModel(t *testing.T) {
 	testset := []struct {
 		versioned ResourceProvisioning
-		datamodel linkrp.ResourceProvisioning
+		datamodel portableresources.ResourceProvisioning
 		err       error
 	}{
 		{
 			ResourceProvisioningManual,
-			linkrp.ResourceProvisioningManual,
+			portableresources.ResourceProvisioningManual,
 			nil,
 		},
 		{
 			ResourceProvisioningRecipe,
-			linkrp.ResourceProvisioningRecipe,
+			portableresources.ResourceProvisioningRecipe,
 			nil,
 		},
 		{
@@ -199,11 +199,11 @@ func TestToResourceProvisiongDataModel(t *testing.T) {
 
 func TestFromResourceProvisiongDataModel(t *testing.T) {
 	testCases := []struct {
-		datamodel linkrp.ResourceProvisioning
+		datamodel portableresources.ResourceProvisioning
 		versioned ResourceProvisioning
 	}{
-		{linkrp.ResourceProvisioningManual, ResourceProvisioningManual},
-		{linkrp.ResourceProvisioningRecipe, ResourceProvisioningRecipe},
+		{portableresources.ResourceProvisioningManual, ResourceProvisioningManual},
+		{portableresources.ResourceProvisioningRecipe, ResourceProvisioningRecipe},
 		{"", ResourceProvisioningRecipe},
 	}
 
@@ -216,11 +216,11 @@ func TestFromResourceProvisiongDataModel(t *testing.T) {
 func TestToRecipeDataModel(t *testing.T) {
 	testset := []struct {
 		versioned *Recipe
-		datamodel linkrp.LinkRecipe
+		datamodel portableresources.LinkRecipe
 	}{
 		{
 			nil,
-			linkrp.LinkRecipe{
+			portableresources.LinkRecipe{
 				Name: v20220315privatepreview.DefaultRecipeName,
 			},
 		},
@@ -231,7 +231,7 @@ func TestToRecipeDataModel(t *testing.T) {
 					"foo": "bar",
 				},
 			},
-			linkrp.LinkRecipe{
+			portableresources.LinkRecipe{
 				Name: "test",
 				Parameters: map[string]any{
 					"foo": "bar",
@@ -244,7 +244,7 @@ func TestToRecipeDataModel(t *testing.T) {
 					"foo": "bar",
 				},
 			},
-			linkrp.LinkRecipe{
+			portableresources.LinkRecipe{
 				Name: v20220315privatepreview.DefaultRecipeName,
 				Parameters: map[string]any{
 					"foo": "bar",

@@ -27,7 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	linkrp "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	pr_dm "github.com/project-radius/radius/pkg/portableresources/datamodel"
 	"github.com/project-radius/radius/pkg/rp/util"
 	"golang.org/x/exp/maps"
 )
@@ -142,8 +142,8 @@ func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[
 	}
 
 	for paramName, paramValue := range recipeParam {
-		if paramName == linkrp.RecipeContextParameter {
-			// context parameter is only revelant to operator and is generated and passed by linkrp instead of the developer/operators.
+		if paramName == pr_dm.RecipeContextParameter {
+			// context parameter is only revelant to operator and is generated and passed by resource provider instead of the developer/operators.
 			continue
 		}
 

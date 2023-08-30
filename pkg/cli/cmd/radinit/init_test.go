@@ -592,7 +592,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			azureProvider: nil,
 			awsProvider:   nil,
 			recipes: map[string]map[string]corerp.RecipePropertiesClassification{
-				"Applications.Link/redisCaches": {
+				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),

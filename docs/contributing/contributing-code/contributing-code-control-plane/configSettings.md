@@ -2,13 +2,13 @@
 
 ## Summary
 
-Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the `Applications.Core RP` but configurations can also be set to run the `Applications.Link RP` for private preview and dev/test purposes. 
+Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the `Applications.Core RP` but configurations can also be set to run `Portable Resources' Providers` for private preview and dev/test purposes. 
 
 If you wanted to locally run Radius with specific configurations, `yaml` files can be created and stored in the `cmd` folder for the corresponding UCP or resource provider. 
 
 ![Local Config](./configExamples/localConfig.png)
 
-If you wanted to run Radius on Kubernetes with specific configurations, `yaml` files can be created and stored in the `deploy/Chart/charts` folder for `Applications.Core RP`, `Applications.Link RP`, or `UCP`.
+If you wanted to run Radius on Kubernetes with specific configurations, `yaml` files can be created and stored in the `deploy/Chart/charts` folder for `Applications.Core RP`, `Portable Resources' Providers`, or `UCP`.
 
 ![Kubernetes Config](./configExamples/kubeConfig.png)
 
@@ -29,7 +29,7 @@ The following properties can be specified in configuration for all services:
 
 -----
 
-The following are properties that can be specified for the `Applications.Core RP` and the `Applications.Link RP`: 
+The following are properties that can be specified for the `Applications.Core RP` and `Portable Resources`: 
 | Key | Description | Example |
 |-----|-------------|---------|
 | ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
@@ -108,7 +108,7 @@ The following are properties that can be specified for UCP:
 
 ### ucp
 
-This section configures the connection from either the `Applications.Core RP` or the `Applications.Link RP` to UCP's API. As the UCP service does not need to connect to itself, these settings do not apply in UCP's configuration files.
+This section configures the connection from either the `Applications.Core RP` or the `Portable Resources' Providers` to UCP's API. As the UCP service does not need to connect to itself, these settings do not apply in UCP's configuration files.
 
 | Key | Description | Example |
 |-----|-------------|---------|
@@ -185,7 +185,7 @@ ucp:
 
 Below are completed examples of possible configurations: 
 
-### Applications.Core and Applications.Link
+### Applications.Core and Portable Resources' Providers
 ```yaml
 environment:
   name: self-hosted
@@ -229,7 +229,6 @@ planes:
     properties:
       resourceProviders:
         Applications.Core: "http://applications-rp.radius-system:5443"
-        Applications.Link: "http://applications-rp.radius-system:5444"
         Applications.Dapr: "http://applications-rp.radius-system:5444"
         Applications.Datastores: "http://applications-rp.radius-system:5444"
         Applications.Messaging: "http://applications-rp.radius-system:5444"

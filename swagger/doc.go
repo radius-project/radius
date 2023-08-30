@@ -23,12 +23,12 @@ the REST APIs of Radius resource providers.
 
 We use OpenAPI Spec v2 as a source of truth to:
   1. Validate the incoming request (/pkg/validator)
-  2. Generate Go resource models via autorest (/pkg/corerp/api, /pkg/linkrp/api) and
+  2. Generate Go resource models via autorest (/pkg/corerp/api, /pkg/datastores/api, /pkg/dapr/api, /pkg/messaging/api) and
   3. Generate Bicep types.
 
 OpenAPI specification files must be stored in the structured directory:
 
-  specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview
+  specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview
                 ------------                  ---------------------- ------- -------------------------
 				Product Name                  RP Namespace           preview API version
 				                                                        or

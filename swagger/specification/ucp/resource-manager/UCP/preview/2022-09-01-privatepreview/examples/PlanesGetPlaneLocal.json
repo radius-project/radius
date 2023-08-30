@@ -13,7 +13,7 @@
         "location": "global",
         "properties": {
           "resourceProviders": {
-            "Applications.Link": "http://applications-rp.radius-system:5444",
+            "Applications.Dapr": "http://applications-rp.radius-system:5444",
             "Applications.Core": "http://applications-rp.radius-system:5443"
           },
           "kind": "UCPNative"

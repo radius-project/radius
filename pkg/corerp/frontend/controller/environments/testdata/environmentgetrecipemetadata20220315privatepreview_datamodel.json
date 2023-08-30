@@ -21,7 +21,7 @@
             }
         },
         "recipes": {
-            "Applications.Link/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases":{
                 "mongo-parameters": {
                     "templateKind": "bicep",                  
                     "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
@@ -32,7 +32,7 @@
                     "templateVersion": "1.1.0"
                 }
             },
-            "Applications.Link/redisCache":{
+            "Applications.Datastores/redisCaches":{
                 "redis": {
                     "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/redis:1.0"

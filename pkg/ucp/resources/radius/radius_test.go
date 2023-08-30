@@ -34,7 +34,7 @@ func Test_IsRadiusResource(t *testing.T) {
 			expected: true,
 		},
 		{
-			testID:   resources.MustParse("/planes/radius/local/resourceGroups/r1/providers/Applications.Link/mongoDatabases/test-mongo"),
+			testID:   resources.MustParse("/planes/radius/local/resourceGroups/r1/providers/Applications.Datastores/mongoDatabases/test-mongo"),
 			expected: true,
 		},
 		{

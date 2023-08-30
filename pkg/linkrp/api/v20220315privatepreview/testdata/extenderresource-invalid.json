@@ -1,8 +1,0 @@
-{
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0",
-    "name": "extender0",
-    "type": "Applications.Link/extenders",
-    "properties": {
-        "secrets": 12345
-    }
-}

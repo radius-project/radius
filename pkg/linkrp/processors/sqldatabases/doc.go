@@ -1,7 +1,0 @@
-// ------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-// ------------------------------------------------------------
-
-// sqldatabases contains the resource processor for sql databases. See the processors package for more information.
-package sqldatabases

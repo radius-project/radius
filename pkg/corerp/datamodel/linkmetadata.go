@@ -20,7 +20,7 @@ import (
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// LinkMetadata represents internal DataModel properties common to all link types.
+// LinkMetadata represents internal DataModel properties common to all portable resource types.
 type LinkMetadata struct {
 	// TODO: stop using this type in CoreRP models.
 
