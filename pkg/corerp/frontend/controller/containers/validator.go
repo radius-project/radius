@@ -144,6 +144,21 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(sa, newResource.Name))
 			}
 
+			deployment := resourceMap.GetFirst(kubeutil.DeploymentV1)
+			if deployment == nil {
+				// skip if there is no deployment.
+				continue
+			}
+
+			podSA := deployment.(*appv1.Deployment).Spec.Template.Spec.ServiceAccountName
+			if podSA != sa.Name {
+				errDetails = append(errDetails, v1.ErrorDetails{
+					Code:    v1.CodeInvalidRequestContent,
+					Target:  "$.properties.runtimes.kubernetes.base",
+					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in SerivceAccount.", podSA, sa.Name),
+				})
+			}
+
 		// No limitations for ConfigMap and Secret resources.
 		case kubeutil.SecretV1:
 		case kubeutil.ConfigMapV1:

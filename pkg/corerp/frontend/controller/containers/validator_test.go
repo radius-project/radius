@@ -47,6 +47,7 @@ spec:
       labels:
         app: magpie
     spec:
+      serviceAccountName: %s
       containers:
       - name: nginx
         image: nginx:1.14.2
@@ -105,7 +106,7 @@ data:
 `
 
 func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
-	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "")
+	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "", "magpie")
 	fakeService := fmt.Sprintf(fakeServiceTemplate, "magpie", "")
 	fakeServiceAccount := fmt.Sprintf(fakeServiceAccountTemplate, "magpie")
 
@@ -266,7 +267,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 }
 
 func TestValidateManifest(t *testing.T) {
-	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "")
+	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "", "magpie")
 	fakeService := fmt.Sprintf(fakeServiceTemplate, "magpie", "")
 	fakeServiceAccount := fmt.Sprintf(fakeServiceAccountTemplate, "magpie")
 	fakeSecret := fmt.Sprintf(fakeSecretTemplate, "magpie")
@@ -376,7 +377,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched deployment name",
-			manifest: strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
+			manifest: strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", "", "magpie"), fakeService, fakeServiceAccount}, yamlSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -422,6 +423,11 @@ func TestValidateManifest(t *testing.T) {
 						Target:  manifestTargetProperty,
 						Message: "ServiceAccount name pie in manifest does not match resource name magpie.",
 					},
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in SerivceAccount.",
+					},
 				},
 			},
 		},
@@ -443,6 +449,11 @@ func TestValidateManifest(t *testing.T) {
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
 						Message: "ServiceAccount name pie in manifest does not match resource name magpie.",
+					},
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in SerivceAccount.",
 					},
 				},
 			},
