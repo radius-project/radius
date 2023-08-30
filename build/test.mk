@@ -59,14 +59,11 @@ test-functional-all: test-functional-ucp test-functional-shared test-functional-
 test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-shared: ## Runs shared functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
-
 test-functional-msgrp: ## Runs Messaging RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/messagingrp/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
 
-test-functional-daprrp: ## Runs Dapr RP functional tests
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/daprrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+test-functional-datastoresrp: ## Runs Datastores RP functional tests
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
