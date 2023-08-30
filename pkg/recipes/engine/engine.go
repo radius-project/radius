@@ -67,15 +67,9 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata, p
 // executeCore function is the core logic of the Execute function.
 // Any changes to the core logic of the Execute function should be made here.
 func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
-	// Load Recipe Definition from the environment.
-	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
+	definition, driver, err := e.getDriver(ctx, recipe)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	driver, ok := e.options.Drivers[definition.Driver]
-	if !ok {
-		return nil, definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
@@ -118,16 +112,9 @@ func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, ou
 // deleteCore function is the core logic of the Delete function.
 // Any changes to the core logic of the Delete function should be made here.
 func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) (*recipes.EnvironmentDefinition, error) {
-	// Load Recipe Definition from the environment.
-	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
+	definition, driver, err := e.getDriver(ctx, recipe)
 	if err != nil {
 		return nil, err
-	}
-
-	// Determine Recipe driver type
-	driver, ok := e.options.Drivers[definition.Driver]
-	if !ok {
-		return definition, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
@@ -170,16 +157,9 @@ func (e *engine) GetRecipeMetadata(ctx context.Context, recipeMetadata recipes.R
 // getRecipeMetadataCore function is the core logic of the GetRecipeMetadata function.
 // Any changes to the core logic of the GetRecipeMetadata function should be made here.
 func (e *engine) getRecipeMetadataCore(ctx context.Context, recipeMetadata recipes.ResourceMetadata) (map[string]any, error) {
-	// Load Recipe Definition from the environment.
-	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipeMetadata)
+	definition, driver, err := e.getDriver(ctx, recipeMetadata)
 	if err != nil {
 		return nil, err
-	}
-
-	// Determine Recipe driver type
-	driver, ok := e.options.Drivers[definition.Driver]
-	if !ok {
-		return nil, fmt.Errorf("could not find driver %s", definition.Driver)
 	}
 
 	return driver.GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
@@ -188,4 +168,19 @@ func (e *engine) getRecipeMetadataCore(ctx context.Context, recipeMetadata recip
 			Recipe:     recipeMetadata,
 		},
 	})
+}
+
+func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, recipedriver.Driver, error) {
+	// Load Recipe Definition from the environment.
+	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipeMetadata)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Determine Recipe driver type
+	driver, ok := e.options.Drivers[definition.Driver]
+	if !ok {
+		return nil, nil, fmt.Errorf("could not find driver %s", definition.Driver)
+	}
+	return definition, driver, nil
 }

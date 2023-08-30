@@ -36,7 +36,7 @@ type TerraformExecutor interface {
 	// and deletes the Kubernetes secret created for terraform state store.
 	Delete(ctx context.Context, options Options) error
 
-	// Get
+	// GetRecipeMetadata installs terraform and runs terraform get to retrieve information on the terraform module
 	GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error)
 }
 

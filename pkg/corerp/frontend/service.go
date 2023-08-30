@@ -102,7 +102,6 @@ func (s *Service) Run(ctx context.Context) error {
 		DataProvider:  s.StorageProvider,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
-		Engine:        engine,
 	}
 
 	err = s.Start(ctx, server.Options{
@@ -114,7 +113,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router chi.Router) error {
-			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts)
+			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts, engine)
 			if err != nil {
 				return err
 			}

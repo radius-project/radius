@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 	"golang.org/x/exp/maps"
 )
 
@@ -37,10 +38,11 @@ var _ ctrl.Controller = (*GetRecipeMetadata)(nil)
 // GetRecipeMetadata is the controller implementation to get recipe metadata such as parameters and the details of those parameters(type/minValue/etc.).
 type GetRecipeMetadata struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
+	engine.Engine
 }
 
 // NewGetRecipeMetadata creates a new controller for retrieving recipe metadata from an environment.
-func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetRecipeMetadata(opts ctrl.Options, engine engine.Engine) (ctrl.Controller, error) {
 	return &GetRecipeMetadata{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Environment]{
@@ -48,6 +50,7 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 				ResponseConverter: converter.EnvironmentDataModelToVersioned,
 			},
 		),
+		engine,
 	}, nil
 }
 
@@ -110,7 +113,7 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 	}
 
 	recipeParameters = make(map[string]any)
-	recipeData, err := r.Options().Engine.GetRecipeMetadata(ctx, recipeMetadata)
+	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeMetadata)
 	if err != nil {
 		return recipeParameters, err
 	}
