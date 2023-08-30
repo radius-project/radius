@@ -8,7 +8,7 @@ Radius consists of a few processes that get deployed inside a Kubernetes cluster
 
  This includes:
 
-- Applications.Core RP / Applications.Link RP (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
+- Applications.Core RP / Portable Resources' Providers (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
 - Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources.
 - Deployment Engine (bicep-de) - Handles deployment orchestration for bicep files.
 
@@ -22,7 +22,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 - UCP: port 9000
 - AppCore Namespace: port 8080
-- AppLink Namespace: port 8081
+- AppPortableResource Namespace: port 8081 (Applications.Datastores, Applications.Dapr and Applications.Messaging are hosted)
 - Deployment Engine: port 5017
 
 ## Prerequisites
@@ -44,10 +44,10 @@ Run one of the following two commands:
 
 ```sh
 # Choose this by default
-rad init --dev
+rad init
 
 # Choose this if you want to do advanced setup
-rad init
+rad init --full
 ```
 
 This will install Radius and configure an environment for you. The database that's used **will NOT** be shared with your debug setup, so it mostly doesn't matter what choices you make.

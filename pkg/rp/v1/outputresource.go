@@ -54,6 +54,16 @@ type Resource struct {
 	Dependencies []string
 }
 
+// ExistDependency checks if the given id is in the Dependencies of the Resource and returns true if it is, false otherwise.
+func (r Resource) ExistDependency(localID string) bool {
+	for _, dependency := range r.Dependencies {
+		if dependency == localID {
+			return true
+		}
+	}
+	return false
+}
+
 // GetResourceType returns the ResourceType of the OutputResource.
 func (or OutputResource) GetResourceType() resourcemodel.ResourceType {
 	// There are two possible states:

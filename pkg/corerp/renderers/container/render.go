@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -40,6 +39,7 @@ import (
 	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/kubeutil"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -59,11 +59,6 @@ const (
 
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
-
-	defaultServiceAccountName = "default"
-	httpScheme                = "http"
-	httpsScheme               = "https"
-	httpsPort                 = 443
 )
 
 // GetSupportedKinds returns a list of supported volume kinds.
@@ -162,7 +157,13 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
+
 	properties := resource.Properties
+
+	appId, err := resources.ParseResource(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
+	}
 
 	// this flag is used to indicate whether or not this resource needs a service to be generated.
 	// this flag is triggered when a container has an exposed port(s), but no 'provides' field.
@@ -170,7 +171,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// check if connections are valid
 	for _, connection := range properties.Connections {
-
 		// if source is a URL, it is valid (example: 'http://containerx:3000').
 		if isURL(connection.Source) {
 			continue
@@ -196,11 +196,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	appId, err := resources.ParseResource(properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
-	}
-
 	outputResources := []rpv1.OutputResource{}
 	dependencies := options.Dependencies
 
@@ -223,10 +218,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, roles...)
 	}
 
+	// If the container has a base manifest, deserialize base manifest and validation should be done by frontend controller.
+	baseManifest, err := fetchBaseManifest(resource)
+	if err != nil {
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid base manifest: %s", err.Error()))
+	}
+
 	computedValues := map[string]rpv1.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
-	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles)
+	deploymentResources, secretData, err := r.makeDeployment(ctx, baseManifest, appId.Name(), options, computedValues, resource, roles)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -252,13 +253,17 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
-		serviceResource, err := r.makeService(resource, options, ctx, containerPorts)
+		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
+		serviceResource, err := r.makeService(basesrv, resource, options, ctx, containerPorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
 
 		outputResources = append(outputResources, serviceResource)
 	}
+
+	// Populate the remaining resources from the base manifest.
+	outputResources = populateAllBaseResources(ctx, baseManifest, outputResources, options)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -271,55 +276,72 @@ type containerPorts struct {
 	names  []string
 }
 
-func (r Renderer) makeService(resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
 	}
 
-	// create the ports that will be exposed by the service.
-	ports := []corev1.ServicePort{}
+	// Ensure that we don't have any duplicate ports.
+SKIPINSERT:
 	for i, port := range containerPorts.values {
-		ports = append(ports, corev1.ServicePort{
+		newPort := corev1.ServicePort{
 			Name:       containerPorts.names[i],
 			Port:       port,
 			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
 			Protocol:   corev1.ProtocolTCP,
-		})
+		}
+
+		// Skip to add new port. Instead, upsert port if it already exists.
+		for j, p := range base.Spec.Ports {
+			if strings.EqualFold(p.Name, newPort.Name) || p.Port == newPort.Port || p.TargetPort.IntVal == newPort.TargetPort.IntVal {
+				base.Spec.Ports[j] = newPort
+				continue SKIPINSERT
+			}
+		}
+
+		// Add new port if it doesn't exist.
+		base.Spec.Ports = append(base.Spec.Ports, newPort)
 	}
 
-	service := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        kubernetes.NormalizeResourceName(resource.Name),
-			Namespace:   options.Environment.Namespace,
-			Labels:      renderers.GetLabels(ctx, options, appId.Name(), resource.Name, resource.ResourceTypeName()),
-			Annotations: renderers.GetAnnotations(ctx, options),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeSelectorLabels(appId.Name(), resource.Name),
-			Type:     corev1.ServiceTypeClusterIP,
-			Ports:    ports,
-		},
-	}
+	base.Spec.Selector = kubernetes.MakeSelectorLabels(appId.Name(), resource.Name)
+	base.Spec.Type = corev1.ServiceTypeClusterIP
 
-	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, service, service.ObjectMeta), nil
+	return rpv1.NewKubernetesOutputResource(rpv1.LocalIDService, base, base.ObjectMeta), nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rpv1.ComputedValueReference, resource *datamodel.ContainerResource, roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(
+	ctx context.Context,
+	manifest kubeutil.ObjectManifest,
+	applicationName string,
+	options renderers.RenderOptions,
+	computedValues map[string]rpv1.ComputedValueReference,
+	resource *datamodel.ContainerResource,
+	roles []rpv1.OutputResource) ([]rpv1.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
 		Type string
 	}{}
 
+	// If the container requires azure role, it needs to configure workload identity (aka federated identity).
 	identityRequired := len(roles) > 0
 
 	dependencies := options.Dependencies
 	properties := resource.Properties
+
+	normalizedName := kubernetes.NormalizeResourceName(resource.Name)
+
+	deployment := getDeploymentBase(manifest, applicationName, resource, &options)
+	podSpec := &deployment.Spec.Template.Spec
+
+	container := &podSpec.Containers[0]
+	for i, c := range podSpec.Containers {
+		if strings.EqualFold(c.Name, normalizedName) {
+			container = &podSpec.Containers[i]
+			break
+		}
+	}
 
 	ports := []corev1.ContainerPort{}
 	for _, port := range properties.Container.Ports {
@@ -354,16 +376,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		}
 	}
 
-	container := corev1.Container{
-		Name:         kubernetes.NormalizeResourceName(resource.Name),
-		Image:        properties.Container.Image,
-		Ports:        ports,
-		Env:          []corev1.EnvVar{},
-		VolumeMounts: []corev1.VolumeMount{},
-		Command:      properties.Container.Command,
-		Args:         properties.Container.Args,
-		WorkingDir:   properties.Container.WorkingDir,
-	}
+	container.Image = properties.Container.Image
+	container.Ports = append(container.Ports, ports...)
+	container.Command = properties.Container.Command
+	container.Args = properties.Container.Args
+	container.WorkingDir = properties.Container.WorkingDir
 
 	// If the user has specified an image pull policy, use it. Else, we will use Kubernetes default.
 	if properties.Container.ImagePullPolicy != "" {
@@ -402,20 +419,16 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	}
 
 	outputResources := []rpv1.OutputResource{}
-
 	deps := []string{}
 
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-
-	// This is the default service account name. If a volume is associated with federated identity, new service account
-	// will be created and set for container pods.
-	serviceAccountName := defaultServiceAccountName
 
 	// Add volumes
 	volumes := []corev1.Volume{}
 
 	// Create Kubernetes resource name scoped in Kubernetes namespace
-	kubeIdentityName := kubernetes.NormalizeResourceName(resource.Name)
+	kubeIdentityName := normalizedName
+	podSpec.ServiceAccountName = normalizedName
 
 	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
 	// To avoid the naming conflicts, we add the application name prefix to resource name.
@@ -520,6 +533,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
+	serviceAccountBase := getServiceAccountBase(manifest, applicationName, resource, &options)
 	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
@@ -530,21 +544,19 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		serviceAccountName = kubeIdentityName
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(serviceAccountName, &options.Environment)
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(kubeIdentityName, &options.Environment)
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
+		saAccount := azrenderer.SetWorkloadIdentityServiceAccount(serviceAccountBase)
 		outputResources = append(outputResources, *saAccount)
+		deps = append(deps, rpv1.LocalIDServiceAccount)
 
 		// This is required to enable workload identity.
 		podLabels[azrenderer.AzureWorkloadIdentityUseKey] = "true"
-
-		deps = append(deps, rpv1.LocalIDServiceAccount)
 
 		// 4. Add RBAC resources to the dependencies.
 		for _, role := range roles {
@@ -590,6 +602,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				return nil
 			},
 		}
+	} else {
+		// If the container doesn't require identity, we'll use the default service account
+		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, serviceAccountBase, serviceAccountBase.ObjectMeta)
+		outputResources = append(outputResources, or)
+		deps = append(deps, rpv1.LocalIDServiceAccount)
 	}
 
 	// Create the role and role bindings for SA.
@@ -597,44 +614,27 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	outputResources = append(outputResources, *role)
 	deps = append(deps, rpv1.LocalIDKubernetesRole)
 
-	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, serviceAccountName, options.Environment.Namespace, resource)
+	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, podSpec.ServiceAccountName, options.Environment.Namespace, resource)
 	outputResources = append(outputResources, *roleBinding)
 	deps = append(deps, rpv1.LocalIDKubernetesRoleBinding)
 
-	deployment := appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(resource.Name),
-			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      podLabels,
-					Annotations: map[string]string{},
-				},
-				Spec: corev1.PodSpec{
-					// See: https://github.com/kubernetes/kubernetes/issues/92226 and
-					// 		https://github.com/project-radius/radius/issues/3002
-					//
-					// Service links are a flawed and Kubernetes-only feature that we don't
-					// want to leak into Radius containers.
-					EnableServiceLinks: to.Ptr(false),
-
-					ServiceAccountName: serviceAccountName,
-					Containers:         []corev1.Container{container},
-					Volumes:            volumes,
-				},
-			},
-		},
+	deployment.Spec.Template.ObjectMeta = metav1.ObjectMeta{
+		Labels:      podLabels,
+		Annotations: map[string]string{},
 	}
+
+	deployment.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
+	}
+
+	podSpec.Volumes = append(podSpec.Volumes, volumes...)
+
+	// See: https://github.com/kubernetes/kubernetes/issues/92226 and
+	// 		https://github.com/project-radius/radius/issues/3002
+	//
+	// Service links are a flawed and Kubernetes-only feature that we don't
+	// want to leak into Radius containers.
+	podSpec.EnableServiceLinks = to.Ptr(false)
 
 	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
 	// when the secret changes. Normally referencing an environment variable from a secret will **NOT** cause
@@ -651,7 +651,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		deps = append(deps, rpv1.LocalIDSecret)
 	}
 
-	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)
+	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
 	deploymentOutput.CreateResource.Dependencies = deps
 
 	outputResources = append(outputResources, deploymentOutput)
@@ -889,7 +889,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 
 	outputResources := []rpv1.OutputResource{}
 	for _, roleName := range roleNames {
-		localID := rpv1.GenerateLocalIDForRoleAssignment(armResourceIdentifier, roleName)
+		localID := rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, armResourceIdentifier, roleName)
 		roleAssignment := rpv1.OutputResource{
 
 			LocalID: localID,

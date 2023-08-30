@@ -26,88 +26,14 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 )
 
-const fakeDeploymentTemplate = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: %s
-  %s
-  labels:
-    app: magpie
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: magpie
-  template:
-    metadata:
-      labels:
-        app: magpie
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.14.2
-        ports:
-        - containerPort: 80
-`
-
-const fakeServiceTemplate = `
-apiVersion: v1
-kind: Service
-metadata:
-  name: %s
-  %s
-spec:
-  selector:
-    app.kubernetes.io/name: magpie
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 9376
-`
-
-const fakeServiceAccountTemplate = `
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: %s
-  labels:
-    app.kubernetes.io/name: magpie
-    app.kubernetes.io/part-of: radius
-`
-
-const yamlSeparater = "\n---\n"
-
-const fakeSecretTemplate = `
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-type: Opaque
-stringData:
-  username: admin
-  password: password
-`
-
-const fakeConfigMapTemplate = `
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: %s
-  labels:
-    app.kubernetes.io/name: magpie
-    app.kubernetes.io/part-of: radius
-data:
-  appsettings.Production.json: config
-`
-
 func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
-	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "")
-	fakeService := fmt.Sprintf(fakeServiceTemplate, "magpie", "")
-	fakeServiceAccount := fmt.Sprintf(fakeServiceAccountTemplate, "magpie")
+	fakeDeployment := fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "magpie", "", "magpie")
+	fakeService := fmt.Sprintf(k8sutil.FakeServiceTemplate, "magpie", "")
+	fakeServiceAccount := fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "magpie")
 
 	requestTests := []struct {
 		desc            string
@@ -177,7 +103,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
+							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
 						},
 					},
 				},
@@ -191,7 +117,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
+							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
 						},
 					},
 				},
@@ -266,12 +192,12 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 }
 
 func TestValidateManifest(t *testing.T) {
-	fakeDeployment := fmt.Sprintf(fakeDeploymentTemplate, "magpie", "")
-	fakeService := fmt.Sprintf(fakeServiceTemplate, "magpie", "")
-	fakeServiceAccount := fmt.Sprintf(fakeServiceAccountTemplate, "magpie")
-	fakeSecret := fmt.Sprintf(fakeSecretTemplate, "magpie")
-	fakeConfigMap := fmt.Sprintf(fakeConfigMapTemplate, "magpie")
-	fakeServiceWithNamespace := fmt.Sprintf(fakeServiceTemplate, "magpie", "namespace: app-scoped")
+	fakeDeployment := fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "magpie", "", "magpie")
+	fakeService := fmt.Sprintf(k8sutil.FakeServiceTemplate, "magpie", "")
+	fakeServiceAccount := fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "magpie")
+	fakeSecret := fmt.Sprintf(k8sutil.FakeSecretTemplate, "magpie")
+	fakeConfigMap := fmt.Sprintf(k8sutil.FakeSecretTemplate, "magpie")
+	fakeServiceWithNamespace := fmt.Sprintf(k8sutil.FakeServiceTemplate, "magpie", "namespace: app-scoped")
 
 	validResource := &datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
@@ -290,25 +216,25 @@ func TestValidateManifest(t *testing.T) {
 	}{
 		{
 			name:     "valid manifest with deployments/services/serviceaccounts",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err:      nil,
 		},
 		{
 			name:     "valid manifest with deployments/services/secrets/configmaps",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err:      nil,
 		},
 		{
 			name:     "valid manifest with multiple secrets and multiple configmaps",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err:      nil,
 		},
 		{
 			name:     "invalid manifest with multiple deployments",
-			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -325,7 +251,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with multiple services",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -342,7 +268,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with multiple serviceaccounts",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -359,7 +285,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with resource including namespace",
-			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -376,7 +302,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched deployment name",
-			manifest: strings.Join([]string{fmt.Sprintf(fakeDeploymentTemplate, "pie", ""), fakeService, fakeServiceAccount}, yamlSeparater),
+			manifest: strings.Join([]string{fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "pie", "", "magpie"), fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -393,7 +319,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched service name",
-			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(fakeServiceTemplate, "pie", ""), fakeServiceAccount}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(k8sutil.FakeServiceTemplate, "pie", ""), fakeServiceAccount}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -410,7 +336,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched serviceaccount name",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -422,12 +348,17 @@ func TestValidateManifest(t *testing.T) {
 						Target:  manifestTargetProperty,
 						Message: "ServiceAccount name pie in manifest does not match resource name magpie.",
 					},
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in ServiceAccount.",
+					},
 				},
 			},
 		},
 		{
 			name:     "invalid manifest with multiple errors",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService, fmt.Sprintf(fakeServiceAccountTemplate, "pie")}, yamlSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparater),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -443,6 +374,11 @@ func TestValidateManifest(t *testing.T) {
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
 						Message: "ServiceAccount name pie in manifest does not match resource name magpie.",
+					},
+					{
+						Code:    v1.CodeInvalidRequestContent,
+						Target:  manifestTargetProperty,
+						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in ServiceAccount.",
 					},
 				},
 			},

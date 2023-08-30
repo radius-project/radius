@@ -163,3 +163,13 @@ func TestParseManifest(t *testing.T) {
 		})
 	}
 }
+
+func TestObjectManifest(t *testing.T) {
+	base, err := ParseManifest([]byte(validManifestWithSecrets))
+
+	require.NoError(t, err)
+	require.Len(t, base.Get("apps/v1/deployment"), 1)
+	require.Len(t, base.Get("core/v1/configmap"), 0)
+	require.Equal(t, base.GetFirst("apps/v1/deployment").GetObjectKind().GroupVersionKind().Kind, "Deployment")
+	require.Nil(t, base.GetFirst("core/v1/configmap"))
+}

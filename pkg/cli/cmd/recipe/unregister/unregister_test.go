@@ -32,7 +32,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/radcli"
@@ -101,7 +101,7 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{
@@ -159,7 +159,7 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
@@ -202,7 +202,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -215,7 +215,7 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -247,7 +247,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{
@@ -275,7 +275,7 @@ func Test_Run(t *testing.T) {
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
-						linkrp.MongoDatabasesResourceType: {
+						portableresources.MongoDatabasesResourceType: {
 							"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -297,7 +297,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB1",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -313,7 +313,7 @@ func Test_Run(t *testing.T) {
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
-						linkrp.MongoDatabasesResourceType: {
+						portableresources.MongoDatabasesResourceType: {
 							"testResource": &v20220315privatepreview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -335,7 +335,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "testResource",
-				LinkType:          "Applications.Link/redisCaches",
+				LinkType:          "Applications.Datastores/redisCaches",
 			}
 
 			err := runner.Run(context.Background())
@@ -365,7 +365,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -377,13 +377,13 @@ func Test_Run(t *testing.T) {
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
 				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+					portableresources.MongoDatabasesResourceType: {
 						"testResource": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
-					linkrp.RedisCachesResourceType: {
+					portableresources.RedisCachesResourceType: {
 						"testResource": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1"),
@@ -418,7 +418,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "testResource",
-				LinkType:          "Applications.Link/mongoDatabases",
+				LinkType:          "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{

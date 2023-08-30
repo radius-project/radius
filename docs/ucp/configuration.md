@@ -4,4 +4,4 @@ UCP is configured to communicate with the different planes that it supports, cur
 
 The configuration can be found in: deploy/Chart/charts/ucp/ucp-config.yaml.
 
-Within each plane, the configuration specifies a URL to communicate with every supported resource provider. For example, separate URLs are specified for Applications.Core and Applications.Link providers within the Radius plane.
+Within each plane, the configuration specifies a URL to communicate with every supported resource provider. For example, separate URLs are specified for Applications.Core and portable resource providers within the Radius plane.

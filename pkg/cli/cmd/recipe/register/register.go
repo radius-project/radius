@@ -52,13 +52,13 @@ You can specify parameters using the '--parameter' flag ('-p' for short). Parame
 		`,
 		Example: `
 # Add a recipe to an environment
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases
 		
 # Specify a parameter
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases --parameters throughput=400
 		
 # specify multiple parameters using a JSON parameter file
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -73,7 +73,7 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	cmd.Flags().String("template-version", "", "specify the version for the terraform module.")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
-	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
+	cmd.Flags().String("link-type", "", "specify the type of the portable resource this recipe can be consumed by")
 	_ = cmd.MarkFlagRequired("link-type")
 	commonflags.AddParameterFlag(cmd)
 

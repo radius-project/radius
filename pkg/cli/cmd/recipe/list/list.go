@@ -118,14 +118,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	var envRecipes []types.EnvironmentRecipe
-	for link, recipes := range envResource.Properties.Recipes {
+	for resourceType, recipes := range envResource.Properties.Recipes {
 		for recipeName, recipeDetails := range recipes {
 			recipe := types.EnvironmentRecipe{}
 			switch c := recipeDetails.(type) {
 			case *corerp.TerraformRecipeProperties:
 				recipe = types.EnvironmentRecipe{
 					Name:            recipeName,
-					LinkType:        link,
+					LinkType:        resourceType,
 					TemplatePath:    *c.TemplatePath,
 					TemplateKind:    *c.TemplateKind,
 					TemplateVersion: *c.TemplateVersion,
@@ -133,7 +133,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			case *corerp.BicepRecipeProperties:
 				recipe = types.EnvironmentRecipe{
 					Name:         recipeName,
-					LinkType:     link,
+					LinkType:     resourceType,
 					TemplatePath: *c.TemplatePath,
 					TemplateKind: *c.TemplateKind,
 				}

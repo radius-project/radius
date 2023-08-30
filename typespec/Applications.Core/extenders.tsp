@@ -38,10 +38,10 @@ namespace Applications.Core;
 @doc("Response for list secrets API call")
 model ExtenderListSecretResponse {}
 
-@doc("ExtenderResource link")
+@doc("ExtenderResource portable resource")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
   @path
-  @doc("The name of the ExtenderResource link resource")
+  @doc("The name of the ExtenderResource portable resource")
   @key("extenderName")
   @segment("extenders")
   name: ResourceNameString;
@@ -51,14 +51,14 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
 // we need to extend `Record<unknown>`.
 // Reference: https://github.com/Azure/typespec-azure/blob/main/packages/typespec-autorest/test/additional-properties.test.ts
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
-@doc("ExtenderResource link properties")
+@doc("ExtenderResource portable resource properties")
 model ExtenderProperties extends Record<unknown> {
   ...EnvironmentScopedResource;
 
   @doc("The secrets for referenced resource")
   secrets?: {};
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the extender link")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the extender portable resource")
   recipe?: Recipe;
 
   @doc("Specifies how the underlying service/resource is provisioned and managed.")

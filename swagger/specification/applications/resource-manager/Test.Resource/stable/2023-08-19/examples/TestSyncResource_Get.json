@@ -1,0 +1,22 @@
+{
+  "operationId": "TestSyncResources_Get",
+  "title": "Get a TestSyncResources resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "testSyncResourceName": "resource0",
+    "api-version": "2023-08-19"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Test.Resource/testSyncResources/resource0",
+        "name": "resource0",
+        "type": "Test.Resource/testSyncResources",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+        }
+      }
+    }
+  }
+}

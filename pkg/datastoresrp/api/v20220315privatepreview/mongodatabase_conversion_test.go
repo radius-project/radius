@@ -22,8 +22,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/portableresources"
+	"github.com/project-radius/radius/pkg/portableresources/api/v20220315privatepreview"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
@@ -46,7 +46,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: linkrp.N_MongoDatabasesResourceType,
+						Type: portableresources.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -61,11 +61,11 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Host:                 "testAccount.mongo.cosmos.azure.com",
 					Port:                 10255,
 					Database:             "test-database",
-					Resources:            []*linkrp.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}},
+					Resources:            []*portableresources.ResourceReference{{ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"}},
 				},
 			},
 		},
@@ -77,7 +77,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: linkrp.N_MongoDatabasesResourceType,
+						Type: portableresources.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -92,10 +92,10 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
 					Host:                 "testAccount.mongo.cosmos.azure.com",
 					Port:                 10255,
-					Recipe:               linkrp.LinkRecipe{Name: "cosmosdb", Parameters: map[string]interface{}{"foo": "bar"}},
+					Recipe:               portableresources.LinkRecipe{Name: "cosmosdb", Parameters: map[string]interface{}{"foo": "bar"}},
 				},
 			},
 		},
@@ -108,7 +108,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: linkrp.N_MongoDatabasesResourceType,
+						Type: portableresources.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -123,10 +123,10 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
 					Host:                 "mynewhost.com",
 					Port:                 10256,
-					Recipe:               linkrp.LinkRecipe{Name: v20220315privatepreview.DefaultRecipeName, Parameters: nil},
+					Recipe:               portableresources.LinkRecipe{Name: v20220315privatepreview.DefaultRecipeName, Parameters: nil},
 				},
 			},
 		},
@@ -138,7 +138,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: linkrp.N_MongoDatabasesResourceType,
+						Type: portableresources.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -153,7 +153,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Host:                 "testAccount.mongo.cosmos.azure.com",
 					Port:                 10255,
 					Database:             "test-database",
@@ -247,7 +247,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
 				Name: to.Ptr("mongo0"),
-				Type: to.Ptr(linkrp.N_MongoDatabasesResourceType),
+				Type: to.Ptr(portableresources.MongoDatabasesResourceType),
 			},
 		},
 		{
@@ -275,7 +275,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
 				Name: to.Ptr("mongo0"),
-				Type: to.Ptr(linkrp.N_MongoDatabasesResourceType),
+				Type: to.Ptr(portableresources.MongoDatabasesResourceType),
 			},
 		},
 		{
@@ -303,7 +303,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
 				Name: to.Ptr("mongo0"),
-				Type: to.Ptr(linkrp.N_MongoDatabasesResourceType),
+				Type: to.Ptr(portableresources.MongoDatabasesResourceType),
 			},
 		},
 	}

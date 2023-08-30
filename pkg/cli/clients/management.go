@@ -29,7 +29,7 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	corerpv20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
@@ -44,23 +44,18 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 var (
 	ResourceTypesList = []string{
-		linkrp.MongoDatabasesResourceType,
-		linkrp.RabbitMQMessageQueuesResourceType,
-		linkrp.RedisCachesResourceType,
-		linkrp.SqlDatabasesResourceType,
-		linkrp.DaprStateStoresResourceType,
-		linkrp.DaprSecretStoresResourceType,
-		linkrp.DaprPubSubBrokersResourceType,
-		linkrp.ExtendersResourceType,
+		portableresources.MongoDatabasesResourceType,
+		portableresources.RabbitMQQueuesResourceType,
+		portableresources.RedisCachesResourceType,
+		portableresources.SqlDatabasesResourceType,
+		portableresources.DaprStateStoresResourceType,
+		portableresources.DaprSecretStoresResourceType,
+		portableresources.DaprPubSubBrokersResourceType,
+		portableresources.ExtendersResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
 		"Applications.Core/secretStores",
-		// Resource Types after Splitting Linkrp Namespace
-		linkrp.N_RabbitMQQueuesResourceType,
-		linkrp.N_DaprStateStoresResourceType,
-		linkrp.N_DaprSecretStoresResourceType,
-		linkrp.N_DaprPubSubBrokersResourceType,
 	}
 )
 

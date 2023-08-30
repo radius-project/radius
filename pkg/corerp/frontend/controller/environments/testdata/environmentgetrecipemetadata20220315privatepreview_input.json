@@ -1,4 +1,4 @@
 {
     "name":"mongo-parameters",
-    "linkType":"Applications.Link/mongoDatabases"
+    "linkType":"Applications.Datastores/mongoDatabases"
 }

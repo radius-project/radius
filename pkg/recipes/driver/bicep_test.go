@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -24,7 +25,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
@@ -84,10 +85,10 @@ func Test_CreateRecipeParameters_WithContextParameter(t *testing.T) {
 	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "Applications.Link/mongoDatabases",
+			Type: "Applications.Datastores/mongoDatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
@@ -132,10 +133,10 @@ func Test_CreateRecipeParameters_EmptyResourceParameters(t *testing.T) {
 	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "Applications.Link/mongoDatabases",
+			Type: "Applications.Datastores/mongoDatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
@@ -184,10 +185,10 @@ func Test_CreateRecipeParameters_ResourceAndEnvParameters(t *testing.T) {
 	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "Applications.Link/mongoDatabases",
+			Type: "Applications.Datastores/mongoDatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
@@ -227,7 +228,7 @@ func Test_createDeploymentID(t *testing.T) {
 	expected, err := resources.ParseResource("/planes/radius/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
 	require.NoError(t, err)
 
-	actual, err := createDeploymentID("/planes/radius/local/resourceGroups/cool-group/providers/Applications.Link/mongoDatabases/test-db", "test-deployment")
+	actual, err := createDeploymentID("/planes/radius/local/resourceGroups/cool-group/providers/Applications.Datastores/mongoDatabases/test-db", "test-deployment")
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
@@ -427,4 +428,62 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+}
+
+func Test_GetGCOutputResources(t *testing.T) {
+	d := &bicepDriver{}
+	before := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	after := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
+	}
+	exp := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	res := d.getGCOutputResources(after, before)
+	require.Equal(t, exp, res)
+}
+
+func Test_DeleteGCOutputResources(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	tests := []struct {
+		desc              string
+		err               error
+		gcOutputResources []string
+	}{
+		{
+			desc: "success",
+			err:  nil,
+			gcOutputResources: []string{
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+			},
+		},
+		{
+			desc: "deletion failed",
+			err:  errors.New("test-error"),
+			gcOutputResources: []string{
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+			},
+		},
+	}
+	for _, tt := range tests {
+		for _, resource := range tt.gcOutputResources {
+			client.EXPECT().
+				Delete(ctx, resource).
+				Return(tt.err).
+				Times(1)
+		}
+		err := driver.deleteGCOutputResources(ctx, tt.gcOutputResources)
+		if tt.err != nil {
+			require.Equal(t, err, tt.err)
+		} else {
+			require.NoError(t, err)
+		}
+	}
+
 }

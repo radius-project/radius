@@ -74,7 +74,6 @@ env:
 
   # GitHub Actor for pushing images to GHCR
   GHCR_ACTOR: rad-ci-bot
-
 jobs:
   build:
     name: Build Radius for test
@@ -100,8 +99,8 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Set up checkout target (repository_dispatch from /ok-to-test)
         if: github.event_name == 'repository_dispatch'
@@ -527,6 +526,7 @@ jobs:
         if: always()
         run: |
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
           echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl get pods -A >> $POD_STATE_LOG_FILENAME
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
@@ -566,7 +566,7 @@ jobs:
   report-failure:
     name: Report test failure
     needs: [build, tests]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     if: failure() && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing scheduled run

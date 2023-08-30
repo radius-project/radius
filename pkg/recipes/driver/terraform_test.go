@@ -58,7 +58,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 		Name:          "redis-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.link/rediscaches/test-redis-recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/rediscaches/test-redis-recipe",
 		Parameters: map[string]any{
 			"redis_cache_name": "redis-test",
 		},
@@ -67,7 +67,7 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	envRecipe := recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "Azure/redis/azurerm",
-		ResourceType: "Applications.Link/redisCaches",
+		ResourceType: "Applications.Datastores/redisCaches",
 	}
 
 	return envConfig, recipeMetadata, envRecipe

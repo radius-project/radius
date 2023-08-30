@@ -14,7 +14,7 @@
         }
       },
       "recipes": {
-        "Applications.Link/mongoDatabases":{
+        "Applications.Datastores/mongoDatabases":{
           "cosmos-recipe": {
             "templateKind": "terraform",
             "templatePath": "../not-allowed/"

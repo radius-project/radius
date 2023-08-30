@@ -21,8 +21,8 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_apiver "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/portableresources"
+	pr_apiver "github.com/project-radius/radius/pkg/portableresources/api/v20220315privatepreview"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -91,24 +91,24 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	return nil
 }
 
-func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) (linkrp.ResourceProvisioning, error) {
+func toResourceProvisiongDataModel(provisioning *ResourceProvisioning) (portableresources.ResourceProvisioning, error) {
 	if provisioning == nil {
-		return linkrp.ResourceProvisioningRecipe, nil
+		return portableresources.ResourceProvisioningRecipe, nil
 	}
 	switch *provisioning {
 	case ResourceProvisioningManual:
-		return linkrp.ResourceProvisioningManual, nil
+		return portableresources.ResourceProvisioningManual, nil
 	case ResourceProvisioningRecipe:
-		return linkrp.ResourceProvisioningRecipe, nil
+		return portableresources.ResourceProvisioningRecipe, nil
 	default:
 		return "", &v1.ErrModelConversion{PropertyName: "$.properties.resourceProvisioning", ValidValue: fmt.Sprintf("one of %s", PossibleResourceProvisioningValues())}
 	}
 }
 
-func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning) *ResourceProvisioning {
+func fromResourceProvisioningDataModel(provisioning portableresources.ResourceProvisioning) *ResourceProvisioning {
 	var converted ResourceProvisioning
 	switch provisioning {
-	case linkrp.ResourceProvisioningManual:
+	case portableresources.ResourceProvisioningManual:
 		converted = ResourceProvisioningManual
 	default:
 		converted = ResourceProvisioningRecipe
@@ -117,22 +117,22 @@ func fromResourceProvisioningDataModel(provisioning linkrp.ResourceProvisioning)
 	return &converted
 }
 
-func fromRecipeDataModel(r linkrp.LinkRecipe) *Recipe {
+func fromRecipeDataModel(r portableresources.LinkRecipe) *Recipe {
 	return &Recipe{
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,
 	}
 }
 
-func toRecipeDataModel(r *Recipe) linkrp.LinkRecipe {
+func toRecipeDataModel(r *Recipe) portableresources.LinkRecipe {
 	if r == nil {
-		return linkrp.LinkRecipe{
-			Name: linkrp_apiver.DefaultRecipeName,
+		return portableresources.LinkRecipe{
+			Name: pr_apiver.DefaultRecipeName,
 		}
 	}
-	recipe := linkrp.LinkRecipe{}
+	recipe := portableresources.LinkRecipe{}
 	if r.Name == nil {
-		recipe.Name = linkrp_apiver.DefaultRecipeName
+		recipe.Name = pr_apiver.DefaultRecipeName
 	} else {
 		recipe.Name = to.String(r.Name)
 	}

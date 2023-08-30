@@ -47,4 +47,4 @@ output-folder: ./generated
 ```
 
 ### Adding ResourceTypes:
-All resource types are tracked in resourceTypesList in ucp package. Whenever a new core-rp or link type is added this list has to be updated.
+All resource types are tracked in resourceTypesList in ucp package. Whenever a new core-rp or portable resource type is added this list has to be updated.

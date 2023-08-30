@@ -19,7 +19,7 @@ package v20220315privatepreview
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 )
@@ -67,7 +67,7 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 			Password:         to.String(v.Secrets.Password),
 		}
 	}
-	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 	}
 

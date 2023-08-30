@@ -69,10 +69,10 @@ func getTestRecipeContext() *recipecontext.Context {
 	return &recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "applications.link/mongodatabases",
+			Type: "applications.datastores/mongodatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			Name: "testApplication",

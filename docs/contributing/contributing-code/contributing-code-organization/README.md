@@ -21,29 +21,29 @@ In general you should ask for guidance before creating a new top-level folder in
 
 ## Pkg folders
 
-| Folder            | Description                                                                             |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `algorithm/`      | General purpose algorithms and data structures                                          |
-| `armrpc/`         | Implementation containing shared functionality and utility for all Radius RP            |
-| `aws/`            | Utility code and library integrations for working with AWS                              |
-| `azure/`          | Utility code and library integrations for working with Azure                            |
-| `cli/`            | Implementation code for the `rad` CLI                                                   |
-| `corerp/`         | Resource Provider implementation for `Applications.Core` resources                      |
-| `daprrp/`         | Resource Provider implementation for `Applications.Dapr` resources                      |
-| `datastoresrp/`   | Resource Provider implementation for `Applications.Datastores` resources                |
-| `kubernetes/`     | Utility code and library integrations for working with Kubernetes                       |
-| `kubeutil/`       | Utility code and working with Kubernetes on client side                                 |
-| `linkrp/`         | Resource Provider implementation for `Applications.Link` resources                      |
-| `logging/`        | Utility code for Radius logging                                                         |
-| `messagingrp/`    | Resource Provider implementation for `Applications.Messaging` resources                 |
-| `middleware/`     | Implementation for all Radius middleware                                                |
-| `metrics/`        | Code generating Radius metrics                                                          |
-| `profiler/`       | Code and configs for Radius profiler                                                    |
-| `recipes/`        | Implementation for Radius Recipes                                                       |
-| `rp/`             | Code shared by multiple rps                                                             |
-| `sdk/`            | Code for interfacing with Radius as a client                                            |
-| `to/`             | Code for pointer to value conversions                                                   |
-| `trace/`          | Utility code for generating Radius traces                                               |
-| `ucp/`            | Implementation of Universal Control Plane                                               |
-| `validator/`      | OpenAPI spec loader and validator                                                       |
-| `version/`        | Infrastructure for how to version the Radius implementations                            |
+| Folder                 | Description                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `algorithm/`           | General purpose algorithms and data structures                                          |
+| `armrpc/`              | Implementation containing shared functionality and utility for all Radius RP            |
+| `aws/`                 | Utility code and library integrations for working with AWS                              |
+| `azure/`               | Utility code and library integrations for working with Azure                            |
+| `cli/`                 | Implementation code for the `rad` CLI                                                   |
+| `corerp/`              | Resource Provider implementation for `Applications.Core` resources                      |
+| `daprrp/`              | Resource Provider implementation for `Applications.Dapr` resources                      |
+| `datastoresrp/`        | Resource Provider implementation for `Applications.Datastores` resources                |
+| `kubernetes/`          | Utility code and library integrations for working with Kubernetes                       |
+| `kubeutil/`            | Utility code and working with Kubernetes on client side                                 |
+| `portableresources/`   | Shared Resource Provider implementation for portable resources                          |
+| `logging/`             | Utility code for Radius logging                                                         |
+| `messagingrp/`         | Resource Provider implementation for `Applications.Messaging` resources                 |
+| `middleware/`          | Implementation for all Radius middleware                                                |
+| `metrics/`             | Code generating Radius metrics                                                          |
+| `profiler/`            | Code and configs for Radius profiler                                                    |
+| `recipes/`             | Implementation for Radius Recipes                                                       |
+| `rp/`                  | Code shared by multiple rps                                                             |
+| `sdk/`                 | Code for interfacing with Radius as a client                                            |
+| `to/`                  | Code for pointer to value conversions                                                   |
+| `trace/`               | Utility code for generating Radius traces                                               |
+| `ucp/`                 | Implementation of Universal Control Plane                                               |
+| `validator/`           | OpenAPI spec loader and validator                                                       |
+| `version/`             | Infrastructure for how to version the Radius implementations                            |
