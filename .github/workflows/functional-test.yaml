@@ -526,6 +526,7 @@ jobs:
         if: always()
         run: |
           POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
           echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
           kubectl get pods -A >> $POD_STATE_LOG_FILENAME
           echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME

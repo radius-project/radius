@@ -13,7 +13,7 @@ spec:
       protocol: TCP
       targetPort: 5443
     - port: 5444
-      name: link-http
+      name: portablers-http
       protocol: TCP
       targetPort: 5444
   selector:

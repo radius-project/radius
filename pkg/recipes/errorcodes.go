@@ -28,4 +28,7 @@ const (
 
 	// Used for errors encountered while reading a recipe from registry.
 	RecipeLanguageFailure = "RecipeLanguageFailure"
+
+	// Used for errors encountered while cleaning up of obsolete resources during patch operation.
+	RecipeGarbageCollectionFailed = "RecipeGarbageCollectionFailed"
 )

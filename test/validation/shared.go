@@ -40,16 +40,6 @@ const (
 	VolumesResource      = "applications.core/volumes"
 	SecretStoresResource = "applications.core/secretStores"
 
-	O_MongoDatabasesResource        = "applications.link/mongoDatabases"
-	O_RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
-	O_RedisCachesResource           = "applications.link/redisCaches"
-	O_SQLDatabasesResource          = "applications.link/sqlDatabases"
-	O_DaprPubSubBrokersResource     = "applications.link/daprPubSubBrokers"
-	O_DaprSecretStoresResource      = "applications.link/daprSecretStores"
-	O_DaprStateStoresResource       = "applications.link/daprStateStores"
-	O_ExtendersResource             = "applications.link/extenders"
-
-	// New resources after splitting LinkRP namespace
 	RabbitMQQueuesResource    = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource = "applications.dapr/pubSubBrokers"
 	DaprSecretStoresResource  = "applications.dapr/secretStores"

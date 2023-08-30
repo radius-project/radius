@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 )
 

@@ -23,9 +23,9 @@ import (
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/portableresources"
+	pr_dm "github.com/project-radius/radius/pkg/portableresources/datamodel"
+	"github.com/project-radius/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
@@ -37,7 +37,7 @@ type RedisCache struct {
 	Properties RedisCacheProperties `json:"properties"`
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
-	linkrp_dm.LinkMetadata
+	pr_dm.LinkMetadata
 }
 
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
@@ -85,13 +85,13 @@ func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of Redis cache resource.
 func (redis *RedisCache) ResourceTypeName() string {
-	return linkrp.N_RedisCachesResourceType
+	return portableresources.RedisCachesResourceType
 }
 
 // Recipe returns the LinkRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
-	if redis.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (redis *RedisCache) Recipe() *portableresources.LinkRecipe {
+	if redis.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &redis.Properties.Recipe
@@ -106,7 +106,7 @@ func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 // and returns an error if not.
 func (redisCache *RedisCache) VerifyInputs() error {
 	msgs := []string{}
-	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if redisCache.Properties.Host == "" {
 			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
@@ -145,16 +145,16 @@ type RedisCacheProperties struct {
 	TLS bool `json:"tls,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
-	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.LinkRecipe `json:"recipe,omitempty"`
 
 	// Secrets provided by resource
 	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// List of the resource IDs that support the Redis resource
-	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -166,5 +166,5 @@ type RedisCacheSecrets struct {
 
 // ResourceTypeName returns the resource type of RedisCache resource.
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return linkrp.N_RedisCachesResourceType
+	return portableresources.RedisCachesResourceType
 }

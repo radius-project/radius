@@ -47,6 +47,8 @@ type BaseOptions struct {
 // ExecuteOptions is the options for the Execute method.
 type ExecuteOptions struct {
 	BaseOptions
+	// Previously deployed state of output resource IDs.
+	PrevState []string
 }
 
 // DeleteOptions is the options for the Delete method.

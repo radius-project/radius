@@ -28,7 +28,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rpctest"
 	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/portableresources/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"

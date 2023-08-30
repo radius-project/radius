@@ -41,7 +41,7 @@ func NewService(options hostoptions.HostOptions) *Service {
 	}
 }
 
-// Name returns the namespace name of the provider.
+// Name returns the namespace of the resource provider.
 func (s *Service) Name() string {
 	return handler.ProviderNamespaceName
 }

@@ -13,7 +13,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: 'corerp-resources-recipe-env'
     }
     recipes: {
-      'Applications.Link/mongoDatabases':{
+      'Applications.Datastores/mongoDatabases':{
         recipe1: {
           templateKind: 'bicep'
           templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 

@@ -946,7 +946,7 @@
           {
             "name": "extenderName",
             "in": "path",
-            "description": "The name of the ExtenderResource link resource",
+            "description": "The name of the ExtenderResource portable resource",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -989,7 +989,7 @@
           {
             "name": "extenderName",
             "in": "path",
-            "description": "The name of the ExtenderResource link resource",
+            "description": "The name of the ExtenderResource portable resource",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -1061,7 +1061,7 @@
           {
             "name": "extenderName",
             "in": "path",
-            "description": "The name of the ExtenderResource link resource",
+            "description": "The name of the ExtenderResource portable resource",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -1131,7 +1131,7 @@
           {
             "name": "extenderName",
             "in": "path",
-            "description": "The name of the ExtenderResource link resource",
+            "description": "The name of the ExtenderResource portable resource",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -1194,7 +1194,7 @@
           {
             "name": "extenderName",
             "in": "path",
-            "description": "The name of the ExtenderResource link resource",
+            "description": "The name of the ExtenderResource portable resource",
             "required": true,
             "type": "string",
             "maxLength": 63,
@@ -3395,7 +3395,7 @@
     },
     "ExtenderProperties": {
       "type": "object",
-      "description": "ExtenderResource link properties",
+      "description": "ExtenderResource portable resource properties",
       "properties": {
         "environment": {
           "type": "string",
@@ -3422,7 +3422,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -3442,7 +3442,7 @@
     },
     "ExtenderResource": {
       "type": "object",
-      "description": "ExtenderResource link",
+      "description": "ExtenderResource portable resource",
       "properties": {
         "properties": {
           "$ref": "#/definitions/ExtenderProperties",
@@ -3517,7 +3517,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/RecipeUpdate",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the extender link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
         },
         "resourceProvisioning": {
           "$ref": "#/definitions/ResourceProvisioning",
@@ -4453,7 +4453,7 @@
       "properties": {
         "linkType": {
           "type": "string",
-          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'"
+          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'"
         },
         "name": {
           "type": "string",

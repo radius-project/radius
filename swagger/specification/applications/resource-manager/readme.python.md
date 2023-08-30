@@ -35,19 +35,6 @@ python:
   output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
 ```
 
-### Tag: package-link-2022-03-15-privatepreview and python
-
-These settings apply only when `--tag=package-link-2022-03-15-privatepreview --python` is specified on the command line.
-Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
-
-``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
-namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
-output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2022_03_15_privatepreview
-python:
-  namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
-  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/link/v2022_03_15_privatepreview
-```
-
 ### Python multi-api
 
 Generate all API versions currently shipped for this package

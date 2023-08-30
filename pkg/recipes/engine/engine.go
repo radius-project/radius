@@ -48,11 +48,11 @@ type engine struct {
 // Execute loads the recipe definition from the environment, finds the driver associated with the recipe, loads the
 // configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
 // an error if one occurs.
-func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
+func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, error) {
 	executionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	recipeOutput, definition, err := e.executeCore(ctx, recipe)
+	recipeOutput, definition, err := e.executeCore(ctx, recipe, prevState)
 	if err != nil {
 		result = metrics.FailedOperationState
 	}
@@ -66,7 +66,7 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata) (
 
 // executeCore function is the core logic of the Execute function.
 // Any changes to the core logic of the Execute function should be made here.
-func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
+func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
 	// Load Recipe Definition from the environment.
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipe)
 	if err != nil {
@@ -89,6 +89,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 			Recipe:        recipe,
 			Definition:    *definition,
 		},
+		PrevState: prevState,
 	})
 	if err != nil {
 		return nil, definition, err

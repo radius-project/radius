@@ -44,31 +44,6 @@
 ### applications.datastores/sqldatabases
 * [2022-03-15-privatepreview](applications/applications.datastores/2022-03-15-privatepreview/types.md#resource-applicationsdatastoressqldatabases2022-03-15-privatepreview)
 
-## applications.link
-### applications.link/daprpubsubbrokers
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkdaprpubsubbrokers2022-03-15-privatepreview)
-
-### applications.link/daprsecretstores
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkdaprsecretstores2022-03-15-privatepreview)
-
-### applications.link/daprstatestores
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkdaprstatestores2022-03-15-privatepreview)
-
-### applications.link/extenders
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkextenders2022-03-15-privatepreview)
-
-### applications.link/mongodatabases
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkmongodatabases2022-03-15-privatepreview)
-
-### applications.link/rabbitmqmessagequeues
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkrabbitmqmessagequeues2022-03-15-privatepreview)
-
-### applications.link/rediscaches
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinkrediscaches2022-03-15-privatepreview)
-
-### applications.link/sqldatabases
-* [2022-03-15-privatepreview](applications/applications.link/2022-03-15-privatepreview/types.md#resource-applicationslinksqldatabases2022-03-15-privatepreview)
-
 ## applications.messaging
 ### applications.messaging/rabbitmqqueues
 * [2022-03-15-privatepreview](applications/applications.messaging/2022-03-15-privatepreview/types.md#resource-applicationsmessagingrabbitmqqueues2022-03-15-privatepreview)

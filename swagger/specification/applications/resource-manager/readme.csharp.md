@@ -71,14 +71,6 @@ input-file:
 - Applications.Core/preview/2022-03-15-privatepreview/openapi.json
 ```
 
-### Tag: package-link-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/link/src/Generated
-input-file:
-- Applications.Link/preview/2022-03-15-privatepreview/openapi.json
-- Applications.Link/preview/2022-03-15-privatepreview/extenders.json
-```
-
 ### Tag: package-dapr-2022-03-15-privatepreview
 ``` yaml $(tag) == 'package-dapr-2022-03-15-privatepreview'
 output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/dapr/src/Generated

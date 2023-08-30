@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -774,11 +774,11 @@ func Test_Truncate_ReturnsSelfForTopLevelExtension(t *testing.T) {
 }
 
 func Test_Truncate_WithCustomAction(t *testing.T) {
-	id, err := Parse("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0/listSecrets")
+	id, err := Parse("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0/listSecrets")
 	require.NoError(t, err)
 
 	truncated := id.Truncate()
-	require.Equal(t, "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0", truncated.id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0", truncated.id)
 }
 
 func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
@@ -1003,98 +1003,98 @@ func Test_ParseByMethod(t *testing.T) {
 	}{
 		{
 			desc:   "ucp-post-with-custom-action",
-			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0/listSecrets",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0/listSecrets",
 			method: http.MethodPost,
 			err:    false,
-			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-get",
-			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodGet,
 			err:    false,
-			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-list",
-			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases",
 			method: http.MethodGet,
 			err:    false,
-			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-put",
-			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodPut,
 			err:    false,
-			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-patch",
-			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodPatch,
 			err:    false,
-			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-delete",
-			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodDelete,
 			err:    false,
-			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		}, {
 			desc:   "arm-post-with-custom-action",
-			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0/listSecrets",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0/listSecrets",
 			method: http.MethodPost,
 			err:    false,
-			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-get",
-			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodGet,
 			err:    false,
-			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-list",
-			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases",
 			method: http.MethodGet,
 			err:    false,
-			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-put",
-			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodPut,
 			err:    false,
-			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-patch",
-			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodPatch,
 			err:    false,
-			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-delete",
-			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
 			method: http.MethodDelete,
 			err:    false,
-			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			eRType: linkrp.MongoDatabasesResourceType,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			eRType: portableresources.MongoDatabasesResourceType,
 		},
 	}
 
@@ -1139,9 +1139,9 @@ func Test_Type(t *testing.T) {
 			expected: ResourceGroupType,
 		},
 		{
-			desc:     "LinkRP resource",
-			id:       "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			expected: "Applications.Link/mongoDatabases",
+			desc:     "Datasource RP resource",
+			id:       "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			expected: "Applications.Datastores/mongoDatabases",
 		},
 		{
 			desc:     "AWS resource",
@@ -1150,8 +1150,8 @@ func Test_Type(t *testing.T) {
 		},
 		{
 			desc:     "Azure resource",
-			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0",
-			expected: "Applications.Link/mongoDatabases",
+			id:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
+			expected: "Applications.Datastores/mongoDatabases",
 		},
 	}
 	for _, tt := range values {

@@ -17,7 +17,7 @@
       }
     },
     "recipes": {
-      "Applications.Link/mongoDatabases":{
+      "Applications.Datastores/mongoDatabases":{
         "cosmos-recipe": {
           "templateKind": "bicep",
           "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
@@ -35,13 +35,13 @@
           "templatePath": "http://example.com/myrecipe.zip"
         }
       },
-      "Applications.Link/redisCaches":{
+      "Applications.Datastores/redisCaches":{
         "redis-recipe": {
           "templateKind": "bicep",
           "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscaches"
         }
       },
-      "Applications.Link/daprStateStores":{
+      "Applications.Dapr/stateStores":{
         "statestore-recipe": {
           "templateKind": "terraform",
           "templatePath": "Azure/storage/azurerm",

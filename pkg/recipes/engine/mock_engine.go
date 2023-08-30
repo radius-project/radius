@@ -51,16 +51,16 @@ func (mr *MockEngineMockRecorder) Delete(arg0, arg1, arg2 interface{}) *gomock.C
 }
 
 // Execute mocks base method.
-func (m *MockEngine) Execute(arg0 context.Context, arg1 recipes.ResourceMetadata) (*recipes.RecipeOutput, error) {
+func (m *MockEngine) Execute(arg0 context.Context, arg1 recipes.ResourceMetadata, arg2 []string) (*recipes.RecipeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
+	ret := m.ctrl.Call(m, "Execute", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*recipes.RecipeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Execute indicates an expected call of Execute.
-func (mr *MockEngineMockRecorder) Execute(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockEngineMockRecorder) Execute(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockEngine)(nil).Execute), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Execute", reflect.TypeOf((*MockEngine)(nil).Execute), arg0, arg1, arg2)
 }

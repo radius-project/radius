@@ -1,4 +1,4 @@
 {
     "name":"mongodb",
-    "linkType":"Applications.Link/mongoDatabases"
+    "linkType":"Applications.Datastores/mongoDatabases"
 }

@@ -27,9 +27,9 @@ import (
 
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
 	"github.com/project-radius/radius/pkg/metrics"
+	"github.com/project-radius/radius/pkg/portableresources/datamodel"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	"github.com/project-radius/radius/pkg/recipes/recipecontext"
 	"github.com/project-radius/radius/pkg/rp/util"
@@ -137,6 +137,18 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	recipeResponse, err := d.prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
+	}
+
+	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included
+	// in the currently deployed resources compared to the list of resources from the previous deployment needs to be deleted
+	// as bicep does not take care of automatically deleting the unused resources.
+	// Identify the output resources that are no longer relevant to the recipe.
+	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+
+	// Deleting obsolete output resources.
+	err = d.deleteGCOutputResources(ctx, diff)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
 	}
 
 	return recipeResponse, nil
@@ -275,4 +287,41 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 	}
 
 	return recipeResponse, nil
+}
+
+// getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
+// returns a slice of resource ids that contains the elements that are in the "previous" slice but not in the "current".
+func (d *bicepDriver) getGCOutputResources(current []string, previous []string) []string {
+	// We can easily determine which resources have changed via a brute-force search comparing IDs.
+	// The lists of resources we work with are small, so this is fine.
+	diff := []string{}
+	for _, prevResource := range previous {
+		found := false
+		for _, currentResource := range current {
+			if prevResource == currentResource {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			diff = append(diff, prevResource)
+		}
+	}
+
+	return diff
+}
+
+func (d *bicepDriver) deleteGCOutputResources(ctx context.Context, diff []string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, resource := range diff {
+		logger.Info(fmt.Sprintf("Deleting output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
+		err := d.ResourceClient.Delete(ctx, resource)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
+	}
+
+	return nil
 }

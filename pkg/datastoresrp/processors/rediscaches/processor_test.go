@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
+	"github.com/project-radius/radius/pkg/portableresources"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
@@ -101,7 +101,7 @@ func Test_Process(t *testing.T) {
 	t.Run("success - manual", func(t *testing.T) {
 		resource := &datamodel.RedisCache{
 			Properties: datamodel.RedisCacheProperties{
-				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+				Resources: []*portableresources.ResourceReference{{ID: azureRedisResourceID1}},
 				Host:      host,
 				Port:      RedisSSLPort,
 				Username:  username,
@@ -141,7 +141,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*linkrp.ResourceReference{
+		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*portableresources.ResourceReference{
 			{
 				ID: azureRedisResourceID1,
 			},
@@ -156,7 +156,7 @@ func Test_Process(t *testing.T) {
 	t.Run("success - recipe with value overrides", func(t *testing.T) {
 		resource := &datamodel.RedisCache{
 			Properties: datamodel.RedisCacheProperties{
-				Resources: []*linkrp.ResourceReference{{ID: azureRedisResourceID1}},
+				Resources: []*portableresources.ResourceReference{{ID: azureRedisResourceID1}},
 				Host:      host,
 				Port:      RedisNonSSLPort,
 				Username:  username,
@@ -221,7 +221,7 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 		expectedOutputResources = append(expectedOutputResources, recipeOutputResources...)
 
-		resourceFieldOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*linkrp.ResourceReference{
+		resourceFieldOutputResources, err := processors.GetOutputResourcesFromResourcesField([]*portableresources.ResourceReference{
 			{
 				ID: azureRedisResourceID1,
 			},

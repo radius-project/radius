@@ -23,9 +23,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/daprrp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
+	"github.com/project-radius/radius/pkg/portableresources"
+	"github.com/project-radius/radius/pkg/portableresources/processors"
+	"github.com/project-radius/radius/pkg/portableresources/renderers/dapr"
 	"github.com/project-radius/radius/pkg/recipes"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
@@ -128,9 +128,9 @@ func Test_Process(t *testing.T) {
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
-				ResourceProvisioning: linkrp.ResourceProvisioningManual,
+				ResourceProvisioning: portableresources.ResourceProvisioningManual,
 				Metadata:             map[string]any{"config": "extrasecure"},
-				Resources:            []*linkrp.ResourceReference{{ID: externalResourceID1}},
+				Resources:            []*portableresources.ResourceReference{{ID: externalResourceID1}},
 				Type:                 "state.redis",
 				Version:              "v1",
 			},
@@ -163,7 +163,7 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", linkrp.DaprStateStoresResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", portableresources.DaprStateStoresResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -278,7 +278,7 @@ func Test_Process(t *testing.T) {
 			"test-component",
 			"test-app",
 			"some-other-other-name",
-			linkrp.DaprStateStoresResourceType)
+			portableresources.DaprStateStoresResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{
@@ -297,9 +297,9 @@ func Test_Process(t *testing.T) {
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
-				ResourceProvisioning: linkrp.ResourceProvisioningManual,
+				ResourceProvisioning: portableresources.ResourceProvisioningManual,
 				Metadata:             map[string]any{"config": "extrasecure"},
-				Resources:            []*linkrp.ResourceReference{{ID: externalResourceID1}},
+				Resources:            []*portableresources.ResourceReference{{ID: externalResourceID1}},
 				Type:                 "state.redis",
 				Version:              "v1",
 			},

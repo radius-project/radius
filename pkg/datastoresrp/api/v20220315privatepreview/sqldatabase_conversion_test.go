@@ -22,7 +22,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 	"github.com/project-radius/radius/pkg/to"
 	"github.com/project-radius/radius/test/testutil"
@@ -44,7 +44,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
 						Name:     "sql0",
-						Type:     linkrp.N_SqlDatabasesResourceType,
+						Type:     portableresources.SqlDatabasesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -62,8 +62,8 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
-					Resources: []*linkrp.ResourceReference{
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Resources: []*portableresources.ResourceReference{
 						{
 							ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
 						},
@@ -87,7 +87,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
 						Name:     "sql0",
-						Type:     linkrp.N_SqlDatabasesResourceType,
+						Type:     portableresources.SqlDatabasesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -105,8 +105,8 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Recipe: linkrp.LinkRecipe{
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
+					Recipe: portableresources.LinkRecipe{
 						Name: "sql-test",
 						Parameters: map[string]any{
 							"foo": "bar",
@@ -168,7 +168,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0"),
 				Name: to.Ptr("sql0"),
-				Type: to.Ptr(linkrp.N_SqlDatabasesResourceType),
+				Type: to.Ptr(portableresources.SqlDatabasesResourceType),
 			},
 		},
 		{
@@ -198,7 +198,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0"),
 				Name: to.Ptr("sql0"),
-				Type: to.Ptr(linkrp.N_SqlDatabasesResourceType),
+				Type: to.Ptr(portableresources.SqlDatabasesResourceType),
 			},
 		},
 	}

@@ -18,21 +18,21 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
+	"github.com/project-radius/radius/pkg/portableresources"
 	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
 )
 
-// ExtenderResourceType is the resource type for Extender link resources.
+// ExtenderResourceType is the resource type for Extender portable resources.
 const ExtenderResourceType = "Applications.Core/extenders"
 
-// Extender represents Extender link resource.
+// Extender represents Extender portable resource.
 type Extender struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
 	Properties ExtenderProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
+	// LinkMetadata represents internal DataModel properties common to all portable resource types.
 	LinkMetadata
 }
 
@@ -59,8 +59,8 @@ func (extender *Extender) ResourceTypeName() string {
 
 // Recipe returns the LinkRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (extender *Extender) Recipe() *linkrp.LinkRecipe {
-	if extender.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (extender *Extender) Recipe() *portableresources.LinkRecipe {
+	if extender.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &extender.Properties.ResourceRecipe
@@ -74,7 +74,7 @@ type ExtenderProperties struct {
 	// Secrets values provided for the resource
 	Secrets map[string]any `json:"secrets,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Extender
-	ResourceRecipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	ResourceRecipe portableresources.LinkRecipe `json:"recipe,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
