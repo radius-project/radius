@@ -155,7 +155,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
 					Target:  "$.properties.runtimes.kubernetes.base",
-					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in SerivceAccount.", podSA, sa.Name),
+					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in ServiceAccount.", podSA, sa.Name),
 				})
 			}
 

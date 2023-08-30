@@ -351,7 +351,7 @@ func TestValidateManifest(t *testing.T) {
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
-						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in SerivceAccount.",
+						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in ServiceAccount.",
 					},
 				},
 			},
@@ -378,7 +378,7 @@ func TestValidateManifest(t *testing.T) {
 					{
 						Code:    v1.CodeInvalidRequestContent,
 						Target:  manifestTargetProperty,
-						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in SerivceAccount.",
+						Message: "ServiceAccount name magpie in PodSpec does not match the name pie in ServiceAccount.",
 					},
 				},
 			},

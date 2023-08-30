@@ -55,13 +55,12 @@ type Resource struct {
 }
 
 // ExistDependency checks if the given id is in the Dependencies of the Resource and returns true if it is, false otherwise.
-func (r Resource) ExistDependency(id string) bool {
+func (r Resource) ExistDependency(localID string) bool {
 	for _, dependency := range r.Dependencies {
-		if dependency == id {
+		if dependency == localID {
 			return true
 		}
 	}
-
 	return false
 }
 

@@ -175,10 +175,6 @@ func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantI
 // SetWorkloadIdentityServiceAccount creates a ServiceAccount with descriptive labels and placeholder annotations for Azure Workload
 // Identity, and returns an OutputResource with the ServiceAccount and a dependency on the FederatedIdentity.
 func SetWorkloadIdentityServiceAccount(base *corev1.ServiceAccount) *rpv1.OutputResource {
-	if base == nil {
-		panic("base ServiceAccount is nil")
-	}
-
 	base.ObjectMeta.Labels[AzureWorkloadIdentityUseKey] = "true"
 	base.ObjectMeta.Annotations[azureWorkloadIdentityClientID] = "placeholder"
 	base.ObjectMeta.Annotations[azureWorkloadIdentityTenantID] = "placeholder"
