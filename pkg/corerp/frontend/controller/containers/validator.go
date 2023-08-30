@@ -117,7 +117,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 		}
 
 		switch k {
-		case "apps/v1/deployment":
+		case kubeutil.DeploymentV1:
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Deployment", len(resources)))
 			}
@@ -126,7 +126,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(deployment, newResource.Name))
 			}
 
-		case "core/v1/service":
+		case kubeutil.ServiceV1:
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Service", len(resources)))
 			}
@@ -135,7 +135,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(srv, newResource.Name))
 			}
 
-		case "core/v1/serviceaccount":
+		case kubeutil.ServiceAccountV1:
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("ServiceAccount", len(resources)))
 			}
@@ -144,9 +144,24 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(sa, newResource.Name))
 			}
 
+			deployment := resourceMap.GetFirst(kubeutil.DeploymentV1)
+			if deployment == nil {
+				// skip if there is no deployment.
+				continue
+			}
+
+			podSA := deployment.(*appv1.Deployment).Spec.Template.Spec.ServiceAccountName
+			if podSA != sa.Name {
+				errDetails = append(errDetails, v1.ErrorDetails{
+					Code:    v1.CodeInvalidRequestContent,
+					Target:  "$.properties.runtimes.kubernetes.base",
+					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in ServiceAccount.", podSA, sa.Name),
+				})
+			}
+
 		// No limitations for ConfigMap and Secret resources.
-		case "core/v1/configmap":
-		case "core/v1/secret":
+		case kubeutil.SecretV1:
+		case kubeutil.ConfigMapV1:
 
 		default:
 			errDetails = append(errDetails, v1.ErrorDetails{

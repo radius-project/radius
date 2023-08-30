@@ -32,6 +32,15 @@ func TestGetDependencies(t *testing.T) {
 	require.Equal(t, []string{LocalIDUserAssignedManagedIdentity, LocalIDRoleAssignmentKVKeys}, dependencies)
 }
 
+func TestExistDependency(t *testing.T) {
+	testResource := &Resource{
+		Dependencies: []string{LocalIDSecret},
+	}
+
+	require.True(t, testResource.ExistDependency(LocalIDSecret))
+	require.False(t, testResource.ExistDependency(LocalIDDeployment))
+}
+
 func TestGetDependencies_MissingLocalID(t *testing.T) {
 	testResource1 := OutputResource{}
 

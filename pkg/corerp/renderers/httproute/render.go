@@ -99,8 +99,8 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        kubernetes.NormalizeResourceName(route.Name),
 			Namespace:   options.Environment.Namespace,
-			Labels:      renderers.GetLabels(ctx, options, appId.Name(), route.Name, route.ResourceTypeName()),
-			Annotations: renderers.GetAnnotations(ctx, options),
+			Labels:      renderers.GetLabels(options, appId.Name(), route.Name, route.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(options),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),

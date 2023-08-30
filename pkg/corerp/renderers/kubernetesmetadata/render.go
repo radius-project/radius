@@ -107,7 +107,7 @@ func processAnnotations(ctx context.Context, options renderers.RenderOptions, de
 	}
 
 	// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	metaAnnotations, specAnnotations := ann.Merge(ctx)
+	metaAnnotations, specAnnotations := ann.Merge()
 	setAnnotations(dep, metaAnnotations, specAnnotations)
 }
 
@@ -134,7 +134,7 @@ func processLabels(ctx context.Context, options renderers.RenderOptions, dep *ap
 	}
 
 	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	metaLabels, specLabels := lbl.Merge(ctx)
+	metaLabels, specLabels := lbl.Merge()
 	setLabels(dep, metaLabels, specLabels)
 }
 

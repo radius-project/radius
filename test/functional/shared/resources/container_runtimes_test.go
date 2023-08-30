@@ -17,14 +17,25 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/shared"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+/*
+Test_Container_YAMLManifest tests the scenario where the base manifest yaml (./testdata/manifest/basemanifest.yaml)
+has Deployment, Service, ServiceAccount, and multiple secrets and configmaps. The deployment resource in the manifest
+uses environment varibles from secret and configmap and volume from secret, which are unsupported by
+Applications.Core/containers resource. This enables Radius to render kubernetes resources unsupported by containers
+resource.
+*/
 func Test_Container_YAMLManifest(t *testing.T) {
 	template := "testdata/corerp-resources-container-manifest.bicep"
 	name := "corerp-resources-container-manifest"
@@ -52,6 +63,84 @@ func Test_Container_YAMLManifest(t *testing.T) {
 						validation.NewK8sPodForResource(name, "ctnr-manifest"),
 					},
 				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, "base-manifest-test", deploy.ObjectMeta.Annotations["source"])
+				require.ElementsMatch(t,
+					[]string{"TEST_SECRET_KEY", "TEST_CONFIGMAP_KEY"},
+					[]string{
+						deploy.Spec.Template.Spec.Containers[0].Env[0].Name,
+						deploy.Spec.Template.Spec.Containers[0].Env[1].Name,
+					})
+
+				srv, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, "base-manifest-test", srv.ObjectMeta.Annotations["source"])
+
+				sa, err := test.Options.K8sClient.CoreV1().ServiceAccounts(appNamespace).Get(ctx, "ctnr-manifest", metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, "base-manifest-test", sa.ObjectMeta.Annotations["source"])
+
+				for _, name := range []string{"ctnr-manifest-secret0", "ctnr-manifest-secret1"} {
+					_, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, name, metav1.GetOptions{})
+					require.NoError(t, err)
+				}
+
+				_, err = test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "ctnr-manifest-config", metav1.GetOptions{})
+				require.NoError(t, err)
+			},
+		},
+	})
+
+	test.Test(t)
+}
+
+/*
+Test_Container_YAMLManifest_SideCar tests the scenario where the base manifest yaml (./testdata/manifest/sidecar.yaml)
+has the fluentbit sidecar. Radius injects the application container described in container resource into the given
+base deployment. With this, user can add multiple sidecars to their final deployment with application container.
+*/
+func Test_Container_YAMLManifest_SideCar(t *testing.T) {
+	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
+	name := "corerp-resources-container-sidecar"
+	appNamespace := "corerp-resources-container-sidecar"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "ctnr-sidecar",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-sidecar"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-sidecar", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				require.Len(t, deploy.Spec.Template.Spec.Containers, 2)
+
+				// Ensure that Pod includes sidecar.
+				require.ElementsMatch(t, []string{"ctnr-sidecar", "log-collector"}, []string{
+					deploy.Spec.Template.Spec.Containers[0].Name,
+					deploy.Spec.Template.Spec.Containers[1].Name,
+				})
 			},
 		},
 	})
