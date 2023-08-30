@@ -605,7 +605,6 @@ func (r Renderer) makeDeployment(
 	} else {
 		// If the container doesn't require identity, we'll use the default service account
 		or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, serviceAccountBase, serviceAccountBase.ObjectMeta)
-		or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
 		outputResources = append(outputResources, or)
 		deps = append(deps, rpv1.LocalIDServiceAccount)
 	}
