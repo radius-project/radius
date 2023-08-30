@@ -16,6 +16,7 @@ spec:
       labels:
         app: ctnr-manifest
     spec:
+      serviceAccountName: ctnr-manifest
       volumes:
         - name: secret-vol
           secret:

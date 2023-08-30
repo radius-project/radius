@@ -17,43 +17,24 @@ limitations under the License.
 package container
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubeutil"
+	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/project-radius/radius/test/k8sutil"
+	"github.com/project-radius/radius/test/testcontext"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-const validManifest = `
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-deployment
-  namespace: app-scoped
-  labels:
-    app: nginx
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.14.2
-        ports:
-        - containerPort: 80
-`
 
 var (
 	testResource = &datamodel.ContainerResource{
@@ -79,7 +60,7 @@ func TestFetchBaseManifest(t *testing.T) {
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: validManifest,
+							Base: fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "magpie", "", "magpie"),
 						},
 					},
 				},
@@ -132,7 +113,7 @@ func TestGetDeploymentBase(t *testing.T) {
 		expected *appsv1.Deployment
 	}{
 		{
-			name:     "nil manifest",
+			name:     "without base manifest",
 			manifest: kubeutil.ObjectManifest{},
 			expected: &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -171,7 +152,7 @@ func TestGetDeploymentBase(t *testing.T) {
 			},
 		},
 		{
-			name: "base manifest",
+			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
 				kubeutil.DeploymentV1: []runtime.Object{
 					&appsv1.Deployment{
@@ -266,7 +247,7 @@ func TestGetServiceBase(t *testing.T) {
 		expected *corev1.Service
 	}{
 		{
-			name:     "nil manifest",
+			name:     "without base manifest",
 			manifest: kubeutil.ObjectManifest{},
 			expected: &corev1.Service{
 				TypeMeta: metav1.TypeMeta{
@@ -293,7 +274,7 @@ func TestGetServiceBase(t *testing.T) {
 			},
 		},
 		{
-			name: "base manifest",
+			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
 				kubeutil.ServiceV1: []runtime.Object{
 					&corev1.Service{
@@ -353,9 +334,129 @@ func TestGetServiceBase(t *testing.T) {
 }
 
 func TestGetServiceAccountBase(t *testing.T) {
+	accountTests := []struct {
+		name     string
+		manifest kubeutil.ObjectManifest
+		expected *corev1.ServiceAccount
+	}{
+		{
+			name:     "without base manifest",
+			manifest: kubeutil.ObjectManifest{},
+			expected: &corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ServiceAccount",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-container",
+					Namespace: "test-ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/managed-by": "radius-rp",
+						"app.kubernetes.io/name":       "test-container",
+						"app.kubernetes.io/part-of":    "test",
+						"radius.dev/application":       "test",
+						"radius.dev/resource":          "test-container",
+						"radius.dev/resource-type":     "applications.core-containers",
+					},
+					Annotations: map[string]string{},
+				},
+			},
+		},
+		{
+			name: "with base manifest",
+			manifest: kubeutil.ObjectManifest{
+				kubeutil.ServiceAccountV1: []runtime.Object{
+					&corev1.ServiceAccount{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "ServiceAccount",
+							APIVersion: "v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "test-container",
+							Labels: map[string]string{
+								"label0": "value0",
+							},
+							Annotations: map[string]string{
+								"annotation0": "value0",
+							},
+						},
+					},
+				},
+			},
+			expected: &corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ServiceAccount",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-container",
+					Namespace: "test-ns",
+					Labels: map[string]string{
+						"app.kubernetes.io/managed-by": "radius-rp",
+						"app.kubernetes.io/name":       "test-container",
+						"app.kubernetes.io/part-of":    "test",
+						"label0":                       "value0",
+						"radius.dev/application":       "test",
+						"radius.dev/resource":          "test-container",
+						"radius.dev/resource-type":     "applications.core-containers",
+					},
+					Annotations: map[string]string{
+						"annotation0": "value0",
+					},
+				},
+			},
+		},
+	}
 
+	for _, tc := range accountTests {
+		t.Run(tc.name, func(t *testing.T) {
+			deploy := getServiceAccountBase(tc.manifest, "test", testResource, testOptions)
+			require.Equal(t, tc.expected, deploy)
+		})
+	}
 }
 
 func TestPopulateAllBaseResources(t *testing.T) {
+	fakeDeployment := fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "magpie", "", "magpie")
 
+	ctx := testcontext.New(t)
+
+	t.Run("deployment resource is not in outputResources", func(t *testing.T) {
+		manifest, err := kubeutil.ParseManifest([]byte(fakeDeployment))
+		require.NoError(t, err)
+		outputResources := []rpv1.OutputResource{}
+		require.Panics(t, func() {
+			populateAllBaseResources(ctx, manifest, outputResources, *testOptions)
+		})
+	})
+
+	t.Run("populate secret and configmap into outputResource", func(t *testing.T) {
+		fakeService := fmt.Sprintf(k8sutil.FakeServiceTemplate, "magpie", "")
+		fakeServiceAccount := fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "magpie")
+		fakeSecret0 := fmt.Sprintf(k8sutil.FakeSecretTemplate, "secret0")
+		fakeSecret1 := fmt.Sprintf(k8sutil.FakeSecretTemplate, "secret1")
+		fakeConfigMap0 := fmt.Sprintf(k8sutil.FakeConfigMapTemplate, "configmap0")
+		fakeConfigMap1 := fmt.Sprintf(k8sutil.FakeConfigMapTemplate, "configmap1")
+
+		baseString := strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeSecret0, fakeConfigMap0, fakeSecret1, fakeConfigMap1}, k8sutil.YAMLSeparater)
+		manifest, err := kubeutil.ParseManifest([]byte(baseString))
+		require.NoError(t, err)
+
+		outputResources := []rpv1.OutputResource{
+			{
+				LocalID:        rpv1.LocalIDDeployment,
+				CreateResource: &rpv1.Resource{},
+			},
+		}
+
+		newOutput := populateAllBaseResources(ctx, manifest, outputResources, *testOptions)
+		require.Len(t, newOutput, 5)
+		outLocalIDs := []string{}
+		for _, o := range newOutput {
+			outLocalIDs = append(outLocalIDs, o.LocalID)
+		}
+		require.ElementsMatch(t, []string{"Deployment", "Secret-dtl+8w==", "Secret-ddl9YA==", "ConfigMap-6BU8tQ==", "ConfigMap-5xU7Ig=="}, outLocalIDs)
+		require.Len(t, outputResources[0].CreateResource.Dependencies, 4)
+		require.ElementsMatch(t, []string{"Secret-dtl+8w==", "Secret-ddl9YA==", "ConfigMap-6BU8tQ==", "ConfigMap-5xU7Ig=="}, outputResources[0].CreateResource.Dependencies)
+	})
 }

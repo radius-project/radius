@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -33,6 +34,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
+
+var errDeploymentNotFound = errors.New("deployment resource must be in outputResources")
 
 // fetchBaseManifest fetches the base manifest from the container resource.
 func fetchBaseManifest(r *datamodel.ContainerResource) (kubeutil.ObjectManifest, error) {
@@ -177,6 +180,11 @@ func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest,
 			deploymentResource = r.CreateResource
 			break
 		}
+	}
+
+	// This should not happen because deployment resource is created in the first place.
+	if deploymentResource == nil {
+		panic(errDeploymentNotFound)
 	}
 
 	// Populate the remaining objects in base manifest into outputResources.

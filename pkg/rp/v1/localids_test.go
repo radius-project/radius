@@ -23,6 +23,6 @@ import (
 )
 
 func TestNewLocalID(t *testing.T) {
-	require.Equal(t, "foo-drd9Gg==", NewLocalID("foo-", "bar"))
-	require.Equal(t, "foo-6WF5Aw==", NewLocalID("foo-", "bar", "baz"))
+	require.Equal(t, "foo-drd9Gg==", NewLocalID("foo", "bar"))
+	require.Equal(t, "foo-6WF5Aw==", NewLocalID("foo", "bar", "baz"))
 }

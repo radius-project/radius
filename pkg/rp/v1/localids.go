@@ -82,7 +82,7 @@ const (
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
 	LocalIDFederatedIdentity            = "FederatedIdentity"
-	LocalIDRoleAssignmentPrefix         = "RoleAssignment-"
+	LocalIDRoleAssignmentPrefix         = "RoleAssignment"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys         = "RoleAssignment-KVKeys"
@@ -106,5 +106,5 @@ func NewLocalID(prefix string, ids ...string) string {
 
 	hash := [4]byte{}
 	binary.BigEndian.PutUint32(hash[:], h.Sum32())
-	return prefix + base64.StdEncoding.EncodeToString(hash[:])
+	return prefix + "-" + base64.StdEncoding.EncodeToString(hash[:])
 }
