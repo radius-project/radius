@@ -29,6 +29,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+/*
+Test_Container_YAMLManifest tests the scenario where the base manifest yaml (./testdata/manifest/basemanifest.yaml)
+has Deployment, Service, ServiceAccount, and multiple secrets and configmaps. The deployment resource in the manifest
+uses environment varibles from secret and configmap and volume from secret, which are unsupported by
+Applications.Core/containers resource. This enables Radius to render kubernetes resources unsupported by containers
+resource.
+*/
 func Test_Container_YAMLManifest(t *testing.T) {
 	template := "testdata/corerp-resources-container-manifest.bicep"
 	name := "corerp-resources-container-manifest"
@@ -90,6 +97,11 @@ func Test_Container_YAMLManifest(t *testing.T) {
 	test.Test(t)
 }
 
+/*
+Test_Container_YAMLManifest_SideCar tests the scenario where the base manifest yaml (./testdata/manifest/sidecar.yaml)
+has the fluentbit sidecar. Radius injects the application container described in container resource into the given
+base deployment. With this, user can add multiple sidecars to their final deployment with application container.
+*/
 func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
 	name := "corerp-resources-container-sidecar"
