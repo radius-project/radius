@@ -425,8 +425,6 @@ func (r Renderer) makeDeployment(
 	// Add volumes
 	volumes := []corev1.Volume{}
 
-	podSpec.ServiceAccountName = normalizedName
-
 	// Create Kubernetes resource name scoped in Kubernetes namespace
 	kubeIdentityName := normalizedName
 
