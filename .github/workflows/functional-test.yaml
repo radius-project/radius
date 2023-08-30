@@ -566,7 +566,7 @@ jobs:
   report-failure:
     name: Report test failure
     needs: [build, tests]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     if: failure() && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing scheduled run
