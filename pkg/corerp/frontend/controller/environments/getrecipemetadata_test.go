@@ -77,9 +77,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
-			Engine:        mEngine,
 		}
-		ctl, err := NewGetRecipeMetadata(opts)
+		ctl, err := NewGetRecipeMetadata(opts, mEngine)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -125,9 +124,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
-			Engine:        mEngine,
 		}
-		ctl, err := NewGetRecipeMetadata(opts)
+		ctl, err := NewGetRecipeMetadata(opts, mEngine)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -153,9 +151,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			})
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
-			Engine:        mEngine,
 		}
-		ctl, err := NewGetRecipeMetadata(opts)
+		ctl, err := NewGetRecipeMetadata(opts, mEngine)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -195,9 +192,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
-			Engine:        mEngine,
 		}
-		ctl, err := NewGetRecipeMetadata(opts)
+		ctl, err := NewGetRecipeMetadata(opts, mEngine)
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
@@ -245,9 +241,8 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
-			Engine:        mEngine,
 		}
-		ctl, err := NewGetRecipeMetadata(opts)
+		ctl, err := NewGetRecipeMetadata(opts, mEngine)
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, w, req)
 		require.Error(t, err)

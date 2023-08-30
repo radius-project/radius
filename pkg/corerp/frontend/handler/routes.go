@@ -26,6 +26,7 @@ import (
 	frontend_ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 	rp_frontend "github.com/radius-project/radius/pkg/rp/frontend"
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
@@ -52,7 +53,7 @@ const (
 
 // AddRoutes registers handlers for Container, Application, Gateway, Volume and Secret Store resources, allowing for
 // operations such as List, Get, Put, Patch and Delete.
-func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options, engine engine.Engine) error {
 	rootScopePath := ctrlOpts.PathBase
 	if isARM {
 		rootScopePath += "/subscriptions/{subscriptionID}"
@@ -167,7 +168,7 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       env_ctrl.OperationGetRecipeMetadata,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return env_ctrl.NewGetRecipeMetadata(opt)
+				return env_ctrl.NewGetRecipeMetadata(opt, engine)
 			},
 		},
 	}

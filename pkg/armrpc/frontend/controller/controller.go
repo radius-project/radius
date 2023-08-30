@@ -25,7 +25,6 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
@@ -68,9 +67,6 @@ type Options struct {
 
 	// StatusManager is the async operation status manager.
 	StatusManager sm.StatusManager
-
-	// Engine is the Recipe engine to handle Recipe commands
-	Engine engine.Engine
 }
 
 // ResourceOptions represents the options and filters for resource.
