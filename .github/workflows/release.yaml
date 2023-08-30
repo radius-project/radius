@@ -34,7 +34,7 @@ env:
 jobs:
   generate_release_note:
     name: Generate release note from template
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     env:
       RELNOTE_FOUND: false
@@ -119,7 +119,7 @@ jobs:
   release:
     name: Create a new Radius release
     if: github.event_name == 'push'
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout project-radius/radius@main
         uses: actions/checkout@v3
