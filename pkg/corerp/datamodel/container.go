@@ -82,6 +82,9 @@ type ContainerProperties struct {
 type KubernetesRuntime struct {
 	// Base represents the Kubernetes resource definition in the serialized YAML format
 	Base string `json:"base,omitempty"`
+
+	// Pod represents the Kuberetes PodSpec definition patches to be applied to the rendered PodSpec.
+	Pod string `json:"pod,omitempty"`
 }
 
 // RuntimeProperties represents the runtime configuration for the platform-specific functionalities.

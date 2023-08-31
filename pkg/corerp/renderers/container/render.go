@@ -19,6 +19,7 @@ package container
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -31,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -523,6 +525,23 @@ func (r Renderer) makeDeployment(
 			}
 		default:
 			return []rpv1.OutputResource{}, secretData, v1.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
+		}
+	}
+
+	if properties.Runtimes.Kubernetes != nil && properties.Runtimes.Kubernetes.Pod != "" {
+		podSpecJSON, err := json.Marshal(podSpec)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, err
+		}
+
+		merged, err := strategicpatch.StrategicMergePatch(podSpecJSON, []byte(properties.Runtimes.Kubernetes.Pod), corev1.PodSpec{})
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, err
+		}
+
+		err = json.Unmarshal(merged, podSpec)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, err
 		}
 	}
 

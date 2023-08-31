@@ -1135,6 +1135,9 @@ type KubernetesRuntimeProperties struct {
 	// The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount,
 // Secrets, and ConfigMaps.
 	Base *string
+
+	// The PodSpec object which patches to the PodSpec object Radius creates.
+	Pod map[string]any
 }
 
 // ManualScalingExtension - ManualScaling Extension

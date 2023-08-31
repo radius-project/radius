@@ -17,6 +17,8 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
+	"encoding/json"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -506,10 +508,18 @@ func toRuntimeProperties(runtime *RuntimesProperties) *datamodel.RuntimeProperti
 	if runtime == nil {
 		return nil
 	}
+
 	r := &datamodel.RuntimeProperties{}
 	if runtime.Kubernetes != nil {
 		r.Kubernetes = &datamodel.KubernetesRuntime{
 			Base: to.String(runtime.Kubernetes.Base),
+		}
+		if runtime.Kubernetes.Pod != nil {
+			serialiedPodPatch, err := json.Marshal(runtime.Kubernetes.Pod)
+			if err != nil {
+				return nil
+			}
+			r.Kubernetes.Pod = string(serialiedPodPatch)
 		}
 	}
 	return r
@@ -523,6 +533,13 @@ func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) *RuntimesProper
 	if runtime.Kubernetes != nil {
 		r.Kubernetes = &KubernetesRuntimeProperties{
 			Base: to.Ptr(runtime.Kubernetes.Base),
+		}
+		if runtime.Kubernetes.Pod != "" {
+			podPatch := map[string]any{}
+			if err := json.Unmarshal([]byte(runtime.Kubernetes.Pod), &podPatch); err != nil {
+				return nil
+			}
+			r.Kubernetes.Pod = podPatch
 		}
 	}
 	return r

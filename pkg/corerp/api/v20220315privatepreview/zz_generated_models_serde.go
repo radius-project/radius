@@ -2599,6 +2599,7 @@ func (k *KubernetesNamespaceExtension) UnmarshalJSON(data []byte) error {
 func (k KubernetesRuntimeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "base", k.Base)
+	populate(objectMap, "pod", k.Pod)
 	return json.Marshal(objectMap)
 }
 
@@ -2613,6 +2614,9 @@ func (k *KubernetesRuntimeProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "base":
 				err = unpopulate(val, "Base", &k.Base)
+			delete(rawMsg, key)
+		case "pod":
+				err = unpopulate(val, "Pod", &k.Pod)
 			delete(rawMsg, key)
 		}
 		if err != nil {

@@ -76,6 +76,9 @@ model RuntimesProperties {
 model KubernetesRuntimeProperties {
   @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
   base?: string;
+
+  @doc("The PodSpec object which patches to the PodSpec object Radius creates.")
+  pod?: {};
 }
 
 @doc("Specifies a listening port for the container")

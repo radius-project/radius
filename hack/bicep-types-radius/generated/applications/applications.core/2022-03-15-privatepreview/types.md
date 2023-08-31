@@ -316,6 +316,7 @@
 ## KubernetesRuntimeProperties
 ### Properties
 * **base**: string: The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.
+* **pod**: any: Any object
 
 ## TrackedResourceTags
 ### Properties
