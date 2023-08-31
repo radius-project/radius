@@ -45,7 +45,7 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/e2e-test-azure.yaml'
+      - '.github/workflows/long-running-azure.yaml'
 
 env:
   # Go version
