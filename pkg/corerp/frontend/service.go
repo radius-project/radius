@@ -24,16 +24,13 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/corerp/frontend/handler"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"k8s.io/client-go/discovery"
 )
@@ -75,21 +72,9 @@ func (s *Service) Run(ctx context.Context) error {
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
-	configLoader := configloader.NewEnvironmentLoader(clientOptions)
-
-	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
-		Cred:             &aztoken.AnonymousCredential{},
-		BaseURI:          s.Options.UCPConnection.Endpoint(),
-		ARMClientOptions: sdk.NewClientOptions(s.Options.UCPConnection),
-	})
-	if err != nil {
-		return err
-	}
-
 	engine := engine.NewEngine(engine.Options{
-		ConfigurationLoader: configLoader,
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, deploymentEngineClient, client),
+			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, nil, client),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: s.Options.Config.Terraform.Path,

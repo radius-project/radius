@@ -44,7 +44,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
-		envInput, _, envDataModel, expectedOutput, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
@@ -92,7 +92,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata run -- terraform", func(t *testing.T) {
-		_, envInput, envDataModel, _, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, envDataModel, expectedOutput := getTestModelsGetTFRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
@@ -216,7 +216,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata engine failure", func(t *testing.T) {
-		envInput, _, envDataModel, _, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
