@@ -27,7 +27,7 @@ env:
 jobs:
   purge_aws_resources:
     name: AWS resources clean-ups
-    runs-on: [self-hosted, 1ES.Pool=1ES-Radius]
+    runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
