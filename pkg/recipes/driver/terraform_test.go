@@ -202,7 +202,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.InvalidRecipeOutputs,
-			Message: "json: unknown field \"invalid\"",
+			Message: "failed to read the recipe output \"result\": json: unknown field \"invalid\"",
 		},
 	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)

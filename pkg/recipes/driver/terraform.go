@@ -89,7 +89,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
 
 	return recipeOutputs, nil
