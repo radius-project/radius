@@ -44,7 +44,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			},
 		},
 		{
-			name:       "aws provider with recipe context variable and output",
+			name:       "aws provider with recipe context variable, output and parameters",
 			workingDir: "testdata",
 			moduleName: "test-module-recipe-context-outputs",
 			result: &moduleInspectResult{

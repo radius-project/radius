@@ -432,7 +432,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 
 func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 	ctx := testcontext.New(t)
-	driver, _ := setupDeleteInputs(t)
+	driver := bicepDriver{}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
@@ -457,7 +457,7 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 
 func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	ctx := testcontext.New(t)
-	driver, _ := setupDeleteInputs(t)
+	driver := bicepDriver{}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,

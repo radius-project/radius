@@ -25,14 +25,11 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/corerp/frontend/handler"
-	"github.com/radius-project/radius/pkg/kubeutil"
-	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/secret/provider"
-	"k8s.io/client-go/discovery"
 )
 
 type Service struct {
@@ -60,21 +57,10 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	runtimeClient, err := kubeutil.NewRuntimeClient(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(s.Options.K8sConfig)
-	if err != nil {
-		return err
-	}
-
-	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, runtimeClient, discoveryClient)
 	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
 	engine := engine.NewEngine(engine.Options{
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, nil, client),
+			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, nil, nil),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: s.Options.Config.Terraform.Path,
@@ -90,7 +76,7 @@ func (s *Service) Run(ctx context.Context) error {
 		StatusManager: s.OperationStatusManager,
 	}
 
-	err = s.Start(ctx, server.Options{
+	err := s.Start(ctx, server.Options{
 		Address:           opts.Address,
 		ProviderNamespace: s.ProviderName,
 		Location:          s.Options.Config.Env.RoleLocation,

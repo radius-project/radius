@@ -41,8 +41,10 @@ type moduleInspectResult struct {
 	// ResultOutputExists is true if the module contains an output named "result".
 	ResultOutputExists bool
 
-	// Any other module information required in the future can be added here.
+	// The parameter variables defined by the recipe
 	Parameters map[string]any
+
+	// Any other module information required in the future can be added here.
 }
 
 // inspectModule inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
@@ -93,7 +95,7 @@ func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, er
 	return result, nil
 }
 
-// DownloadModule downloads the module to the workingDir from the module source specified in the Terraform configuration.
+// downloadModule downloads the module to the workingDir from the module source specified in the Terraform configuration.
 // It uses Terraform's Get command to download the module using the Terraform executable available at execPath.
 // An error is returned if the module could not be downloaded.
 func downloadModule(ctx context.Context, workingDir, execPath string) error {

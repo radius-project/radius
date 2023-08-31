@@ -174,7 +174,7 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	return requestDirPath, nil
 }
 
-// GetRecipeMetadata returns the Terraform Recipe parameters and metadata
+// GetRecipeMetadata returns the Terraform Recipe parameters by downloading the module and retrieving variable information
 func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 

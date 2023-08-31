@@ -31,7 +31,7 @@ type Driver interface {
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, opts DeleteOptions) error
 
-	// Gets the Recipe metadata and parameters from the Bicep registry or TF modules
+	// Gets the Recipe metadata and parameters from Recipe's template path
 	GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error)
 }
 

@@ -332,7 +332,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 }
 
 func Test_Engine_Delete_Success(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -377,7 +377,7 @@ func Test_Engine_Delete_Success(t *testing.T) {
 }
 
 func Test_Engine_Delete_Error(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -423,7 +423,7 @@ func Test_Engine_Delete_Error(t *testing.T) {
 }
 
 func Test_Delete_InvalidDriver(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 	recipeDefinition.Driver = "invalid"
 
 	ctx := testcontext.New(t)
@@ -441,7 +441,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 func Test_Delete_Lookup_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
-	recipeMetadata, _, outputResources := getDeleteInputs()
+	recipeMetadata, _, outputResources := getRecipeInputs()
 
 	configLoader.EXPECT().
 		LoadRecipe(ctx, &recipeMetadata).
@@ -452,7 +452,7 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 }
 
 func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
-	_, recipeDefinition, _ := getDeleteInputs()
+	_, recipeDefinition, _ := getRecipeInputs()
 
 	ctx := testcontext.New(t)
 	engine, _, driver := setup(t)
@@ -469,7 +469,7 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 }
 
 func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
-	_, recipeDefinition, _ := getDeleteInputs()
+	_, recipeDefinition, _ := getRecipeInputs()
 
 	ctx := testcontext.New(t)
 	engine, _, driver := setup(t)
@@ -481,9 +481,22 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 
 	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
 	require.Error(t, err)
+	require.Contains(t, err.Error(), "driver failure")
 }
 
-func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
+func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
+	_, recipeDefinition, _ := getRecipeInputs()
+	recipeDefinition.Driver = "invalid"
+
+	ctx := testcontext.New(t)
+	engine, _, _ := setup(t)
+
+	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not find driver invalid")
+}
+
+func getRecipeInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",

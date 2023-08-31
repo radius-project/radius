@@ -126,24 +126,6 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 }
 
 func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[string]any) error {
-	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
-	//	{
-	//		"parameters": {
-	//			<parameter-name>: {
-	//				<parameter-constraint-name> : <parameter-constraint-value>
-	// 			}
-	//		}
-	//	}
-	// For example:
-	//	{
-	//		"parameters": {
-	//			"location": {
-	//				"type": "string",
-	//				"defaultValue" : "[resourceGroup().location]"
-	//			}
-	//		}
-	//	}
-
 	if recipeData["parameters"] == nil {
 		return nil
 	}
