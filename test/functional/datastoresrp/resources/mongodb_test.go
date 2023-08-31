@@ -20,10 +20,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 // Opt-out case for manual resource provisioning
@@ -129,7 +129,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 // If the same parameters are set by the developer and the operator then the developer parameters are applied in to resolve conflicts.
 // Container uses the mongoDB resource to connect to the mongoDB resource
 func Test_MongoDB_RecipeParameters(t *testing.T) {
-	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/project-radius/radius/issues/5929")
+	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/radius-project/radius/issues/5929")
 
 	template := "testdata/datastoresrp-resources-mongodb-recipe-parameters.bicep"
 	name := "dsrp-resources-mongodb-recipe-parameters"
@@ -184,7 +184,7 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 // a default recipe using the context parameter generated and set by DatastoresRP,
 // and container using the mongoDatabases portable resource to connect to the underlying mongoDB resource.
 func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
-	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/project-radius/radius/issues/5929")
+	t.Skip("Skipping test as creating/deleting cosmosdb resource is unreliable - https://github.com/radius-project/radius/issues/5929")
 
 	template := "testdata/datastoresrp-resources-mongodb-recipe-context.bicep"
 	name := "dsrp-resources-mongodb-recipe-context"

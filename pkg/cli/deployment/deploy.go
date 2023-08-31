@@ -27,10 +27,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (

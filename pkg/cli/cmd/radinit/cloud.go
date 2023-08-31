@@ -20,9 +20,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 )
 
 const (

@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 

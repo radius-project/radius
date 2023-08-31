@@ -27,9 +27,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/radcli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/test"
+	"github.com/radius-project/radius/test/radcli"
 )
 
 var _ Executor = (*DeployErrorExecutor)(nil)

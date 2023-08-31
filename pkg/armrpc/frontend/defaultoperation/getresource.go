@@ -20,9 +20,9 @@ import (
 	"context"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
 // GetResource is the controller implementation to get a resource.
@@ -43,7 +43,7 @@ func NewGetResource[P interface {
 	}, nil
 }
 
-// Run returns the requested resource from the datastore with etag. 
+// Run returns the requested resource from the datastore with etag.
 // If the resource does not exist, a not found response is returned. If an error occurs, an error is returned as an internal error.
 func (e *GetResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

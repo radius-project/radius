@@ -21,10 +21,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	ucp_v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	ucp_v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -88,7 +88,7 @@ type DeploymentClient interface {
 	Deploy(ctx context.Context, options DeploymentOptions) (DeploymentResult, error)
 }
 
-//go:generate mockgen -destination=./mock_diagnosticsclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients DiagnosticsClient
+//go:generate mockgen -destination=./mock_diagnosticsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients DiagnosticsClient
 
 // DiagnosticsClient is used to interface with diagnostics features like logs and port-forwards.
 type DiagnosticsClient interface {
@@ -133,7 +133,7 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
-//go:generate mockgen -destination=./mock_applicationsclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients ApplicationsManagementClient
+//go:generate mockgen -destination=./mock_applicationsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients ApplicationsManagementClient
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {

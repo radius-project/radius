@@ -16,7 +16,7 @@ limitations under the License.
 
 package provider
 
-import "github.com/project-radius/radius/pkg/ucp/dataprovider"
+import "github.com/radius-project/radius/pkg/ucp/dataprovider"
 
 // SecretProviderOptions contains provider information of the secret.
 type SecretProviderOptions struct {

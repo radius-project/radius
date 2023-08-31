@@ -23,12 +23,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
@@ -258,7 +258,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
-				// See: https://github.com/project-radius/radius/issues/6045
+				// See: https://github.com/radius-project/radius/issues/6045
 
 				MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid",
 			},
@@ -345,7 +345,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
-				// See: https://github.com/project-radius/radius/issues/6046
+				// See: https://github.com/radius-project/radius/issues/6046
 
 				MessageContains: "Unable to process template language expressions for resource",
 			},
@@ -391,7 +391,7 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
 				// of our error. This is wrong.
 				//
-				// See: https://github.com/project-radius/radius/issues/6047
+				// See: https://github.com/radius-project/radius/issues/6047
 
 				MessageContains: "'not an id, just deal with it' is not a valid resource id",
 			},

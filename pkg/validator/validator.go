@@ -33,8 +33,8 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -198,7 +198,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 		}}
 	}
 
-	// WORKAROUND: https://github.com/project-radius/radius/issues/2683
+	// WORKAROUND: https://github.com/radius-project/radius/issues/2683
 	// UCP or DE sends the invalid request which has -1 ContentLength header so validator treats it as empty content.
 	if req.ContentLength < 0 && len(content) > 0 {
 		req.ContentLength = (int64)(len(content))

@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )

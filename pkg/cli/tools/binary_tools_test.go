@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 func TestGetDownloadURI(t *testing.T) {

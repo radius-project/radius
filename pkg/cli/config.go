@@ -33,8 +33,8 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
 // EnvironmentKey is the key used for the environment section

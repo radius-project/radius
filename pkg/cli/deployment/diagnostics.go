@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	k8slabels "github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	"io"
 	"net/http"

@@ -19,9 +19,9 @@ package rabbitmqqueues
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/messagingrp/api/v20220315privatepreview"
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 const testHeaderfile = "20220315privatepreview_requestheaders.json"

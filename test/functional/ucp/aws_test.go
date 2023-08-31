@@ -31,10 +31,10 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +44,7 @@ var (
 )
 
 func Test_AWS_DeleteResource(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/5967")
+	t.Skip("https://github.com/radius-project/radius/issues/5967")
 	ctx := context.Background()
 
 	bucketName := generateS3BucketName()
@@ -106,7 +106,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 }
 
 func Test_AWS_ListResources(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/5967")
+	t.Skip("https://github.com/radius-project/radius/issues/5967")
 	ctx := context.Background()
 
 	var bucketName = generateS3BucketName()

@@ -17,8 +17,8 @@ limitations under the License.
 package profilerservice
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/profiler/provider"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/profiler/provider"
 )
 
 type HostOptions struct {

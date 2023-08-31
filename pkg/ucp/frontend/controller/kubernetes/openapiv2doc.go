@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	http "net/http"
 
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
 var _ armrpc_controller.Controller = (*OpenAPIv2Doc)(nil)

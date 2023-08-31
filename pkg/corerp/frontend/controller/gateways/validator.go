@@ -19,9 +19,9 @@ package gateways
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // ValidateAndMutateRequest checks if the TLS configuration is valid and sets the TLS protocol version to 1.2 if it is not

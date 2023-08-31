@@ -17,10 +17,10 @@ limitations under the License.
 package backends
 
 import (
-	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes"
 )
 
-//go:generate mockgen -destination=./mock_backend.go -package=backends -self_package github.com/project-radius/radius/pkg/recipes/terraform/config/backends github.com/project-radius/radius/pkg/recipes/terraform/config/backends Backend
+//go:generate mockgen -destination=./mock_backend.go -package=backends -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/backends github.com/radius-project/radius/pkg/recipes/terraform/config/backends Backend
 
 // Backend is an interface for generating Terraform backend configurations.
 type Backend interface {

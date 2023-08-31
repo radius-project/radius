@@ -14,7 +14,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-BASE_PACKAGE_NAME := github.com/project-radius/radius
+BASE_PACKAGE_NAME := github.com/radius-project/radius
 OUT_DIR := ./dist
 
 GOOS ?= $(shell go env GOOS)

@@ -4,7 +4,7 @@
 
 At this point you've experienced the basic dev flow for the `rad` CLI. 
 
-It's time to pick an issue to work on! You can find a query [here](https://github.com/project-radius/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
+It's time to pick an issue to work on! You can find a query [here](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
 
 ## Etiquette for issues
 
@@ -36,7 +36,7 @@ Fixes: #<issue number>
 <a more detailed description of the root cause and fix - may be long if necessary>
 ```
 
-Here's an [example](https://github.com/project-radius/radius/commit/8e95d07a66e6aa91dfb40217318649ca43ec4bd7).
+Here's an [example](https://github.com/radius-project/radius/commit/8e95d07a66e6aa91dfb40217318649ca43ec4bd7).
 
 Include a level of detail that makese sense based on the complexity of problem and solution.
 
@@ -44,7 +44,7 @@ Include a level of detail that makese sense based on the complexity of problem a
 
 At this point, you have reviewed the forked repo workflow.
 
-Push your changes to your forked repo and then [open a pull request](https://github.com/project-radius/radius/compare).
+Push your changes to your forked repo and then [open a pull request](https://github.com/radius-project/radius/compare).
 
 If you formatted your commit message correctly then everything should be good to go.
 

@@ -28,7 +28,7 @@ If you need to manually test APIs you can reach them at the following endpoints 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
-2. Clone the `project-radius/radius` and `project-radius/deployment-engine` repo next to each other. 
+2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other. 
 3. Run `git submodule update --init` in the `deployment-engine` repo
 4. Install .NET 6.0 SDK - https://dotnet.microsoft.com/en-us/download/dotnet/6.0
 5. Install C# VS Code extension - https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp
@@ -141,7 +141,7 @@ Now you can launch the Radius locally through the VSCode menu.
 
 ### I got an error saying I need to clone the deployment engine
 
-> The project-radius/deployment-engine is not cloned as a sibling to the radius repo. Please clone the project-radius/deployment-engine repo next to the Radius repo and try again.
+> The radius-project/deployment-engine is not cloned as a sibling to the radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
 
 You should be to successfully the following commands from the Radius repository root:
 

@@ -21,12 +21,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/kubeutil"
-	store "github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/store/apiserverstore"
-	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/project-radius/radius/pkg/ucp/store/cosmosdb"
-	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	store "github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/store/apiserverstore"
+	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	"github.com/radius-project/radius/pkg/ucp/store/cosmosdb"
+	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"

@@ -33,19 +33,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/cli/bicep"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 const (
@@ -173,7 +173,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
-		t.Skip("https://github.com/project-radius/radius/issues/3232")
+		t.Skip("https://github.com/radius-project/radius/issues/3232")
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 

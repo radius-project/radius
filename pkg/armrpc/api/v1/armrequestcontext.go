@@ -27,8 +27,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // The below contants are the headers in request from ARM.

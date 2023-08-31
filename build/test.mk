@@ -86,7 +86,7 @@ oav-installed:
 	@which oav > /dev/null || { echo "run 'npm install -g oav' to install oav"; exit 1; }
 	@echo "$(ARROW) OK"
 
-# TODO re-enable https://github.com/project-radius/radius/issues/5091
+# TODO re-enable https://github.com/radius-project/radius/issues/5091
 .PHONY: test-ucp-spec-examples 
 test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."

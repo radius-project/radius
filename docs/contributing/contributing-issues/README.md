@@ -1,6 +1,6 @@
 # Contributing Issues
 
-You can open an issue using the form [here](https://github.com/project-radius/radius/issues/new/choose). This form will ask you to fill out a template based on the kind of issue you choose. Please fill out the form as this will help us respond to your issue. 
+You can open an issue using the form [here](https://github.com/radius-project/radius/issues/new/choose). This form will ask you to fill out a template based on the kind of issue you choose. Please fill out the form as this will help us respond to your issue. 
 
 ## Tips for creating good issues
 
@@ -14,7 +14,7 @@ You will save us (the maintainers) time if you want to use the right template.
 
 ### Focus on the repro steps
 
-Providing clear repro steps with code samples is the best way to get a good response to your issue. [here](https://github.com/project-radius/radius/issues?q=is%3Aissue+is%3Aclosed)'s an example.
+Providing clear repro steps with code samples is the best way to get a good response to your issue. [here](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aclosed)'s an example.
 
 Remember that another human will need to read your instructions and try to reproduce your steps to understand the issue.
 

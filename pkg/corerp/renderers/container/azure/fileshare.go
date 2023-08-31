@@ -17,9 +17,9 @@ limitations under the License.
 package azure
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	corev1 "k8s.io/api/core/v1"
 )

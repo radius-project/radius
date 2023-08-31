@@ -19,9 +19,9 @@ package converter
 import (
 	"encoding/json"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 )
 
 // MongoDatabaseDataModelToVersioned converts a Mongo database data model to a versioned model interface based on the

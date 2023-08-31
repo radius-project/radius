@@ -23,19 +23,19 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/store"
 
-	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
-	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
-	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
-	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateways"
-	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
-	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
-	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"
+	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
+	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
+	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
+	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
+	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
+	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
+	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{

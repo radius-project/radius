@@ -26,7 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 const (
@@ -189,7 +189,7 @@ type InstallState struct {
 	Version string
 }
 
-//go:generate mockgen -destination=./mock_cluster.go -package=helm -self_package github.com/project-radius/radius/pkg/cli/helm github.com/project-radius/radius/pkg/cli/helm Interface
+//go:generate mockgen -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {

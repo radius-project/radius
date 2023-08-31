@@ -24,23 +24,23 @@ import (
 	"os"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rp_util "github.com/project-radius/radius/pkg/rp/util"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rp_util "github.com/radius-project/radius/pkg/rp/util"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
-	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/model"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
+	corerp_dm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/model"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
 
-	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
-	datastores_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	"github.com/project-radius/radius/pkg/portableresources"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
+	datastores_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
@@ -48,7 +48,7 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
+//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)

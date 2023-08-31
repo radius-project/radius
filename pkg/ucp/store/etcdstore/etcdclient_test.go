@@ -20,13 +20,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/data"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/data"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 
-	"github.com/project-radius/radius/test/testcontext"
-	shared "github.com/project-radius/radius/test/ucp/storetest"
+	"github.com/radius-project/radius/test/testcontext"
+	shared "github.com/radius-project/radius/test/ucp/storetest"
 )
 
 func Test_ETCDClient(t *testing.T) {

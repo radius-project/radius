@@ -19,10 +19,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/cli"
-	cli_aws "github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli"
+	cli_aws "github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
 // initOptions holds all of the options that will be used to initialize Radius.

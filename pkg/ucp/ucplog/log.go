@@ -25,7 +25,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/version"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

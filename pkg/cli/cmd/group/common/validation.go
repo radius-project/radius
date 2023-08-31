@@ -21,7 +21,7 @@ import (
 
 	"regexp"
 
-	"github.com/project-radius/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 )
 
 // ValidateResourceGroupName checks if the given resource group name is between 1 and 90 characters long, does not end with

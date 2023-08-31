@@ -17,12 +17,12 @@ limitations under the License.
 package credential
 
 import (
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
-	credential_list "github.com/project-radius/radius/pkg/cli/cmd/credential/list"
-	credential_register "github.com/project-radius/radius/pkg/cli/cmd/credential/register"
-	credential_show "github.com/project-radius/radius/pkg/cli/cmd/credential/show"
-	credential_unregister "github.com/project-radius/radius/pkg/cli/cmd/credential/unregister"
-	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
+	credential_list "github.com/radius-project/radius/pkg/cli/cmd/credential/list"
+	credential_register "github.com/radius-project/radius/pkg/cli/cmd/credential/register"
+	credential_show "github.com/radius-project/radius/pkg/cli/cmd/credential/show"
+	credential_unregister "github.com/radius-project/radius/pkg/cli/cmd/credential/unregister"
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
 

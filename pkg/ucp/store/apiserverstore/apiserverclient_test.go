@@ -28,13 +28,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
-	"github.com/project-radius/radius/pkg/ucp/util/etag"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/ucp/kubeenv"
-	shared "github.com/project-radius/radius/test/ucp/storetest"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	ucpv1alpha1 "github.com/radius-project/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
+	"github.com/radius-project/radius/pkg/ucp/util/etag"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/ucp/kubeenv"
+	shared "github.com/radius-project/radius/test/ucp/storetest"
 )
 
 func Test_ResourceName_Normalize(t *testing.T) {

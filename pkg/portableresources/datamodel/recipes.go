@@ -21,7 +21,7 @@ limitations under the License.
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/portableresources"
 )
 
 // RecipeDataModel should be implemented on the datamodel of types that support recipes.

@@ -18,7 +18,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             You are editing files which require a docs update. Please ensure you've made the appropriate changes to the docs and submitted a PR.
-            - Swagger changes require reference edge docs to be updated [here](https://github.com/project-radius/docs/tree/edge/docs/content/reference/resource-schema)
+            - Swagger changes require reference edge docs to be updated [here](https://github.com/radius-project/docs/tree/edge/docs/content/reference/resource-schema)
             - Make sure to create a branch and submit a PR into the edge branch instead of the default latest branch, as the swagger changes will not be available until the next release.
             
             For more information on contributing to docs please visit https://docs.radapp.dev/contributing/docs/.

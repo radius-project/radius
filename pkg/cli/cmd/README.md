@@ -39,11 +39,11 @@ package list
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -132,8 +132,8 @@ package show
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/test/radcli"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/test/radcli"
 )
 
 func Test_CommandValidation(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

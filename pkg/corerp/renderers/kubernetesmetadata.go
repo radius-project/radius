@@ -17,8 +17,8 @@ limitations under the License.
 package renderers
 
 import (
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/rp/kube"
 )
 
 // GetLabels merges cumulative label values from Environment, Application, Container and InputExt kubernetes metadata and

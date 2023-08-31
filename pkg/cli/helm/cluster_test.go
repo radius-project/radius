@@ -19,7 +19,7 @@ package helm
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 )
 

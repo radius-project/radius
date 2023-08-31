@@ -6,7 +6,7 @@ spec:
   replicas: 12
   template:
     spec:
-      organization: project-radius
+      organization: radius-project
       dockerdWithinRunnerContainer: true
       image: summerwind/actions-runner-dind
       nodeSelector:

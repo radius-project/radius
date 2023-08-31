@@ -19,8 +19,8 @@ package driver
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
