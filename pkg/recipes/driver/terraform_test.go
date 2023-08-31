@@ -316,7 +316,7 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, driver := setup(t)
-	_, recipeMetadata, envRecipe := buildTestInputs()
+	_, _, envRecipe := buildTestInputs()
 
 	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
 	expectedOutput := map[string]any{
@@ -326,16 +326,15 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	}
 	options := terraform.Options{
 		RootDir:        tfDir,
-		ResourceRecipe: &recipeMetadata,
+		ResourceRecipe: &recipes.ResourceMetadata{},
 		EnvRecipe:      &envRecipe,
 	}
 	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(expectedOutput, nil)
 
-	recipeData, err := driver.GetRecipeMetadata(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe:     recipeMetadata,
-			Definition: envRecipe,
-		}})
+	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
 	// Verify directory cleanup
@@ -346,7 +345,7 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
-	_, recipeMetadata, envRecipe := buildTestInputs()
+	_, _, envRecipe := buildTestInputs()
 
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
@@ -355,11 +354,9 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 		},
 	}
 
-	_, err := driver.GetRecipeMetadata(testcontext.New(t), ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe:     recipeMetadata,
-			Definition: envRecipe,
-		},
+	_, err := driver.GetRecipeMetadata(testcontext.New(t), BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &expErr)
@@ -373,23 +370,22 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, driver := setup(t)
-	_, recipeMetadata, envRecipe := buildTestInputs()
+	_, _, envRecipe := buildTestInputs()
 
 	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
 	options := terraform.Options{
 		RootDir:        tfDir,
-		ResourceRecipe: &recipeMetadata,
+		ResourceRecipe: &recipes.ResourceMetadata{},
 		EnvRecipe:      &envRecipe,
 	}
 
 	expErr := errors.New("Failed to download module")
 	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, expErr)
 
-	_, err := driver.GetRecipeMetadata(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe:     recipeMetadata,
-			Definition: envRecipe,
-		}})
+	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
 	require.Error(t, err)
 	require.Equal(t, expErr, err)
 }

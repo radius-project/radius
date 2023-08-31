@@ -44,12 +44,12 @@ func getTestModels20220315privatepreview() (*v20220315privatepreview.Environment
 	return envInput, envDataModel, expectedOutput
 }
 
-func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.RecipeGetMetadata, *v20220315privatepreview.RecipeGetMetadata, *datamodel.Environment, *v20220315privatepreview.RecipeGetMetadataResponse) {
+func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.RecipeGetMetadata, *v20220315privatepreview.RecipeGetMetadata, *datamodel.Environment, *v20220315privatepreview.RecipeGetMetadataResponse, *v20220315privatepreview.RecipeGetMetadataResponse) {
 	rawInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input.json")
 	envInput := &v20220315privatepreview.RecipeGetMetadata{}
 	_ = json.Unmarshal(rawInput, envInput)
 
-	rawTFInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input.json")
+	rawTFInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input_terraform.json")
 	envTFInput := &v20220315privatepreview.RecipeGetMetadata{}
 	_ = json.Unmarshal(rawTFInput, envTFInput)
 
@@ -61,7 +61,11 @@ func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepr
 	expectedOutput := &v20220315privatepreview.RecipeGetMetadataResponse{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
-	return envInput, envTFInput, envExistingDataModel, expectedOutput
+	rawExpectedTFOutput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_output_terraform.json")
+	expectedTFOutput := &v20220315privatepreview.RecipeGetMetadataResponse{}
+	_ = json.Unmarshal(rawExpectedTFOutput, expectedTFOutput)
+
+	return envInput, envTFInput, envExistingDataModel, expectedOutput, expectedTFOutput
 }
 
 func getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview() (*v20220315privatepreview.RecipeGetMetadata, *datamodel.Environment) {

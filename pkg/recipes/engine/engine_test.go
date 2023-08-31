@@ -452,51 +452,34 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 }
 
 func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
-	recipeMetadata, recipeDefinition, _ := getDeleteInputs()
+	_, recipeDefinition, _ := getDeleteInputs()
 
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
-	outputParams := map[string]any{"parameters": recipeMetadata.Parameters}
+	engine, _, driver := setup(t)
+	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
-	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Recipe:     recipeMetadata,
-			Definition: recipeDefinition,
-		},
+	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
 	}).Times(1).Return(outputParams, nil)
 
-	recipeData, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
+	recipeData, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
 	require.NoError(t, err)
 	require.Equal(t, outputParams, recipeData)
 }
 
 func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
-	recipeMetadata, recipeDefinition, _ := getDeleteInputs()
+	_, recipeDefinition, _ := getDeleteInputs()
 
 	ctx := testcontext.New(t)
-	engine, configLoader, driver := setup(t)
+	engine, _, driver := setup(t)
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
-	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Recipe:     recipeMetadata,
-			Definition: recipeDefinition,
-		},
+	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
 	}).Times(1).Return(nil, errors.New("driver failure"))
 
-	_, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
-	require.Error(t, err)
-}
-
-func Test_GetRecipeMetadata_Lookup_Error(t *testing.T) {
-	recipeMetadata, _, _ := getDeleteInputs()
-
-	ctx := testcontext.New(t)
-	engine, configLoader, _ := setup(t)
-
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
-	_, err := engine.GetRecipeMetadata(ctx, recipeMetadata)
+	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
 	require.Error(t, err)
 }
 

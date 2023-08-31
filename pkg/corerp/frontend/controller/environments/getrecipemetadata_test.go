@@ -44,7 +44,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
-		envInput, _, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, _, envDataModel, expectedOutput, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
@@ -59,12 +59,13 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
-		recipeMetadata := recipes.ResourceMetadata{
-			Name:          *envInput.Name,
-			EnvironmentID: envDataModel.ID,
-			Parameters:    nil,
-			ResourceID:    envDataModel.ID,
-			ResourceType:  "Applications.Datastores/mongoDatabases",
+		recipeDefinition := recipes.EnvironmentDefinition{
+			Name:            *envInput.Name,
+			Parameters:      nil,
+			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			TemplateVersion: "",
+			Driver:          "bicep",
+			ResourceType:    "Applications.Datastores/mongoDatabases",
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -73,7 +74,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 				"mongodbName":    map[string]any{"type": "string"},
 			},
 		}
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(recipeData, nil)
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(recipeData, nil)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -91,7 +92,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata run -- terraform", func(t *testing.T) {
-		_, envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
+		_, envInput, envDataModel, _, expectedOutput := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
@@ -106,12 +107,13 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
-		recipeMetadata := recipes.ResourceMetadata{
-			Name:          *envInput.Name,
-			EnvironmentID: envDataModel.ID,
-			Parameters:    nil,
-			ResourceID:    envDataModel.ID,
-			ResourceType:  "Applications.Datastores/mongoDatabases",
+		recipeDefinition := recipes.EnvironmentDefinition{
+			Name:            *envInput.Name,
+			Parameters:      nil,
+			TemplatePath:    "Azure/cosmosdb/azurerm",
+			TemplateVersion: "1.1.0",
+			Driver:          "terraform",
+			ResourceType:    *envInput.LinkType,
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -120,7 +122,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 				"mongodbName":    map[string]any{"type": "string"},
 			},
 		}
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(recipeData, nil)
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(recipeData, nil)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -214,7 +216,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 	})
 
 	t.Run("get recipe metadata engine failure", func(t *testing.T) {
-		envInput, _, envDataModel, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
+		envInput, _, envDataModel, _, _ := getTestModelsGetRecipeMetadata20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, err := rpctest.NewHTTPRequestFromJSON(ctx, v1.OperationPost.HTTPMethod(), testHeaderfilegetrecipemetadata, envInput)
 		require.NoError(t, err)
@@ -229,15 +231,16 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
-		recipeMetadata := recipes.ResourceMetadata{
-			Name:          *envInput.Name,
-			EnvironmentID: envDataModel.ID,
-			Parameters:    nil,
-			ResourceID:    envDataModel.ID,
-			ResourceType:  "Applications.Datastores/mongoDatabases",
+		recipeDefinition := recipes.EnvironmentDefinition{
+			Name:            *envInput.Name,
+			Parameters:      nil,
+			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			TemplateVersion: "",
+			Driver:          "bicep",
+			ResourceType:    "Applications.Datastores/mongoDatabases",
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
-		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeMetadata).Return(nil, engineErr)
+		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(nil, engineErr)
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
