@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/test/k8sutil"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/test/k8sutil"
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/kubectl/pkg/scheme"

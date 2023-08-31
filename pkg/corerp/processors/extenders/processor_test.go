@@ -20,10 +20,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/portableresources/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 

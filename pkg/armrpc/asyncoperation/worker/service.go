@@ -19,13 +19,13 @@ package worker
 import (
 	"context"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
@@ -87,7 +87,7 @@ func (s *Service) Init(ctx context.Context) error {
 		}
 
 		// Use legacy discovery client to avoid the issue of the staled GroupVersion discovery(api.ucp.dev/v1alpha3).
-		// TODO: Disable UseLegacyDiscovery once https://github.com/project-radius/radius/issues/5974 is resolved.
+		// TODO: Disable UseLegacyDiscovery once https://github.com/radius-project/radius/issues/5974 is resolved.
 		discoveryClient.UseLegacyDiscovery = true
 		s.KubeDiscoveryClient = discoveryClient
 	}

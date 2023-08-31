@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/stretchr/testify/require"
 )
 

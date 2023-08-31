@@ -19,8 +19,8 @@ package connections
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 

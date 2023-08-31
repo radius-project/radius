@@ -20,10 +20,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/portableresources"
-	types "github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	types "github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
 )

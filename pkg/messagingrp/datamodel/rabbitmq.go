@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/portableresources"
-	pr_dm "github.com/project-radius/radius/pkg/portableresources/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // RabbitMQQueue represents RabbitMQQueue portable resource.

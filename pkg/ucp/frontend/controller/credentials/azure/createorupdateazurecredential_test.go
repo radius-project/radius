@@ -22,17 +22,17 @@ import (
 	"net/http"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/stretchr/testify/require"
 )
 

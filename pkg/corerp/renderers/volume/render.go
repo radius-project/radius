@@ -20,12 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)

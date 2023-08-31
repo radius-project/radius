@@ -25,8 +25,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"go.uber.org/atomic"
 )

@@ -33,8 +33,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/kubeutil"
 )
 
 var (
@@ -152,7 +152,7 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 	return contextName, nil
 }
 
-//go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/project-radius/radius/pkg/cli/kubernetes github.com/project-radius/radius/pkg/cli/kubernetes Interface
+//go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
 type Interface interface {
 	GetKubeContext() (*api.Config, error)
 }

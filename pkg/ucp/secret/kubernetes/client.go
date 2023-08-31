@@ -19,8 +19,8 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/ucp/secret"
 	corev1 "k8s.io/api/core/v1"
 	k8s_error "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

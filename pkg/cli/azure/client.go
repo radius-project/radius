@@ -22,10 +22,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
-	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/armauth"
 )
 
-//go:generate mockgen -destination=./client_mock.go -package=azure -self_package github.com/project-radius/radius/pkg/cli/azure github.com/project-radius/radius/pkg/cli/azure Client
+//go:generate mockgen -destination=./client_mock.go -package=azure -self_package github.com/radius-project/radius/pkg/cli/azure github.com/radius-project/radius/pkg/cli/azure Client
 
 // Client is an interface that abstracts `rad init`'s interactions with Azure. This is for testing purposes.
 type Client interface {

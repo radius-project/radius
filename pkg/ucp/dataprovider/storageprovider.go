@@ -21,8 +21,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/util"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/util"
 )
 
 var (

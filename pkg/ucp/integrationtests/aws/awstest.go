@@ -22,12 +22,12 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	ucp_aws_frontend "github.com/project-radius/radius/pkg/ucp/frontend/aws"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 const (

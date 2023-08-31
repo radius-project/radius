@@ -21,9 +21,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	azcred "github.com/project-radius/radius/pkg/azure/credential"
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	azcred "github.com/radius-project/radius/pkg/azure/credential"
+	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 )
 
 // Authentication methods

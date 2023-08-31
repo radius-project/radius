@@ -21,7 +21,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/secret"
 )
 
 var (

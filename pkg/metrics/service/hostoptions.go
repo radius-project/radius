@@ -17,8 +17,8 @@ limitations under the License.
 package metricsservice
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/metrics/provider"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/metrics/provider"
 )
 
 // HostOptions defines all of the settings that our metric's execution environment provides.

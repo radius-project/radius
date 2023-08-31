@@ -24,11 +24,11 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (

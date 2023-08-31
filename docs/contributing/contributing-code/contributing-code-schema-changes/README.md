@@ -35,7 +35,7 @@ Creating a pull request in the radius repo that contains application model chang
 
 ## Step 2: Update docs and samples
 
-Visit the [docs](https://github.com/project-radius/docs/) and [samples](https://github.com/project-radius/samples/) repository and open PRs with the changes to the resource(s). Some checks will fail until you begin merging PRs below.
+Visit the [docs](https://github.com/radius-project/docs/) and [samples](https://github.com/radius-project/samples/) repository and open PRs with the changes to the resource(s). Some checks will fail until you begin merging PRs below.
 
 ## Step 3: Merge pull requests in order
 ⚠️ Make sure you have PRs open and ready to merge within the radius, bicep, docs, and samples repositories. Do not proceed until all the PRs are ready and approved.

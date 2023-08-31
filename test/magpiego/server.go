@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/project-radius/radius/test/magpiego/bindings"
+	"github.com/radius-project/radius/test/magpiego/bindings"
 )
 
 var server *http.Server

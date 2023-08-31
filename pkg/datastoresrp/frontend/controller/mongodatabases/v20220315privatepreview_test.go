@@ -19,9 +19,9 @@ package mongodatabases
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 const testHeaderfile = "20220315privatepreview_requestheaders.json"

@@ -20,7 +20,7 @@ If we find issues in validation, we can create additional RC releases until we f
 
 Follow the steps below to create an RC release.
 
-1. In the project-radius/bicep repo, [bicep-extensibility branch](https://github.com/project-radius/bicep/tree/bicep-extensibility)
+1. In the radius-project/bicep repo, [bicep-extensibility branch](https://github.com/radius-project/bicep/tree/bicep-extensibility)
 
    ```bash
    git checkout bicep-extensibility
@@ -50,7 +50,7 @@ Follow the steps below to create an RC release.
    az storage blob directory list -c tools -d vscode-extensibility --account-name radiuspublic --output table
    ```
 
-2. In the project-radius/deployment-engine repo:
+2. In the radius-project/deployment-engine repo:
 
    Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.21`. This branch will be used for patching/servicing.
    
@@ -66,7 +66,7 @@ Follow the steps below to create an RC release.
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
 
-3. In the project-radius/radius repo:
+3. In the radius-project/radius repo:
 
    Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.21`. This branch will be used for patching/servicing.
    
@@ -137,7 +137,7 @@ If sample validation passes, we can start the process of creating the final rele
    
    You can find this file in the storage account under `version/stable.txt`.
 
-1. Update the project-radius/docs repository
+1. Update the radius-project/docs repository
 
    Assuming that we are using v0.21.
    
@@ -150,10 +150,10 @@ If sample validation passes, we can start the process of creating the final rele
       - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
    1. In `docs/content/getting-started/install/_index.md` update the binary download links with the new version number
    1. Commit and push updates to be the new `v0.21` branch you created above.
-   1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version. This requires Admin/PM action and is restricted to that set of people, so ping one of the PMs to edit this value.
+   1. Update the [latest](https://github.com/radius-project/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version. This requires Admin/PM action and is restricted to that set of people, so ping one of the PMs to edit this value.
    1. Verify https://radapp.dev now shows the new version.
 
-1. Update the project-radius/samples repository to point to latest release
+1. Update the radius-project/samples repository to point to latest release
 
    ```
    git checkout edge

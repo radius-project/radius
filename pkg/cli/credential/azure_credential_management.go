@@ -22,11 +22,11 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
-//go:generate mockgen -destination=./mock_azure_credential_management.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential AzureCredentialManagementClientInterface
+//go:generate mockgen -destination=./mock_azure_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AzureCredentialManagementClientInterface
 
 // AzureCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AzureCredentialManagementClient struct {

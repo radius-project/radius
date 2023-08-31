@@ -16,7 +16,7 @@ limitations under the License.
 
 package datamodel
 
-import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 
 // AWSResource represents any AWS Resource.
 // AWSResource is not a tracked resource, so it does not implement ResourceDataModel.

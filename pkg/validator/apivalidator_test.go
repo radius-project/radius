@@ -25,9 +25,9 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/swagger"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/swagger"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"

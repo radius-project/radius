@@ -22,7 +22,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/project-radius/radius/test/k8sutil"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

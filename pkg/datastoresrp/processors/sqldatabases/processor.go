@@ -9,9 +9,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/portableresources/processors"
-	"github.com/project-radius/radius/pkg/portableresources/renderers"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 )
 
 // Processor is a processor for SQL database resources.

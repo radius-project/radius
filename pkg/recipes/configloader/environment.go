@@ -22,20 +22,20 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/rp/kube"
-	"github.com/project-radius/radius/pkg/rp/util"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/rp/kube"
+	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 var (
 	ErrUnsupportedComputeKind = errors.New("unsupported compute kind in environment resource")
 )
 
-//go:generate mockgen -destination=./mock_config_loader.go -package=configloader -self_package github.com/project-radius/radius/pkg/recipes/configloader github.com/project-radius/radius/pkg/recipes/configloader ConfigurationLoader
+//go:generate mockgen -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 

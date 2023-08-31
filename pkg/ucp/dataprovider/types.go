@@ -19,7 +19,7 @@ package dataprovider
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 // StorageProviderType represents types of storage provider.
@@ -36,7 +36,7 @@ const (
 	TypeETCD StorageProviderType = "etcd"
 )
 
-//go:generate mockgen -destination=./mock_datastorage_provider.go -package=dataprovider -self_package github.com/project-radius/radius/pkg/ucp/dataprovider github.com/project-radius/radius/pkg/ucp/dataprovider DataStorageProvider
+//go:generate mockgen -destination=./mock_datastorage_provider.go -package=dataprovider -self_package github.com/radius-project/radius/pkg/ucp/dataprovider github.com/radius-project/radius/pkg/ucp/dataprovider DataStorageProvider
 
 // DataStorageProvider is an interfae to provide storage client.
 type DataStorageProvider interface {

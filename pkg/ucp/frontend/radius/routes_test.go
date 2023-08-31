@@ -23,14 +23,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/ucp/hostoptions"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/ucp/hostoptions"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 const pathBase = "/some-path-base"

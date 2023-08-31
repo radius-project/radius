@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/project-radius/radius/pkg/cli/tools"
+	"github.com/radius-project/radius/pkg/cli/tools"
 )
 
 const (

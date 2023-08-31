@@ -24,11 +24,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 

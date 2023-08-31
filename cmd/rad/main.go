@@ -19,7 +19,7 @@ package main
 import (
 	"os"
 
-	"github.com/project-radius/radius/cmd/rad/cmd"
+	"github.com/radius-project/radius/cmd/rad/cmd"
 )
 
 func main() {

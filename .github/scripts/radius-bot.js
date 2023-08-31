@@ -64,7 +64,7 @@ async function cmdOkToTest(github, issue, isFromPulls, username) {
     }
 
     // Check if the user has permission to trigger e2e test with an issue comment
-    const org = 'project-radius';
+    const org = 'radius-project';
     console.log(`Checking team membership for: ${username}`);
     const isMember = await checkTeamMembership(github, org, process.env.TEAM_SLUG, username);
     if (!isMember) {

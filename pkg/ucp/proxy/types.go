@@ -24,9 +24,9 @@ import (
 	"net/url"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/rest"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 type UCPRequestInfo struct {

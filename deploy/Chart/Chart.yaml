@@ -7,10 +7,10 @@ version: '0.42.42-dev'
 appVersion: 'edge'
 home: https://radapp.dev
 sources:
-  - https://github.com/project-radius/radius/tree/main/deploy/Chart
+  - https://github.com/radius-project/radius/tree/main/deploy/Chart
 maintainers:
   - name: Radius Authors
-    url: https://github.com/project-radius/radius
+    url: https://github.com/radius-project/radius
 icon: https://radapp.dev/images/logo.png
 keywords:
   - radius

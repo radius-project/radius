@@ -19,11 +19,11 @@ package processors
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/portableresources"
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // GetOutputResourcesFromResourcesField parses a slice of resource references and converts each resource into an OutputResource.

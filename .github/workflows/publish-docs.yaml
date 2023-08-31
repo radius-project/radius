@@ -18,12 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.21'
-      GOPRIVATE: github.com/project-radius
+      GOPRIVATE: github.com/radius-project
     steps:
       - name: Checkout radius repository
         uses: actions/checkout@v3
         with:
-          repository: project-radius/radius
+          repository: radius-project/radius
           path: radius
       - name: Parse release version and set environment variables
         run: python radius/.github/scripts/get_release_version.py
@@ -37,7 +37,7 @@ jobs:
       - name: Checkout docs repository
         uses: actions/checkout@v3
         with:
-          repository: project-radius/docs
+          repository: radius-project/docs
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}

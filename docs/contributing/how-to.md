@@ -4,9 +4,9 @@ We welcome and encourage users to contribute to the Radius open-source project i
 
 * Learn how: Browse our guides for how to [install repository prerequisites](./contributing-code/contributing-code-prerequisites/), [build the code](./contributing-code/contributing-code-building/), [understand the code](./contributing-code/contributing-code-organization/), [write code for the project](./contributing-code/contributing-code-writing/), and [run tests](./contributing-code/contributing-code-tests/). This is essential knowledge for working with the repository.
 
-* Tackle small tasks: Start by addressing small issues or tasks labeled as ["good first issues"](https://github.com/project-radius/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) This allows you to familiarize yourself with the project and make valuable contributions without a steep learning curve.
+* Tackle small tasks: Start by addressing small issues or tasks labeled as ["good first issues"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) This allows you to familiarize yourself with the project and make valuable contributions without a steep learning curve.
 
-* Take on bigger projects: Issues that are groomed and ready to be picked up are labeled as ["triaged"](https://github.com/project-radius/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
+* Take on bigger projects: Issues that are groomed and ready to be picked up are labeled as ["triaged"](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
 
 * Fork the project: Create a personal copy (fork) of the Radius repository on GitHub. This enables you to make changes and experiment as well as submit pull requests.
 
@@ -16,7 +16,7 @@ We welcome and encourage users to contribute to the Radius open-source project i
 
 * Test and report bugs: Assist in testing Radius by [identifying and reporting bugs](./contributing-issues/). Detailed bug reports help us address issues promptly and enhance the software's quality.
 
-* Improve documentation: Enhance the project's [documentation](https://github.com/project-radius/docs) by updating existing content, adding guides, or adding examples. Well-documented projects are easier to use and attract more users.
+* Improve documentation: Enhance the project's [documentation](https://github.com/radius-project/docs) by updating existing content, adding guides, or adding examples. Well-documented projects are easier to use and attract more users.
 
 * Spread the word: Share your positive experiences with Radius through blog posts, talks, or social media. Promote the project to attract more users and contributors. Star the project on GitHub!
 

@@ -19,7 +19,7 @@ package handlers
 import (
 	"context"
 
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const (
@@ -57,7 +57,7 @@ type DeleteOptions struct {
 
 // ResourceHandler interface defines the methods that every output resource will implement
 //
-//go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/corerp/handlers github.com/project-radius/radius/pkg/corerp/handlers ResourceHandler
+//go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/radius-project/radius/pkg/corerp/handlers github.com/radius-project/radius/pkg/corerp/handlers ResourceHandler
 type ResourceHandler interface {
 	// Put deploys the rendered output resource and returns and populates the properties during deployment,
 	// which can be used by the next resource handlers.

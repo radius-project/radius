@@ -19,8 +19,8 @@ package planes
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 )
 
 const (

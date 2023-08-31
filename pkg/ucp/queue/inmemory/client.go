@@ -20,7 +20,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/project-radius/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/ucp/queue/client"
 )
 
 var namedQueue = &sync.Map{}

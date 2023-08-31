@@ -20,8 +20,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 	AWSPlaneType   = "aws"
 )
 
-//go:generate mockgen -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/project-radius/radius/pkg/cli/credential github.com/project-radius/radius/pkg/cli/credential CredentialManagementClient
+//go:generate mockgen -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential CredentialManagementClient
 
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type CredentialManagementClient interface {

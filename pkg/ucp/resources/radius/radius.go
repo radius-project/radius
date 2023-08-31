@@ -16,7 +16,7 @@ limitations under the License.
 
 package radius
 
-import "github.com/project-radius/radius/pkg/ucp/resources"
+import "github.com/radius-project/radius/pkg/ucp/resources"
 
 const (
 	// PlaneTypeRadius defines the type name of the Radius plane.

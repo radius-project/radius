@@ -22,9 +22,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 // SystemService represents the service which provides the basic health status and metric server.

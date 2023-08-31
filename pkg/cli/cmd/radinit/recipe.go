@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"strings"
 
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/portableresources"
-	recipe_types "github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/version"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/portableresources"
+	recipe_types "github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/version"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -33,7 +33,7 @@ const (
 	DevRecipesRegistry = "radius.azurecr.io"
 )
 
-//go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/project-radius/radius/pkg/cli/cmd/radinit github.com/project-radius/radius/pkg/cli/cmd/radinit DevRecipeClient
+//go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
 type DevRecipeClient interface {
 	GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.RecipePropertiesClassification, error)
 }

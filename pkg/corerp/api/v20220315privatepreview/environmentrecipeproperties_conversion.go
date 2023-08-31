@@ -19,10 +19,10 @@ package v20220315privatepreview
 import (
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	types "github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	types "github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo returns an error as it does not support converting Environment Recipe Properties to a version-agnostic object.

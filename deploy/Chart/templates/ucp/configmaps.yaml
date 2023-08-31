@@ -9,7 +9,7 @@ metadata:
 data:
   ucp-config.yaml: |-
     # Radius configuration file.
-    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    # See https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
     storageProvider:
       provider: "apiserver"
       apiserver:

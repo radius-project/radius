@@ -22,9 +22,9 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
-	"github.com/project-radius/radius/pkg/cli/prompt/text"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	cli_list "github.com/radius-project/radius/pkg/cli/prompt/list"
+	"github.com/radius-project/radius/pkg/cli/prompt/text"
 )
 
 const (
@@ -35,7 +35,7 @@ const (
 	ConfirmNo = "No"
 )
 
-//go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
+//go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/radius-project/radius/pkg/cli/prompt github.com/radius-project/radius/pkg/cli/prompt Interface
 
 // Interface contains operation to prompt the user interactively.
 //

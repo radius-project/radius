@@ -25,7 +25,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	clientgoportforward "k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"

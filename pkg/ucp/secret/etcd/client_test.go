@@ -22,10 +22,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/data"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/ucp/data"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )

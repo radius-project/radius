@@ -20,9 +20,9 @@ import (
 	"context"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/config"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/config"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
 )
 
@@ -53,7 +53,7 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-//go:generate mockgen -destination=./mock_config.go -package=framework -self_package github.com/project-radius/radius/pkg/cli/framework github.com/project-radius/radius/pkg/cli/framework ConfigFileInterface
+//go:generate mockgen -destination=./mock_config.go -package=framework -self_package github.com/radius-project/radius/pkg/cli/framework github.com/radius-project/radius/pkg/cli/framework ConfigFileInterface
 
 type ConfigFileInterface interface {
 	ConfigFromContext(ctx context.Context) *viper.Viper

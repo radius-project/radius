@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubernetes"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

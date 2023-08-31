@@ -25,14 +25,14 @@ import (
 	"os"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/config"
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
-	sprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/config"
+	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
+	sprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
@@ -149,7 +149,7 @@ func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
 
 func getKubernetes() (*rest.Config, error) {
 	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+		// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
 		ContextName: "",
 		QPS:         kubeutil.DefaultServerQPS,
 		Burst:       kubeutil.DefaultServerBurst,

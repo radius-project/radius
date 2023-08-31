@@ -32,20 +32,20 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
-	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
+	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 const (
@@ -630,7 +630,7 @@ func (r Renderer) makeDeployment(
 	podSpec.Volumes = append(podSpec.Volumes, volumes...)
 
 	// See: https://github.com/kubernetes/kubernetes/issues/92226 and
-	// 		https://github.com/project-radius/radius/issues/3002
+	// 		https://github.com/radius-project/radius/issues/3002
 	//
 	// Service links are a flawed and Kubernetes-only feature that we don't
 	// want to leak into Radius containers.

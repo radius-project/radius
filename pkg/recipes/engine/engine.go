@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
-	recipedriver "github.com/project-radius/radius/pkg/recipes/driver"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // NewEngine creates a new Engine to deploy recipe.

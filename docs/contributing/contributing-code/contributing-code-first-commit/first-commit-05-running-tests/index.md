@@ -12,23 +12,23 @@ After tests run, you should see a big list of all of the project's packages:
 
 ```txt
 go test ./pkg/...
-ok  	github.com/project-radius/radius/pkg/cli	0.250s
-?   	github.com/project-radius/radius/pkg/azure/azcli	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/azure	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/bicep	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/environments	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/logger	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/namegenerator	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/prompt	[no test files]
-?   	github.com/project-radius/radius/pkg/cli/util	[no test files]
-?   	github.com/project-radius/radius/pkg/azure/radclient	[no test files]
-?   	github.com/project-radius/radius/pkg/renderers	[no test files]
-ok  	github.com/project-radius/radius/pkg/renderers/containerv1alpha3
-ok   	github.com/project-radius/radius/pkg/renderers/cosmosdbmongov1alpha3
-ok   	github.com/project-radius/radius/pkg/renderers/dapr
-ok   	github.com/project-radius/radius/pkg/renderers/daprpubsubv1alpha3
-ok   	github.com/project-radius/radius/pkg/renderers/daprstatestorev1alpha3
-ok   	github.com/project-radius/radius/pkg/renderers/servicebusqueuev1alpha3
+ok  	github.com/radius-project/radius/pkg/cli	0.250s
+?   	github.com/radius-project/radius/pkg/azure/azcli	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/azure	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/bicep	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/environments	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/logger	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/namegenerator	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/prompt	[no test files]
+?   	github.com/radius-project/radius/pkg/cli/util	[no test files]
+?   	github.com/radius-project/radius/pkg/azure/radclient	[no test files]
+?   	github.com/radius-project/radius/pkg/renderers	[no test files]
+ok  	github.com/radius-project/radius/pkg/renderers/containerv1alpha3
+ok   	github.com/radius-project/radius/pkg/renderers/cosmosdbmongov1alpha3
+ok   	github.com/radius-project/radius/pkg/renderers/dapr
+ok   	github.com/radius-project/radius/pkg/renderers/daprpubsubv1alpha3
+ok   	github.com/radius-project/radius/pkg/renderers/daprstatestorev1alpha3
+ok   	github.com/radius-project/radius/pkg/renderers/servicebusqueuev1alpha3
 ```
 
 The Go test tools do not make much fanfare when all the tests pass - it just says `ok` for every package that has tests.

@@ -19,9 +19,9 @@ package environments
 import (
 	"encoding/json"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 const testHeaderfile = "requestheaders20220315privatepreview.json"

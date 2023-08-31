@@ -19,11 +19,11 @@ package frontend
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // PrepareRadiusResource validates the Radius resource and prepare new resource data.

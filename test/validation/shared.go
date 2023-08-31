@@ -24,11 +24,11 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/test/radcli"
+	"github.com/radius-project/radius/test/radcli"
 )
 
 const (

@@ -17,7 +17,7 @@ limitations under the License.
 package connections
 
 import (
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 )
 
 // This file contains shared variables and functions used in tests.

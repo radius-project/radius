@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )

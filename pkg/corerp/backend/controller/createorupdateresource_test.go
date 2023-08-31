@@ -27,16 +27,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	deployment "github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/corerp/renderers/container"
-	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
-	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
-	"github.com/project-radius/radius/pkg/portableresources"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/corerp/renderers/container"
+	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
+	"github.com/radius-project/radius/pkg/corerp/renderers/httproute"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {

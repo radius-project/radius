@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 )
 
 const (

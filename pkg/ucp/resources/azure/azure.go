@@ -16,7 +16,7 @@ limitations under the License.
 
 package azure
 
-import "github.com/project-radius/radius/pkg/ucp/resources"
+import "github.com/radius-project/radius/pkg/ucp/resources"
 
 const (
 	// PlaneTypeAzure defines the type name of the Azure plane.
