@@ -186,9 +186,9 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 }
 
 // GetRecipeMetadata gets the parameter information from the Bicep registry
-func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts ExecuteOptions) (map[string]any, error) {
+func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, opts.BaseOptions.Definition.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
 	if err != nil {
 		return nil, err
 	}

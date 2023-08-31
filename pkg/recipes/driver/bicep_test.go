@@ -440,29 +440,15 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
-	recipe := recipes.ResourceMetadata{
-		Name:          "redis-azure",
-		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
-		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/mongoDatabases/test-mongo-recipe",
-		Parameters: map[string]any{
-			"documentdbName": "documentName",
-			"location":       "eastus",
-			"mongodbName":    "test-mongo-db",
-		},
-	}
-
 	expectedOutput := map[string]any{
 		"documentdbName": map[string]any{"type": "string"},
 		"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
 		"mongodbName":    map[string]any{"type": "string"},
 	}
 
-	recipeData, err := driver.GetRecipeMetadata(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe:     recipe,
-			Definition: recipeDefinition,
-		},
+	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
 	})
 
 	require.NoError(t, err)
@@ -479,23 +465,9 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
-	recipe := recipes.ResourceMetadata{
-		Name:          "redis-azure",
-		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
-		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/mongoDatabases/test-mongo-recipe",
-		Parameters: map[string]any{
-			"documentdbName": "documentName",
-			"location":       "eastus",
-			"mongodbName":    "test-mongo-db",
-		},
-	}
-
-	_, err := driver.GetRecipeMetadata(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe:     recipe,
-			Definition: recipeDefinition,
-		},
+	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
 	})
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{

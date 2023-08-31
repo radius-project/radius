@@ -175,7 +175,7 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 }
 
 // GetRecipeMetadata returns the Terraform Recipe parameters and metadata
-func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts ExecuteOptions) (map[string]any, error) {
+func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)

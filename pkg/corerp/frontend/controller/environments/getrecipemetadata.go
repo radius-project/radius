@@ -102,18 +102,17 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 }
 
 func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, recipeProperties datamodel.EnvironmentRecipeProperties, recipeDataModel *datamodel.Recipe) (recipeParameters map[string]any, err error) {
-	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	recipeMetadata := recipes.ResourceMetadata{
-		Name:          recipeDataModel.Name,
-		EnvironmentID: serviceCtx.ResourceID.String(),
-		Parameters:    recipeProperties.Parameters,
-		ResourceID:    serviceCtx.ResourceID.String(),
-		ResourceType:  recipeDataModel.LinkType,
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Name:            recipeDataModel.Name,
+		Driver:          recipeProperties.TemplateKind,
+		Parameters:      recipeProperties.Parameters,
+		TemplatePath:    recipeProperties.TemplatePath,
+		TemplateVersion: recipeProperties.TemplateVersion,
+		ResourceType:    recipeDataModel.LinkType,
 	}
 
 	recipeParameters = make(map[string]any)
-	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeMetadata)
+	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeDefinition)
 	if err != nil {
 		return recipeParameters, err
 	}

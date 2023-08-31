@@ -138,17 +138,17 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 }
 
 // GetRecipeMetadata gets the Recipe metadata and parameters from the Bicep registry or TF modules
-func (e *engine) GetRecipeMetadata(ctx context.Context, recipeMetadata recipes.ResourceMetadata) (map[string]any, error) {
+func (e *engine) GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition) (map[string]any, error) {
 	getMetadata := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	recipeData, err := e.getRecipeMetadataCore(ctx, recipeMetadata)
+	recipeData, err := e.getRecipeMetadataCore(ctx, recipeDefinition)
 	if err != nil {
 		result = metrics.FailedOperationState
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, getMetadata,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipeMetadata.Name,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipeDefinition.Name,
 			nil, result))
 
 	return recipeData, err
@@ -156,17 +156,16 @@ func (e *engine) GetRecipeMetadata(ctx context.Context, recipeMetadata recipes.R
 
 // getRecipeMetadataCore function is the core logic of the GetRecipeMetadata function.
 // Any changes to the core logic of the GetRecipeMetadata function should be made here.
-func (e *engine) getRecipeMetadataCore(ctx context.Context, recipeMetadata recipes.ResourceMetadata) (map[string]any, error) {
-	definition, driver, err := e.getDriver(ctx, recipeMetadata)
-	if err != nil {
-		return nil, err
+func (e *engine) getRecipeMetadataCore(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition) (map[string]any, error) {
+	// Determine Recipe driver type
+	driver, ok := e.options.Drivers[recipeDefinition.Driver]
+	if !ok {
+		return nil, fmt.Errorf("could not find driver %s", recipeDefinition.Driver)
 	}
 
-	return driver.GetRecipeMetadata(ctx, recipedriver.ExecuteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Definition: *definition,
-			Recipe:     recipeMetadata,
-		},
+	return driver.GetRecipeMetadata(ctx, recipedriver.BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
 	})
 }
 
