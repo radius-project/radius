@@ -38,11 +38,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-      - name: Install cadl compiler
-        run: |
-          pushd cadl
-          npm ci
-          popd
       - name: Install TypeSpec compiler
         run: |
           pushd typespec
