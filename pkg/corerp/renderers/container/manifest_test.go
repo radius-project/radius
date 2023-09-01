@@ -460,3 +460,47 @@ func TestPopulateAllBaseResources(t *testing.T) {
 		require.ElementsMatch(t, []string{"Secret-dtl+8w==", "Secret-ddl9YA==", "ConfigMap-6BU8tQ==", "ConfigMap-5xU7Ig=="}, outputResources[0].CreateResource.Dependencies)
 	})
 }
+
+func TestPatchPodSpec(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name: "sidecar",
+			},
+			{
+				Name: "test-container",
+			},
+		},
+	}
+
+	patchingPod := `
+{
+	"containers": [
+		{
+			"name": "sidecar",
+			"image": "fluent-bit:latest"
+		}
+	],
+	"nodeName": "test",
+	"hostNetwork": true
+}
+`
+
+	expected := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  "sidecar",
+				Image: "fluent-bit:latest",
+			},
+			{
+				Name: "test-container",
+			},
+		},
+		NodeName:    "test",
+		HostNetwork: true,
+	}
+
+	patched, err := patchPodSpec(podSpec, []byte(patchingPod))
+	require.NoError(t, err)
+	require.Equal(t, expected, patched)
+}

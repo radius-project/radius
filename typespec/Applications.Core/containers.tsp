@@ -72,10 +72,18 @@ model RuntimesProperties {
   kubernetes?: KubernetesRuntimeProperties;
 }
 
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
+model KubernetesPodSpec is Record<unknown>;
+
 @doc("The runtime configuration properties for Kubernetes")
 model KubernetesRuntimeProperties {
   @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
   base?: string;
+
+  #suppress "@azure-tools/typespec-azure-core/bad-record-type"
+  @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
+  pod?: KubernetesPodSpec;
 }
 
 @doc("Specifies a listening port for the container")

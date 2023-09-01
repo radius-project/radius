@@ -1605,6 +1605,80 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 	})
 }
 
+func Test_Render_StrategicPatchMerge(t *testing.T) {
+	const contianerPatchObject = `
+{
+	"containers": [
+		{
+			"name": "test",
+			"image": "magpie"
+		},
+		{
+			"name": "test-container",
+			"command": ["echo", "hello"],
+			"env": [
+				{
+					"name": "env1",
+					"value": "value1"
+				}
+			]
+		}
+	],
+	"hostNetwork": true
+}
+`
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+			Env: map[string]string{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+		},
+		Runtimes: &datamodel.RuntimeProperties{
+			Kubernetes: &datamodel.KubernetesRuntime{
+				Pod: contianerPatchObject,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	ctx := testcontext.New(t)
+	renderer := Renderer{}
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.True(t, deployment.Spec.Template.Spec.HostNetwork)
+	require.Len(t, deployment.Spec.Template.Spec.Containers, 2)
+
+	expectedContainers := []corev1.Container{
+		{
+			Name:    resourceName,
+			Command: []string{"echo", "hello"},
+			Env: []corev1.EnvVar{
+				{Name: "env1", Value: "value1"},
+				{Name: envVarName1, Value: envVarValue1},
+				{Name: envVarName2, Value: envVarValue2},
+			},
+			Image: properties.Container.Image,
+		},
+		{
+			Name:  "test",
+			Env:   nil,
+			Image: "magpie",
+		},
+	}
+
+	require.ElementsMatch(t, expectedContainers, deployment.Spec.Template.Spec.Containers)
+}
+
 func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
 	dependencies := map[string]renderers.RendererDependency{}
 	option := renderers.RenderOptions{Dependencies: dependencies}
