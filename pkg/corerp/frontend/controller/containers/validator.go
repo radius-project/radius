@@ -72,6 +72,9 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 	return nil, nil
 }
 
+// validatePodSpec is doing only syntactic validation for PodSpec by deserialzing the given JSON patch
+// to PodSpec object at this time. The semantic validation will be done when Radius applies the
+// patched object to Kubernetes API server.
 func validatePodSpec(patch []byte) error {
 	podSpec := &corev1.PodSpec{}
 	err := json.Unmarshal(patch, podSpec)
