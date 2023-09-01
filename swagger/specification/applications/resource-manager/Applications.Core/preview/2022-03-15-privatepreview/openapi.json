@@ -4181,6 +4181,11 @@
       ],
       "x-ms-discriminator-value": "kubernetesNamespace"
     },
+    "KubernetesPodSpec": {
+      "type": "object",
+      "description": "The properties of PodSpec object for Kuberentes Runtime.",
+      "additionalProperties": true
+    },
     "KubernetesRuntimeProperties": {
       "type": "object",
       "description": "The runtime configuration properties for Kubernetes",
@@ -4190,9 +4195,8 @@
           "description": "The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps."
         },
         "pod": {
-          "type": "object",
-          "description": "The PodSpec object which patches to the PodSpec object Radius creates.",
-          "properties": {}
+          "$ref": "#/definitions/KubernetesPodSpec",
+          "description": "The PodSpec object which patches to the PodSpec object Radius creates."
         }
       }
     },

@@ -72,13 +72,18 @@ model RuntimesProperties {
   kubernetes?: KubernetesRuntimeProperties;
 }
 
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("The properties of PodSpec object for Kuberentes Runtime.")
+model KubernetesPodSpec is Record<unknown>;
+
 @doc("The runtime configuration properties for Kubernetes")
 model KubernetesRuntimeProperties {
   @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
   base?: string;
 
+  #suppress "@azure-tools/typespec-azure-core/bad-record-type"
   @doc("The PodSpec object which patches to the PodSpec object Radius creates.")
-  pod?: {};
+  pod?: KubernetesPodSpec;
 }
 
 @doc("Specifies a listening port for the container")
