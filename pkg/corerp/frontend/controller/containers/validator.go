@@ -35,6 +35,7 @@ import (
 
 const (
 	manifestTargetProperty = "$.properties.runtimes.kubernetes.base"
+	podTargetProperty      = "$.properties.runtimes.kubernetes.pod"
 )
 
 // ValidateAndMutateRequest checks if the newResource has a user-defined identity and if so, returns a bad request
@@ -77,8 +78,8 @@ func validatePodSpec(patch []byte) error {
 	if err != nil {
 		return v1.ErrorDetails{
 			Code:    v1.CodeInvalidRequestContent,
-			Target:  "$.properties.runtimes.kubernetes.pod",
-			Message: fmt.Sprintf("The PodSpec patch object is invalid: %s", err.Error()),
+			Target:  podTargetProperty,
+			Message: fmt.Sprintf("Invalid PodSpec for patching: %s.", err.Error()),
 		}
 	}
 	return nil
@@ -87,7 +88,7 @@ func validatePodSpec(patch []byte) error {
 func errMultipleResources(typeName string, num int) v1.ErrorDetails {
 	return v1.ErrorDetails{
 		Code:    v1.CodeInvalidRequestContent,
-		Target:  "$.properties.runtimes.kubernetes.base",
+		Target:  manifestTargetProperty,
 		Message: fmt.Sprintf("only one %s is allowed, but the manifest includes %d resources.", typeName, num),
 	}
 }
@@ -99,7 +100,7 @@ func errUnmatchedName(obj runtime.Object, name string) v1.ErrorDetails {
 
 	return v1.ErrorDetails{
 		Code:    v1.CodeInvalidRequestContent,
-		Target:  "$.properties.runtimes.kubernetes.base",
+		Target:  manifestTargetProperty,
 		Message: fmt.Sprintf("%s name %s in manifest does not match resource name %s.", typeName, resourceName, name),
 	}
 }
@@ -177,7 +178,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 			if podSA != sa.Name {
 				errDetails = append(errDetails, v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
-					Target:  "$.properties.runtimes.kubernetes.base",
+					Target:  manifestTargetProperty,
 					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in ServiceAccount.", podSA, sa.Name),
 				})
 			}
