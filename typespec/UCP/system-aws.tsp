@@ -119,6 +119,12 @@ interface AwsCredentials {
     AwsCredentialBaseParameter<AwsCredentialResource>
   >;
 
+  @doc("Update an AWS credential")
+  update is UcpCustomPatchSync<
+    AwsCredentialResource,
+    AwsCredentialBaseParameter<AwsCredentialResource>
+  >;
+
   @doc("Delete an AWS credential")
   delete is UcpResourceDeleteSync<
     AwsCredentialResource,

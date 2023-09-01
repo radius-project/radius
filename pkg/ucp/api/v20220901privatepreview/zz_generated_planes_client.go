@@ -336,3 +336,69 @@ func (client *PlanesClient) listPlanesHandleResponse(resp *http.Response) (Plane
 	return result, nil
 }
 
+// BeginUpdate - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+//   - planeType - The plane type.
+//   - planeName - The name of the plane
+//   - properties - The resource properties to be updated.
+//   - options - PlanesClientBeginUpdateOptions contains the optional parameters for the PlanesClient.BeginUpdate method.
+func (client *PlanesClient) BeginUpdate(ctx context.Context, planeType string, planeName string, properties PlaneResourceTagsUpdate, options *PlanesClientBeginUpdateOptions) (*runtime.Poller[PlanesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, planeType, planeName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PlanesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[PlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Update - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+func (client *PlanesClient) update(ctx context.Context, planeType string, planeName string, properties PlaneResourceTagsUpdate, options *PlanesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, planeType, planeName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		err = runtime.NewResponseError(httpResp)
+		return nil, err
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the Update request.
+func (client *PlanesClient) updateCreateRequest(ctx context.Context, planeType string, planeName string, properties PlaneResourceTagsUpdate, options *PlanesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+	return nil, err
+}
+	return req, nil
+}
+

@@ -29,6 +29,11 @@ type AwsCredentialsClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AwsCredentialsClientUpdateOptions contains the optional parameters for the AwsCredentialsClient.Update method.
+type AwsCredentialsClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // AzureCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialsClient.CreateOrUpdate
 // method.
 type AzureCredentialsClientCreateOrUpdateOptions struct {
@@ -51,6 +56,11 @@ type AzureCredentialsClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AzureCredentialsClientUpdateOptions contains the optional parameters for the AzureCredentialsClient.Update method.
+type AzureCredentialsClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 // PlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the PlanesClient.BeginCreateOrUpdate method.
 type PlanesClientBeginCreateOrUpdateOptions struct {
 	// Resumes the LRO from the provided token.
@@ -59,6 +69,12 @@ type PlanesClientBeginCreateOrUpdateOptions struct {
 
 // PlanesClientBeginDeleteOptions contains the optional parameters for the PlanesClient.BeginDelete method.
 type PlanesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// PlanesClientBeginUpdateOptions contains the optional parameters for the PlanesClient.BeginUpdate method.
+type PlanesClientBeginUpdateOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
 }
@@ -97,6 +113,11 @@ type ResourceGroupsClientGetOptions struct {
 // ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.NewListByRootScopePager
 // method.
 type ResourceGroupsClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// ResourceGroupsClientUpdateOptions contains the optional parameters for the ResourceGroupsClient.Update method.
+type ResourceGroupsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 

@@ -26,6 +26,9 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.Foundations;
 using OpenAPI;
 
+// This operation helpers are created based on the following typespec operations template:
+// https://github.com/Azure/typespec-azure/blob/main/packages/typespec-azure-resource-manager/lib/operations.tsp
+
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @get
 @autoRoute

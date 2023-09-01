@@ -1,11 +1,11 @@
 # Contributing schema changes
 
-This page will explain the process to make a change to Radius' REST API (eg: adding a new property, or adding a new resource type).The Radius application model and API are defined via a OpenAPI specification. Instead of manually defining each OpenAPI spec, [CADL](https://microsoft.github.io/typespec/) is used to generate the OpenAPI JSON files. You should read and follow these steps to make REST API changes.
+This page will explain the process to make a change to Radius' REST API (eg: adding a new property, or adding a new resource type).The Radius application model and API are defined via a OpenAPI specification. Instead of manually defining each OpenAPI spec, [TypeSpec](https://microsoft.github.io/typespec/) is used to generate the OpenAPI JSON files. You should read and follow these steps to make REST API changes.
 
-## Step 1: Update CADL and generate Bicep types and API client
+## Step 1: Update TypeSpec and generate Bicep types and API client
 
 In order to update or create a new schema follow these steps:
-1. Create or update the applicable CADL files (named after resource type) within the `cadl` directory in the root of the radius repo
+1. Create or update the applicable TypeSpec files (named after resource type) within the `typespec` directory in the root of the radius repo
 2. Run `make generate` to generate the OpenAPI spec and API clients:
     ```bash
     make generate
@@ -17,13 +17,13 @@ In order to update or create a new schema follow these steps:
     1. Run the following command to generate the OpenAPI spec with the newly added changes
 
         ```bash
-        npx cadl compile .
+        npx tsp compile .
         ```
     2. Generate the client code by running autorest
 
         For example, to generate the portable resources run:
         ```bash
-        autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
+        autorest pkg/corerp/api/README.md --tag=link-2022-03-15-privatepreview
         ```
         The autotrest configuration file (_i.e README.md_) is generally found in `pkg/<NAMESPACE>/api/` directory and has details on which tag to use.
     </details>

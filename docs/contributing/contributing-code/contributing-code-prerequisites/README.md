@@ -111,7 +111,7 @@ If you were trying to run `make generate` and ran into an error, then one of the
 Enter the following commands to install all of the required tools.
 
 ```sh
-cd cadl && npm ci
+cd typespec && npm ci
 npm install -g autorest
 npm install -g oav
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1

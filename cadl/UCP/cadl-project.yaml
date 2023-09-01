@@ -1,5 +1,0 @@
-emit:
-  - "@azure-tools/cadl-autorest"
-options:
-  "@azure-tools/cadl-autorest":
-    emitter-output-dir: "{project-root}/../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/"

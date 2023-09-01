@@ -81,6 +81,12 @@ type AwsCredentialResourceListResult struct {
 	NextLink *string
 }
 
+// AwsCredentialResourceTagsUpdate - The type used for updating tags in AwsCredentialResource resources.
+type AwsCredentialResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+}
+
 // AzureCredentialProperties - The base properties of Azure Credential
 type AzureCredentialProperties struct {
 	// REQUIRED; The kind of Azure credential
@@ -124,6 +130,12 @@ type AzureCredentialResourceListResult struct {
 
 	// The link to the next page of items
 	NextLink *string
+}
+
+// AzureCredentialResourceTagsUpdate - The type used for updating tags in AzureCredentialResource resources.
+type AzureCredentialResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
 }
 
 // AzureServicePrincipalProperties - The properties of Service Principal credential storage
@@ -262,6 +274,12 @@ type PlaneResourceProperties struct {
 	ProvisioningState *ProvisioningState
 }
 
+// PlaneResourceTagsUpdate - The type used for updating tags in PlaneResource resources.
+type PlaneResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
+}
+
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
 type Resource struct {
 	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
@@ -314,6 +332,12 @@ type ResourceGroupResourceListResult struct {
 
 	// The link to the next page of items
 	NextLink *string
+}
+
+// ResourceGroupResourceTagsUpdate - The type used for updating tags in ResourceGroupResource resources.
+type ResourceGroupResourceTagsUpdate struct {
+	// Resource tags.
+	Tags map[string]*string
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.

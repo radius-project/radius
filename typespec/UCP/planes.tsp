@@ -116,6 +116,12 @@ interface Planes {
     PlaneBaseParameters<PlaneResource>
   >;
 
+  @doc("Update a plane")
+  update is UcpCustomPatchAsync<
+    PlaneResource,
+    PlaneBaseParameters<PlaneResource>
+  >;
+
   @doc("Delete a plane")
   delete is UcpResourceDeleteAsync<
     PlaneResource,

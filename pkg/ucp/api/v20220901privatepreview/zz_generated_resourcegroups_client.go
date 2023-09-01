@@ -271,3 +271,65 @@ func (client *ResourceGroupsClient) listByRootScopeHandleResponse(resp *http.Res
 	return result, nil
 }
 
+// Update - Update a resource group
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+//   - planeType - The plane type.
+//   - planeName - The name of the plane
+//   - resourceGroupName - The name of resource group
+//   - properties - The resource properties to be updated.
+//   - options - ResourceGroupsClientUpdateOptions contains the optional parameters for the ResourceGroupsClient.Update method.
+func (client *ResourceGroupsClient) Update(ctx context.Context, planeType string, planeName string, resourceGroupName string, properties ResourceGroupResourceTagsUpdate, options *ResourceGroupsClientUpdateOptions) (ResourceGroupsClientUpdateResponse, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, planeType, planeName, resourceGroupName, properties, options)
+	if err != nil {
+		return ResourceGroupsClientUpdateResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ResourceGroupsClientUpdateResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ResourceGroupsClientUpdateResponse{}, err
+	}
+	resp, err := client.updateHandleResponse(httpResp)
+	return resp, err
+}
+
+// updateCreateRequest creates the Update request.
+func (client *ResourceGroupsClient) updateCreateRequest(ctx context.Context, planeType string, planeName string, resourceGroupName string, properties ResourceGroupResourceTagsUpdate, options *ResourceGroupsClientUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+	return nil, err
+}
+	return req, nil
+}
+
+// updateHandleResponse handles the Update response.
+func (client *ResourceGroupsClient) updateHandleResponse(resp *http.Response) (ResourceGroupsClientUpdateResponse, error) {
+	result := ResourceGroupsClientUpdateResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResource); err != nil {
+		return ResourceGroupsClientUpdateResponse{}, err
+	}
+	return result, nil
+}
+

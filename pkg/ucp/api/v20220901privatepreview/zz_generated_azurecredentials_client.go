@@ -251,3 +251,60 @@ func (client *AzureCredentialsClient) listByRootScopeHandleResponse(resp *http.R
 	return result, nil
 }
 
+// Update - Update an Azure credential
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+//   - planeName - The name of the plane
+//   - credentialName - The Azure credential name.
+//   - properties - The resource properties to be updated.
+//   - options - AzureCredentialsClientUpdateOptions contains the optional parameters for the AzureCredentialsClient.Update method.
+func (client *AzureCredentialsClient) Update(ctx context.Context, planeName string, credentialName string, properties AzureCredentialResourceTagsUpdate, options *AzureCredentialsClientUpdateOptions) (AzureCredentialsClientUpdateResponse, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, planeName, credentialName, properties, options)
+	if err != nil {
+		return AzureCredentialsClientUpdateResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return AzureCredentialsClientUpdateResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return AzureCredentialsClientUpdateResponse{}, err
+	}
+	resp, err := client.updateHandleResponse(httpResp)
+	return resp, err
+}
+
+// updateCreateRequest creates the Update request.
+func (client *AzureCredentialsClient) updateCreateRequest(ctx context.Context, planeName string, credentialName string, properties AzureCredentialResourceTagsUpdate, options *AzureCredentialsClientUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	if credentialName == "" {
+		return nil, errors.New("parameter credentialName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+	return nil, err
+}
+	return req, nil
+}
+
+// updateHandleResponse handles the Update response.
+func (client *AzureCredentialsClient) updateHandleResponse(resp *http.Response) (AzureCredentialsClientUpdateResponse, error) {
+	result := AzureCredentialsClientUpdateResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResource); err != nil {
+		return AzureCredentialsClientUpdateResponse{}, err
+	}
+	return result, nil
+}
+

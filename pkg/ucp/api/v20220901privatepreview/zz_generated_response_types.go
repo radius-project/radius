@@ -30,6 +30,12 @@ type AwsCredentialsClientListByRootScopeResponse struct {
 	AwsCredentialResourceListResult
 }
 
+// AwsCredentialsClientUpdateResponse contains the response from method AwsCredentialsClient.Update.
+type AwsCredentialsClientUpdateResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
+	AwsCredentialResource
+}
+
 // AzureCredentialsClientCreateOrUpdateResponse contains the response from method AzureCredentialsClient.CreateOrUpdate.
 type AzureCredentialsClientCreateOrUpdateResponse struct {
 	// Represents Azure Credential Resource
@@ -51,6 +57,12 @@ type AzureCredentialsClientGetResponse struct {
 type AzureCredentialsClientListByRootScopeResponse struct {
 	// The response of a AzureCredentialResource list operation.
 	AzureCredentialResourceListResult
+}
+
+// AzureCredentialsClientUpdateResponse contains the response from method AzureCredentialsClient.Update.
+type AzureCredentialsClientUpdateResponse struct {
+	// Represents Azure Credential Resource
+	AzureCredentialResource
 }
 
 // PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.BeginCreateOrUpdate.
@@ -82,6 +94,12 @@ type PlanesClientListPlanesResponse struct {
 	PlaneResourceListResult
 }
 
+// PlanesClientUpdateResponse contains the response from method PlanesClient.BeginUpdate.
+type PlanesClientUpdateResponse struct {
+	// The plane resource
+	PlaneResource
+}
+
 // ResourceGroupsClientCreateOrUpdateResponse contains the response from method ResourceGroupsClient.CreateOrUpdate.
 type ResourceGroupsClientCreateOrUpdateResponse struct {
 	// The resource group resource
@@ -103,5 +121,11 @@ type ResourceGroupsClientGetResponse struct {
 type ResourceGroupsClientListByRootScopeResponse struct {
 	// The response of a ResourceGroupResource list operation.
 	ResourceGroupResourceListResult
+}
+
+// ResourceGroupsClientUpdateResponse contains the response from method ResourceGroupsClient.Update.
+type ResourceGroupsClientUpdateResponse struct {
+	// The resource group resource
+	ResourceGroupResource
 }
 

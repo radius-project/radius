@@ -251,3 +251,60 @@ func (client *AwsCredentialsClient) listByRootScopeHandleResponse(resp *http.Res
 	return result, nil
 }
 
+// Update - Update an AWS credential
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+//   - planeName - The name of AWS plane
+//   - credentialName - The AWS credential name.
+//   - properties - The resource properties to be updated.
+//   - options - AwsCredentialsClientUpdateOptions contains the optional parameters for the AwsCredentialsClient.Update method.
+func (client *AwsCredentialsClient) Update(ctx context.Context, planeName string, credentialName string, properties AwsCredentialResourceTagsUpdate, options *AwsCredentialsClientUpdateOptions) (AwsCredentialsClientUpdateResponse, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, planeName, credentialName, properties, options)
+	if err != nil {
+		return AwsCredentialsClientUpdateResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return AwsCredentialsClientUpdateResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return AwsCredentialsClientUpdateResponse{}, err
+	}
+	resp, err := client.updateHandleResponse(httpResp)
+	return resp, err
+}
+
+// updateCreateRequest creates the Update request.
+func (client *AwsCredentialsClient) updateCreateRequest(ctx context.Context, planeName string, credentialName string, properties AwsCredentialResourceTagsUpdate, options *AwsCredentialsClientUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	if credentialName == "" {
+		return nil, errors.New("parameter credentialName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+	return nil, err
+}
+	return req, nil
+}
+
+// updateHandleResponse handles the Update response.
+func (client *AwsCredentialsClient) updateHandleResponse(resp *http.Response) (AwsCredentialsClientUpdateResponse, error) {
+	result := AwsCredentialsClientUpdateResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResource); err != nil {
+		return AwsCredentialsClientUpdateResponse{}, err
+	}
+	return result, nil
+}
+

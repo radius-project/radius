@@ -78,11 +78,12 @@ interface ResourceGroups {
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
-  /*
-  update is UcpCustomPatchAsync<
+
+  @doc("Update a resource group")
+  update is UcpCustomPatchSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
-  >;*/
+  >;
 
   @doc("Delete a resource group")
   delete is UcpResourceDeleteSync<

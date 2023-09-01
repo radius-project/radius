@@ -123,6 +123,12 @@ interface AzureCredentials {
     AzureCredentialBaseParameter<AzureCredentialResource>
   >;
 
+  @doc("Update an Azure credential")
+  update is UcpCustomPatchSync<
+    AzureCredentialResource,
+    AzureCredentialBaseParameter<AzureCredentialResource>
+  >;
+
   @doc("Delete an Azure credential")
   delete is UcpResourceDeleteSync<
     AzureCredentialResource,
