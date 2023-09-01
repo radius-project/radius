@@ -12,10 +12,11 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-// AWSCredentialKind - AWS credential kinds supported.
+// AWSCredentialKind - AWS credential kind
 type AWSCredentialKind string
 
 const (
+	// AWSCredentialKindAccessKey - The AWS Access Key credential
 	AWSCredentialKindAccessKey AWSCredentialKind = "AccessKey"
 )
 
@@ -30,6 +31,7 @@ func PossibleAWSCredentialKindValues() []AWSCredentialKind {
 type AzureCredentialKind string
 
 const (
+	// AzureCredentialKindServicePrincipal - The Service Principal Credential
 	AzureCredentialKindServicePrincipal AzureCredentialKind = "ServicePrincipal"
 )
 
@@ -64,6 +66,7 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 type CredentialStorageKind string
 
 const (
+	// CredentialStorageKindInternal - Internal credential storage
 	CredentialStorageKindInternal CredentialStorageKind = "Internal"
 )
 
@@ -78,8 +81,11 @@ func PossibleCredentialStorageKindValues() []CredentialStorageKind {
 type PlaneKind string
 
 const (
+	// PlaneKindAWS - AWS Plane
 	PlaneKindAWS PlaneKind = "AWS"
+	// PlaneKindAzure - Azure Plane
 	PlaneKindAzure PlaneKind = "Azure"
+	// PlaneKindUCPNative - UCP Native Plane
 	PlaneKindUCPNative PlaneKind = "UCPNative"
 )
 
@@ -92,16 +98,23 @@ func PossiblePlaneKindValues() []PlaneKind {
 	}
 }
 
-// ProvisioningState - Provisioning state of the link at the time the operation was called
+// ProvisioningState - Provisioning state of the portable resource at the time the operation was called
 type ProvisioningState string
 
 const (
+	// ProvisioningStateAccepted - The resource create request has been accepted
 	ProvisioningStateAccepted ProvisioningState = "Accepted"
+	// ProvisioningStateCanceled - Resource creation was canceled.
 	ProvisioningStateCanceled ProvisioningState = "Canceled"
+	// ProvisioningStateDeleting - The resource is being deleted
 	ProvisioningStateDeleting ProvisioningState = "Deleting"
+	// ProvisioningStateFailed - Resource creation failed.
 	ProvisioningStateFailed ProvisioningState = "Failed"
+	// ProvisioningStateProvisioning - The resource is being provisioned
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	// ProvisioningStateSucceeded - Resource has been created.
 	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	// ProvisioningStateUpdating - The resource is updating
 	ProvisioningStateUpdating ProvisioningState = "Updating"
 )
 
@@ -115,6 +128,21 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
+	}
+}
+
+// Versions - Supported API versions for Universal Control Plane resource provider.
+type Versions string
+
+const (
+	// VersionsV20220901Privatepreview - 2022-09-01-privatepreview
+	VersionsV20220901Privatepreview Versions = "2022-09-01-privatepreview"
+)
+
+// PossibleVersionsValues returns the possible values for the Versions const type.
+func PossibleVersionsValues() []Versions {
+	return []Versions{	
+		VersionsV20220901Privatepreview,
 	}
 }
 

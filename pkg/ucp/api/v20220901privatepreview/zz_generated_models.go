@@ -9,13 +9,13 @@ package v20220901privatepreview
 
 import "time"
 
-// AWSAccessKeyCredentialProperties - AWS credential storage properties
-type AWSAccessKeyCredentialProperties struct {
+// AwsAccessKeyCredentialProperties - AWS credential storage properties
+type AwsAccessKeyCredentialProperties struct {
 	// REQUIRED; Access key ID for AWS identity
 	AccessKeyID *string
 
-	// REQUIRED; Discriminator property for AWSCredentialProperties.
-	Kind *string
+	// REQUIRED; The AWS credential kind
+	Kind *AWSCredentialKind
 
 	// REQUIRED; Secret Access Key for AWS identity
 	SecretAccessKey *string
@@ -23,38 +23,38 @@ type AWSAccessKeyCredentialProperties struct {
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification
 
-	// READ-ONLY; Provisioning state of the resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
-// GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSAccessKeyCredentialProperties.
-func (a *AWSAccessKeyCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties {
-	return &AWSCredentialProperties{
+// GetAwsCredentialProperties implements the AwsCredentialPropertiesClassification interface for type AwsAccessKeyCredentialProperties.
+func (a *AwsAccessKeyCredentialProperties) GetAwsCredentialProperties() *AwsCredentialProperties {
+	return &AwsCredentialProperties{
 		Kind: a.Kind,
 		ProvisioningState: a.ProvisioningState,
 	}
 }
 
-// AWSCredentialProperties - AWS Credential properties
-type AWSCredentialProperties struct {
-	// REQUIRED; Discriminator property for AWSCredentialProperties.
-	Kind *string
+// AwsCredentialProperties - AWS Credential properties
+type AwsCredentialProperties struct {
+	// REQUIRED; The AWS credential kind
+	Kind *AWSCredentialKind
 
-	// READ-ONLY; Provisioning state of the resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
-// GetAWSCredentialProperties implements the AWSCredentialPropertiesClassification interface for type AWSCredentialProperties.
-func (a *AWSCredentialProperties) GetAWSCredentialProperties() *AWSCredentialProperties { return a }
+// GetAwsCredentialProperties implements the AwsCredentialPropertiesClassification interface for type AwsCredentialProperties.
+func (a *AwsCredentialProperties) GetAwsCredentialProperties() *AwsCredentialProperties { return a }
 
-// AWSCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
+// AwsCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
 // type.
-type AWSCredentialResource struct {
+type AwsCredentialResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
 	// The resource-specific properties for this resource.
-	Properties AWSCredentialPropertiesClassification
+	Properties AwsCredentialPropertiesClassification
 
 	// Resource tags.
 	Tags map[string]*string
@@ -72,29 +72,28 @@ type AWSCredentialResource struct {
 	Type *string
 }
 
-// AWSCredentialResourceListResult - The response of a AWSCredentialResource list operation.
-type AWSCredentialResourceListResult struct {
-	// REQUIRED; The AWSCredentialResource items on this page
-	Value []*AWSCredentialResource
+// AwsCredentialResourceListResult - The response of a AwsCredentialResource list operation.
+type AwsCredentialResourceListResult struct {
+	// REQUIRED; The AwsCredentialResource items on this page
+	Value []*AwsCredentialResource
 
 	// The link to the next page of items
 	NextLink *string
 }
 
-// AzureCredentialProperties - Azure Credential properties
+// AzureCredentialProperties - The base properties of Azure Credential
 type AzureCredentialProperties struct {
-	// REQUIRED; Discriminator property for AzureCredentialProperties.
-	Kind *string
+	// REQUIRED; The kind of Azure credential
+	Kind *AzureCredentialKind
 
-	// READ-ONLY; Provisioning state of the resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
 // GetAzureCredentialProperties implements the AzureCredentialPropertiesClassification interface for type AzureCredentialProperties.
 func (a *AzureCredentialProperties) GetAzureCredentialProperties() *AzureCredentialProperties { return a }
 
-// AzureCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
-// type.
+// AzureCredentialResource - Represents Azure Credential Resource
 type AzureCredentialResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -127,7 +126,7 @@ type AzureCredentialResourceListResult struct {
 	NextLink *string
 }
 
-// AzureServicePrincipalProperties - Service Principal credential storage properties
+// AzureServicePrincipalProperties - The properties of Service Principal credential storage
 type AzureServicePrincipalProperties struct {
 	// REQUIRED; clientId for ServicePrincipal
 	ClientID *string
@@ -135,8 +134,8 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; secret for ServicePrincipal
 	ClientSecret *string
 
-	// REQUIRED; Discriminator property for AzureCredentialProperties.
-	Kind *string
+	// REQUIRED; The kind of Azure credential
+	Kind *AzureCredentialKind
 
 	// REQUIRED; The storage properties
 	Storage CredentialStoragePropertiesClassification
@@ -144,7 +143,7 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; tenantId for ServicePrincipal
 	TenantID *string
 
-	// READ-ONLY; Provisioning state of the resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
@@ -156,16 +155,10 @@ func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureC
 	}
 }
 
-// BasicResourceProperties - Basic properties of a UCP resource.
-type BasicResourceProperties struct {
-	// READ-ONLY; Provisioning state of the resource at the time the operation was called
-	ProvisioningState *ProvisioningState
-}
-
 // CredentialStorageProperties - Credential storage properties
 type CredentialStorageProperties struct {
-	// REQUIRED; Discriminator property for CredentialStorageProperties.
-	Kind *string
+	// REQUIRED; The kind of credential storage
+	Kind *CredentialStorageKind
 }
 
 // GetCredentialStorageProperties implements the CredentialStoragePropertiesClassification interface for type CredentialStorageProperties.
@@ -207,8 +200,8 @@ type ErrorResponse struct {
 
 // InternalCredentialStorageProperties - Internal credential storage properties
 type InternalCredentialStorageProperties struct {
-	// REQUIRED; Discriminator property for CredentialStorageProperties.
-	Kind *string
+	// REQUIRED; The kind of credential storage
+	Kind *CredentialStorageKind
 
 	// READ-ONLY; The name of secret stored.
 	SecretName *string
@@ -221,7 +214,7 @@ func (i *InternalCredentialStorageProperties) GetCredentialStorageProperties() *
 	}
 }
 
-// PlaneResource - UCP PlaneResource.
+// PlaneResource - The plane resource
 type PlaneResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -265,7 +258,7 @@ type PlaneResourceProperties struct {
 	// URL to forward requests to for non UCP Native Plane
 	URL *string
 
-	// READ-ONLY; Provisioning state of the resource at the time the operation was called
+	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
 
@@ -284,13 +277,19 @@ type Resource struct {
 	Type *string
 }
 
-// ResourceGroupResource - UCP ResourceGroup.
+// ResourceGroupProperties - The resource group resource properties
+type ResourceGroupProperties struct {
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+}
+
+// ResourceGroupResource - The resource group resource
 type ResourceGroupResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
 	// The resource-specific properties for this resource.
-	Properties *BasicResourceProperties
+	Properties *ResourceGroupProperties
 
 	// Resource tags.
 	Tags map[string]*string

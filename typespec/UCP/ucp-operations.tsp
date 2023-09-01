@@ -26,13 +26,6 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.Foundations;
 using OpenAPI;
 
-/**
- * A resource list operation, at the scope of the resource's parent
- * @template TResource the resource being patched
- * @template TBaseParameters Optional. Allows overriding the operation parameters
- * @template TParentName Optional. The name of the parent resource
- * @template TParentFriendlyName Optional. The friendly name of the parent resource
- */
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @get
 @autoRoute
@@ -44,11 +37,6 @@ op UcpResourceListByRootScope<TResource extends ArmResource, TBaseParameters>(
   ...ParentKeysOf<TResource>,
 ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 
-/**
- * A resource GET operation
- * @template TResource the resource being patched
- * @template TBaseParameters Optional. Allows overriding the operation parameters
- */
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
 @doc("Get a {name}", TResource)
@@ -58,11 +46,6 @@ op UcpResourceRead<TResource extends ArmResource, TBaseParameters>(
   ...TBaseParameters,
 ): ArmResponse<TResource> | ErrorResponse;
 
-/**
- * A long-running resource CreateOrUpdate (PUT)
- * @template TResource the resource being patched
- * @template TBaseParameters Optional. Allows overriding the operation parameters
- */
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
 @doc("Create a {name}", TResource)
@@ -86,12 +69,6 @@ op UcpResourceCreateOrUpdateAsync<
   resource: TResource,
 ): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedResponse<TResource> | ErrorResponse;
 
-/**
- * A long-running resource update using a custom PATCH payload (Asynchronous)
- * @template TResource the resource being patched
- * @template TPatchModel The input model for the PATCH request
- * @template TBaseParameters Optional. Allows overriding the operation parameters
- */
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
 @doc("Update a {name}", TResource)
@@ -116,12 +93,6 @@ op UcpCustomPatchAsync<
   properties: TPatchModel,
 ): ArmResponse<TResource> | ArmAcceptedLroResponse<"Resource update request accepted."> | ErrorResponse;
 
-/**
- * @dev Delete a resource asynchronously
- * @template TResource The resource being deleted
- * @template TResponse The response type for the operation
- * @template TBaseParameters Optional. Allows overriding the parameters for the operation
- */
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
 @autoRoute
 @doc("Delete a {name}", TResource)
@@ -141,3 +112,45 @@ op UcpResourceDeleteAsync<TResource extends ArmResource, TBaseParameters>(
   | ArmDeleteAcceptedLroResponse
   | ArmDeletedNoContentResponse
   | ErrorResponse;
+
+#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
+@autoRoute
+@doc("Create a {name}", TResource)
+@armResourceCreateOrUpdate(TResource)
+@put
+op UcpResourceCreateOrUpdateSync<
+  TResource extends ArmResource,
+  TBaseParameters
+>(
+  ...TBaseParameters,
+
+  @doc("Resource create parameters.")
+  @body
+  resource: TResource,
+): ArmResourceUpdatedResponse<TResource> | ArmResourceCreatedSyncResponse<TResource> | ErrorResponse;
+
+#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
+@autoRoute
+@doc("Update a {name}", TResource)
+@armResourceUpdate(TResource)
+@patch
+op UcpCustomPatchSync<
+  TResource extends ArmResource,
+  TBaseParameters,
+  TPatchModel extends TypeSpec.Reflection.Model = TagsUpdateModel<TResource>
+>(
+  ...TBaseParameters,
+
+  @doc("The resource properties to be updated.")
+  @body
+  properties: TPatchModel,
+): ArmResponse<TResource> | ErrorResponse;
+
+#suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
+@autoRoute
+@doc("Delete a {name}", TResource)
+@armResourceDelete(TResource)
+@delete
+op UcpResourceDeleteSync<TResource extends ArmResource, TBaseParameters>(
+  ...TBaseParameters,
+): ArmDeletedResponse | ArmDeletedNoContentResponse | ErrorResponse;

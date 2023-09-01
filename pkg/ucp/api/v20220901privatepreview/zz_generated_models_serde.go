@@ -14,19 +14,19 @@ import (
 	"reflect"
 )
 
-// MarshalJSON implements the json.Marshaller interface for type AWSAccessKeyCredentialProperties.
-func (a AWSAccessKeyCredentialProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AwsAccessKeyCredentialProperties.
+func (a AwsAccessKeyCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "accessKeyId", a.AccessKeyID)
-	objectMap["kind"] = "AccessKey"
+	objectMap["kind"] = AWSCredentialKindAccessKey
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "secretAccessKey", a.SecretAccessKey)
 	populate(objectMap, "storage", a.Storage)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AWSAccessKeyCredentialProperties.
-func (a *AWSAccessKeyCredentialProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AwsAccessKeyCredentialProperties.
+func (a *AwsAccessKeyCredentialProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", a, err)
@@ -57,16 +57,16 @@ func (a *AWSAccessKeyCredentialProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AWSCredentialProperties.
-func (a AWSCredentialProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AwsCredentialProperties.
+func (a AwsCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	objectMap["kind"] = a.Kind
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AWSCredentialProperties.
-func (a *AWSCredentialProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AwsCredentialProperties.
+func (a *AwsCredentialProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", a, err)
@@ -88,8 +88,8 @@ func (a *AWSCredentialProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AWSCredentialResource.
-func (a AWSCredentialResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AwsCredentialResource.
+func (a AwsCredentialResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "location", a.Location)
@@ -101,8 +101,8 @@ func (a AWSCredentialResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AWSCredentialResource.
-func (a *AWSCredentialResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AwsCredentialResource.
+func (a *AwsCredentialResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", a, err)
@@ -120,7 +120,7 @@ func (a *AWSCredentialResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &a.Name)
 			delete(rawMsg, key)
 		case "properties":
-			a.Properties, err = unmarshalAWSCredentialPropertiesClassification(val)
+			a.Properties, err = unmarshalAwsCredentialPropertiesClassification(val)
 			delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &a.SystemData)
@@ -139,16 +139,16 @@ func (a *AWSCredentialResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AWSCredentialResourceListResult.
-func (a AWSCredentialResourceListResult) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AwsCredentialResourceListResult.
+func (a AwsCredentialResourceListResult) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "nextLink", a.NextLink)
 	populate(objectMap, "value", a.Value)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AWSCredentialResourceListResult.
-func (a *AWSCredentialResourceListResult) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AwsCredentialResourceListResult.
+func (a *AwsCredentialResourceListResult) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", a, err)
@@ -288,7 +288,7 @@ func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "clientId", a.ClientID)
 	populate(objectMap, "clientSecret", a.ClientSecret)
-	objectMap["kind"] = "ServicePrincipal"
+	objectMap["kind"] = AzureCredentialKindServicePrincipal
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "storage", a.Storage)
 	populate(objectMap, "tenantId", a.TenantID)
@@ -325,33 +325,6 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", a, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
-func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]any)
-	populate(objectMap, "provisioningState", b.ProvisioningState)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type BasicResourceProperties.
-func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", b, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &b.ProvisioningState)
-			delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", b, err)
 		}
 	}
 	return nil
@@ -488,7 +461,7 @@ func (e *ErrorResponse) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type InternalCredentialStorageProperties.
 func (i InternalCredentialStorageProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	objectMap["kind"] = "Internal"
+	objectMap["kind"] = CredentialStorageKindInternal
 	populate(objectMap, "secretName", i.SecretName)
 	return json.Marshal(objectMap)
 }
@@ -667,6 +640,33 @@ func (r *Resource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &r.Type)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ResourceGroupProperties.
+func (r ResourceGroupProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceGroupProperties.
+func (r *ResourceGroupProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
 			delete(rawMsg, key)
 		}
 		if err != nil {

@@ -74,7 +74,7 @@ interface ResourceGroups {
   >;
 
   @doc("Create or update a resource group")
-  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+  createOrUpdate is UcpResourceCreateOrUpdateSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
@@ -85,7 +85,7 @@ interface ResourceGroups {
   >;*/
 
   @doc("Delete a resource group")
-  delete is UcpResourceDeleteAsync<
+  delete is UcpResourceDeleteSync<
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;

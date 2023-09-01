@@ -34,13 +34,13 @@ var _ CredentialProvider[AWSCredential] = (*AWSCredentialProvider)(nil)
 // AWSCredentialProvider is UCP credential provider for Azure.
 type AWSCredentialProvider struct {
 	secretProvider *provider.SecretProvider
-	client         *ucpapi.AwsCredentialClient
+	client         *ucpapi.AwsCredentialsClient
 }
 
 // NewAWSCredentialProvider creates a new AWSCredentialProvider struct using the given SecretProvider, UCP connection and
 // TokenCredential, and returns it or an error if one occurs.
 func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
-	cli, err := ucpapi.NewAwsCredentialClient(credential, sdk.NewClientOptions(ucpConn))
+	cli, err := ucpapi.NewAwsCredentialsClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Con
 // Kubernetes secret store). It returns an AWSCredential struct or an error if the fetch fails.
 func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AWSCredential, error) {
 	// 1. Fetch the secret name of AWS IAM access keys from UCP.
-	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AwsCredentialClientGetOptions{})
+	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AwsCredentialsClientGetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (p *AWSCredentialProvider) Fetch(ctx context.Context, planeName, name strin
 	var storage *ucpapi.InternalCredentialStorageProperties
 
 	switch p := cred.Properties.(type) {
-	case *ucpapi.AWSAccessKeyCredentialProperties:
+	case *ucpapi.AwsAccessKeyCredentialProperties:
 		switch c := p.Storage.(type) {
 		case *ucpapi.InternalCredentialStorageProperties:
 			storage = c

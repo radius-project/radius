@@ -7,62 +7,60 @@
 
 package v20220901privatepreview
 
-// AwsCredentialClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialClient.CreateOrUpdate method.
-type AwsCredentialClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AwsCredentialClientDeleteOptions contains the optional parameters for the AwsCredentialClient.Delete method.
-type AwsCredentialClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AwsCredentialClientGetOptions contains the optional parameters for the AwsCredentialClient.Get method.
-type AwsCredentialClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AwsCredentialClientListByRootScopeOptions contains the optional parameters for the AwsCredentialClient.NewListByRootScopePager
+// AwsCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialsClient.CreateOrUpdate
 // method.
-type AwsCredentialClientListByRootScopeOptions struct {
+type AwsCredentialsClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialClient.CreateOrUpdate
+// AwsCredentialsClientDeleteOptions contains the optional parameters for the AwsCredentialsClient.Delete method.
+type AwsCredentialsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AwsCredentialsClientGetOptions contains the optional parameters for the AwsCredentialsClient.Get method.
+type AwsCredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AwsCredentialsClientListByRootScopeOptions contains the optional parameters for the AwsCredentialsClient.NewListByRootScopePager
 // method.
-type AzureCredentialClientCreateOrUpdateOptions struct {
+type AwsCredentialsClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialClientDeleteOptions contains the optional parameters for the AzureCredentialClient.Delete method.
-type AzureCredentialClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AzureCredentialClientGetOptions contains the optional parameters for the AzureCredentialClient.Get method.
-type AzureCredentialClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AzureCredentialClientListByRootScopeOptions contains the optional parameters for the AzureCredentialClient.NewListByRootScopePager
+// AzureCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialsClient.CreateOrUpdate
 // method.
-type AzureCredentialClientListByRootScopeOptions struct {
+type AzureCredentialsClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlaneTypesClientGetOptions contains the optional parameters for the PlaneTypesClient.Get method.
-type PlaneTypesClientGetOptions struct {
+// AzureCredentialsClientDeleteOptions contains the optional parameters for the AzureCredentialsClient.Delete method.
+type AzureCredentialsClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
-type PlanesClientCreateOrUpdateOptions struct {
+// AzureCredentialsClientGetOptions contains the optional parameters for the AzureCredentialsClient.Get method.
+type AzureCredentialsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
-type PlanesClientDeleteOptions struct {
+// AzureCredentialsClientListByRootScopeOptions contains the optional parameters for the AzureCredentialsClient.NewListByRootScopePager
+// method.
+type AzureCredentialsClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
+}
+
+// PlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the PlanesClient.BeginCreateOrUpdate method.
+type PlanesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
+}
+
+// PlanesClientBeginDeleteOptions contains the optional parameters for the PlanesClient.BeginDelete method.
+type PlanesClientBeginDeleteOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
@@ -70,8 +68,13 @@ type PlanesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlanesClientListByRootScopeOptions contains the optional parameters for the PlanesClient.NewListByRootScopePager method.
-type PlanesClientListByRootScopeOptions struct {
+// PlanesClientListByTypeOptions contains the optional parameters for the PlanesClient.NewListByTypePager method.
+type PlanesClientListByTypeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// PlanesClientListPlanesOptions contains the optional parameters for the PlanesClient.NewListPlanesPager method.
+type PlanesClientListPlanesOptions struct {
 	// placeholder for future optional parameters
 }
 

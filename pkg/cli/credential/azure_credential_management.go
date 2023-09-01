@@ -30,7 +30,7 @@ import (
 
 // AzureCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AzureCredentialManagementClient struct {
-	AzureCredentialClient ucp.AzureCredentialClient
+	AzureCredentialClient ucp.AzureCredentialsClient
 }
 
 // AzureCredentialManagementClient is used to interface with cloud provider configuration and credentials.
@@ -136,7 +136,7 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		},
 		AzureCredentials: &AzureCredentialProperties{
 			ClientID: azureServicePrincipal.ClientID,
-			Kind:     azureServicePrincipal.Kind,
+			Kind:     (*string)(azureServicePrincipal.Kind),
 			TenantID: azureServicePrincipal.TenantID,
 		},
 	}

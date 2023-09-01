@@ -58,9 +58,18 @@ model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
   name: ResourceNameString;
 }
 
+@doc("Azure credential kinds supported.")
+enum AzureCredentialKind {
+  @doc("The Service Principal Credential")
+  ServicePrincipal,
+}
+
 @discriminator("kind")
 @doc("The base properties of Azure Credential")
 model AzureCredentialProperties {
+  @doc("The kind of Azure credential")
+  kind: AzureCredentialKind;
+
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
@@ -69,7 +78,7 @@ model AzureCredentialProperties {
 @doc("The properties of Service Principal credential storage")
 model AzureServicePrincipalProperties extends AzureCredentialProperties {
   @doc("Service principal kind")
-  kind: "ServicePrincipal";
+  kind: AzureCredentialKind.ServicePrincipal;
 
   @doc("clientId for ServicePrincipal")
   clientId: string;
@@ -83,20 +92,6 @@ model AzureServicePrincipalProperties extends AzureCredentialProperties {
 
   @doc("The storage properties")
   storage: CredentialStorageProperties;
-}
-
-@doc("Credential storage properties")
-@discriminator("kind")
-model CredentialStorageProperties {}
-
-@doc("Internal credential storage properties")
-model InternalCredentialStorageProperties extends CredentialStorageProperties {
-  @doc("Internal kind")
-  kind: "Internal";
-
-  @doc("The name of secret stored.")
-  @visibility("read")
-  secretName: string;
 }
 
 alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<
@@ -123,13 +118,13 @@ interface AzureCredentials {
   >;
 
   @doc("Create or update an Azure credential")
-  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+  createOrUpdate is UcpResourceCreateOrUpdateSync<
     AzureCredentialResource,
     AzureCredentialBaseParameter<AzureCredentialResource>
   >;
 
   @doc("Delete an Azure credential")
-  delete is UcpResourceDeleteAsync<
+  delete is UcpResourceDeleteSync<
     AzureCredentialResource,
     AzureCredentialBaseParameter<AzureCredentialResource>
   >;

@@ -168,12 +168,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			TenantID:     &r.TenantID,
 			ClientID:     &r.ClientID,
 			ClientSecret: &r.ClientSecret,
-			Kind:         to.Ptr("ServicePrincipal"),
+			Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 		},
 	}
 

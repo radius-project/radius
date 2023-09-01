@@ -443,13 +443,6 @@
             "description": "Resource 'ResourceGroupResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/ResourceGroupResource"
-            },
-            "headers": {
-              "Retry-After": {
-                "type": "integer",
-                "format": "int32",
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              }
             }
           },
           "default": {
@@ -463,11 +456,7 @@
           "Create or update a resource group": {
             "$ref": "./examples/ResourceGroups_CreateOrUpdate.json"
           }
-        },
-        "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
-        },
-        "x-ms-long-running-operation": true
+        }
       },
       "delete": {
         "operationId": "ResourceGroups_Delete",
@@ -503,20 +492,6 @@
           "200": {
             "description": "Resource deleted successfully."
           },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "type": "integer",
-                "format": "int32",
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              }
-            }
-          },
           "204": {
             "description": "Resource deleted successfully."
           },
@@ -531,11 +506,7 @@
           "Delete a resource group": {
             "$ref": "./examples/ResourceGroups_Delete.json"
           }
-        },
-        "x-ms-long-running-operation-options": {
-          "final-state-via": "location"
-        },
-        "x-ms-long-running-operation": true
+        }
       }
     },
     "/planes/aws/{planeName}/providers/System.AWS/credentials": {
@@ -664,13 +635,6 @@
             "description": "Resource 'AwsCredentialResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/AwsCredentialResource"
-            },
-            "headers": {
-              "Retry-After": {
-                "type": "integer",
-                "format": "int32",
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              }
             }
           },
           "default": {
@@ -684,11 +648,7 @@
           "Create or update a AWS credential": {
             "$ref": "./examples/AWSCredential_CreateOrUpdate.json"
           }
-        },
-        "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
-        },
-        "x-ms-long-running-operation": true
+        }
       },
       "delete": {
         "operationId": "AwsCredentials_Delete",
@@ -717,20 +677,6 @@
           "200": {
             "description": "Resource deleted successfully."
           },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "type": "integer",
-                "format": "int32",
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              }
-            }
-          },
           "204": {
             "description": "Resource deleted successfully."
           },
@@ -745,11 +691,7 @@
           "Delete a AWS credential": {
             "$ref": "./examples/AWSCredential_Delete.json"
           }
-        },
-        "x-ms-long-running-operation-options": {
-          "final-state-via": "location"
-        },
-        "x-ms-long-running-operation": true
+        }
       }
     },
     "/planes/azure/{planeName}/providers/System.Azure/credentials": {
@@ -878,13 +820,6 @@
             "description": "Resource 'AzureCredentialResource' create operation succeeded",
             "schema": {
               "$ref": "#/definitions/AzureCredentialResource"
-            },
-            "headers": {
-              "Retry-After": {
-                "type": "integer",
-                "format": "int32",
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              }
             }
           },
           "default": {
@@ -898,11 +833,7 @@
           "Create or update a Azure credential": {
             "$ref": "./examples/AzureCredential_CreateOrUpdate.json"
           }
-        },
-        "x-ms-long-running-operation-options": {
-          "final-state-via": "azure-async-operation"
-        },
-        "x-ms-long-running-operation": true
+        }
       },
       "delete": {
         "operationId": "AzureCredentials_Delete",
@@ -931,20 +862,6 @@
           "200": {
             "description": "Resource deleted successfully."
           },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "type": "integer",
-                "format": "int32",
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
-              },
-              "Location": {
-                "type": "string",
-                "description": "The Location header contains the URL where the status of the long running operation can be checked."
-              }
-            }
-          },
           "204": {
             "description": "Resource deleted successfully."
           },
@@ -959,15 +876,29 @@
           "Delete a Azure credential": {
             "$ref": "./examples/AzureCredential_Delete.json"
           }
-        },
-        "x-ms-long-running-operation-options": {
-          "final-state-via": "location"
-        },
-        "x-ms-long-running-operation": true
+        }
       }
     }
   },
   "definitions": {
+    "AWSCredentialKind": {
+      "type": "string",
+      "description": "AWS credential kind",
+      "enum": [
+        "AccessKey"
+      ],
+      "x-ms-enum": {
+        "name": "AWSCredentialKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "AccessKey",
+            "value": "AccessKey",
+            "description": "The AWS Access Key credential"
+          }
+        ]
+      }
+    },
     "AwsAccessKeyCredentialProperties": {
       "type": "object",
       "description": "AWS credential storage properties",
@@ -1006,8 +937,8 @@
       "description": "AWS Credential properties",
       "properties": {
         "kind": {
-          "type": "string",
-          "description": "Discriminator property for AwsCredentialProperties."
+          "$ref": "#/definitions/AWSCredentialKind",
+          "description": "The AWS credential kind"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -1061,13 +992,31 @@
         "value"
       ]
     },
+    "AzureCredentialKind": {
+      "type": "string",
+      "description": "Azure credential kinds supported.",
+      "enum": [
+        "ServicePrincipal"
+      ],
+      "x-ms-enum": {
+        "name": "AzureCredentialKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "ServicePrincipal",
+            "value": "ServicePrincipal",
+            "description": "The Service Principal Credential"
+          }
+        ]
+      }
+    },
     "AzureCredentialProperties": {
       "type": "object",
       "description": "The base properties of Azure Credential",
       "properties": {
         "kind": {
-          "type": "string",
-          "description": "Discriminator property for AzureCredentialProperties."
+          "$ref": "#/definitions/AzureCredentialKind",
+          "description": "The kind of Azure credential"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -1156,13 +1105,31 @@
       ],
       "x-ms-discriminator-value": "ServicePrincipal"
     },
+    "CredentialStorageKind": {
+      "type": "string",
+      "description": "Credential store kinds supported.",
+      "enum": [
+        "Internal"
+      ],
+      "x-ms-enum": {
+        "name": "CredentialStorageKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Internal",
+            "value": "Internal",
+            "description": "Internal credential storage"
+          }
+        ]
+      }
+    },
     "CredentialStorageProperties": {
       "type": "object",
       "description": "Credential storage properties",
       "properties": {
         "kind": {
-          "type": "string",
-          "description": "Discriminator property for CredentialStorageProperties."
+          "$ref": "#/definitions/CredentialStorageKind",
+          "description": "The kind of credential storage"
         }
       },
       "discriminator": "kind",

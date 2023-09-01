@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -40,13 +39,13 @@ func NewResourceGroupsClient(credential azcore.TokenCredential, options *arm.Cli
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a ResourceGroupResource
+// CreateOrUpdate - Create or update a resource group
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.
 //   - planeName - The name of the plane
-//   - resourceGroupName - UCP resourcegroup name
+//   - resourceGroupName - The name of resource group
 //   - resource - Resource create parameters.
 //   - options - ResourceGroupsClientCreateOrUpdateOptions contains the optional parameters for the ResourceGroupsClient.CreateOrUpdate
 //     method.
@@ -97,27 +96,19 @@ func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Cont
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Response) (ResourceGroupsClientCreateOrUpdateResponse, error) {
 	result := ResourceGroupsClientCreateOrUpdateResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return ResourceGroupsClientCreateOrUpdateResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResource); err != nil {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing ResourceGroupResource
+// Delete - Delete a resource group
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.
 //   - planeName - The name of the plane
-//   - resourceGroupName - UCP resourcegroup name
+//   - resourceGroupName - The name of resource group
 //   - options - ResourceGroupsClientDeleteOptions contains the optional parameters for the ResourceGroupsClient.Delete method.
 func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientDeleteOptions) (ResourceGroupsClientDeleteResponse, error) {
 	var err error
@@ -129,12 +120,11 @@ func (client *ResourceGroupsClient) Delete(ctx context.Context, planeType string
 	if err != nil {
 		return ResourceGroupsClientDeleteResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
 		return ResourceGroupsClientDeleteResponse{}, err
 	}
-	resp, err := client.deleteHandleResponse(httpResp)
-	return resp, err
+	return ResourceGroupsClientDeleteResponse{}, nil
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -160,27 +150,13 @@ func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, pla
 	return req, nil
 }
 
-// deleteHandleResponse handles the Delete response.
-func (client *ResourceGroupsClient) deleteHandleResponse(resp *http.Response) (ResourceGroupsClientDeleteResponse, error) {
-	result := ResourceGroupsClientDeleteResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return ResourceGroupsClientDeleteResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	return result, nil
-}
-
-// Get - Retrieves information about a ResourceGroupResource
+// Get - Get a resource group
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.
 //   - planeName - The name of the plane
-//   - resourceGroupName - UCP resourcegroup name
+//   - resourceGroupName - The name of resource group
 //   - options - ResourceGroupsClientGetOptions contains the optional parameters for the ResourceGroupsClient.Get method.
 func (client *ResourceGroupsClient) Get(ctx context.Context, planeType string, planeName string, resourceGroupName string, options *ResourceGroupsClientGetOptions) (ResourceGroupsClientGetResponse, error) {
 	var err error
@@ -232,7 +208,7 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all ResourceGroupResource
+// NewListByRootScopePager - List resource groups
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.

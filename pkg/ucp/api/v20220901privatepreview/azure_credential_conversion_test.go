@@ -124,11 +124,11 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 					"env": to.Ptr("dev"),
 				},
 				Properties: &AzureServicePrincipalProperties{
-					Kind:     to.Ptr("ServicePrincipal"),
+					Kind:     to.Ptr(AzureCredentialKindServicePrincipal),
 					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(string(CredentialStorageKindInternal)),
+						Kind:       to.Ptr(CredentialStorageKindInternal),
 						SecretName: to.Ptr("azure-azurecloud-default"),
 					},
 				},

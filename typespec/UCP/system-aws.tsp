@@ -57,9 +57,18 @@ model AwsPlaneNameParameter {
   planeName: ResourceNameString;
 }
 
+@doc("AWS credential kind")
+enum AWSCredentialKind {
+  @doc("The AWS Access Key credential")
+  AccessKey,
+}
+
 @discriminator("kind")
 @doc("AWS Credential properties")
 model AwsCredentialProperties {
+  @doc("The AWS credential kind")
+  kind: AWSCredentialKind;
+
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
@@ -68,7 +77,7 @@ model AwsCredentialProperties {
 @doc("AWS credential storage properties")
 model AwsAccessKeyCredentialProperties extends AwsCredentialProperties {
   @doc("Access Key kind")
-  kind: "AccessKey";
+  kind: AWSCredentialKind.AccessKey;
 
   @doc("Access key ID for AWS identity")
   @secret
@@ -105,13 +114,13 @@ interface AwsCredentials {
   >;
 
   @doc("Create or update an AWS credential")
-  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+  createOrUpdate is UcpResourceCreateOrUpdateSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>
   >;
 
   @doc("Delete an AWS credential")
-  delete is UcpResourceDeleteAsync<
+  delete is UcpResourceDeleteSync<
     AwsCredentialResource,
     AwsCredentialBaseParameter<AwsCredentialResource>
   >;

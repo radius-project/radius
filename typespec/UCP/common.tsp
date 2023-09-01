@@ -41,3 +41,26 @@ model CredentialBaseParameters<TResource, TPlaneName = {}> {
   ...TPlaneName;
   ...KeysOf<TResource>;
 }
+
+@doc("Credential store kinds supported.")
+enum CredentialStorageKind {
+  @doc("Internal credential storage")
+  Internal,
+}
+
+@doc("Credential storage properties")
+@discriminator("kind")
+model CredentialStorageProperties {
+  @doc("The kind of credential storage")
+  kind: CredentialStorageKind;
+}
+
+@doc("Internal credential storage properties")
+model InternalCredentialStorageProperties extends CredentialStorageProperties {
+  @doc("Internal kind")
+  kind: CredentialStorageKind.Internal;
+
+  @doc("The name of secret stored.")
+  @visibility("read")
+  secretName: string;
+}

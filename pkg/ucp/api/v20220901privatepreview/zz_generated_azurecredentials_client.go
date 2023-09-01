@@ -16,59 +16,58 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
-// AzureCredentialClient contains the methods for the AzureCredential group.
-// Don't use this type directly, use NewAzureCredentialClient() instead.
-type AzureCredentialClient struct {
+// AzureCredentialsClient contains the methods for the AzureCredentials group.
+// Don't use this type directly, use NewAzureCredentialsClient() instead.
+type AzureCredentialsClient struct {
 	internal *arm.Client
 }
 
-// NewAzureCredentialClient creates a new instance of AzureCredentialClient with the specified values.
+// NewAzureCredentialsClient creates a new instance of AzureCredentialsClient with the specified values.
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
-func NewAzureCredentialClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*AzureCredentialClient, error) {
-	cl, err := arm.NewClient(moduleName+".AzureCredentialClient", moduleVersion, credential, options)
+func NewAzureCredentialsClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*AzureCredentialsClient, error) {
+	cl, err := arm.NewClient(moduleName+".AzureCredentialsClient", moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
 	}
-	client := &AzureCredentialClient{
+	client := &AzureCredentialsClient{
 	internal: cl,
 	}
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a AzureCredentialResource
+// CreateOrUpdate - Create or update an Azure credential
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeName - The name of the plane
 //   - credentialName - The Azure credential name.
 //   - resource - Resource create parameters.
-//   - options - AzureCredentialClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialClient.CreateOrUpdate
+//   - options - AzureCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialsClient.CreateOrUpdate
 //     method.
-func (client *AzureCredentialClient) CreateOrUpdate(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialClientCreateOrUpdateOptions) (AzureCredentialClientCreateOrUpdateResponse, error) {
+func (client *AzureCredentialsClient) CreateOrUpdate(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialsClientCreateOrUpdateOptions) (AzureCredentialsClientCreateOrUpdateResponse, error) {
 	var err error
 	req, err := client.createOrUpdateCreateRequest(ctx, planeName, credentialName, resource, options)
 	if err != nil {
-		return AzureCredentialClientCreateOrUpdateResponse{}, err
+		return AzureCredentialsClientCreateOrUpdateResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return AzureCredentialClientCreateOrUpdateResponse{}, err
+		return AzureCredentialsClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return AzureCredentialClientCreateOrUpdateResponse{}, err
+		return AzureCredentialsClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.createOrUpdateHandleResponse(httpResp)
 	return resp, err
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *AzureCredentialClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *AzureCredentialsClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, credentialName string, resource AzureCredentialResource, options *AzureCredentialsClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
@@ -90,49 +89,40 @@ func (client *AzureCredentialClient) createOrUpdateCreateRequest(ctx context.Con
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *AzureCredentialClient) createOrUpdateHandleResponse(resp *http.Response) (AzureCredentialClientCreateOrUpdateResponse, error) {
-	result := AzureCredentialClientCreateOrUpdateResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return AzureCredentialClientCreateOrUpdateResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
+func (client *AzureCredentialsClient) createOrUpdateHandleResponse(resp *http.Response) (AzureCredentialsClientCreateOrUpdateResponse, error) {
+	result := AzureCredentialsClientCreateOrUpdateResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResource); err != nil {
-		return AzureCredentialClientCreateOrUpdateResponse{}, err
+		return AzureCredentialsClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing AzureCredentialResource
+// Delete - Delete an Azure credential
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeName - The name of the plane
 //   - credentialName - The Azure credential name.
-//   - options - AzureCredentialClientDeleteOptions contains the optional parameters for the AzureCredentialClient.Delete method.
-func (client *AzureCredentialClient) Delete(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientDeleteOptions) (AzureCredentialClientDeleteResponse, error) {
+//   - options - AzureCredentialsClientDeleteOptions contains the optional parameters for the AzureCredentialsClient.Delete method.
+func (client *AzureCredentialsClient) Delete(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientDeleteOptions) (AzureCredentialsClientDeleteResponse, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, planeName, credentialName, options)
 	if err != nil {
-		return AzureCredentialClientDeleteResponse{}, err
+		return AzureCredentialsClientDeleteResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return AzureCredentialClientDeleteResponse{}, err
+		return AzureCredentialsClientDeleteResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
-		return AzureCredentialClientDeleteResponse{}, err
+		return AzureCredentialsClientDeleteResponse{}, err
 	}
-	resp, err := client.deleteHandleResponse(httpResp)
-	return resp, err
+	return AzureCredentialsClientDeleteResponse{}, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *AzureCredentialClient) deleteCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientDeleteOptions) (*policy.Request, error) {
+func (client *AzureCredentialsClient) deleteCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
@@ -150,47 +140,33 @@ func (client *AzureCredentialClient) deleteCreateRequest(ctx context.Context, pl
 	return req, nil
 }
 
-// deleteHandleResponse handles the Delete response.
-func (client *AzureCredentialClient) deleteHandleResponse(resp *http.Response) (AzureCredentialClientDeleteResponse, error) {
-	result := AzureCredentialClientDeleteResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return AzureCredentialClientDeleteResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	return result, nil
-}
-
-// Get - Retrieves information about a AzureCredentialResource
+// Get - Get an Azure credential
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeName - The name of the plane
 //   - credentialName - The Azure credential name.
-//   - options - AzureCredentialClientGetOptions contains the optional parameters for the AzureCredentialClient.Get method.
-func (client *AzureCredentialClient) Get(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientGetOptions) (AzureCredentialClientGetResponse, error) {
+//   - options - AzureCredentialsClientGetOptions contains the optional parameters for the AzureCredentialsClient.Get method.
+func (client *AzureCredentialsClient) Get(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientGetOptions) (AzureCredentialsClientGetResponse, error) {
 	var err error
 	req, err := client.getCreateRequest(ctx, planeName, credentialName, options)
 	if err != nil {
-		return AzureCredentialClientGetResponse{}, err
+		return AzureCredentialsClientGetResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return AzureCredentialClientGetResponse{}, err
+		return AzureCredentialsClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
 		err = runtime.NewResponseError(httpResp)
-		return AzureCredentialClientGetResponse{}, err
+		return AzureCredentialsClientGetResponse{}, err
 	}
 	resp, err := client.getHandleResponse(httpResp)
 	return resp, err
 }
 
 // getCreateRequest creates the Get request.
-func (client *AzureCredentialClient) getCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialClientGetOptions) (*policy.Request, error) {
+func (client *AzureCredentialsClient) getCreateRequest(ctx context.Context, planeName string, credentialName string, options *AzureCredentialsClientGetOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials/{credentialName}"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	if credentialName == "" {
@@ -209,26 +185,26 @@ func (client *AzureCredentialClient) getCreateRequest(ctx context.Context, plane
 }
 
 // getHandleResponse handles the Get response.
-func (client *AzureCredentialClient) getHandleResponse(resp *http.Response) (AzureCredentialClientGetResponse, error) {
-	result := AzureCredentialClientGetResponse{}
+func (client *AzureCredentialsClient) getHandleResponse(resp *http.Response) (AzureCredentialsClientGetResponse, error) {
+	result := AzureCredentialsClientGetResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResource); err != nil {
-		return AzureCredentialClientGetResponse{}, err
+		return AzureCredentialsClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all AzureCredentialResource
+// NewListByRootScopePager - List Azure credentials
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeName - The name of the plane
-//   - options - AzureCredentialClientListByRootScopeOptions contains the optional parameters for the AzureCredentialClient.NewListByRootScopePager
+//   - options - AzureCredentialsClientListByRootScopeOptions contains the optional parameters for the AzureCredentialsClient.NewListByRootScopePager
 //     method.
-func (client *AzureCredentialClient) NewListByRootScopePager(planeName string, options *AzureCredentialClientListByRootScopeOptions) (*runtime.Pager[AzureCredentialClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[AzureCredentialClientListByRootScopeResponse]{
-		More: func(page AzureCredentialClientListByRootScopeResponse) bool {
+func (client *AzureCredentialsClient) NewListByRootScopePager(planeName string, options *AzureCredentialsClientListByRootScopeOptions) (*runtime.Pager[AzureCredentialsClientListByRootScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[AzureCredentialsClientListByRootScopeResponse]{
+		More: func(page AzureCredentialsClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *AzureCredentialClientListByRootScopeResponse) (AzureCredentialClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *AzureCredentialsClientListByRootScopeResponse) (AzureCredentialsClientListByRootScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
@@ -237,14 +213,14 @@ func (client *AzureCredentialClient) NewListByRootScopePager(planeName string, o
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return AzureCredentialClientListByRootScopeResponse{}, err
+				return AzureCredentialsClientListByRootScopeResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return AzureCredentialClientListByRootScopeResponse{}, err
+				return AzureCredentialsClientListByRootScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return AzureCredentialClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return AzureCredentialsClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
 			}
 			return client.listByRootScopeHandleResponse(resp)
 		},
@@ -252,7 +228,7 @@ func (client *AzureCredentialClient) NewListByRootScopePager(planeName string, o
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *AzureCredentialClient) listByRootScopeCreateRequest(ctx context.Context, planeName string, options *AzureCredentialClientListByRootScopeOptions) (*policy.Request, error) {
+func (client *AzureCredentialsClient) listByRootScopeCreateRequest(ctx context.Context, planeName string, options *AzureCredentialsClientListByRootScopeOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
@@ -267,10 +243,10 @@ func (client *AzureCredentialClient) listByRootScopeCreateRequest(ctx context.Co
 }
 
 // listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *AzureCredentialClient) listByRootScopeHandleResponse(resp *http.Response) (AzureCredentialClientListByRootScopeResponse, error) {
-	result := AzureCredentialClientListByRootScopeResponse{}
+func (client *AzureCredentialsClient) listByRootScopeHandleResponse(resp *http.Response) (AzureCredentialsClientListByRootScopeResponse, error) {
+	result := AzureCredentialsClientListByRootScopeResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResourceListResult); err != nil {
-		return AzureCredentialClientListByRootScopeResponse{}, err
+		return AzureCredentialsClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
