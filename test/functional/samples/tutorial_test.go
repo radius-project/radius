@@ -54,7 +54,7 @@ var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO
 func Test_FirstApplicationSample(t *testing.T) {
 	// TODO: Remove the following statement
 	// LJ: Skipping this test to test pipeline for this PR: https://github.com/radius-project/radius/pull/6130
-	t.Skipf("Temporary: Skip samples test execution, samples repo still contains Applications.PortableResources resources, which is deprecated in this PR")
+	t.Skipf("Temporary: Skip samples test execution, samples repo still contains Applications.Links resources, which is deprecated in this PR")
 
 	if !samplesRepoEnvVarSet {
 		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the radius-project/samples repository")

@@ -139,17 +139,10 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 
 // GetRecipeMetadata gets the Recipe metadata and parameters from the Bicep registry or TF modules
 func (e *engine) GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition) (map[string]any, error) {
-	getMetadata := time.Now()
-	result := metrics.SuccessfulOperationState
-
 	recipeData, err := e.getRecipeMetadataCore(ctx, recipeDefinition)
 	if err != nil {
-		result = metrics.FailedOperationState
+		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
-
-	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, getMetadata,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, recipeDefinition.Name,
-			nil, result))
 
 	return recipeData, err
 }

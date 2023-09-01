@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -52,7 +53,18 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				RequiredProviders:  []string{"aws"},
 				ResultOutputExists: true,
 				Parameters: map[string]any{
-					"context": "contextInformation",
+					"context": map[string]any{
+						"name":         "context",
+						"type":         "object({\n    resource = object({\n      name = string\n      id = string\n      type = string\n    })\n\n    application = object({\n      name = string\n      id = string\n    })\n\n    environment = object({\n      name = string\n      id = string\n    })\n\n    runtime = object({\n      kubernetes = optional(object({\n        namespace = string\n        environmentNamespace = string\n      }))\n    })\n\n    azure = optional(object({\n      resourceGroup = object({\n        name = string\n        id = string\n      })\n      subscription = object({\n        subscriptionId = string\n        id = string\n      })\n    }))\n    \n    aws = optional(object({\n      region = string\n      account = string\n    }))\n  })",
+						"description":  "This variable contains Radius recipe context.",
+						"defaultValue": nil,
+						"required":     true,
+						"sensitive":    false,
+						"pos": tfconfig.SourcePos{
+							Filename: "testdata/.terraform/modules/test-module-recipe-context-outputs/variables.tf",
+							Line:     1,
+						},
+					},
 				},
 			},
 		},
@@ -71,10 +83,6 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.err)
 				return
-			}
-			// Context parameters aren't treated as user-set parameters so we check for it's existence, but not its value
-			if result.Parameters["context"] != nil {
-				result.Parameters["context"] = "contextInformation"
 			}
 			require.NoError(t, err)
 			require.Equal(t, tc.result, result)
