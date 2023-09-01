@@ -21,7 +21,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/portableresources/api/v20220315privatepreview"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
@@ -103,22 +102,22 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
 		CreatedBy:          to.Ptr(s.CreatedBy),
 		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
-		CreatedAt:          v20220315privatepreview.UnmarshalTimeString(s.CreatedAt),
+		CreatedAt:          v1.UnmarshalTimeString(s.CreatedAt),
 		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
-		LastModifiedAt:     v20220315privatepreview.UnmarshalTimeString(s.LastModifiedAt),
+		LastModifiedAt:     v1.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }
 
 func toRecipeDataModel(r *Recipe) portableresources.LinkRecipe {
 	if r == nil {
 		return portableresources.LinkRecipe{
-			Name: v20220315privatepreview.DefaultRecipeName,
+			Name: portableresources.DefaultRecipeName,
 		}
 	}
 	recipe := portableresources.LinkRecipe{}
 	if r.Name == nil {
-		recipe.Name = v20220315privatepreview.DefaultRecipeName
+		recipe.Name = portableresources.DefaultRecipeName
 	} else {
 		recipe.Name = to.String(r.Name)
 	}
