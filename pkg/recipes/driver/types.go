@@ -30,6 +30,9 @@ type Driver interface {
 
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, opts DeleteOptions) error
+
+	// Gets the Recipe metadata and parameters from Recipe's template path
+	GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error)
 }
 
 // BaseOptions is the base options for the driver operations.

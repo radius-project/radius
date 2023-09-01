@@ -32,7 +32,7 @@
                     "templateVersion": "1.1.0"
                 }
             },
-            "Applications.Datastores/redisCaches":{
+            "Applications.Datastores/redisCache":{
                 "redis": {
                     "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/redis:1.0"
