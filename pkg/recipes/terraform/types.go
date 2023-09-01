@@ -35,6 +35,9 @@ type TerraformExecutor interface {
 	// Delete installs terraform and runs terraform destroy on the terraform module referenced by the recipe using terraform-exec,
 	// and deletes the Kubernetes secret created for terraform state store.
 	Delete(ctx context.Context, options Options) error
+
+	// GetRecipeMetadata installs terraform and runs terraform get to retrieve information on the terraform module
+	GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error)
 }
 
 // Options represents the options required to build inputs to interact with Terraform.

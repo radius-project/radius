@@ -89,7 +89,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
 
 	return recipeOutputs, nil
@@ -172,4 +172,30 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	}
 
 	return requestDirPath, nil
+}
+
+// GetRecipeMetadata returns the Terraform Recipe parameters by downloading the module and retrieving variable information
+func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+	}
+	defer func() {
+		if err := os.RemoveAll(requestDirPath); err != nil {
+			logger.Info(fmt.Sprintf("Failed to cleanup Terraform execution directory %q. Err: %s", requestDirPath, err.Error()))
+		}
+	}()
+
+	recipeData, err := d.terraformExecutor.GetRecipeMetadata(ctx, terraform.Options{
+		RootDir:        requestDirPath,
+		ResourceRecipe: &opts.Recipe,
+		EnvRecipe:      &opts.Definition,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return recipeData, nil
 }
