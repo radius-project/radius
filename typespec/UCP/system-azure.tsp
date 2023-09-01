@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -107,39 +108,29 @@ alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<
 @armResourceOperations
 interface AzureCredentials {
   @doc("List Azure credentials")
-  @get
-  @segmentOf(AzureCredentialResource)
-  @armResourceList(AzureCredentialResource)
-  listByRootScope(
-    ...ApiVersionParameter,
-    ...AzurePlaneNameParameter,
-    ...ParentKeysOf<AzureCredentialResource>,
-  ): ArmResponse<ResourceListResult<AzureCredentialResource>> | ErrorResponse;
+  listByRootScope is UcpResourceListByRootScope<
+    AzureCredentialResource,
+    {
+      ...ApiVersionParameter;
+      ...AzurePlaneNameParameter;
+    }
+  >;
 
   @doc("Get an Azure credential")
-  @get
-  @armResourceRead(AzureCredentialResource)
-  get(
-    ...AzureCredentialBaseParameter<AzureCredentialResource>,
-  ): ArmResponse<AzureCredentialResource> | ErrorResponse;
+  get is UcpResourceRead<
+    AzureCredentialResource,
+    AzureCredentialBaseParameter<AzureCredentialResource>
+  >;
 
   @doc("Create or update an Azure credential")
-  @put
-  @armResourceCreateOrUpdate(AzureCredentialResource)
-  createOrUpdate(
-    ...AzureCredentialBaseParameter<AzureCredentialResource>,
-
-    @doc("Resource create parameters.")
-    @body
-    resource: AzureCredentialResource,
-  ): ArmResponse<AzureCredentialResource> | ErrorResponse;
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    AzureCredentialResource,
+    AzureCredentialBaseParameter<AzureCredentialResource>
+  >;
 
   @doc("Delete an Azure credential")
-  @delete
-  @armResourceDelete(AzureCredentialResource)
-  delete(...AzureCredentialBaseParameter<AzureCredentialResource>):
-    | ArmDeletedResponse
-    | ArmDeleteAcceptedLroResponse
-    | ArmDeletedNoContentResponse
-    | ErrorResponse;
+  delete is UcpResourceDeleteAsync<
+    AzureCredentialResource,
+    AzureCredentialBaseParameter<AzureCredentialResource>
+  >;
 }

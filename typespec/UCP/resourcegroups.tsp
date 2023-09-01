@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -58,42 +59,34 @@ model ResourceGroupBaseParameters<TResource, TPlaneBase = PlaneResource> {
   ...KeysOf<TResource>;
 }
 
-@autoRoute
 @armResourceOperations
 interface ResourceGroups {
   @doc("List resource groups")
-  @get
-  @segmentOf(ResourceGroupResource)
-  @armResourceList(ResourceGroupResource)
-  listByRootScope(
-    ...PlaneBaseParameters<PlaneResource>,
-    ...ParentKeysOf<ResourceGroupResource>,
-  ): ArmResponse<ResourceListResult<ResourceGroupResource>> | ErrorResponse;
+  listByRootScope is UcpResourceListByRootScope<
+    ResourceGroupResource,
+    PlaneBaseParameters<PlaneResource>
+  >;
 
   @doc("Get a resource group")
-  @get
-  @armResourceRead(ResourceGroupResource)
-  get(
-    ...ResourceGroupBaseParameters<ResourceGroupResource>,
-  ): ArmResponse<ResourceGroupResource> | ErrorResponse;
+  get is UcpResourceRead<
+    ResourceGroupResource,
+    ResourceGroupBaseParameters<ResourceGroupResource>
+  >;
 
   @doc("Create or update a resource group")
-  @put
-  @armResourceCreateOrUpdate(ResourceGroupResource)
-  createOrUpdate(
-    ...ResourceGroupBaseParameters<ResourceGroupResource>,
-
-    @doc("Resource create parameters.")
-    @body
-    resource: ResourceGroupResource,
-  ): ArmResponse<ResourceGroupResource> | ErrorResponse;
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    ResourceGroupResource,
+    ResourceGroupBaseParameters<ResourceGroupResource>
+  >;
+  /*
+  update is UcpCustomPatchAsync<
+    ResourceGroupResource,
+    ResourceGroupBaseParameters<ResourceGroupResource>
+  >;*/
 
   @doc("Delete a resource group")
-  @delete
-  @armResourceDelete(ResourceGroupResource)
-  delete(...ResourceGroupBaseParameters<ResourceGroupResource>):
-    | ArmDeletedResponse
-    | ArmDeleteAcceptedLroResponse
-    | ArmDeletedNoContentResponse
-    | ErrorResponse;
+  delete is UcpResourceDeleteAsync<
+    ResourceGroupResource,
+    ResourceGroupBaseParameters<ResourceGroupResource>
+  >;
 }

@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -86,43 +87,32 @@ alias AwsCredentialBaseParameter<TResource> = CredentialBaseParameters<
   AwsPlaneNameParameter
 >;
 
-@autoRoute
 @armResourceOperations
 interface AwsCredentials {
   @doc("List AWS credentials")
-  @get
-  @segmentOf(AwsCredentialResource)
-  @armResourceList(AwsCredentialResource)
-  listByRootScope(
-    ...ApiVersionParameter,
-    ...AwsPlaneNameParameter,
-    ...ParentKeysOf<AwsCredentialResource>,
-  ): ArmResponse<ResourceListResult<AwsCredentialResource>> | ErrorResponse;
+  listByRootScope is UcpResourceListByRootScope<
+    AwsCredentialResource,
+    {
+      ...ApiVersionParameter;
+      ...AwsPlaneNameParameter;
+    }
+  >;
 
   @doc("Get an AWS credential")
-  @get
-  @armResourceRead(AwsCredentialResource)
-  get(
-    ...AwsCredentialBaseParameter<AwsCredentialResource>,
-  ): ArmResponse<AwsCredentialResource> | ErrorResponse;
+  get is UcpResourceRead<
+    AwsCredentialResource,
+    AwsCredentialBaseParameter<AwsCredentialResource>
+  >;
 
   @doc("Create or update an AWS credential")
-  @put
-  @armResourceCreateOrUpdate(AwsCredentialResource)
-  createOrUpdate(
-    ...AwsCredentialBaseParameter<AwsCredentialResource>,
-
-    @doc("Resource create parameters.")
-    @body
-    resource: AwsCredentialResource,
-  ): ArmResponse<AwsCredentialResource> | ErrorResponse;
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    AwsCredentialResource,
+    AwsCredentialBaseParameter<AwsCredentialResource>
+  >;
 
   @doc("Delete an AWS credential")
-  @delete
-  @armResourceDelete(AwsCredentialResource)
-  delete(...AwsCredentialBaseParameter<AwsCredentialResource>):
-    | ArmDeletedResponse
-    | ArmDeleteAcceptedLroResponse
-    | ArmDeletedNoContentResponse
-    | ErrorResponse;
+  delete is UcpResourceDeleteAsync<
+    AwsCredentialResource,
+    AwsCredentialBaseParameter<AwsCredentialResource>
+  >;
 }

@@ -1,6 +1,7 @@
 {
+  "operationId": "Planes_ListPlanes",
+  "title": "List planes",
   "parameters": {
-    "planeType": "radius",
     "api-version": "2022-09-01-privatepreview"
   },
   "responses": {
@@ -14,8 +15,9 @@
             "location": "global",
             "properties": {
               "resourceProviders": {
-                "Applications.Dapr": "http://applications-rp.radius-system:5444",
-                "Applications.Core": "http://applications-rp.radius-system:5443"
+                "Applications.Link": "http://applications-rp.radius-system:5444",
+                "Applications.Core": "http://applications-rp.radius-system:5443",
+                "Microsoft.Resources": "http://bicep-de.radius-system:6443"
               },
               "kind": "UCPNative"
             }

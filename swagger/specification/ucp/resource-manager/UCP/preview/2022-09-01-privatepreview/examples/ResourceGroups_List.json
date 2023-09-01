@@ -1,4 +1,6 @@
 {
+  "operationId": "ResourceGroups_ListByRootScope",
+  "title": "List resource groups by rootScope",
   "parameters": {
     "api-version": "2022-09-01-privatepreview",
     "planeName": "local",

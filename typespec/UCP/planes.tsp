@@ -93,20 +93,14 @@ model PlaneResourceProperties {
   resourceProviders?: Record<string>;
 }
 
-@autoRoute
 @armResourceOperations
 interface Planes {
   @doc("List all planes")
-  @get
-  @segmentOf(PlaneResource)
-  @armResourceList(PlaneResource)
-  listPlanes(
-    ...ApiVersionParameter,
-    ...ParentKeysOf<PlaneResource>,
-  ): ArmResponse<ResourceListResult<PlaneResource>> | ErrorResponse;
+  listPlanes is UcpResourceListByRootScope<PlaneResource, ApiVersionParameter>;
 
   @doc("List planes by type")
   @get
+  @autoRoute
   @armResourceRead(PlaneResource)
   @armResourceList(PlaneResource)
   listByType(
@@ -114,29 +108,17 @@ interface Planes {
   ): ArmResponse<ResourceListResult<PlaneResource>> | ErrorResponse;
 
   @doc("Get a plane by name")
-  @get
-  @armResourceRead(PlaneResource)
-  get(
-    ...PlaneBaseParameters<PlaneResource>,
-  ): ArmResponse<PlaneResource> | ErrorResponse;
+  get is UcpResourceRead<PlaneResource, PlaneBaseParameters<PlaneResource>>;
 
   @doc("Create or update a plane")
-  @put
-  @armResourceCreateOrUpdate(PlaneResource)
-  createOrUpdate(
-    ...PlaneBaseParameters<PlaneResource>,
-
-    @doc("Resource create parameters.")
-    @body
-    resource: PlaneResource,
-  ): ArmResponse<PlaneResource> | ErrorResponse;
+  createOrUpdate is UcpResourceCreateOrUpdateAsync<
+    PlaneResource,
+    PlaneBaseParameters<PlaneResource>
+  >;
 
   @doc("Delete a plane")
-  @delete
-  @armResourceDelete(PlaneResource)
-  delete(...PlaneBaseParameters<PlaneResource>):
-    | ArmDeletedResponse
-    | ArmDeleteAcceptedLroResponse
-    | ArmDeletedNoContentResponse
-    | ErrorResponse;
+  delete is UcpResourceDeleteAsync<
+    PlaneResource,
+    PlaneBaseParameters<PlaneResource>
+  >;
 }

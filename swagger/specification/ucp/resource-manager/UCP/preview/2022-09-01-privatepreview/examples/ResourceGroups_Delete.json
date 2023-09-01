@@ -1,4 +1,6 @@
 {
+  "operationId": "ResourceGroups_Delete",
+  "title": "Delete a resource group",
   "parameters": {
     "api-version": "2022-09-01-privatepreview",
     "resourceGroupName": "rg1",
