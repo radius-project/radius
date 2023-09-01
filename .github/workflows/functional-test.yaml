@@ -77,7 +77,7 @@ env:
 jobs:
   build:
     name: Build Radius for test
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       DE_IMAGE: 'radius.azurecr.io/deployment-engine'
       DE_TAG: 'latest'
@@ -291,11 +291,15 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: matrix.os
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,shared,msgrp,daprrp,datastoresrp,samples]
+        os: [ubuntu-latest]
+        name: [ucp,shared,msgrp,daprrp,samples]
+        include:
+          - os: ubuntu-latest-m
+            name: datastoresrp
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -566,7 +570,7 @@ jobs:
   report-failure:
     name: Report test failure
     needs: [build, tests]
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing scheduled run
