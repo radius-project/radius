@@ -256,9 +256,9 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 	test.Test(t)
 }
 
-// This tests input parameters and output values/secrets.
+// Test_TerraformRecipe_ParametersAndOutputs Validates input parameters correctly set and output values/secrets are populated.
 func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-redis-new-format.bicep"
+	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"
 	name := "corerp-resources-terraform-parametersandoutputs"
 
 	// Best way to pass complex parameters is to use JSON.
@@ -319,8 +319,6 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 				response, err := test.Options.CustomAction.InvokeCustomAction(ctx, *resource.ID, "2022-03-15-privatepreview", "listSecrets")
 				require.NoError(t, err)
 
-				t.Logf("secret data:\n %+v", response.Body)
-
 				expected := map[string]any{"e": "secret value"}
 				require.Equal(t, expected, response.Body)
 			},
@@ -331,7 +329,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 
 // Test_TerraformRecipe_WrongOutput validates that a Terraform recipe with invalid "result" output schema returns an error.
 func Test_TerraformRecipe_WrongOutput(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-redis-new-format.bicep"
+	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"
 	name := "corerp-resources-terraform-wrong-output"
 
 	parameters := []string{
