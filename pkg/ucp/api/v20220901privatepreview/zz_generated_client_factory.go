@@ -34,18 +34,13 @@ func NewClientFactory( credential azcore.TokenCredential, options *arm.ClientOpt
 	}, nil
 }
 
-func (c *ClientFactory) NewAwsCredentialClient() *AwsCredentialClient {
-	subClient, _ := NewAwsCredentialClient(c.credential, c.options)
+func (c *ClientFactory) NewAwsCredentialsClient() *AwsCredentialsClient {
+	subClient, _ := NewAwsCredentialsClient(c.credential, c.options)
 	return subClient
 }
 
-func (c *ClientFactory) NewAzureCredentialClient() *AzureCredentialClient {
-	subClient, _ := NewAzureCredentialClient(c.credential, c.options)
-	return subClient
-}
-
-func (c *ClientFactory) NewPlaneTypesClient() *PlaneTypesClient {
-	subClient, _ := NewPlaneTypesClient(c.credential, c.options)
+func (c *ClientFactory) NewAzureCredentialsClient() *AzureCredentialsClient {
+	subClient, _ := NewAzureCredentialsClient(c.credential, c.options)
 	return subClient
 }
 

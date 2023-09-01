@@ -9,7 +9,7 @@ package v20220901privatepreview
 
 import "encoding/json"
 
-func unmarshalAWSCredentialPropertiesClassification(rawMsg json.RawMessage) (AWSCredentialPropertiesClassification, error) {
+func unmarshalAwsCredentialPropertiesClassification(rawMsg json.RawMessage) (AwsCredentialPropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -17,12 +17,12 @@ func unmarshalAWSCredentialPropertiesClassification(rawMsg json.RawMessage) (AWS
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
-	var b AWSCredentialPropertiesClassification
+	var b AwsCredentialPropertiesClassification
 	switch m["kind"] {
-	case "AccessKey":
-		b = &AWSAccessKeyCredentialProperties{}
+	case string(AWSCredentialKindAccessKey):
+		b = &AwsAccessKeyCredentialProperties{}
 	default:
-		b = &AWSCredentialProperties{}
+		b = &AwsCredentialProperties{}
 	}
 	if err := json.Unmarshal(rawMsg, b); err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func unmarshalAzureCredentialPropertiesClassification(rawMsg json.RawMessage) (A
 	}
 	var b AzureCredentialPropertiesClassification
 	switch m["kind"] {
-	case "ServicePrincipal":
+	case string(AzureCredentialKindServicePrincipal):
 		b = &AzureServicePrincipalProperties{}
 	default:
 		b = &AzureCredentialProperties{}
@@ -61,7 +61,7 @@ func unmarshalCredentialStoragePropertiesClassification(rawMsg json.RawMessage) 
 	}
 	var b CredentialStoragePropertiesClassification
 	switch m["kind"] {
-	case "Internal":
+	case string(CredentialStorageKindInternal):
 		b = &InternalCredentialStorageProperties{}
 	default:
 		b = &CredentialStorageProperties{}

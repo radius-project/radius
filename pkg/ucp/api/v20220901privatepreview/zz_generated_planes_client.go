@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -40,34 +39,53 @@ func NewPlanesClient(credential azcore.TokenCredential, options *arm.ClientOptio
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a PlaneResource
+// BeginCreateOrUpdate - Create or update a plane
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.
 //   - planeName - The name of the plane
 //   - resource - Resource create parameters.
-//   - options - PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
-func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (PlanesClientCreateOrUpdateResponse, error) {
+//   - options - PlanesClientBeginCreateOrUpdateOptions contains the optional parameters for the PlanesClient.BeginCreateOrUpdate
+//     method.
+func (client *PlanesClient) BeginCreateOrUpdate(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientBeginCreateOrUpdateOptions) (*runtime.Poller[PlanesClientCreateOrUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.createOrUpdate(ctx, planeType, planeName, resource, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PlanesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[PlanesClientCreateOrUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// CreateOrUpdate - Create or update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+func (client *PlanesClient) createOrUpdate(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
 	req, err := client.createOrUpdateCreateRequest(ctx, planeType, planeName, resource, options)
 	if err != nil {
-		return PlanesClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return PlanesClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
 		err = runtime.NewResponseError(httpResp)
-		return PlanesClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
-	return resp, err
+	return httpResp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, resource PlaneResource, options *PlanesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
@@ -88,50 +106,51 @@ func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, pla
 	return req, nil
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *PlanesClient) createOrUpdateHandleResponse(resp *http.Response) (PlanesClientCreateOrUpdateResponse, error) {
-	result := PlanesClientCreateOrUpdateResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return PlanesClientCreateOrUpdateResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.PlaneResource); err != nil {
-		return PlanesClientCreateOrUpdateResponse{}, err
-	}
-	return result, nil
-}
-
-// Delete - Deletes an existing PlaneResource
+// BeginDelete - Delete a plane
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.
 //   - planeName - The name of the plane
-//   - options - PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
-func (client *PlanesClient) Delete(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (PlanesClientDeleteResponse, error) {
+//   - options - PlanesClientBeginDeleteOptions contains the optional parameters for the PlanesClient.BeginDelete method.
+func (client *PlanesClient) BeginDelete(ctx context.Context, planeType string, planeName string, options *PlanesClientBeginDeleteOptions) (*runtime.Poller[PlanesClientDeleteResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.deleteOperation(ctx, planeType, planeName, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PlanesClientDeleteResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[PlanesClientDeleteResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Delete - Delete a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+func (client *PlanesClient) deleteOperation(ctx context.Context, planeType string, planeName string, options *PlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, planeType, planeName, options)
 	if err != nil {
-		return PlanesClientDeleteResponse{}, err
+		return nil, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return PlanesClientDeleteResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
-		return PlanesClientDeleteResponse{}, err
+		return nil, err
 	}
-	resp, err := client.deleteHandleResponse(httpResp)
-	return resp, err
+	return httpResp, nil
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (*policy.Request, error) {
+func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
@@ -149,21 +168,7 @@ func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType s
 	return req, nil
 }
 
-// deleteHandleResponse handles the Delete response.
-func (client *PlanesClient) deleteHandleResponse(resp *http.Response) (PlanesClientDeleteResponse, error) {
-	result := PlanesClientDeleteResponse{}
-	if val := resp.Header.Get("Retry-After"); val != "" {
-		retryAfter32, err := strconv.ParseInt(val, 10, 32)
-		retryAfter := int32(retryAfter32)
-		if err != nil {
-			return PlanesClientDeleteResponse{}, err
-		}
-		result.RetryAfter = &retryAfter
-	}
-	return result, nil
-}
-
-// Get - Retrieves information about a PlaneResource
+// Get - Get a plane by name
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-09-01-privatepreview
@@ -216,41 +221,100 @@ func (client *PlanesClient) getHandleResponse(resp *http.Response) (PlanesClient
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all PlaneResources in the given plane
+// NewListByTypePager - List planes by type
 //
 // Generated from API version 2022-09-01-privatepreview
-//   - options - PlanesClientListByRootScopeOptions contains the optional parameters for the PlanesClient.NewListByRootScopePager
-//     method.
-func (client *PlanesClient) NewListByRootScopePager(options *PlanesClientListByRootScopeOptions) (*runtime.Pager[PlanesClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[PlanesClientListByRootScopeResponse]{
-		More: func(page PlanesClientListByRootScopeResponse) bool {
+//   - planeType - The plane type.
+//   - options - PlanesClientListByTypeOptions contains the optional parameters for the PlanesClient.NewListByTypePager method.
+func (client *PlanesClient) NewListByTypePager(planeType string, options *PlanesClientListByTypeOptions) (*runtime.Pager[PlanesClientListByTypeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[PlanesClientListByTypeResponse]{
+		More: func(page PlanesClientListByTypeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *PlanesClientListByRootScopeResponse) (PlanesClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *PlanesClientListByTypeResponse) (PlanesClientListByTypeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, options)
+				req, err = client.listByTypeCreateRequest(ctx, planeType, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return PlanesClientListByRootScopeResponse{}, err
+				return PlanesClientListByTypeResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return PlanesClientListByRootScopeResponse{}, err
+				return PlanesClientListByTypeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return PlanesClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return PlanesClientListByTypeResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listByRootScopeHandleResponse(resp)
+			return client.listByTypeHandleResponse(resp)
 		},
 	})
 }
 
-// listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *PlanesClient) listByRootScopeCreateRequest(ctx context.Context, options *PlanesClientListByRootScopeOptions) (*policy.Request, error) {
+// listByTypeCreateRequest creates the ListByType request.
+func (client *PlanesClient) listByTypeCreateRequest(ctx context.Context, planeType string, options *PlanesClientListByTypeOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listByTypeHandleResponse handles the ListByType response.
+func (client *PlanesClient) listByTypeHandleResponse(resp *http.Response) (PlanesClientListByTypeResponse, error) {
+	result := PlanesClientListByTypeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.PlaneResourceListResult); err != nil {
+		return PlanesClientListByTypeResponse{}, err
+	}
+	return result, nil
+}
+
+// NewListPlanesPager - List all planes
+//
+// Generated from API version 2022-09-01-privatepreview
+//   - options - PlanesClientListPlanesOptions contains the optional parameters for the PlanesClient.NewListPlanesPager method.
+func (client *PlanesClient) NewListPlanesPager(options *PlanesClientListPlanesOptions) (*runtime.Pager[PlanesClientListPlanesResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[PlanesClientListPlanesResponse]{
+		More: func(page PlanesClientListPlanesResponse) bool {
+			return page.NextLink != nil && len(*page.NextLink) > 0
+		},
+		Fetcher: func(ctx context.Context, page *PlanesClientListPlanesResponse) (PlanesClientListPlanesResponse, error) {
+			var req *policy.Request
+			var err error
+			if page == nil {
+				req, err = client.listPlanesCreateRequest(ctx, options)
+			} else {
+				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
+			}
+			if err != nil {
+				return PlanesClientListPlanesResponse{}, err
+			}
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return PlanesClientListPlanesResponse{}, err
+			}
+			if !runtime.HasStatusCode(resp, http.StatusOK) {
+				return PlanesClientListPlanesResponse{}, runtime.NewResponseError(resp)
+			}
+			return client.listPlanesHandleResponse(resp)
+		},
+	})
+}
+
+// listPlanesCreateRequest creates the ListPlanes request.
+func (client *PlanesClient) listPlanesCreateRequest(ctx context.Context, options *PlanesClientListPlanesOptions) (*policy.Request, error) {
 	urlPath := "/planes"
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
@@ -263,12 +327,78 @@ func (client *PlanesClient) listByRootScopeCreateRequest(ctx context.Context, op
 	return req, nil
 }
 
-// listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *PlanesClient) listByRootScopeHandleResponse(resp *http.Response) (PlanesClientListByRootScopeResponse, error) {
-	result := PlanesClientListByRootScopeResponse{}
+// listPlanesHandleResponse handles the ListPlanes response.
+func (client *PlanesClient) listPlanesHandleResponse(resp *http.Response) (PlanesClientListPlanesResponse, error) {
+	result := PlanesClientListPlanesResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.PlaneResourceListResult); err != nil {
-		return PlanesClientListByRootScopeResponse{}, err
+		return PlanesClientListPlanesResponse{}, err
 	}
 	return result, nil
+}
+
+// BeginUpdate - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+//   - planeType - The plane type.
+//   - planeName - The name of the plane
+//   - properties - The resource properties to be updated.
+//   - options - PlanesClientBeginUpdateOptions contains the optional parameters for the PlanesClient.BeginUpdate method.
+func (client *PlanesClient) BeginUpdate(ctx context.Context, planeType string, planeName string, properties PlaneResourceTagsUpdate, options *PlanesClientBeginUpdateOptions) (*runtime.Poller[PlanesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, planeType, planeName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PlanesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[PlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// Update - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2022-09-01-privatepreview
+func (client *PlanesClient) update(ctx context.Context, planeType string, planeName string, properties PlaneResourceTagsUpdate, options *PlanesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, planeType, planeName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		err = runtime.NewResponseError(httpResp)
+		return nil, err
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the Update request.
+func (client *PlanesClient) updateCreateRequest(ctx context.Context, planeType string, planeName string, properties PlaneResourceTagsUpdate, options *PlanesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+	return nil, err
+}
+	return req, nil
 }
 

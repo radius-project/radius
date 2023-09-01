@@ -25,12 +25,6 @@ endif
 .PHONY: generate
 generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 
-.PHONY: generate-cadl-installed
-generate-cadl-installed:
-	@echo "$(ARROW) Detecting cadl..."
-	cd cadl/Applications.UCP && npx$(CMD_EXT) -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
-	@echo "$(ARROW) OK"
-
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
 	@echo "$(ARROW) Detecting tsp..."
@@ -39,10 +33,8 @@ generate-tsp-installed:
 
 .PHONY: generate-openapi-spec
 generate-openapi-spec:
-	@echo  "Generating openapi specs from cadl models."
-	cd cadl/UCP && npx$(CMD_EXT) cadl compile . 
-
 	@echo  "Generating openapi specs from typespec models."
+	cd typespec/UCP && npx$(CMD_EXT) tsp compile . 
 	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
 	cd typespec/Applications.Messaging && npx$(CMD_EXT) tsp compile .

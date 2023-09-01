@@ -81,7 +81,7 @@ func (mr *MockAWSCredentialManagementClientInterfaceMockRecorder) List(arg0 inte
 }
 
 // Put mocks base method.
-func (m *MockAWSCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20220901privatepreview.AWSCredentialResource) error {
+func (m *MockAWSCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20220901privatepreview.AwsCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
 	ret0, _ := ret[0].(error)

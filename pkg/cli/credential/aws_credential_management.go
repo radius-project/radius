@@ -30,7 +30,7 @@ import (
 
 // AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClient struct {
-	AWSCredentialClient ucp.AwsCredentialClient
+	AWSCredentialClient ucp.AwsCredentialsClient
 }
 
 const (
@@ -53,7 +53,7 @@ type AWSCredentialManagementClientInterface interface {
 	// List lists the credentials registered with all ucp provider planes.
 	List(ctx context.Context) ([]CloudProviderStatus, error)
 	// Put registers an AWS credential with the respective ucp provider plane.
-	Put(ctx context.Context, credential_config ucp.AWSCredentialResource) error
+	Put(ctx context.Context, credential_config ucp.AwsCredentialResource) error
 	// Delete unregisters credential from the given ucp provider plane.
 	Delete(ctx context.Context, name string) (bool, error)
 }
@@ -63,7 +63,7 @@ type AWSCredentialManagementClientInterface interface {
 
 // "Put" checks if the credential type is "AWSCredential" and if so, creates or updates the credential in the AWS plane,
 // otherwise it returns an error.
-func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AWSCredentialResource) error {
+func (cpm *AWSCredentialManagementClient) Put(ctx context.Context, credential ucp.AwsCredentialResource) error {
 	if strings.EqualFold(*credential.Type, AWSCredential) {
 		_, err := cpm.AWSCredentialClient.CreateOrUpdate(ctx, AWSPlaneName, defaultSecretName, credential, nil)
 		return err
@@ -84,7 +84,7 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 	if err != nil {
 		return ProviderCredentialConfiguration{}, err
 	}
-	awsAccessKeyCredentials, ok := resp.AWSCredentialResource.Properties.(*ucp.AWSAccessKeyCredentialProperties)
+	awsAccessKeyCredentials, ok := resp.AwsCredentialResource.Properties.(*ucp.AwsAccessKeyCredentialProperties)
 	if !ok {
 		return ProviderCredentialConfiguration{}, clierrors.Message("Unable to find credentials for cloud provider %s.", AWSCredential)
 	}
@@ -108,15 +108,15 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 // enabled status of each credential. If an error occurs, an error is returned.
 func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProviderStatus, error) {
 	// list AWS credential
-	var providerList []*ucp.AWSCredentialResource
+	var providerList []*ucp.AwsCredentialResource
 
-	pager := cpm.AWSCredentialClient.NewListByRootScopePager(AWSPlaneName, nil)
+	pager := cpm.AWSCredentialClient.NewListPager(AWSPlaneName, nil)
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
 			return nil, err
 		}
-		credList := nextPage.AWSCredentialResourceListResult.Value
+		credList := nextPage.AwsCredentialResourceListResult.Value
 		providerList = append(providerList, credList...)
 	}
 
