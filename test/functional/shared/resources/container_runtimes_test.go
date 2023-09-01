@@ -149,7 +149,7 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 }
 
 func Test_Container_pod_patching(t *testing.T) {
-	template := "testdata/corerp-resources-container-manifest-sidecar.bicep"
+	template := "testdata/corerp-resources-container-pod-patching.bicep"
 	name := "corerp-resources-container-podpatch"
 	appNamespace := "corerp-resources-container-podpatch"
 
@@ -177,7 +177,7 @@ func Test_Container_pod_patching(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-sidecar", metav1.GetOptions{})
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-podpatch", metav1.GetOptions{})
 				require.NoError(t, err)
 
 				t.Logf("deploy: %+v", deploy)
