@@ -259,7 +259,7 @@ type PlaneResourceListResult struct {
 	NextLink *string
 }
 
-// PlaneResourceProperties - Plane properties.
+// PlaneResourceProperties - The Plane properties.
 type PlaneResourceProperties struct {
 	// REQUIRED; The kind of plane
 	Kind *PlaneKind

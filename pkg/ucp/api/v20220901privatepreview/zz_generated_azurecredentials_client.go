@@ -193,42 +193,42 @@ func (client *AzureCredentialsClient) getHandleResponse(resp *http.Response) (Az
 	return result, nil
 }
 
-// NewListByRootScopePager - List Azure credentials
+// NewListPager - List Azure credentials
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeName - The name of the plane
-//   - options - AzureCredentialsClientListByRootScopeOptions contains the optional parameters for the AzureCredentialsClient.NewListByRootScopePager
+//   - options - AzureCredentialsClientListOptions contains the optional parameters for the AzureCredentialsClient.NewListPager
 //     method.
-func (client *AzureCredentialsClient) NewListByRootScopePager(planeName string, options *AzureCredentialsClientListByRootScopeOptions) (*runtime.Pager[AzureCredentialsClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[AzureCredentialsClientListByRootScopeResponse]{
-		More: func(page AzureCredentialsClientListByRootScopeResponse) bool {
+func (client *AzureCredentialsClient) NewListPager(planeName string, options *AzureCredentialsClientListOptions) (*runtime.Pager[AzureCredentialsClientListResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[AzureCredentialsClientListResponse]{
+		More: func(page AzureCredentialsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *AzureCredentialsClientListByRootScopeResponse) (AzureCredentialsClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *AzureCredentialsClientListResponse) (AzureCredentialsClientListResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, planeName, options)
+				req, err = client.listCreateRequest(ctx, planeName, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return AzureCredentialsClientListByRootScopeResponse{}, err
+				return AzureCredentialsClientListResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return AzureCredentialsClientListByRootScopeResponse{}, err
+				return AzureCredentialsClientListResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return AzureCredentialsClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return AzureCredentialsClientListResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listByRootScopeHandleResponse(resp)
+			return client.listHandleResponse(resp)
 		},
 	})
 }
 
-// listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *AzureCredentialsClient) listByRootScopeCreateRequest(ctx context.Context, planeName string, options *AzureCredentialsClientListByRootScopeOptions) (*policy.Request, error) {
+// listCreateRequest creates the List request.
+func (client *AzureCredentialsClient) listCreateRequest(ctx context.Context, planeName string, options *AzureCredentialsClientListOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}/providers/System.Azure/credentials"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
@@ -242,11 +242,11 @@ func (client *AzureCredentialsClient) listByRootScopeCreateRequest(ctx context.C
 	return req, nil
 }
 
-// listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *AzureCredentialsClient) listByRootScopeHandleResponse(resp *http.Response) (AzureCredentialsClientListByRootScopeResponse, error) {
-	result := AzureCredentialsClientListByRootScopeResponse{}
+// listHandleResponse handles the List response.
+func (client *AzureCredentialsClient) listHandleResponse(resp *http.Response) (AzureCredentialsClientListResponse, error) {
+	result := AzureCredentialsClientListResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AzureCredentialResourceListResult); err != nil {
-		return AzureCredentialsClientListByRootScopeResponse{}, err
+		return AzureCredentialsClientListResponse{}, err
 	}
 	return result, nil
 }

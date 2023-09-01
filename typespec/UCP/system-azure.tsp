@@ -103,7 +103,7 @@ alias AzureCredentialBaseParameter<TResource> = CredentialBaseParameters<
 @armResourceOperations
 interface AzureCredentials {
   @doc("List Azure credentials")
-  listByRootScope is UcpResourceListByRootScope<
+  list is UcpResourceList<
     AzureCredentialResource,
     {
       ...ApiVersionParameter;

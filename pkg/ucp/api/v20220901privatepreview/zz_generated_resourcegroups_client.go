@@ -208,43 +208,42 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 	return result, nil
 }
 
-// NewListByRootScopePager - List resource groups
+// NewListPager - List resource groups
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeType - The plane type.
 //   - planeName - The name of the plane
-//   - options - ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.NewListByRootScopePager
-//     method.
-func (client *ResourceGroupsClient) NewListByRootScopePager(planeType string, planeName string, options *ResourceGroupsClientListByRootScopeOptions) (*runtime.Pager[ResourceGroupsClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[ResourceGroupsClientListByRootScopeResponse]{
-		More: func(page ResourceGroupsClientListByRootScopeResponse) bool {
+//   - options - ResourceGroupsClientListOptions contains the optional parameters for the ResourceGroupsClient.NewListPager method.
+func (client *ResourceGroupsClient) NewListPager(planeType string, planeName string, options *ResourceGroupsClientListOptions) (*runtime.Pager[ResourceGroupsClientListResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[ResourceGroupsClientListResponse]{
+		More: func(page ResourceGroupsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *ResourceGroupsClientListByRootScopeResponse) (ResourceGroupsClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *ResourceGroupsClientListResponse) (ResourceGroupsClientListResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, planeType, planeName, options)
+				req, err = client.listCreateRequest(ctx, planeType, planeName, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return ResourceGroupsClientListByRootScopeResponse{}, err
+				return ResourceGroupsClientListResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return ResourceGroupsClientListByRootScopeResponse{}, err
+				return ResourceGroupsClientListResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return ResourceGroupsClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return ResourceGroupsClientListResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listByRootScopeHandleResponse(resp)
+			return client.listHandleResponse(resp)
 		},
 	})
 }
 
-// listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *ResourceGroupsClient) listByRootScopeCreateRequest(ctx context.Context, planeType string, planeName string, options *ResourceGroupsClientListByRootScopeOptions) (*policy.Request, error) {
+// listCreateRequest creates the List request.
+func (client *ResourceGroupsClient) listCreateRequest(ctx context.Context, planeType string, planeName string, options *ResourceGroupsClientListOptions) (*policy.Request, error) {
 	urlPath := "/planes/{planeType}/{planeName}/resourcegroups"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
@@ -262,11 +261,11 @@ func (client *ResourceGroupsClient) listByRootScopeCreateRequest(ctx context.Con
 	return req, nil
 }
 
-// listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *ResourceGroupsClient) listByRootScopeHandleResponse(resp *http.Response) (ResourceGroupsClientListByRootScopeResponse, error) {
-	result := ResourceGroupsClientListByRootScopeResponse{}
+// listHandleResponse handles the List response.
+func (client *ResourceGroupsClient) listHandleResponse(resp *http.Response) (ResourceGroupsClientListResponse, error) {
+	result := ResourceGroupsClientListResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResourceListResult); err != nil {
-		return ResourceGroupsClientListByRootScopeResponse{}, err
+		return ResourceGroupsClientListResponse{}, err
 	}
 	return result, nil
 }

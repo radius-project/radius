@@ -99,7 +99,7 @@ alias AwsCredentialBaseParameter<TResource> = CredentialBaseParameters<
 @armResourceOperations
 interface AwsCredentials {
   @doc("List AWS credentials")
-  listByRootScope is UcpResourceListByRootScope<
+  list is UcpResourceList<
     AwsCredentialResource,
     {
       ...ApiVersionParameter;

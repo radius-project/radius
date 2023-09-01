@@ -24,8 +24,8 @@ type AwsCredentialsClientGetResponse struct {
 	AwsCredentialResource
 }
 
-// AwsCredentialsClientListByRootScopeResponse contains the response from method AwsCredentialsClient.NewListByRootScopePager.
-type AwsCredentialsClientListByRootScopeResponse struct {
+// AwsCredentialsClientListResponse contains the response from method AwsCredentialsClient.NewListPager.
+type AwsCredentialsClientListResponse struct {
 	// The response of a AwsCredentialResource list operation.
 	AwsCredentialResourceListResult
 }
@@ -53,8 +53,8 @@ type AzureCredentialsClientGetResponse struct {
 	AzureCredentialResource
 }
 
-// AzureCredentialsClientListByRootScopeResponse contains the response from method AzureCredentialsClient.NewListByRootScopePager.
-type AzureCredentialsClientListByRootScopeResponse struct {
+// AzureCredentialsClientListResponse contains the response from method AzureCredentialsClient.NewListPager.
+type AzureCredentialsClientListResponse struct {
 	// The response of a AzureCredentialResource list operation.
 	AzureCredentialResourceListResult
 }
@@ -117,8 +117,8 @@ type ResourceGroupsClientGetResponse struct {
 	ResourceGroupResource
 }
 
-// ResourceGroupsClientListByRootScopeResponse contains the response from method ResourceGroupsClient.NewListByRootScopePager.
-type ResourceGroupsClientListByRootScopeResponse struct {
+// ResourceGroupsClientListResponse contains the response from method ResourceGroupsClient.NewListPager.
+type ResourceGroupsClientListResponse struct {
 	// The response of a ResourceGroupResource list operation.
 	ResourceGroupResourceListResult
 }

@@ -193,42 +193,41 @@ func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response) (AwsC
 	return result, nil
 }
 
-// NewListByRootScopePager - List AWS credentials
+// NewListPager - List AWS credentials
 //
 // Generated from API version 2022-09-01-privatepreview
 //   - planeName - The name of AWS plane
-//   - options - AwsCredentialsClientListByRootScopeOptions contains the optional parameters for the AwsCredentialsClient.NewListByRootScopePager
-//     method.
-func (client *AwsCredentialsClient) NewListByRootScopePager(planeName string, options *AwsCredentialsClientListByRootScopeOptions) (*runtime.Pager[AwsCredentialsClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[AwsCredentialsClientListByRootScopeResponse]{
-		More: func(page AwsCredentialsClientListByRootScopeResponse) bool {
+//   - options - AwsCredentialsClientListOptions contains the optional parameters for the AwsCredentialsClient.NewListPager method.
+func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsCredentialsClientListOptions) (*runtime.Pager[AwsCredentialsClientListResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[AwsCredentialsClientListResponse]{
+		More: func(page AwsCredentialsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *AwsCredentialsClientListByRootScopeResponse) (AwsCredentialsClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *AwsCredentialsClientListResponse) (AwsCredentialsClientListResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
-				req, err = client.listByRootScopeCreateRequest(ctx, planeName, options)
+				req, err = client.listCreateRequest(ctx, planeName, options)
 			} else {
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return AwsCredentialsClientListByRootScopeResponse{}, err
+				return AwsCredentialsClientListResponse{}, err
 			}
 			resp, err := client.internal.Pipeline().Do(req)
 			if err != nil {
-				return AwsCredentialsClientListByRootScopeResponse{}, err
+				return AwsCredentialsClientListResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return AwsCredentialsClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return AwsCredentialsClientListResponse{}, runtime.NewResponseError(resp)
 			}
-			return client.listByRootScopeHandleResponse(resp)
+			return client.listHandleResponse(resp)
 		},
 	})
 }
 
-// listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *AwsCredentialsClient) listByRootScopeCreateRequest(ctx context.Context, planeName string, options *AwsCredentialsClientListByRootScopeOptions) (*policy.Request, error) {
+// listCreateRequest creates the List request.
+func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, planeName string, options *AwsCredentialsClientListOptions) (*policy.Request, error) {
 	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials"
 	urlPath = strings.ReplaceAll(urlPath, "{planeName}", planeName)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
@@ -242,11 +241,11 @@ func (client *AwsCredentialsClient) listByRootScopeCreateRequest(ctx context.Con
 	return req, nil
 }
 
-// listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *AwsCredentialsClient) listByRootScopeHandleResponse(resp *http.Response) (AwsCredentialsClientListByRootScopeResponse, error) {
-	result := AwsCredentialsClientListByRootScopeResponse{}
+// listHandleResponse handles the List response.
+func (client *AwsCredentialsClient) listHandleResponse(resp *http.Response) (AwsCredentialsClientListResponse, error) {
+	result := AwsCredentialsClientListResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResourceListResult); err != nil {
-		return AwsCredentialsClientListByRootScopeResponse{}, err
+		return AwsCredentialsClientListResponse{}, err
 	}
 	return result, nil
 }

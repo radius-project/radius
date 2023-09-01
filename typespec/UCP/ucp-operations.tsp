@@ -35,7 +35,7 @@ using OpenAPI;
 @doc("List {name}", TResource)
 @segmentOf(TResource)
 @armResourceList(TResource)
-op UcpResourceListByRootScope<TResource extends ArmResource, TBaseParameters>(
+op UcpResourceList<TResource extends ArmResource, TBaseParameters>(
   ...TBaseParameters,
   ...ParentKeysOf<TResource>,
 ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;

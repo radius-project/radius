@@ -58,7 +58,7 @@ enum PlaneKind {
   AWS,
 }
 
-@doc("Custom root scope")
+@doc("The Plane Name parameter.")
 model PlaneNameParameter {
   @doc("The name of the plane")
   @path
@@ -77,7 +77,7 @@ model PlaneBaseParameters<
   ...TPlaneName;
 }
 
-@doc("Plane properties.")
+@doc("The Plane properties.")
 model PlaneResourceProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
@@ -96,7 +96,7 @@ model PlaneResourceProperties {
 @armResourceOperations
 interface Planes {
   @doc("List all planes")
-  listPlanes is UcpResourceListByRootScope<PlaneResource, ApiVersionParameter>;
+  listPlanes is UcpResourceList<PlaneResource, ApiVersionParameter>;
 
   @doc("List planes by type")
   @get

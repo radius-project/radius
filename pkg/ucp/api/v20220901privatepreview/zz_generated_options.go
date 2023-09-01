@@ -23,9 +23,8 @@ type AwsCredentialsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AwsCredentialsClientListByRootScopeOptions contains the optional parameters for the AwsCredentialsClient.NewListByRootScopePager
-// method.
-type AwsCredentialsClientListByRootScopeOptions struct {
+// AwsCredentialsClientListOptions contains the optional parameters for the AwsCredentialsClient.NewListPager method.
+type AwsCredentialsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -50,9 +49,8 @@ type AzureCredentialsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialsClientListByRootScopeOptions contains the optional parameters for the AzureCredentialsClient.NewListByRootScopePager
-// method.
-type AzureCredentialsClientListByRootScopeOptions struct {
+// AzureCredentialsClientListOptions contains the optional parameters for the AzureCredentialsClient.NewListPager method.
+type AzureCredentialsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -110,9 +108,8 @@ type ResourceGroupsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.NewListByRootScopePager
-// method.
-type ResourceGroupsClientListByRootScopeOptions struct {
+// ResourceGroupsClientListOptions contains the optional parameters for the ResourceGroupsClient.NewListPager method.
+type ResourceGroupsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 

@@ -110,7 +110,7 @@ func (cpm *AWSCredentialManagementClient) List(ctx context.Context) ([]CloudProv
 	// list AWS credential
 	var providerList []*ucp.AwsCredentialResource
 
-	pager := cpm.AWSCredentialClient.NewListByRootScopePager(AWSPlaneName, nil)
+	pager := cpm.AWSCredentialClient.NewListPager(AWSPlaneName, nil)
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {

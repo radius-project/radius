@@ -122,6 +122,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "List planes by planeType": {
+            "$ref": "./examples/Planes_ListPlanesByType.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -294,6 +299,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Update a plane": {
+            "$ref": "./examples/Planes_Update.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -361,7 +371,7 @@
     },
     "/planes/{planeType}/{planeName}/resourcegroups": {
       "get": {
-        "operationId": "ResourceGroups_ListByRootScope",
+        "operationId": "ResourceGroups_List",
         "tags": [
           "ResourceGroups"
         ],
@@ -396,7 +406,7 @@
           }
         },
         "x-ms-examples": {
-          "List resource groups by rootScope": {
+          "List resource groups": {
             "$ref": "./examples/ResourceGroups_List.json"
           }
         },
@@ -573,6 +583,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Update a resource group": {
+            "$ref": "./examples/ResourceGroups_Update.json"
+          }
         }
       },
       "delete": {
@@ -628,7 +643,7 @@
     },
     "/planes/aws/{planeName}/providers/System.AWS/credentials": {
       "get": {
-        "operationId": "AwsCredentials_ListByRootScope",
+        "operationId": "AwsCredentials_List",
         "tags": [
           "AwsCredentials"
         ],
@@ -812,6 +827,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Update a AWS credential": {
+            "$ref": "./examples/AWSCredential_Update.json"
+          }
         }
       },
       "delete": {
@@ -860,7 +880,7 @@
     },
     "/planes/azure/{planeName}/providers/System.Azure/credentials": {
       "get": {
-        "operationId": "AzureCredentials_ListByRootScope",
+        "operationId": "AzureCredentials_List",
         "tags": [
           "AzureCredentials"
         ],
@@ -1043,6 +1063,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Update a Azure credential": {
+            "$ref": "./examples/AzureCredential_Update.json"
           }
         }
       },
@@ -1467,7 +1492,7 @@
     },
     "PlaneResourceProperties": {
       "type": "object",
-      "description": "Plane properties.",
+      "description": "The Plane properties.",
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",

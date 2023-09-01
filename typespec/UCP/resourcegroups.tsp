@@ -62,7 +62,7 @@ model ResourceGroupBaseParameters<TResource, TPlaneBase = PlaneResource> {
 @armResourceOperations
 interface ResourceGroups {
   @doc("List resource groups")
-  listByRootScope is UcpResourceListByRootScope<
+  list is UcpResourceList<
     ResourceGroupResource,
     PlaneBaseParameters<PlaneResource>
   >;
