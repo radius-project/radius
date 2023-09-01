@@ -1136,7 +1136,7 @@ type KubernetesRuntimeProperties struct {
 // Secrets, and ConfigMaps.
 	Base *string
 
-	// The PodSpec object which patches to the PodSpec object Radius creates.
+	// A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.
 	Pod map[string]any
 }
 

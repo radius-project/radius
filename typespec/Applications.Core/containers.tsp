@@ -73,7 +73,7 @@ model RuntimesProperties {
 }
 
 #suppress "@azure-tools/typespec-azure-core/bad-record-type"
-@doc("The properties of PodSpec object for Kuberentes Runtime.")
+@doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
 model KubernetesPodSpec is Record<unknown>;
 
 @doc("The runtime configuration properties for Kubernetes")
@@ -82,7 +82,7 @@ model KubernetesRuntimeProperties {
   base?: string;
 
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
-  @doc("The PodSpec object which patches to the PodSpec object Radius creates.")
+  @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
   pod?: KubernetesPodSpec;
 }
 

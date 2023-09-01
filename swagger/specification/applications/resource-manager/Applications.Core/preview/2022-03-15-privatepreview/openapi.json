@@ -4183,7 +4183,7 @@
     },
     "KubernetesPodSpec": {
       "type": "object",
-      "description": "The properties of PodSpec object for Kuberentes Runtime.",
+      "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.",
       "additionalProperties": true
     },
     "KubernetesRuntimeProperties": {
@@ -4196,7 +4196,7 @@
         },
         "pod": {
           "$ref": "#/definitions/KubernetesPodSpec",
-          "description": "The PodSpec object which patches to the PodSpec object Radius creates."
+          "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed."
         }
       }
     },
