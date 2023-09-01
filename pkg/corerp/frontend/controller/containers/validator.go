@@ -18,6 +18,7 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	appv1 "k8s.io/api/apps/v1"
@@ -51,14 +52,36 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 	}
 
 	runtimes := newResource.Properties.Runtimes
-	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
-		err := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
-		if err != nil {
-			return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+	if runtimes != nil && runtimes.Kubernetes != nil {
+		if runtimes.Kubernetes.Base != "" {
+			err := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
+			if err != nil {
+				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+			}
+		}
+
+		if runtimes.Kubernetes.Pod != "" {
+			err := validatePodSpec([]byte(runtimes.Kubernetes.Pod))
+			if err != nil {
+				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+			}
 		}
 	}
 
 	return nil, nil
+}
+
+func validatePodSpec(patch []byte) error {
+	podSpec := &corev1.PodSpec{}
+	err := json.Unmarshal(patch, podSpec)
+	if err != nil {
+		return v1.ErrorDetails{
+			Code:    v1.CodeInvalidRequestContent,
+			Target:  "$.properties.runtimes.kubernetes.pod",
+			Message: fmt.Sprintf("The PodSpec patch object is invalid: %s", err.Error()),
+		}
+	}
+	return nil
 }
 
 func errMultipleResources(typeName string, num int) v1.ErrorDetails {

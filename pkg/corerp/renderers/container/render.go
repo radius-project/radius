@@ -19,7 +19,6 @@ package container
 import (
 	"context"
 	"crypto/sha1"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -32,7 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -528,23 +526,6 @@ func (r Renderer) makeDeployment(
 		}
 	}
 
-	if properties.Runtimes.Kubernetes != nil && properties.Runtimes.Kubernetes.Pod != "" {
-		podSpecJSON, err := json.Marshal(podSpec)
-		if err != nil {
-			return []rpv1.OutputResource{}, nil, err
-		}
-
-		merged, err := strategicpatch.StrategicMergePatch(podSpecJSON, []byte(properties.Runtimes.Kubernetes.Pod), corev1.PodSpec{})
-		if err != nil {
-			return []rpv1.OutputResource{}, nil, err
-		}
-
-		err = json.Unmarshal(merged, podSpec)
-		if err != nil {
-			return []rpv1.OutputResource{}, nil, err
-		}
-	}
-
 	// In addition to the descriptive labels, we need to attach labels for each route
 	// so that the generated services can find these pods
 	for _, routeInfo := range routes {
@@ -668,6 +649,15 @@ func (r Renderer) makeDeployment(
 		hash := r.hashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
 		deps = append(deps, rpv1.LocalIDSecret)
+	}
+
+	// Patching Runtimes.Kubernetes.Pod to the PodSpec in deployment resource.
+	if properties.Runtimes != nil && properties.Runtimes.Kubernetes != nil && properties.Runtimes.Kubernetes.Pod != "" {
+		patchedPodSpec, err := patchPodSpec(podSpec, properties.Runtimes.Kubernetes)
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to patch PodSpec: %w", err)
+		}
+		deployment.Spec.Template.Spec = *patchedPodSpec
 	}
 
 	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
