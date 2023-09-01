@@ -515,6 +515,9 @@ func toRuntimeProperties(runtime *RuntimesProperties) *datamodel.RuntimeProperti
 			Base: to.String(runtime.Kubernetes.Base),
 		}
 		if runtime.Kubernetes.Pod != nil {
+			// Serializes PodSpec patch object to JSON-encoded. Internally, Radius does JSON strategic merge patch
+			// with this JSON-encoded PodSpec patch object. Thus, datamodel holds JSON-encoded PodSpec patch object
+			// as a string.
 			serialiedPodPatch, err := json.Marshal(runtime.Kubernetes.Pod)
 			if err != nil {
 				return nil
