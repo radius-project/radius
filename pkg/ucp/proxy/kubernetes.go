@@ -17,21 +17,17 @@ limitations under the License.
 package proxy
 
 import (
-	"net/url"
+	"net/http"
+	"strings"
 )
 
-// NewARMProxy creates a ReverseProxy with custom directors, transport and responders to process requests and responses.
-func NewARMProxy(options ReverseProxyOptions, downstream *url.URL, configure func(builder *ReverseProxyBuilder)) ReverseProxy {
-	builder := ReverseProxyBuilder{
-		Downstream:    downstream,
-		EnableLogging: true,
-		Transport:     options.RoundTripper,
-		Responders:    []ResponderFunc{ProcessAsyncOperationHeaders},
+// filterKubernetesAPIServerHeaders filters out headers that APIServer sets on the request.
+func filterKubernetesAPIServerHeaders(r *http.Request) {
+	for k := range r.Header {
+		header := strings.ToLower(k)
+		// https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy
+		if header == "x-remote-user" || header == "x-remote-group" || strings.HasPrefix(header, "x-remote-extra-") {
+			r.Header.Del(k)
+		}
 	}
-
-	if configure != nil {
-		configure(&builder)
-	}
-
-	return builder.Build()
 }
