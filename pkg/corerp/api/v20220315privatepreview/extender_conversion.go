@@ -22,7 +22,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources"
-	pr_apiver "github.com/radius-project/radius/pkg/portableresources/api/v20220315privatepreview"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
@@ -127,12 +126,12 @@ func fromRecipeDataModel(r portableresources.LinkRecipe) *Recipe {
 func toRecipeDataModel(r *Recipe) portableresources.LinkRecipe {
 	if r == nil {
 		return portableresources.LinkRecipe{
-			Name: pr_apiver.DefaultRecipeName,
+			Name: portableresources.DefaultRecipeName,
 		}
 	}
 	recipe := portableresources.LinkRecipe{}
 	if r.Name == nil {
-		recipe.Name = pr_apiver.DefaultRecipeName
+		recipe.Name = portableresources.DefaultRecipeName
 	} else {
 		recipe.Name = to.String(r.Name)
 	}

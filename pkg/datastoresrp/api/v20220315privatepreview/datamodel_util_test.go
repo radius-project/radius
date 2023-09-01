@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/portableresources/api/v20220315privatepreview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -220,7 +219,7 @@ func TestToRecipeDataModel(t *testing.T) {
 		{
 			nil,
 			portableresources.LinkRecipe{
-				Name: v20220315privatepreview.DefaultRecipeName,
+				Name: portableresources.DefaultRecipeName,
 			},
 		},
 		{
@@ -244,7 +243,7 @@ func TestToRecipeDataModel(t *testing.T) {
 				},
 			},
 			portableresources.LinkRecipe{
-				Name: v20220315privatepreview.DefaultRecipeName,
+				Name: portableresources.DefaultRecipeName,
 				Parameters: map[string]any{
 					"foo": "bar",
 				},
@@ -264,13 +263,13 @@ func TestFromRecipeDataModel(t *testing.T) {
 	}{
 		{
 			DMResources: []portableresources.LinkRecipe{{
-				Name: v20220315privatepreview.DefaultRecipeName,
+				Name: portableresources.DefaultRecipeName,
 				Parameters: map[string]any{
 					"foo": "bar",
 				},
 			}},
 			VersionedResources: []*Recipe{{
-				Name: to.Ptr(v20220315privatepreview.DefaultRecipeName),
+				Name: to.Ptr(portableresources.DefaultRecipeName),
 				Parameters: map[string]any{
 					"foo": "bar",
 				},

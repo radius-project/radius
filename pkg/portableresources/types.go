@@ -21,19 +21,38 @@ import (
 )
 
 const (
+	// DaprPubSubBrokersResourceType represents the resource type for Dapr PubSub brokers.
 	DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
-	DaprSecretStoresResourceType  = "Applications.Dapr/secretStores"
-	DaprStateStoresResourceType   = "Applications.Dapr/stateStores"
-	RabbitMQQueuesResourceType    = "Applications.Messaging/rabbitMQQueues"
-	MongoDatabasesResourceType    = "Applications.Datastores/mongoDatabases"
-	RedisCachesResourceType       = "Applications.Datastores/redisCaches"
-	SqlDatabasesResourceType      = "Applications.Datastores/sqlDatabases"
-	ExtendersResourceType         = "Applications.Core/extenders"
 
-	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe
+	// DaprSecretStoresResourceType represents the resource type for Dapr Secret stores.
+	DaprSecretStoresResourceType = "Applications.Dapr/secretStores"
+
+	// DaprStateStoresResourceType represents the resource type for Dapr State stores.
+	DaprStateStoresResourceType = "Applications.Dapr/stateStores"
+
+	// RabbitMQQueuesResourceType represents the resource type for RabbitMQ queue.
+	RabbitMQQueuesResourceType = "Applications.Messaging/rabbitMQQueues"
+
+	// MongoDatabasesResourceType represents the resource type for Mongo database.
+	MongoDatabasesResourceType = "Applications.Datastores/mongoDatabases"
+
+	// RedisCachesResourceType represents the resource type for Redis caches.
+	RedisCachesResourceType = "Applications.Datastores/redisCaches"
+
+	// SqlDatabasesResourceType represents the resource type for SQL databases.
+	SqlDatabasesResourceType = "Applications.Datastores/sqlDatabases"
+
+	// ExtendersResourceType represents the resource type for Extenders resource.
+	ExtendersResourceType = "Applications.Core/extenders"
+
+	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe.
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
-	// ResourceProvisiongManual is the scenario wher the user manages the resource and provides the values
+
+	// ResourceProvisioningManual is the scenario where the user manages the resource and provides values.
 	ResourceProvisioningManual ResourceProvisioning = "manual"
+
+	// DefaultRecipeName represents the default recipe name.
+	DefaultRecipeName = "default"
 )
 
 type RecipeData struct {
