@@ -98,7 +98,7 @@ func createRadiusPlane(ucp *testserver.TestServer, resourceProviders map[string]
 func createResourceGroup(ucp *testserver.TestServer, id string) {
 	body := v20220901privatepreview.ResourceGroupResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &v20220901privatepreview.BasicResourceProperties{},
+		Properties: &v20220901privatepreview.ResourceGroupProperties{},
 	}
 	response := ucp.MakeTypedRequest(http.MethodPut, id+"?"+apiVersionParameter, body)
 	response.EqualsStatusCode(http.StatusOK)

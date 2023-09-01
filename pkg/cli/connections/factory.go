@@ -208,12 +208,12 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 
 	clientOptions := sdk.NewClientOptions(connection)
 
-	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}

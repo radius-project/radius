@@ -152,9 +152,9 @@ func getAzureTestCredentialObject() ucp.AzureCredentialResource {
 			ClientID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
 			ClientSecret: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:         to.Ptr("ServicePrincipal"),
+			Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
 				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},
@@ -173,9 +173,9 @@ func getExpectedAzureTestCredentialObject() ucp.AzureCredentialResource {
 		Properties: &ucp.AzureServicePrincipalProperties{
 			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:     to.Ptr("ServicePrincipal"),
+			Kind:     to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 			Storage: &ucp.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind:       to.Ptr(ucp.CredentialStorageKindInternal),
 				SecretName: to.Ptr("azure-azuretest-default"),
 			},
 		},

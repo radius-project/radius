@@ -28,7 +28,7 @@ import (
 func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.AWSCredentialResource{}
+		versioned := &v20220901privatepreview.AwsCredentialResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -43,7 +43,7 @@ func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version s
 func AWSCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AWSCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.AWSCredentialResource{}
+		vm := &v20220901privatepreview.AwsCredentialResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}

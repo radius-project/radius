@@ -345,7 +345,7 @@ func (r *Runner) getAzureCredential() ucp.AzureCredentialResource {
 		Type:     to.Ptr(cli_credential.AzureCredential),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			TenantID:     &r.Options.CloudProviders.Azure.ServicePrincipal.TenantID,
 			ClientID:     &r.Options.CloudProviders.Azure.ServicePrincipal.ClientID,
@@ -354,13 +354,13 @@ func (r *Runner) getAzureCredential() ucp.AzureCredentialResource {
 	}
 }
 
-func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
-	return ucp.AWSCredentialResource{
+func (r *Runner) getAWSCredential() ucp.AwsCredentialResource {
+	return ucp.AwsCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AWSCredential),
-		Properties: &ucp.AWSAccessKeyCredentialProperties{
+		Properties: &ucp.AwsAccessKeyCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			AccessKeyID:     &r.Options.CloudProviders.AWS.AccessKeyID,
 			SecretAccessKey: &r.Options.CloudProviders.AWS.SecretAccessKey,
