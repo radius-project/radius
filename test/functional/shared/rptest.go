@@ -199,6 +199,7 @@ func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 
 		err := ct.Options.Client.Get(ctx, client.ObjectKey{Name: crd}, &apiextv1.CustomResourceDefinition{})
 		if apierrors.IsNotFound(err) {
+			// Shouldn't we fail the test if the CRD is not found?
 			t.Skip(message)
 		} else if err != nil {
 			require.NoError(t, err, "failed to check for required features")

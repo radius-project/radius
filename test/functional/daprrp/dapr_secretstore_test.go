@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resource_test
+package daprrp
 
 import (
+	"context"
 	"testing"
 
 	"github.com/radius-project/radius/test/functional"
@@ -55,12 +56,21 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
+
+						// Not sure why we skip validating the labels
+						validation.NewDaprComponent(name, "gnrc-scs-manual").
+							ValidateLabels(false),
 					},
 				},
 			},
 		},
 	}, shared.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-manual", appNamespace)
+	}
 
 	test.Test(t)
 }
@@ -94,13 +104,22 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").
+							ValidateLabels(false),
+
+						validation.NewDaprComponent(name, "gnrc-scs-recipe").
+							ValidateLabels(false),
 					},
 				},
 			},
 		},
 	}, shared.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-recipe", appNamespace)
+	}
 
 	test.Test(t)
 }

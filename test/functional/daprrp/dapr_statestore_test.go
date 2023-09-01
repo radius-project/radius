@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resource_test
+package daprrp
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -58,14 +59,25 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 						validation.NewK8sPodForResource(name, "dapr-sts-manual-ctnr"),
 
 						// Deployed as supporting resources using Kubernetes Bicep extensibility.
-						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis").
+							ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis").
+							ValidateLabels(false),
+
+						validation.NewDaprComponent(name, "dapr-sts-manual").
+							ValidateLabels(false),
 					},
 				},
 			},
 		},
 	})
+
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-manual", appNamespace)
+	}
+
 	test.Test(t)
 }
 
@@ -103,12 +115,22 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr").
+							ValidateLabels(false),
+
+						validation.NewDaprComponent(name, "dapr-sts-recipe").
+							ValidateLabels(false),
 					},
 				},
 			},
 		},
 	})
+
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-recipe", appNamespace)
+	}
+
 	test.Test(t)
 }
