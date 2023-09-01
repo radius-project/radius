@@ -48,7 +48,7 @@ enum CredentialStorageKind {
   Internal,
 }
 
-@doc("Credential storage properties")
+@doc("The base credential storage properties")
 @discriminator("kind")
 model CredentialStorageProperties {
   @doc("The kind of credential storage")
@@ -57,7 +57,7 @@ model CredentialStorageProperties {
 
 @doc("Internal credential storage properties")
 model InternalCredentialStorageProperties extends CredentialStorageProperties {
-  @doc("Internal kind")
+  @doc("Internal credential storage kind")
   kind: CredentialStorageKind.Internal;
 
   @doc("The name of secret stored.")

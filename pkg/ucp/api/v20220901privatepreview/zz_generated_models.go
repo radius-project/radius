@@ -167,7 +167,7 @@ func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureC
 	}
 }
 
-// CredentialStorageProperties - Credential storage properties
+// CredentialStorageProperties - The base credential storage properties
 type CredentialStorageProperties struct {
 	// REQUIRED; The kind of credential storage
 	Kind *CredentialStorageKind

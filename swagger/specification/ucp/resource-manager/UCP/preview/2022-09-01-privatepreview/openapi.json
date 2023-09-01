@@ -1387,7 +1387,7 @@
     },
     "CredentialStorageProperties": {
       "type": "object",
-      "description": "Credential storage properties",
+      "description": "The base credential storage properties",
       "properties": {
         "kind": {
           "$ref": "#/definitions/CredentialStorageKind",
