@@ -28,6 +28,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -37,6 +38,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test/functional"
@@ -250,6 +252,120 @@ func Test_TerraformRecipe_AzureStorage(t *testing.T) {
 		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
 		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
 	}
+
+	test.Test(t)
+}
+
+// Test_TerraformRecipe_ParametersAndOutputs Validates input parameters correctly set and output values/secrets are populated.
+func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"
+	name := "corerp-resources-terraform-parametersandoutputs"
+
+	// Best way to pass complex parameters is to use JSON.
+	parametersFilePath := functional.WriteBicepParameterFile(t, map[string]any{
+		// These will be set on the environment as part of the recipe
+		"environmentParameters": map[string]any{
+			"a": "environment",
+			"d": "environment",
+		},
+
+		// These will be set on the extender resource
+		"resourceParameters": map[string]any{
+			"c": 42,
+			"d": "resource",
+		},
+	})
+
+	parameters := []string{
+		functional.GetTerraformRecipeModuleServerURL(),
+		fmt.Sprintf("basename=%s", name),
+		fmt.Sprintf("moduleName=%s", "parameter-outputs"),
+		"@" + parametersFilePath,
+	}
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, parameters...),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ExtendersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				require.NoError(t, err)
+
+				text, err := json.MarshalIndent(resource, "", "  ")
+				require.NoError(t, err)
+				t.Logf("resource data:\n %s", text)
+
+				require.Equal(t, "environment", resource.Properties["a"])
+				require.Equal(t, "default value", resource.Properties["b"])
+				require.Equal(t, 42.0, resource.Properties["c"])
+				require.Equal(t, "resource", resource.Properties["d"])
+
+				response, err := test.Options.CustomAction.InvokeCustomAction(ctx, *resource.ID, "2022-03-15-privatepreview", "listSecrets")
+				require.NoError(t, err)
+
+				expected := map[string]any{"e": "secret value"}
+				require.Equal(t, expected, response.Body)
+			},
+		},
+	})
+	test.Test(t)
+}
+
+// Test_TerraformRecipe_WrongOutput validates that a Terraform recipe with invalid "result" output schema returns an error.
+func Test_TerraformRecipe_WrongOutput(t *testing.T) {
+	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"
+	name := "corerp-resources-terraform-wrong-output"
+
+	parameters := []string{
+		functional.GetTerraformRecipeModuleServerURL(),
+		fmt.Sprintf("basename=%s", name),
+		fmt.Sprintf("moduleName=%s", "wrong-output"),
+	}
+
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            recipes.InvalidRecipeOutputs,
+				MessageContains: "failed to read the recipe output \"result\": json: unknown field \"error\"",
+			},
+		},
+	})
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployErrorExecutor(template, validate, parameters...),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+	})
 
 	test.Test(t)
 }
