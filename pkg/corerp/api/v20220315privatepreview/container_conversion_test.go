@@ -107,6 +107,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 					require.NotNil(t, ct.Properties.Runtimes.Kubernetes)
 					require.NotEmpty(t, ct.Properties.Runtimes.Kubernetes.Base)
 					require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, "{\"containers\":[{\"name\":\"sidecar\"}],\"hostNetwork\":true}", ct.Properties.Runtimes.Kubernetes.Pod)
 				}
 			}
 		})
@@ -173,6 +174,14 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 					require.NotNil(t, versioned.Properties.Runtimes)
 					require.NotEmpty(t, *versioned.Properties.Runtimes.Kubernetes.Base)
 					require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *versioned.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, map[string]any{
+						"containers": []any{
+							map[string]any{
+								"name": "sidecar",
+							},
+						},
+						"hostNetwork": true,
+					}, versioned.Properties.Runtimes.Kubernetes.Pod)
 				}
 			}
 		})

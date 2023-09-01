@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
 var errDeploymentNotFound = errors.New("deployment resource must be in outputResources")
@@ -215,4 +217,24 @@ func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest,
 	}
 
 	return outputResources
+}
+
+func patchPodSpec(sourceSpec *corev1.PodSpec, patchSpec []byte) (*corev1.PodSpec, error) {
+	podSpecJSON, err := json.Marshal(sourceSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	merged, err := strategicpatch.StrategicMergePatch(podSpecJSON, patchSpec, corev1.PodSpec{})
+	if err != nil {
+		return nil, err
+	}
+
+	patched := &corev1.PodSpec{}
+	err = json.Unmarshal(merged, patched)
+	if err != nil {
+		return nil, err
+	}
+
+	return patched, nil
 }

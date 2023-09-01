@@ -147,3 +147,53 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_Container_pod_patching(t *testing.T) {
+	template := "testdata/corerp-resources-container-pod-patching.bicep"
+	name := "corerp-resources-container-podpatch"
+	appNamespace := "corerp-resources-container-podpatch"
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "ctnr-podpatch",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "ctnr-podpatch"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				deploy, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).Get(ctx, "ctnr-podpatch", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				t.Logf("deploy: %+v", deploy)
+
+				require.Len(t, deploy.Spec.Template.Spec.Containers, 2)
+
+				// Ensure that Pod includes sidecar.
+				require.ElementsMatch(t, []string{"ctnr-podpatch", "log-collector"}, []string{
+					deploy.Spec.Template.Spec.Containers[0].Name,
+					deploy.Spec.Template.Spec.Containers[1].Name,
+				})
+
+				require.True(t, deploy.Spec.Template.Spec.HostNetwork)
+			},
+		},
+	})
+
+	test.Test(t)
+}

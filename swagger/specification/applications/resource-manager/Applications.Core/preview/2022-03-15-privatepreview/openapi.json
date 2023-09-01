@@ -4181,6 +4181,11 @@
       ],
       "x-ms-discriminator-value": "kubernetesNamespace"
     },
+    "KubernetesPodSpec": {
+      "type": "object",
+      "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.",
+      "additionalProperties": true
+    },
     "KubernetesRuntimeProperties": {
       "type": "object",
       "description": "The runtime configuration properties for Kubernetes",
@@ -4188,6 +4193,10 @@
         "base": {
           "type": "string",
           "description": "The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps."
+        },
+        "pod": {
+          "$ref": "#/definitions/KubernetesPodSpec",
+          "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed."
         }
       }
     },

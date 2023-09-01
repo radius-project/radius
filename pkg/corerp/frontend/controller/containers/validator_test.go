@@ -401,3 +401,46 @@ func TestValidateManifest(t *testing.T) {
 		})
 	}
 }
+
+const patching = `
+{
+	"containers": [
+		{
+			"name": "test"
+		}
+	],
+	"nodeName": "test"
+}
+`
+
+func TestValidatePodSpec(t *testing.T) {
+	patchTests := []struct {
+		name      string
+		patchSpec string
+		err       error
+	}{
+		{
+			name:      "valid patch PodSpec",
+			patchSpec: patching,
+			err:       nil,
+		},
+		{
+			name:      "invalid patch PodSpec",
+			patchSpec: "invalid",
+			err: v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Target:  podTargetProperty,
+				Message: "Invalid PodSpec for patching: invalid character 'i' looking for beginning of value.",
+			},
+		},
+	}
+
+	for _, tc := range patchTests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validatePodSpec([]byte(tc.patchSpec))
+			if tc.err != nil {
+				require.Equal(t, tc.err, err)
+			}
+		})
+	}
+}
