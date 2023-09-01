@@ -349,7 +349,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
-			Code:    recipes.RecipeDownloadFailed,
+			Code:    recipes.RecipeGetMetadataFailed,
 			Message: "path is a required option for Terraform driver",
 		},
 	}

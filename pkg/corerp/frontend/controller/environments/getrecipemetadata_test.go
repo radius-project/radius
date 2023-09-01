@@ -65,7 +65,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 			TemplateVersion: "",
 			Driver:          "bicep",
-			ResourceType:    "Applications.Datastores/mongoDatabases",
+			ResourceType:    *envInput.LinkType,
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -237,7 +237,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 			TemplateVersion: "",
 			Driver:          "bicep",
-			ResourceType:    "Applications.Datastores/mongoDatabases",
+			ResourceType:    *envInput.LinkType,
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
 		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(nil, engineErr)

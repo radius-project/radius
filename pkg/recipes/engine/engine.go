@@ -137,14 +137,14 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 	return definition, nil
 }
 
-// GetRecipeMetadata gets the Recipe metadata and parameters from the Bicep registry or TF modules
+// Gets the Recipe metadata and parameters from Recipe's template path.
 func (e *engine) GetRecipeMetadata(ctx context.Context, recipeDefinition recipes.EnvironmentDefinition) (map[string]any, error) {
 	recipeData, err := e.getRecipeMetadataCore(ctx, recipeDefinition)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, err
 	}
 
-	return recipeData, err
+	return recipeData, nil
 }
 
 // getRecipeMetadataCore function is the core logic of the GetRecipeMetadata function.
