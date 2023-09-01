@@ -36,16 +36,16 @@
 #
 # Grafana dashboard URL: https://radiuse2e00-dashboard-audycmffgberbghy.wus3.grafana.azure.com/
 
-name: E2E test on Azure
+name: Long-running test on Azure
 on:
   schedule:
-    # Run every 1 hours
-    - cron: "0 * * * *"
+    # Run every 2 hours
+    - cron: "0 */2 * * *"
   pull_request:
     branches:
       - main
     paths:
-      - '.github/workflows/e2e-test-azure.yaml'
+      - '.github/workflows/long-running-azure.yaml'
 
 env:
   # Go version

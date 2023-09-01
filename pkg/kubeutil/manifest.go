@@ -18,21 +18,20 @@ package kubeutil
 
 import (
 	"bytes"
-	"fmt"
 	"io"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	scheme "k8s.io/client-go/kubernetes/scheme"
+	clientscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-// ObjectManifest is a map of runtime.Object slice where the key is in the format of "group/version/kind".
-type ObjectManifest map[string][]runtime.Object
+// ObjectManifest is a map of runtime.Object slice where the key is GroupVersionKind for the resource.
+type ObjectManifest map[schema.GroupVersionKind][]runtime.Object
 
 // Get returns a runtime.Object slice for the given key.
-func (m ObjectManifest) Get(key string) []runtime.Object {
-	obj, ok := m[key]
+func (m ObjectManifest) Get(gvk schema.GroupVersionKind) []runtime.Object {
+	obj, ok := m[gvk]
 	if ok {
 		return obj
 	} else {
@@ -41,8 +40,8 @@ func (m ObjectManifest) Get(key string) []runtime.Object {
 }
 
 // GetFirst returns the first runtime.Object for the given key.
-func (m ObjectManifest) GetFirst(key string) runtime.Object {
-	obj, ok := m[key]
+func (m ObjectManifest) GetFirst(gvk schema.GroupVersionKind) runtime.Object {
+	obj, ok := m[gvk]
 	if ok {
 		return obj[0]
 	} else {
@@ -50,23 +49,12 @@ func (m ObjectManifest) GetFirst(key string) runtime.Object {
 	}
 }
 
-// GetObjectKey returns a object key that uniquely identifies the given Kubernetes object.
-// The returned key is in the format of "group/version/kind".
-func GetObjectKey(obj runtime.Object) string {
-	gvk := obj.GetObjectKind().GroupVersionKind()
-	group := gvk.Group
-	if group == "" {
-		group = "core"
-	}
-	return strings.ToLower(fmt.Sprintf("%s/%s/%s", group, gvk.Version, gvk.Kind))
-}
-
 // ParseManifest parses the given manifest and returns a map of runtime.Object slice where
-// the key is in the format of "group/version/kind".
+// the key is GroupVersionKind for the resource.
 // It returns an error if the given manifest is invalid.
 func ParseManifest(data []byte) (ObjectManifest, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewReader(data), 4096)
-	deser := scheme.Codecs.UniversalDeserializer()
+	deser := clientscheme.Codecs.UniversalDeserializer()
 
 	objects := ObjectManifest{}
 	for {
@@ -83,7 +71,7 @@ func ParseManifest(data []byte) (ObjectManifest, error) {
 			return nil, err
 		}
 
-		key := GetObjectKey(obj)
+		key := obj.GetObjectKind().GroupVersionKind()
 		if v, ok := objects[key]; ok {
 			objects[key] = append(v, obj)
 		} else {

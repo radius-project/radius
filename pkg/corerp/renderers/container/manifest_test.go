@@ -154,7 +154,7 @@ func TestGetDeploymentBase(t *testing.T) {
 		{
 			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
-				kubeutil.DeploymentV1: []runtime.Object{
+				appsv1.SchemeGroupVersion.WithKind("Deployment"): []runtime.Object{
 					&appsv1.Deployment{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "Deployment",
@@ -276,7 +276,7 @@ func TestGetServiceBase(t *testing.T) {
 		{
 			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
-				kubeutil.ServiceV1: []runtime.Object{
+				corev1.SchemeGroupVersion.WithKind("Service"): []runtime.Object{
 					&corev1.Service{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "Service",
@@ -365,7 +365,7 @@ func TestGetServiceAccountBase(t *testing.T) {
 		{
 			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
-				kubeutil.ServiceAccountV1: []runtime.Object{
+				corev1.SchemeGroupVersion.WithKind("ServiceAccount"): []runtime.Object{
 					&corev1.ServiceAccount{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "ServiceAccount",
