@@ -108,14 +108,14 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:      resourceGroupResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyPlane,
+			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 		{
 			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/azure/{planeName}/.
 			ParentRouter:      baseRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyPlane,
+			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 	}
 

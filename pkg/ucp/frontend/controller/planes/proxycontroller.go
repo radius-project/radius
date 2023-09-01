@@ -37,35 +37,29 @@ const (
 	PlanesPath = "/planes"
 )
 
-var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
+var _ armrpc_controller.Controller = (*ProxyController)(nil)
 
-// ProxyPlane is the controller implementation to proxy requests to appropriate RP or URL.
-type ProxyPlane struct {
+// ProxyController is the controller implementation to proxy requests to appropriate RP or URL.
+type ProxyController struct {
 	armrpc_controller.Operation[*datamodel.Plane, datamodel.Plane]
 }
 
-// NewProxyPlane creates a new ProxyPlane controller with the given options and returns it, or returns an error if the
+// NewProxyController creates a new ProxyPlane controller with the given options and returns it, or returns an error if the
 // controller cannot be created.
-func NewProxyPlane(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
-	return &ProxyPlane{
+func NewProxyController(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
+	return &ProxyController{
 		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.Plane]{}),
 	}, nil
 }
 
 // Run() takes in a request object and context, looks up the plane and resource provider associated with the
 // request, and proxies the request to the appropriate resource provider.
-func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	logger.Info("starting proxy request")
 	for key, value := range req.Header {
 		logger.V(ucplog.LevelDebug).Info("incoming request header", "key", key, "value", value)
-	}
-
-	refererURL := url.URL{
-		Host:     req.Host,
-		Path:     req.URL.Path,
-		RawQuery: req.URL.RawQuery,
 	}
 
 	// Make a copy of the incoming URL and trim the base path
@@ -153,27 +147,20 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	}
 
 	options := proxy.ReverseProxyOptions{
-		RoundTripper:     otelhttp.NewTransport(http.DefaultTransport),
-		ProxyAddress:     p.Options().Address,
-		TrimPlanesPrefix: (plane.Properties.Kind != rest.PlaneKindUCPNative),
+		RoundTripper: otelhttp.NewTransport(http.DefaultTransport),
+	}
+
+	refererURL := url.URL{
+		Scheme:   "http",
+		Host:     req.Host,
+		Path:     req.URL.Path,
+		RawQuery: req.URL.RawQuery,
 	}
 
 	// As per https://github.com/golang/go/issues/28940#issuecomment-441749380, the way to check
 	// for http vs https is check the TLS field
-	httpScheme := "http"
 	if req.TLS != nil {
-		httpScheme = "https"
-	}
-	refererURL.Scheme = httpScheme
-
-	requestInfo := proxy.UCPRequestInfo{
-		PlaneURL:   proxyURL,
-		PlaneKind:  string(plane.Properties.Kind),
-		PlaneID:    planePath,
-		HTTPScheme: httpScheme,
-		// The Host field in the request that the client makes to UCP contains the UCP Host address
-		// That address will be used to construct the URL for reverse proxying
-		UCPHost: req.Host + p.Options().PathBase,
+		refererURL.Scheme = "https"
 	}
 
 	uri, err := url.Parse(newURL.Path)
@@ -184,17 +171,34 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	// Preserving the query strings on the incoming url on the newly constructed url
 	uri.RawQuery = newURL.Query().Encode()
 	req.URL = uri
-	req.Header.Set("X-Forwarded-Proto", httpScheme)
+	req.Header.Set("X-Forwarded-Proto", refererURL.Scheme)
 
+	logger.Info("setting referer header", "value", refererURL.String())
 	req.Header.Set(v1.RefererHeader, refererURL.String())
-	logger = ucplog.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Referer Header: %s", req.Header.Get(v1.RefererHeader)))
 
-	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
-	sender := proxy.NewARMProxy(options, downstream, nil)
+	sender := proxy.NewARMProxy(options, downstream, func(builder *proxy.ReverseProxyBuilder) {
+		if plane.Properties.Kind != rest.PlaneKindUCPNative {
+			// If we're proxying to Azure then remove the planes prefix.
+			builder.Directors = append(builder.Directors, trimPlanesPrefix)
+		}
+	})
 
 	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here
 	return nil, nil
+}
+
+// trimPlanesPrefix trims the planes prefix from the request URL path.
+func trimPlanesPrefix(r *http.Request) {
+	_, _, remainder, err := resources.ExtractPlanesPrefixFromURLPath(r.URL.Path)
+	if err != nil {
+		// Invalid case like path: /planes/foo - do nothing
+		// If we see an invalid URL here we don't have a good way to report an error at this point
+		// we expect the error to have been handled before calling into this code.
+		return
+	}
+
+	// Success -- truncate the planes prefix
+	r.URL.Path = remainder
 }
