@@ -111,7 +111,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:      baseRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPAzureProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyPlane,
+			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 	}
 

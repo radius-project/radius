@@ -1,0 +1,8 @@
+{
+    "statusCode": 200,
+    "headers": {
+        "Azure-Asyncoperation": ["http://ucp.example.com/path/base/planes/example/local/asyncresponseID"],
+        "Location": ["http://ucp.example.com/path/base/planes/example/local/asyncresponseID"]
+    },
+    "body": ""
+}
