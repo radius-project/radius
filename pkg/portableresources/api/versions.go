@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package api
 
-// Version represents the api version in this package.
-const Version = "2022-03-15-privatepreview"
+// V20220315privatepreview represents the api version "2022-03-15-privatepreview".
+const V20220315privatepreview = "2022-03-15-privatepreview"

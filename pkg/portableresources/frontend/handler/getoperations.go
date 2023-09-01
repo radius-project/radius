@@ -23,7 +23,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/portableresources/api/v20220315privatepreview"
+	api_ver "github.com/radius-project/radius/pkg/portableresources/api"
 )
 
 var _ ctrl.Controller = (*GetOperations)(nil)
@@ -44,7 +44,7 @@ func (opctrl *GetOperations) Run(ctx context.Context, w http.ResponseWriter, req
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	switch sCtx.APIVersion {
-	case v20220315privatepreview.Version:
+	case api_ver.V20220315privatepreview:
 		return rest.NewOKResponse(opctrl.availableOperationsV1()), nil
 	}
 
