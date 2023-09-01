@@ -63,24 +63,39 @@ const (
 // NewKubernetesHandler creates a new KubernetesHandler which is used to handle Kubernetes resources.
 func NewKubernetesHandler(client client.Client, clientSet k8s.Interface, discoveryClient discovery.ServerResourcesInterface, dynamicClientSet dynamic.Interface) ResourceHandler {
 	return &kubernetesHandler{
-		client:                     client,
-		clientSet:                  clientSet,
-		k8sDiscoveryClient:         discoveryClient,
-		dynamicClientSet:           dynamicClientSet,
-		deploymentTimeOut:          MaxDeploymentTimeout,
-		httpProxyDeploymentTimeout: MaxHTTPProxyDeploymentTimeout,
-		cacheResyncInterval:        DefaultCacheResyncInterval,
+		client:             client,
+		k8sDiscoveryClient: discoveryClient,
+		httpProxyWaiter: &httpProxyWaiter{
+			dynamicClientSet:           dynamicClientSet,
+			httpProxyDeploymentTimeout: MaxHTTPProxyDeploymentTimeout,
+			cacheResyncInterval:        DefaultCacheResyncInterval,
+		},
+		deploymentWaiter: &deploymentWaiter{
+			clientSet:           clientSet,
+			deploymentTimeOut:   MaxDeploymentTimeout,
+			cacheResyncInterval: DefaultCacheResyncInterval,
+		},
 	}
 }
 
 type kubernetesHandler struct {
-	client    client.Client
-	clientSet k8s.Interface
+	client client.Client
 	// k8sDiscoveryClient is the Kubernetes client to used for API version lookups on Kubernetes resources. Override this for testing.
 	k8sDiscoveryClient discovery.ServerResourcesInterface
-	dynamicClientSet   dynamic.Interface
+	httpProxyWaiter    *httpProxyWaiter
+	deploymentWaiter   *deploymentWaiter
+}
 
-	deploymentTimeOut          time.Duration
+type deploymentWaiter struct {
+	clientSet           k8s.Interface
+	deploymentTimeOut   time.Duration
+	cacheResyncInterval time.Duration
+}
+
+type httpProxyWaiter struct {
+	client           client.Client
+	dynamicClientSet dynamic.Interface
+
 	httpProxyDeploymentTimeout time.Duration
 	cacheResyncInterval        time.Duration
 }
@@ -129,14 +144,14 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	switch strings.ToLower(item.GetKind()) {
 	case "deployment":
 		// Monitor the deployment until it is ready.
-		err = handler.waitUntilDeploymentIsReady(ctx, &item)
+		err = handler.deploymentWaiter.waitUntilDeploymentIsReady(ctx, &item)
 		if err != nil {
 			return nil, err
 		}
 		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	case "httpproxy":
-		err = handler.waitUntilHTTPProxyIsReady(ctx, &item)
+		err = handler.httpProxyWaiter.waitUntilHTTPProxyIsReady(ctx, &item)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +163,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	}
 }
 
-func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context, item client.Object) error {
+func (handler *deploymentWaiter) waitUntilDeploymentIsReady(ctx context.Context, item client.Object) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// When the deployment is done, an error nil will be sent
@@ -189,7 +204,7 @@ func (handler *kubernetesHandler) waitUntilDeploymentIsReady(ctx context.Context
 	}
 }
 
-func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
+func (handler *deploymentWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -206,7 +221,7 @@ func (handler *kubernetesHandler) addEventHandler(ctx context.Context, informerF
 	}
 }
 
-func (handler *kubernetesHandler) addHTTPProxyEventHandler(ctx context.Context, informerFactory dynamicinformer.DynamicSharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
+func (handler *httpProxyWaiter) addHTTPProxyEventHandler(ctx context.Context, informerFactory dynamicinformer.DynamicSharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -223,7 +238,7 @@ func (handler *kubernetesHandler) addHTTPProxyEventHandler(ctx context.Context, 
 	}
 }
 
-func (handler *kubernetesHandler) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
+func (handler *deploymentWaiter) startInformers(ctx context.Context, item client.Object, doneCh chan<- error) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
@@ -252,7 +267,7 @@ func HTTPProxyInformer(dynamicInformerFactory dynamicinformer.DynamicSharedInfor
 }
 
 // Check if all the pods in the deployment are ready
-func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- error) bool {
+func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- error) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
 
 	// Get the deployment
@@ -295,7 +310,7 @@ func (handler *kubernetesHandler) checkDeploymentStatus(ctx context.Context, inf
 	return false
 }
 
-func (handler *kubernetesHandler) waitUntilHTTPProxyIsReady(ctx context.Context, obj client.Object) error {
+func (handler *httpProxyWaiter) waitUntilHTTPProxyIsReady(ctx context.Context, obj client.Object) error {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
 
 	doneCh := make(chan error, 1)
@@ -344,7 +359,7 @@ func (handler *kubernetesHandler) waitUntilHTTPProxyIsReady(ctx context.Context,
 	}
 }
 
-func (handler *kubernetesHandler) checkHTTPProxyStatus(ctx context.Context, dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory, obj client.Object, doneCh chan<- error) bool {
+func (handler *httpProxyWaiter) checkHTTPProxyStatus(ctx context.Context, dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory, obj client.Object, doneCh chan<- error) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
 	selector := labels.SelectorFromSet(
 		map[string]string{
@@ -402,7 +417,7 @@ func (handler *kubernetesHandler) checkHTTPProxyStatus(ctx context.Context, dyna
 }
 
 // Gets the current replica set for the deployment
-func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment) *v1.ReplicaSet {
+func (handler *deploymentWaiter) getCurrentReplicaSetForDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment) *v1.ReplicaSet {
 	if deployment == nil {
 		return nil
 	}
@@ -448,7 +463,7 @@ func (handler *kubernetesHandler) getCurrentReplicaSetForDeployment(ctx context.
 	return nil
 }
 
-func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- error) bool {
+func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- error) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", obj.GetName(), "namespace", obj.GetNamespace())
 	logger.Info("Checking if all pods in the deployment are ready")
 
@@ -477,7 +492,7 @@ func (handler *kubernetesHandler) checkAllPodsReady(ctx context.Context, informe
 	return allReady
 }
 
-func (handler *kubernetesHandler) getPodsInDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet) ([]corev1.Pod, error) {
+func (handler *deploymentWaiter) getPodsInDeployment(ctx context.Context, informerFactory informers.SharedInformerFactory, deployment *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet) ([]corev1.Pod, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	pods := []corev1.Pod{}
@@ -500,7 +515,7 @@ func (handler *kubernetesHandler) getPodsInDeployment(ctx context.Context, infor
 	return pods, nil
 }
 
-func (handler *kubernetesHandler) checkPodStatus(ctx context.Context, pod *corev1.Pod) (bool, error) {
+func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, pod *corev1.Pod) (bool, error) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("podName", pod.Name, "namespace", pod.Namespace)
 
 	conditionPodReady := true

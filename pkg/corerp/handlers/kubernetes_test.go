@@ -174,15 +174,15 @@ func TestPut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			handler := kubernetesHandler{
-				client:              k8sutil.NewFakeKubeClient(nil),
-				clientSet:           nil,
-				deploymentTimeOut:   time.Duration(50) * time.Second,
-				cacheResyncInterval: time.Duration(1) * time.Second,
-			}
-
 			clientSet := fake.NewSimpleClientset(tc.in.Resource.CreateResource.Data.(runtime.Object))
-			handler.clientSet = clientSet
+			handler := kubernetesHandler{
+				client: k8sutil.NewFakeKubeClient(nil),
+				deploymentWaiter: &deploymentWaiter{
+					clientSet:           clientSet,
+					deploymentTimeOut:   time.Duration(50) * time.Second,
+					cacheResyncInterval: time.Duration(1) * time.Second,
+				},
+			}
 
 			// If the resource is a deployment, we need to add a replica set to it
 			if tc.in.Resource.CreateResource.Data.(runtime.Object).GetObjectKind().GroupVersionKind().Kind == "Deployment" {
@@ -228,10 +228,12 @@ func TestDelete(t *testing.T) {
 	}
 
 	handler := kubernetesHandler{
-		client:              k8sutil.NewFakeKubeClient(nil),
-		k8sDiscoveryClient:  dc,
-		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
+		client:             k8sutil.NewFakeKubeClient(nil),
+		k8sDiscoveryClient: dc,
+		deploymentWaiter: &deploymentWaiter{
+			deploymentTimeOut:   time.Duration(1) * time.Second,
+			cacheResyncInterval: time.Duration(10) * time.Second,
+		},
 	}
 
 	err := handler.client.Create(ctx, deployment)
@@ -384,12 +386,15 @@ func TestWaitUntilDeploymentIsReady_NewResource(t *testing.T) {
 	addReplicaSetToDeployment(t, ctx, clientset, deployment)
 
 	handler := kubernetesHandler{
-		clientSet:           clientset,
-		deploymentTimeOut:   time.Duration(50) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
+		client: k8sutil.NewFakeKubeClient(nil),
+		deploymentWaiter: &deploymentWaiter{
+			clientSet:           clientset,
+			deploymentTimeOut:   time.Duration(50) * time.Second,
+			cacheResyncInterval: time.Duration(10) * time.Second,
+		},
 	}
 
-	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
+	err := handler.deploymentWaiter.waitUntilDeploymentIsReady(ctx, deployment)
 	require.NoError(t, err, "Failed to wait for deployment to be ready")
 }
 
@@ -417,12 +422,15 @@ func TestWaitUntilDeploymentIsReady_Timeout(t *testing.T) {
 	deploymentClient := fake.NewSimpleClientset(deployment)
 
 	handler := kubernetesHandler{
-		clientSet:           deploymentClient,
-		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
+		client: k8sutil.NewFakeKubeClient(nil),
+		deploymentWaiter: &deploymentWaiter{
+			clientSet:           deploymentClient,
+			deploymentTimeOut:   time.Duration(1) * time.Second,
+			cacheResyncInterval: time.Duration(10) * time.Second,
+		},
 	}
 
-	err := handler.waitUntilDeploymentIsReady(ctx, deployment)
+	err := handler.deploymentWaiter.waitUntilDeploymentIsReady(ctx, deployment)
 	require.Error(t, err)
 	require.Equal(t, "deployment timed out, name: test-deployment, namespace test-namespace, status: Deployment has minimum availability, reason: NewReplicaSetAvailable", err.Error())
 }
@@ -451,12 +459,14 @@ func TestWaitUntilDeploymentIsReady_DifferentResourceName(t *testing.T) {
 	clientset := fake.NewSimpleClientset(deployment)
 
 	handler := kubernetesHandler{
-		clientSet:           clientset,
-		deploymentTimeOut:   time.Duration(1) * time.Second,
-		cacheResyncInterval: time.Duration(10) * time.Second,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet:           clientset,
+			deploymentTimeOut:   time.Duration(1) * time.Second,
+			cacheResyncInterval: time.Duration(10) * time.Second,
+		},
 	}
 
-	err := handler.waitUntilDeploymentIsReady(ctx, &v1.Deployment{
+	err := handler.deploymentWaiter.waitUntilDeploymentIsReady(ctx, &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "not-matched-deployment",
 			Namespace: "test-namespace",
@@ -548,14 +558,16 @@ func TestGetPodsInDeployment(t *testing.T) {
 
 	// Create a KubernetesHandler object with the fake clientset
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
 	ctx := context.Background()
 	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getPodsInDeployment function
-	pods, err := handler.getPodsInDeployment(ctx, informerFactory, deployment, replicaset)
+	pods, err := handler.deploymentWaiter.getPodsInDeployment(ctx, informerFactory, deployment, replicaset)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(pods))
 	require.Equal(t, pod1.Name, pods[0].Name)
@@ -635,14 +647,16 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 
 	// Create a KubernetesHandler object with the fake clientset
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
 	ctx := context.Background()
 	informerFactory := startInformers(ctx, fakeClient, handler)
 
 	// Call the getNewestReplicaSetForDeployment function
-	rs := handler.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
+	rs := handler.deploymentWaiter.getCurrentReplicaSetForDeployment(ctx, informerFactory, deployment)
 	require.Equal(t, replicaSet1.Name, rs.Name)
 }
 
@@ -796,7 +810,7 @@ func TestCheckPodStatus(t *testing.T) {
 	for _, tc := range podTests {
 		pod.Status.Conditions = tc.podCondition
 		pod.Status.ContainerStatuses = tc.containerStatus
-		isReady, err := handler.checkPodStatus(ctx, pod)
+		isReady, err := handler.deploymentWaiter.checkPodStatus(ctx, pod)
 		if tc.expectedError != "" {
 			require.Error(t, err)
 			require.Equal(t, tc.expectedError, err.Error())
@@ -857,11 +871,13 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 
 	// Create a handler with the fake clientset
 	handler := &kubernetesHandler{
-		clientSet: clientset,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: clientset,
+		},
 	}
 
 	// Call the checkAllPodsReady function
-	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet, doneCh)
+	allReady := handler.deploymentWaiter.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet, doneCh)
 
 	// Check that all pods are ready
 	require.True(t, allReady)
@@ -924,11 +940,13 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 
 	// Create a handler with the fake clientset
 	handler := &kubernetesHandler{
-		clientSet: clientset,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: clientset,
+		},
 	}
 
 	// Call the checkAllPodsReady function
-	allReady := handler.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet, doneCh)
+	allReady := handler.deploymentWaiter.checkAllPodsReady(ctx, informerFactory, testDeployment, replicaSet, doneCh)
 
 	// Check that all pods are ready
 	require.False(t, allReady)
@@ -1001,10 +1019,12 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 
 	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
-	go handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+	go handler.deploymentWaiter.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 
 	err = <-doneCh
 
@@ -1075,10 +1095,12 @@ func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
 
 	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
-	allReady := handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+	allReady := handler.deploymentWaiter.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 
 	// Check that the deployment readiness was checked
 	require.False(t, allReady)
@@ -1154,10 +1176,12 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 
 	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
-	go handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+	go handler.deploymentWaiter.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 	err = <-doneCh
 
 	// Check that the deployment readiness was checked
@@ -1235,10 +1259,12 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 
 	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
-	handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+	handler.deploymentWaiter.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 
 	// Check that the deployment readiness was checked
 	require.Zero(t, len(doneCh))
@@ -1322,10 +1348,12 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 
 	// Call the checkDeploymentStatus function
 	handler := &kubernetesHandler{
-		clientSet: fakeClient,
+		deploymentWaiter: &deploymentWaiter{
+			clientSet: fakeClient,
+		},
 	}
 
-	ready := handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+	ready := handler.deploymentWaiter.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
 	require.False(t, ready)
 }
 
@@ -1367,7 +1395,9 @@ func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 	doneCh := make(chan error)
 
 	handler := &kubernetesHandler{
-		dynamicClientSet: fakeClient,
+		httpProxyWaiter: &httpProxyWaiter{
+			dynamicClientSet: fakeClient,
+		},
 	}
 
 	ctx := context.Background()
@@ -1375,7 +1405,7 @@ func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	go handler.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	go handler.httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
 	require.NoError(t, err)
 }
@@ -1447,7 +1477,9 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 	doneCh := make(chan error)
 
 	handler := &kubernetesHandler{
-		dynamicClientSet: fakeClient,
+		httpProxyWaiter: &httpProxyWaiter{
+			dynamicClientSet: fakeClient,
+		},
 	}
 
 	ctx := context.Background()
@@ -1455,7 +1487,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	go handler.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	go handler.httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
 	require.EqualError(t, err, "Error - Type: Valid, Status: False, Reason: RouteNotDefined, Message: HTTPProxy is invalid\n")
 }
@@ -1532,7 +1564,9 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 	doneCh := make(chan error)
 
 	handler := &kubernetesHandler{
-		dynamicClientSet: fakeClient,
+		httpProxyWaiter: &httpProxyWaiter{
+			dynamicClientSet: fakeClient,
+		},
 	}
 
 	ctx := context.Background()
@@ -1540,7 +1574,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	go handler.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	go handler.httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
 	require.NoError(t, err)
 }
@@ -1613,7 +1647,9 @@ func TestCheckHTTPProxyStatus_WrongSelector(t *testing.T) {
 	doneCh := make(chan error)
 
 	handler := &kubernetesHandler{
-		dynamicClientSet: fakeClient,
+		httpProxyWaiter: &httpProxyWaiter{
+			dynamicClientSet: fakeClient,
+		},
 	}
 
 	ctx := context.Background()
@@ -1621,7 +1657,7 @@ func TestCheckHTTPProxyStatus_WrongSelector(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	status := handler.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	status := handler.httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
 	require.False(t, status)
 }
 
