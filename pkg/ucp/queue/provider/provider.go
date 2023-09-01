@@ -62,3 +62,8 @@ func (p *QueueProvider) GetClient(ctx context.Context) (queue.Client, error) {
 
 	return p.queueClient, err
 }
+
+// SetClient sets the queue client for the QueueProvider. This should be used by tests that need to mock the queue client.
+func (p *QueueProvider) SetClient(client queue.Client) {
+	p.queueClient = client
+}

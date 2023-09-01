@@ -43,12 +43,12 @@ func initializeAWSTest(t *testing.T) (*testserver.TestServer, *store.MockStorage
 	cloudControlClient := ucp_aws.NewMockAWSCloudControlClient(ctrl)
 	cloudFormationClient := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
 
-	ucp, storeClient, secretClient := testserver.StartWithMocks(t, func(options modules.Options) []modules.Initializer {
+	ucp := testserver.StartWithMocks(t, func(options modules.Options) []modules.Initializer {
 		module := ucp_aws_frontend.NewModule(options)
 		module.AWSClients.CloudControl = cloudControlClient
 		module.AWSClients.CloudFormation = cloudFormationClient
 		return []modules.Initializer{module}
 	})
 
-	return ucp, storeClient, secretClient, cloudControlClient, cloudFormationClient
+	return ucp, ucp.Mocks.Storage, ucp.Mocks.Secrets, cloudControlClient, cloudFormationClient
 }
