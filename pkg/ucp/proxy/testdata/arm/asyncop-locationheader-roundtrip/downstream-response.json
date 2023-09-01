@@ -1,9 +1,0 @@
-{
-    "statusCode": 200,
-    "body": "{}",
-    "headers": {
-        "Location": [
-            "http://localhost:9443/planes/example/local/asyncresponseID"
-        ]
-    } 
-}

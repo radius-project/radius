@@ -166,12 +166,12 @@ func Test_Run(t *testing.T) {
 				ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
 					ClientID:     to.Ptr("cool-client-id"),
 					ClientSecret: to.Ptr("cool-client-secret"),
 					TenantID:     to.Ptr("cool-tenant-id"),
-					Kind:         to.Ptr("ServicePrincipal"),
+					Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 				},
 			}
 

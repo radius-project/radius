@@ -112,7 +112,7 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 	switch dm.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		storage = &InternalCredentialStorageProperties{
-			Kind:       to.Ptr(string(CredentialStorageKindInternal)),
+			Kind:       to.Ptr(CredentialStorageKindInternal),
 			SecretName: to.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
 		}
 	default:
@@ -123,7 +123,7 @@ func (dst *AzureCredentialResource) ConvertFrom(src v1.DataModelInterface) error
 	switch dm.Properties.Kind {
 	case datamodel.AzureCredentialKind:
 		dst.Properties = &AzureServicePrincipalProperties{
-			Kind:     to.Ptr(dm.Properties.Kind),
+			Kind:     to.Ptr(AzureCredentialKind(dm.Properties.Kind)),
 			ClientID: to.Ptr(dm.Properties.AzureCredential.ClientID),
 			TenantID: to.Ptr(dm.Properties.AzureCredential.TenantID),
 			Storage:  storage,

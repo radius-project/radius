@@ -17,7 +17,6 @@ limitations under the License.
 package proxy
 
 import (
-	"context"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -30,17 +29,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func createTestContext(ctx context.Context, planeURL string, planeID string, planeKind string, httpScheme string, ucpHost string) context.Context {
-	ctx = context.WithValue(ctx, UCPRequestInfoField, UCPRequestInfo{
-		PlaneURL:   planeURL,
-		PlaneID:    planeID,
-		PlaneKind:  planeKind,
-		HTTPScheme: httpScheme,
-		UCPHost:    ucpHost,
-	})
-	return ctx
-}
 
 func Test_ARM_Baselines(t *testing.T) {
 	baselines, err := readBaselines()
@@ -61,12 +49,10 @@ func Test_ARM_Baselines(t *testing.T) {
 			capture := baseline.DownstreamResponse.CreateRoundTripper()
 			options := ReverseProxyOptions{
 				RoundTripper: capture,
-				ProxyAddress: "localhost:9443",
 			}
 			pp := NewARMProxy(options, downstream, nil)
 
 			w := httptest.NewRecorder()
-			ctx = createTestContext(ctx, "http://example.com", "/planes/example/local", "Azure", "http", "localhost:9443")
 			req := baseline.UpstreamRequest.ToTestRequest(ctx)
 
 			// Send the request

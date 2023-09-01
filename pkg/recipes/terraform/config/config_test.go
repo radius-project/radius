@@ -159,6 +159,17 @@ func Test_AddRecipeContext(t *testing.T) {
 			expectedConfigFile: "testdata/main-noparams.tf.json",
 		},
 		{
+			name: "recipe context with empty resource metadata",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+			},
+			metadata:           &recipes.ResourceMetadata{},
+			recipeContext:      getTestRecipeContext(),
+			expectedConfigFile: "testdata/main-noparams.tf.json",
+		},
+		{
 			name: "recipe context and env params are given",
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,
