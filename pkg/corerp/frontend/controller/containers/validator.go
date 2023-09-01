@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	appv1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -117,16 +117,16 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 		}
 
 		switch k {
-		case kubeutil.DeploymentV1:
+		case appsv1.SchemeGroupVersion.WithKind("Deployment"):
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Deployment", len(resources)))
 			}
-			deployment := resources[0].(*appv1.Deployment)
+			deployment := resources[0].(*appsv1.Deployment)
 			if deployment.Name != newResource.Name {
 				errDetails = append(errDetails, errUnmatchedName(deployment, newResource.Name))
 			}
 
-		case kubeutil.ServiceV1:
+		case corev1.SchemeGroupVersion.WithKind("Service"):
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Service", len(resources)))
 			}
@@ -135,7 +135,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(srv, newResource.Name))
 			}
 
-		case kubeutil.ServiceAccountV1:
+		case corev1.SchemeGroupVersion.WithKind("ServiceAccount"):
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("ServiceAccount", len(resources)))
 			}
@@ -144,13 +144,13 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(sa, newResource.Name))
 			}
 
-			deployment := resourceMap.GetFirst(kubeutil.DeploymentV1)
+			deployment := resourceMap.GetFirst(appsv1.SchemeGroupVersion.WithKind("Deployment"))
 			if deployment == nil {
 				// skip if there is no deployment.
 				continue
 			}
 
-			podSA := deployment.(*appv1.Deployment).Spec.Template.Spec.ServiceAccountName
+			podSA := deployment.(*appsv1.Deployment).Spec.Template.Spec.ServiceAccountName
 			if podSA != sa.Name {
 				errDetails = append(errDetails, v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
@@ -160,8 +160,8 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 			}
 
 		// No limitations for ConfigMap and Secret resources.
-		case kubeutil.SecretV1:
-		case kubeutil.ConfigMapV1:
+		case corev1.SchemeGroupVersion.WithKind("Secret"):
+		case corev1.SchemeGroupVersion.WithKind("ConfigMap"):
 
 		default:
 			errDetails = append(errDetails, v1.ErrorDetails{

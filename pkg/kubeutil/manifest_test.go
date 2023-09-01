@@ -20,6 +20,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const validManifest = `
@@ -119,24 +122,24 @@ func TestParseManifest(t *testing.T) {
 	manifestTests := []struct {
 		name      string
 		manifest  string
-		types     map[string]int
+		types     map[schema.GroupVersionKind]int
 		errString string
 	}{
 		{
 			name:     "valid manifest with deployments and services",
 			manifest: validManifest,
-			types: map[string]int{
-				"apps/v1/deployment": 1,
-				"core/v1/service":    1,
+			types: map[schema.GroupVersionKind]int{
+				appsv1.SchemeGroupVersion.WithKind("Deployment"): 1,
+				corev1.SchemeGroupVersion.WithKind("Service"):    1,
 			},
 			errString: "",
 		},
 		{
 			name:     "valid manifest with deployments and secrets",
 			manifest: validManifestWithSecrets,
-			types: map[string]int{
-				"apps/v1/deployment": 1,
-				"core/v1/secret":     2,
+			types: map[schema.GroupVersionKind]int{
+				appsv1.SchemeGroupVersion.WithKind("Deployment"): 1,
+				corev1.SchemeGroupVersion.WithKind("Secret"):     2,
 			},
 			errString: "",
 		},
@@ -168,8 +171,8 @@ func TestObjectManifest(t *testing.T) {
 	base, err := ParseManifest([]byte(validManifestWithSecrets))
 
 	require.NoError(t, err)
-	require.Len(t, base.Get("apps/v1/deployment"), 1)
-	require.Len(t, base.Get("core/v1/configmap"), 0)
-	require.Equal(t, base.GetFirst("apps/v1/deployment").GetObjectKind().GroupVersionKind().Kind, "Deployment")
-	require.Nil(t, base.GetFirst("core/v1/configmap"))
+	require.Len(t, base.Get(appsv1.SchemeGroupVersion.WithKind("Deployment")), 1)
+	require.Len(t, base.Get(corev1.SchemeGroupVersion.WithKind("ConfigMap")), 0)
+	require.Equal(t, base.GetFirst(appsv1.SchemeGroupVersion.WithKind("Deployment")).GetObjectKind().GroupVersionKind().Kind, "Deployment")
+	require.Nil(t, base.GetFirst(corev1.SchemeGroupVersion.WithKind("ConfigMap")))
 }
