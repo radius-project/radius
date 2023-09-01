@@ -39,8 +39,8 @@
 name: Long-running test on Azure
 on:
   schedule:
-    # Run every 1 hours
-    - cron: "0 * * * *"
+    # Run every 2 hours
+    - cron: "0 */2 * * *"
   pull_request:
     branches:
       - main
