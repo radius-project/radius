@@ -104,6 +104,26 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, "resourceGroup().location]")
 	})
 
+	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
+		showRecipeName := "redistesttf"
+		moduleServer := os.Getenv("TF_RECIPE_MODULE_SERVER_URL")
+		if moduleServer == "" {
+			moduleServer = "http://localhost:8999"
+		}
+		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
+		showRecipeLinkType := "Applications.Datastores/redisCaches"
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeLinkType)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeLinkType)
+		require.NoError(t, err)
+		require.Contains(t, output, showRecipeName)
+		require.Contains(t, output, showRecipeTemplate)
+		require.Contains(t, output, showRecipeLinkType)
+		require.Contains(t, output, "redis_cache_name")
+		require.Contains(t, output, "string")
+	})
+
 	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
 		output, err := cli.BicepPublish(ctx, file, target)
 		require.NoError(t, err)

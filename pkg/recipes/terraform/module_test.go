@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -40,17 +41,34 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				ContextVarExists:   false,
 				RequiredProviders:  []string{"aws"},
 				ResultOutputExists: false,
+				Parameters:         map[string]any{},
 			},
-		}, {
-			name:       "aws provider with recipe context variable and output",
+		},
+		{
+			name:       "aws provider with recipe context variable, output and parameters",
 			workingDir: "testdata",
 			moduleName: "test-module-recipe-context-outputs",
 			result: &moduleInspectResult{
 				ContextVarExists:   true,
 				RequiredProviders:  []string{"aws"},
 				ResultOutputExists: true,
+				Parameters: map[string]any{
+					"context": map[string]any{
+						"name":         "context",
+						"type":         "object({\n    resource = object({\n      name = string\n      id = string\n      type = string\n    })\n\n    application = object({\n      name = string\n      id = string\n    })\n\n    environment = object({\n      name = string\n      id = string\n    })\n\n    runtime = object({\n      kubernetes = optional(object({\n        namespace = string\n        environmentNamespace = string\n      }))\n    })\n\n    azure = optional(object({\n      resourceGroup = object({\n        name = string\n        id = string\n      })\n      subscription = object({\n        subscriptionId = string\n        id = string\n      })\n    }))\n    \n    aws = optional(object({\n      region = string\n      account = string\n    }))\n  })",
+						"description":  "This variable contains Radius recipe context.",
+						"defaultValue": nil,
+						"required":     true,
+						"sensitive":    false,
+						"pos": tfconfig.SourcePos{
+							Filename: "testdata/.terraform/modules/test-module-recipe-context-outputs/variables.tf",
+							Line:     1,
+						},
+					},
+				},
 			},
-		}, {
+		},
+		{
 			name:       "invalid module name - non existent module directory",
 			workingDir: "testdata",
 			moduleName: "invalid-module",

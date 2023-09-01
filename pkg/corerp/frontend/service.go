@@ -25,6 +25,11 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/corerp/frontend/handler"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 type Service struct {
@@ -52,6 +57,18 @@ func (s *Service) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Creates a new engine with the drivers. The engine will be used to fetch Recipe parameter information from the template path.
+	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
+	engine := engine.NewEngine(engine.Options{
+		Drivers: map[string]driver.Driver{
+			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, nil, nil),
+			recipes.TemplateKindTerraform: driver.NewTerraformDriver(s.Options.UCPConnection, provider.NewSecretProvider(s.Options.Config.SecretProvider),
+				driver.TerraformOptions{
+					Path: s.Options.Config.Terraform.Path,
+				}, nil),
+		},
+	})
+
 	opts := ctrl.Options{
 		Address:       fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port),
 		PathBase:      s.Options.Config.Server.PathBase,
@@ -69,7 +86,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router chi.Router) error {
-			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts)
+			err := handler.AddRoutes(ctx, router, !hostoptions.IsSelfHosted(), opts, engine)
 			if err != nil {
 				return err
 			}

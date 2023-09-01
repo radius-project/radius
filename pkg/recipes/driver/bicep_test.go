@@ -430,6 +430,56 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	require.Equal(t, err, &recipeError)
 }
 
+func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver := bicepDriver{}
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Name:         "mongo-azure",
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+
+	expectedOutput := map[string]any{
+		"documentdbName": map[string]any{"type": "string"},
+		"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
+		"mongodbName":    map[string]any{"type": "string"},
+	}
+
+	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, expectedOutput, recipeData["parameters"])
+}
+
+func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver := bicepDriver{}
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Name:         "mongo-azure",
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/test-non-existent-recipe",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+
+	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
+	})
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeLanguageFailure,
+			Message: "failed to fetch repository from the path \"radiusdev.azurecr.io/test-non-existent-recipe\": radiusdev.azurecr.io/test-non-existent-recipe:latest: not found",
+		},
+	}
+
+	require.Error(t, err)
+	require.Equal(t, err, &expErr)
+}
+
 func Test_GetGCOutputResources(t *testing.T) {
 	d := &bicepDriver{}
 	before := []string{
