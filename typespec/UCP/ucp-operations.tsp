@@ -26,7 +26,7 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.Foundations;
 using OpenAPI;
 
-// This operation helpers are created based on the following typespec operations template:
+// These operation helpers are created based on the following TypeSpec operations:
 // https://github.com/Azure/typespec-azure/blob/main/packages/typespec-azure-resource-manager/lib/operations.tsp
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-operation-outside-interface"
