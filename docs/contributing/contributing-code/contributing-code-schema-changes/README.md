@@ -21,7 +21,7 @@ In order to update or create a new schema follow these steps:
         ```
     2. Generate the client code by running autorest
 
-        For example, to generate the portable resources run:
+        For example, to generate the `Applications.Core` resources run:
         ```bash
         autorest pkg/corerp/api/README.md --tag=link-2022-03-15-privatepreview
         ```
