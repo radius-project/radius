@@ -219,13 +219,13 @@ func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest,
 	return outputResources
 }
 
-func patchPodSpec(sourceSpec *corev1.PodSpec, patchRuntime *datamodel.KubernetesRuntime) (*corev1.PodSpec, error) {
+func patchPodSpec(sourceSpec *corev1.PodSpec, patchSpec []byte) (*corev1.PodSpec, error) {
 	podSpecJSON, err := json.Marshal(sourceSpec)
 	if err != nil {
 		return nil, err
 	}
 
-	merged, err := strategicpatch.StrategicMergePatch(podSpecJSON, []byte(patchRuntime.Pod), corev1.PodSpec{})
+	merged, err := strategicpatch.StrategicMergePatch(podSpecJSON, patchSpec, corev1.PodSpec{})
 	if err != nil {
 		return nil, err
 	}

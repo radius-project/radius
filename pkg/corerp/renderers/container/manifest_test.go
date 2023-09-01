@@ -473,8 +473,7 @@ func TestPatchPodSpec(t *testing.T) {
 		},
 	}
 
-	patchingPod := &datamodel.KubernetesRuntime{
-		Pod: `
+	patchingPod := `
 {
 	"containers": [
 		{
@@ -485,8 +484,7 @@ func TestPatchPodSpec(t *testing.T) {
 	"nodeName": "test",
 	"hostNetwork": true
 }
-`,
-	}
+`
 
 	expected := &corev1.PodSpec{
 		Containers: []corev1.Container{
@@ -502,7 +500,7 @@ func TestPatchPodSpec(t *testing.T) {
 		HostNetwork: true,
 	}
 
-	patched, err := patchPodSpec(podSpec, patchingPod)
+	patched, err := patchPodSpec(podSpec, []byte(patchingPod))
 	require.NoError(t, err)
 	require.Equal(t, expected, patched)
 }

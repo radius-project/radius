@@ -653,7 +653,7 @@ func (r Renderer) makeDeployment(
 
 	// Patching Runtimes.Kubernetes.Pod to the PodSpec in deployment resource.
 	if properties.Runtimes != nil && properties.Runtimes.Kubernetes != nil && properties.Runtimes.Kubernetes.Pod != "" {
-		patchedPodSpec, err := patchPodSpec(podSpec, properties.Runtimes.Kubernetes)
+		patchedPodSpec, err := patchPodSpec(podSpec, []byte(properties.Runtimes.Kubernetes.Pod))
 		if err != nil {
 			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to patch PodSpec: %w", err)
 		}
