@@ -291,15 +291,16 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    runs-on: matrix.os
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
         name: [ucp,shared,msgrp,daprrp,samples]
         include:
+          # datastorerp functional tests need the larger VM.
           - os: ubuntu-latest-m
             name: datastoresrp
+    runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
