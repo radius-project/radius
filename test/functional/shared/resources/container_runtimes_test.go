@@ -189,6 +189,8 @@ func Test_Container_pod_patching(t *testing.T) {
 					deploy.Spec.Template.Spec.Containers[0].Name,
 					deploy.Spec.Template.Spec.Containers[1].Name,
 				})
+
+				require.True(t, deploy.Spec.Template.Spec.HostNetwork)
 			},
 		},
 	})
