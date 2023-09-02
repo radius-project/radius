@@ -103,37 +103,87 @@ func (s *Service) Run(ctx context.Context) error {
 	// resourceTypes is the array that holds resource types that needs async processing.
 	// We use this array to register backend controllers for each resource.
 	resourceTypes := []struct {
-		TypeName            string
-		CreatePutController func(options ctrl.Options) (ctrl.Controller, error)
+		TypeName               string
+		CreatePutController    func(options ctrl.Options) (ctrl.Controller, error)
+		CreateDeleteController func(options ctrl.Options) (ctrl.Controller, error)
 	}{
-		{portableresources.RabbitMQQueuesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &rabbitmqqueues.Processor{}
-			return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, client, configLoader, options)
-		}},
-		{portableresources.DaprStateStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &statestores.Processor{Client: s.KubeClient}
-			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](processor, engine, client, configLoader, options)
-		}},
-		{portableresources.DaprSecretStoresResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &secretstores.Processor{Client: s.KubeClient}
-			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](processor, engine, client, configLoader, options)
-		}},
-		{portableresources.DaprPubSubBrokersResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &pubsubbrokers.Processor{Client: s.KubeClient}
-			return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, client, configLoader, options)
-		}},
-		{portableresources.MongoDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &mongo_prc.Processor{}
-			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](processor, engine, client, configLoader, options)
-		}},
-		{portableresources.RedisCachesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &redis_prc.Processor{}
-			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.RedisCache, ds_dm.RedisCache](processor, engine, client, configLoader, options)
-		}},
-		{portableresources.SqlDatabasesResourceType, func(options ctrl.Options) (ctrl.Controller, error) {
-			processor := &sql_prc.Processor{}
-			return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](processor, engine, client, configLoader, options)
-		}},
+		{
+			portableresources.RabbitMQQueuesResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &rabbitmqqueues.Processor{}
+				return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &rabbitmqqueues.Processor{}
+				return backend_ctrl.NewDeleteResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](processor, engine, configLoader, options)
+			},
+		},
+		{
+			portableresources.DaprStateStoresResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &statestores.Processor{Client: s.KubeClient}
+				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &statestores.Processor{Client: s.KubeClient}
+				return backend_ctrl.NewDeleteResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](processor, engine, configLoader, options)
+			},
+		},
+		{
+			portableresources.DaprSecretStoresResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &secretstores.Processor{Client: s.KubeClient}
+				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &secretstores.Processor{Client: s.KubeClient}
+				return backend_ctrl.NewDeleteResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](processor, engine, configLoader, options)
+			},
+		},
+		{
+			portableresources.DaprPubSubBrokersResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &pubsubbrokers.Processor{Client: s.KubeClient}
+				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &pubsubbrokers.Processor{Client: s.KubeClient}
+				return backend_ctrl.NewDeleteResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](processor, engine, configLoader, options)
+			},
+		},
+		{
+			portableresources.MongoDatabasesResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &mongo_prc.Processor{}
+				return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &mongo_prc.Processor{}
+				return backend_ctrl.NewDeleteResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](processor, engine, configLoader, options)
+			},
+		},
+		{
+			portableresources.RedisCachesResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &redis_prc.Processor{}
+				return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.RedisCache, ds_dm.RedisCache](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &redis_prc.Processor{}
+				return backend_ctrl.NewDeleteResource[*ds_dm.RedisCache, ds_dm.RedisCache](processor, engine, configLoader, options)
+			},
+		},
+		{
+			portableresources.SqlDatabasesResourceType,
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &sql_prc.Processor{}
+				return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](processor, engine, client, configLoader, options)
+			},
+			func(options ctrl.Options) (ctrl.Controller, error) {
+				processor := &sql_prc.Processor{}
+				return backend_ctrl.NewDeleteResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](processor, engine, configLoader, options)
+			},
+		},
 	}
 
 	opts := ctrl.Options{
@@ -143,17 +193,17 @@ func (s *Service) Run(ctx context.Context) error {
 
 	for _, rt := range resourceTypes {
 		// Register controllers
-		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, func(options ctrl.Options) (ctrl.Controller, error) {
-			return backend_ctrl.NewDeleteResource(options, engine)
-		}, opts)
+		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationDelete, rt.CreateDeleteController, opts)
 		if err != nil {
 			return err
 		}
+
 		err = s.Controllers.Register(ctx, rt.TypeName, v1.OperationPut, rt.CreatePutController, opts)
 		if err != nil {
 			return err
 		}
 	}
+
 	workerOpts := worker.Options{}
 	if s.Options.Config.WorkerServer != nil {
 		if s.Options.Config.WorkerServer.MaxOperationConcurrency != nil {

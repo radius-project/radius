@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package daprrp
+package resource_test
 
 import (
 	"context"
@@ -73,7 +73,7 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-manual", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-manual", appNamespace)
 	}
 
 	test.Test(t)
@@ -127,7 +127,7 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-recipe", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-recipe", appNamespace)
 	}
 
 	test.Test(t)

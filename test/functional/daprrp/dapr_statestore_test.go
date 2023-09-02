@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package daprrp
+package resource_test
 
 import (
 	"context"
@@ -75,7 +75,7 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-manual", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-manual", appNamespace)
 	}
 
 	test.Test(t)
@@ -129,7 +129,7 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-recipe", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-recipe", appNamespace)
 	}
 
 	test.Test(t)

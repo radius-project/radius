@@ -65,6 +65,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 	return nil
 }
 
+// Delete implements the processors.Processor interface for RedisCache resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.RedisCache, options processors.Options) error {
+	return nil
+}
+
 func (p *Processor) computeSSL(resource *datamodel.RedisCache) bool {
 	return resource.Properties.Port == RedisSSLPort
 }

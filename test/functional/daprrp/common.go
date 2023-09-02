@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package daprrp
+package resource_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/test/functional/shared"
 
@@ -29,9 +30,10 @@ import (
 	"k8s.io/client-go/dynamic"
 )
 
-func commonPostDeleteVerify(ctx context.Context, t *testing.T, test shared.RPTest, resourceType, resourceName, namespace string) {
+func verifyDaprComponentsDeleted(ctx context.Context, t *testing.T, test shared.RPTest, resourceType, resourceName, namespace string) {
 	resource, err := test.Options.ManagementClient.ShowResource(ctx, resourceType, resourceName)
 	require.Error(t, err)
+	require.True(t, clients.Is404Error(err))
 	require.Equal(t, generated.GenericResource{}, resource)
 
 	dynamicClient, err := dynamic.NewForConfig(test.Options.K8sConfig)

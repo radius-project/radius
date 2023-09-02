@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package daprrp
+package resource_test
 
 import (
 	"context"
@@ -69,7 +69,7 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-manual", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-manual", appNamespace)
 	}
 
 	test.Test(t)
@@ -118,7 +118,7 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		commonPostDeleteVerify(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-recipe", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-recipe", appNamespace)
 	}
 
 	test.Test(t)
