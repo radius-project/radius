@@ -23,7 +23,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -103,13 +102,6 @@ func (mongodb *MongoDatabase) VerifyInputs() error {
 // ApplyDeploymentOutput updates the Mongo database instance's database property, output resources, computed values
 // and secret values with the given DeploymentOutput.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if database, ok := do.ComputedValues[renderers.DatabaseNameValue].(string); ok {
-		r.Properties.Database = database
-	}
-
 	return nil
 }
 
