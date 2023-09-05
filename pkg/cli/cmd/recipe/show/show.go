@@ -68,8 +68,8 @@ rad recipe show redis-dev --group dev --environment dev`,
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddLinkTypeFlag(cmd)
-	_ = cmd.MarkFlagRequired(cli.LinkTypeFlag)
+	commonflags.AddResourceTypeFlag(cmd)
+	_ = cmd.MarkFlagRequired(cli.ResourceTypeFlag)
 
 	return cmd, runner
 }
@@ -81,7 +81,7 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	RecipeName        string
-	LinkType          string
+	ResourceType      string
 	Format            string
 }
 
@@ -123,11 +123,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.RecipeName = recipeName
 
-	linkType, err := cli.RequireLinkType(cmd)
+	resourceType, err := cli.GetResourceType(cmd)
 	if err != nil {
 		return err
 	}
-	r.LinkType = linkType
+	r.ResourceType = resourceType
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -152,14 +152,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.RecipeGetMetadata{Name: &r.RecipeName, LinkType: &r.LinkType})
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.RecipeGetMetadata{Name: &r.RecipeName, ResourceType: &r.ResourceType})
 	if err != nil {
 		return err
 	}
 
 	recipe := types.EnvironmentRecipe{
 		Name:         r.RecipeName,
-		LinkType:     r.LinkType,
+		ResourceType: r.ResourceType,
 		TemplatePath: *recipeDetails.TemplatePath,
 		TemplateKind: *recipeDetails.TemplateKind,
 	}

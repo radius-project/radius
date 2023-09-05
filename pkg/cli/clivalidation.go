@@ -41,7 +41,7 @@ type AzureResource struct {
 }
 
 const (
-	LinkTypeFlag = "link-type"
+	ResourceTypeFlag = "resource-type"
 )
 
 // RequireEnvironmentNameArgs checks if an environment name is provided as an argument or if a default environment is set
@@ -539,11 +539,11 @@ func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	return args[0], nil
 }
 
-// RequireLinkType retrieves the link type flag from the given command and returns it, or an error if the flag is not set.
-func RequireLinkType(cmd *cobra.Command) (string, error) {
-	linkType, err := cmd.Flags().GetString(LinkTypeFlag)
+// GetResourceType retrieves the resource type flag from the given command and returns it, or an error if the flag is not set.
+func GetResourceType(cmd *cobra.Command) (string, error) {
+	resourceType, err := cmd.Flags().GetString(ResourceTypeFlag)
 	if err != nil {
-		return linkType, err
+		return resourceType, err
 	}
-	return linkType, nil
+	return resourceType, nil
 }

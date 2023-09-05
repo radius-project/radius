@@ -215,11 +215,11 @@ func TestFromResourceProvisiongDataModel(t *testing.T) {
 func TestToRecipeDataModel(t *testing.T) {
 	testset := []struct {
 		versioned *Recipe
-		datamodel portableresources.LinkRecipe
+		datamodel portableresources.ResourceRecipe
 	}{
 		{
 			nil,
-			portableresources.LinkRecipe{
+			portableresources.ResourceRecipe{
 				Name: portableresources.DefaultRecipeName,
 			},
 		},
@@ -230,7 +230,7 @@ func TestToRecipeDataModel(t *testing.T) {
 					"foo": "bar",
 				},
 			},
-			portableresources.LinkRecipe{
+			portableresources.ResourceRecipe{
 				Name: "test",
 				Parameters: map[string]any{
 					"foo": "bar",
@@ -243,7 +243,7 @@ func TestToRecipeDataModel(t *testing.T) {
 					"foo": "bar",
 				},
 			},
-			portableresources.LinkRecipe{
+			portableresources.ResourceRecipe{
 				Name: portableresources.DefaultRecipeName,
 				Parameters: map[string]any{
 					"foo": "bar",

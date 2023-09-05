@@ -109,13 +109,13 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	}
 }
 
-func toRecipeDataModel(r *Recipe) portableresources.LinkRecipe {
+func toRecipeDataModel(r *Recipe) portableresources.ResourceRecipe {
 	if r == nil {
-		return portableresources.LinkRecipe{
+		return portableresources.ResourceRecipe{
 			Name: portableresources.DefaultRecipeName,
 		}
 	}
-	recipe := portableresources.LinkRecipe{}
+	recipe := portableresources.ResourceRecipe{}
 	if r.Name == nil {
 		recipe.Name = portableresources.DefaultRecipeName
 	} else {
@@ -127,7 +127,7 @@ func toRecipeDataModel(r *Recipe) portableresources.LinkRecipe {
 	return recipe
 }
 
-func fromRecipeDataModel(r portableresources.LinkRecipe) *Recipe {
+func fromRecipeDataModel(r portableresources.ResourceRecipe) *Recipe {
 	return &Recipe{
 		Name:       to.Ptr(r.Name),
 		Parameters: r.Parameters,

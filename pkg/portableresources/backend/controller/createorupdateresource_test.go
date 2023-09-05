@@ -49,8 +49,8 @@ const (
 type TestResource struct {
 	v1.BaseResource
 
-	// LinkMetadata represents internal DataModel properties common to all portable resource types.
-	datamodel.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resource types.
+	datamodel.PortableResourceMetadata
 
 	// Properties is the properties of the resource.
 	Properties TestResourceProperties `json:"properties"`
@@ -74,15 +74,15 @@ func (r *TestResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// Recipe returns a pointer to the LinkRecipe stored in the Properties field of the TestResource struct.
-func (t *TestResource) Recipe() *portableresources.LinkRecipe {
+// Recipe returns a pointer to the ResourceRecipe stored in the Properties field of the TestResource struct.
+func (t *TestResource) Recipe() *portableresources.ResourceRecipe {
 	return &t.Properties.Recipe
 }
 
 type TestResourceProperties struct {
 	rpv1.BasicResourceProperties
-	IsProcessed bool                         `json:"isProcessed"`
-	Recipe      portableresources.LinkRecipe `json:"recipe,omitempty"`
+	IsProcessed bool                             `json:"isProcessed"`
+	Recipe      portableresources.ResourceRecipe `json:"recipe,omitempty"`
 }
 
 type SuccessProcessor struct {

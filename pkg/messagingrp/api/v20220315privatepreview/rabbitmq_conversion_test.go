@@ -104,7 +104,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 					},
 					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
 					TLS:                  false,
-					Recipe: portableresources.LinkRecipe{
+					Recipe: portableresources.ResourceRecipe{
 						Name: "rabbitmq",
 						Parameters: map[string]any{
 							"foo": "bar",
