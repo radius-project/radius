@@ -20,12 +20,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/hostoptions"
-	queueprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/validator"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/hostoptions"
+	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/validator"
 )
 
 // Initializer is an interface that can be implemented by modules that want to provide functionality for a plane.

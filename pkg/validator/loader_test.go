@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/swagger"
+	"github.com/radius-project/radius/swagger"
 	"github.com/stretchr/testify/require"
 )
 

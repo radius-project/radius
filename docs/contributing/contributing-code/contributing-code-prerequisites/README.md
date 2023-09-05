@@ -53,7 +53,7 @@ You can build the main outputs using `make`:
 make build && make lint
 ```
 
-Running these steps will run our build and lint steps and verify that the tools are installed correctly. If you get stuck or suspect something is not working in these instructions please [open an issue](https://github.com/project-radius/radius/issues/new/choose).
+Running these steps will run our build and lint steps and verify that the tools are installed correctly. If you get stuck or suspect something is not working in these instructions please [open an issue](https://github.com/radius-project/radius/issues/new/choose).
 
 ### Editor
 
@@ -111,7 +111,7 @@ If you were trying to run `make generate` and ran into an error, then one of the
 Enter the following commands to install all of the required tools.
 
 ```sh
-cd cadl && npm ci
+cd typespec && npm ci
 npm install -g autorest
 npm install -g oav
 go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1

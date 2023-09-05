@@ -22,13 +22,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/to"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/to"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)

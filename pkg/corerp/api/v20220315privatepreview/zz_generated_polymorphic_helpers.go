@@ -9,92 +9,6 @@ package v20220315privatepreview
 
 import "encoding/json"
 
-func unmarshalApplicationExtensionClassification(rawMsg json.RawMessage) (ApplicationExtensionClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b ApplicationExtensionClassification
-	switch m["kind"] {
-	case "kubernetesMetadata":
-		b = &ApplicationKubernetesMetadataExtension{}
-	case "kubernetesNamespace":
-		b = &ApplicationKubernetesNamespaceExtension{}
-	default:
-		b = &ApplicationExtension{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func unmarshalApplicationExtensionClassificationArray(rawMsg json.RawMessage) ([]ApplicationExtensionClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var rawMessages []json.RawMessage
-	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
-		return nil, err
-	}
-	fArray := make([]ApplicationExtensionClassification, len(rawMessages))
-	for index, rawMessage := range rawMessages {
-		f, err := unmarshalApplicationExtensionClassification(rawMessage)
-		if err != nil {
-			return nil, err
-		}
-		fArray[index] = f
-	}
-	return fArray, nil
-}
-
-func unmarshalContainerExtensionClassification(rawMsg json.RawMessage) (ContainerExtensionClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b ContainerExtensionClassification
-	switch m["kind"] {
-	case "daprSidecar":
-		b = &DaprSidecarExtension{}
-	case "kubernetesMetadata":
-		b = &ContainerKubernetesMetadataExtension{}
-	case "manualScaling":
-		b = &ManualScalingExtension{}
-	default:
-		b = &ContainerExtension{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func unmarshalContainerExtensionClassificationArray(rawMsg json.RawMessage) ([]ContainerExtensionClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var rawMessages []json.RawMessage
-	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
-		return nil, err
-	}
-	fArray := make([]ContainerExtensionClassification, len(rawMessages))
-	for index, rawMessage := range rawMessages {
-		f, err := unmarshalContainerExtensionClassification(rawMessage)
-		if err != nil {
-			return nil, err
-		}
-		fArray[index] = f
-	}
-	return fArray, nil
-}
-
 func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (EnvironmentComputeClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -116,7 +30,7 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	return b, nil
 }
 
-func unmarshalEnvironmentExtensionClassification(rawMsg json.RawMessage) (EnvironmentExtensionClassification, error) {
+func unmarshalEnvironmentComputeUpdateClassification(rawMsg json.RawMessage) (EnvironmentComputeUpdateClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -124,12 +38,12 @@ func unmarshalEnvironmentExtensionClassification(rawMsg json.RawMessage) (Enviro
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
-	var b EnvironmentExtensionClassification
+	var b EnvironmentComputeUpdateClassification
 	switch m["kind"] {
-	case "kubernetesMetadata":
-		b = &EnvironmentKubernetesMetadataExtension{}
+	case "kubernetes":
+		b = &KubernetesComputeUpdate{}
 	default:
-		b = &EnvironmentExtension{}
+		b = &EnvironmentComputeUpdate{}
 	}
 	if err := json.Unmarshal(rawMsg, b); err != nil {
 		return nil, err
@@ -137,7 +51,34 @@ func unmarshalEnvironmentExtensionClassification(rawMsg json.RawMessage) (Enviro
 	return b, nil
 }
 
-func unmarshalEnvironmentExtensionClassificationArray(rawMsg json.RawMessage) ([]EnvironmentExtensionClassification, error) {
+func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ExtensionClassification
+	switch m["kind"] {
+	case "daprSidecar":
+		b = &DaprSidecarExtension{}
+	case "kubernetesMetadata":
+		b = &KubernetesMetadataExtension{}
+	case "kubernetesNamespace":
+		b = &KubernetesNamespaceExtension{}
+	case "manualScaling":
+		b = &ManualScalingExtension{}
+	default:
+		b = &Extension{}
+	}
+	if err := json.Unmarshal(rawMsg, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func unmarshalExtensionClassificationArray(rawMsg json.RawMessage) ([]ExtensionClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -145,57 +86,15 @@ func unmarshalEnvironmentExtensionClassificationArray(rawMsg json.RawMessage) ([
 	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
 		return nil, err
 	}
-	fArray := make([]EnvironmentExtensionClassification, len(rawMessages))
+	fArray := make([]ExtensionClassification, len(rawMessages))
 	for index, rawMessage := range rawMessages {
-		f, err := unmarshalEnvironmentExtensionClassification(rawMessage)
+		f, err := unmarshalExtensionClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}
 		fArray[index] = f
 	}
 	return fArray, nil
-}
-
-func unmarshalEnvironmentRecipePropertiesClassification(rawMsg json.RawMessage) (EnvironmentRecipePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(rawMsg, &m); err != nil {
-		return nil, err
-	}
-	var b EnvironmentRecipePropertiesClassification
-	switch m["templateKind"] {
-	case "bicep":
-		b = &BicepRecipeProperties{}
-	case "terraform":
-		b = &TerraformRecipeProperties{}
-	default:
-		b = &EnvironmentRecipeProperties{}
-	}
-	if err := json.Unmarshal(rawMsg, b); err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func unmarshalEnvironmentRecipePropertiesClassificationMap(rawMsg json.RawMessage) (map[string]EnvironmentRecipePropertiesClassification, error) {
-	if rawMsg == nil {
-		return nil, nil
-	}
-	var rawMessages map[string]json.RawMessage
-	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
-		return nil, err
-	}
-	fMap := make(map[string]EnvironmentRecipePropertiesClassification, len(rawMessages))
-	for key, rawMessage := range rawMessages {
-		f, err := unmarshalEnvironmentRecipePropertiesClassification(rawMessage)
-		if err != nil {
-			return nil, err
-		}
-		fMap[key] = f
-	}
-	return fMap, nil
 }
 
 func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (HealthProbePropertiesClassification, error) {
@@ -221,6 +120,90 @@ func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (Healt
 		return nil, err
 	}
 	return b, nil
+}
+
+func unmarshalRecipePropertiesClassification(rawMsg json.RawMessage) (RecipePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b RecipePropertiesClassification
+	switch m["templateKind"] {
+	case "bicep":
+		b = &BicepRecipeProperties{}
+	case "terraform":
+		b = &TerraformRecipeProperties{}
+	default:
+		b = &RecipeProperties{}
+	}
+	if err := json.Unmarshal(rawMsg, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func unmarshalRecipePropertiesClassificationMap(rawMsg json.RawMessage) (map[string]RecipePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]RecipePropertiesClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalRecipePropertiesClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
+}
+
+func unmarshalRecipePropertiesUpdateClassification(rawMsg json.RawMessage) (RecipePropertiesUpdateClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b RecipePropertiesUpdateClassification
+	switch m["templateKind"] {
+	case "bicep":
+		b = &BicepRecipePropertiesUpdate{}
+	case "terraform":
+		b = &TerraformRecipePropertiesUpdate{}
+	default:
+		b = &RecipePropertiesUpdate{}
+	}
+	if err := json.Unmarshal(rawMsg, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func unmarshalRecipePropertiesUpdateClassificationMap(rawMsg json.RawMessage) (map[string]RecipePropertiesUpdateClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages map[string]json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fMap := make(map[string]RecipePropertiesUpdateClassification, len(rawMessages))
+	for key, rawMessage := range rawMessages {
+		f, err := unmarshalRecipePropertiesUpdateClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fMap[key] = f
+	}
+	return fMap, nil
 }
 
 func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification, error) {

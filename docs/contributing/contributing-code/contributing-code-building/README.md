@@ -50,7 +50,7 @@ make generate
 
 This may take a few minutes as there are several steps. 
 
-If you encounter problems please [open an issue](https://github.com/project-radius/radius/issues/new/choose) so we can help. We're trying to make these instructions as streamlined as possible for contributors, your help in identifying problems with the tools and instructions is very much appreciated!
+If you encounter problems please [open an issue](https://github.com/radius-project/radius/issues/new/choose) so we can help. We're trying to make these instructions as streamlined as possible for contributors, your help in identifying problems with the tools and instructions is very much appreciated!
 
 
 ## Troubleshooting and getting help

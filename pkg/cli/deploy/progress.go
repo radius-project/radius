@@ -24,8 +24,8 @@ import (
 
 	"github.com/gosuri/uilive"
 	"github.com/mattn/go-isatty"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 // NewProgressListener creates a new ProgressListener based on whether the output is a terminal or not, returning an

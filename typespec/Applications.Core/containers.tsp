@@ -61,6 +61,29 @@ model ContainerProperties {
   @doc("Extensions spec of the resource")
   @extension("x-ms-identifiers", [])
   extensions?: Extension[];
+
+  @doc("Specifies Runtime-specific functionality")
+  runtimes?: RuntimesProperties;
+}
+
+@doc("The properties for runtime configuration")
+model RuntimesProperties {
+  @doc("The runtime configuration properties for Kubernetes")
+  kubernetes?: KubernetesRuntimeProperties;
+}
+
+#suppress "@azure-tools/typespec-azure-core/bad-record-type"
+@doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
+model KubernetesPodSpec is Record<unknown>;
+
+@doc("The runtime configuration properties for Kubernetes")
+model KubernetesRuntimeProperties {
+  @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
+  base?: string;
+
+  #suppress "@azure-tools/typespec-azure-core/bad-record-type"
+  @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
+  pod?: KubernetesPodSpec;
 }
 
 @doc("Specifies a listening port for the container")
@@ -134,7 +157,7 @@ model ExecHealthProbeProperties extends HealthProbeProperties {
 @doc("Specifies a volume for a container")
 model Volume {
   @doc("The path where the volume is mounted")
-  mountPath: string;
+  mountPath?: string;
 }
 
 @doc("Specifies an ephemeral volume for a container")
@@ -184,6 +207,9 @@ model Container {
   @doc("The registry and image to download and run in your container")
   image: string;
 
+  @doc("The pull policy for the container image")
+  imagePullPolicy?: ImagePullPolicy;
+
   @doc("environment")
   env?: Record<string>;
 
@@ -206,7 +232,19 @@ model Container {
   args?: string[];
 
   @doc("Working directory for the container")
-  workingDir: string;
+  workingDir?: string;
+}
+
+@doc("The image pull policy for the container")
+enum ImagePullPolicy {
+  @doc("Always")
+  Always,
+
+  @doc("IfNotPresent")
+  IfNotPresent,
+
+  @doc("Never")
+  Never,
 }
 
 @doc("The protocol in use by the port")

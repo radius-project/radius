@@ -19,7 +19,7 @@ package portforward
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

@@ -1,6 +1,6 @@
 # Radius documentation
 
-The documentation for Radius is at https://radapp.dev, with the source in the [project-radius/docs repo](https://github.com/project-radius/docs).
+The documentation for Radius is at https://radapp.dev, with the source in the [radius-project/docs repo](https://github.com/radius-project/docs).
 
 ## Contributing to Radius
 

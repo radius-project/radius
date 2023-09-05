@@ -25,8 +25,8 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 )
 
 type TestOptions struct {

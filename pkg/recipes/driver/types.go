@@ -19,8 +19,8 @@ package driver
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
@@ -30,6 +30,9 @@ type Driver interface {
 
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, opts DeleteOptions) error
+
+	// Gets the Recipe metadata and parameters from Recipe's template path
+	GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error)
 }
 
 // BaseOptions is the base options for the driver operations.
@@ -47,6 +50,8 @@ type BaseOptions struct {
 // ExecuteOptions is the options for the Execute method.
 type ExecuteOptions struct {
 	BaseOptions
+	// Previously deployed state of output resource IDs.
+	PrevState []string
 }
 
 // DeleteOptions is the options for the Delete method.

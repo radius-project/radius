@@ -18,9 +18,9 @@ package aws
 
 import (
 	"github.com/go-chi/chi/v5"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/validator"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/validator"
 )
 
 // NewModule creates a new AWS module.

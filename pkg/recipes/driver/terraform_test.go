@@ -26,13 +26,13 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	tfjson "github.com/hashicorp/terraform-json"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
-	"github.com/project-radius/radius/pkg/recipes/terraform"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,16 +58,17 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 		Name:          "redis-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.link/rediscaches/test-redis-recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/rediscaches/test-redis-recipe",
 		Parameters: map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
 
 	envRecipe := recipes.EnvironmentDefinition{
+		Name:         "redis-azure",
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "Azure/redis/azurerm",
-		ResourceType: "Applications.Link/redisCaches",
+		ResourceType: "Applications.Datastores/redisCaches",
 	}
 
 	return envConfig, recipeMetadata, envRecipe
@@ -202,7 +203,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.InvalidRecipeOutputs,
-			Message: "json: unknown field \"invalid\"",
+			Message: "failed to read the recipe output \"result\": json: unknown field \"invalid\"",
 		},
 	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
@@ -305,6 +306,88 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 			},
 		})
 	})
+}
+
+func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	_, _, envRecipe := buildTestInputs()
+
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	expectedOutput := map[string]any{
+		"parameters": map[string]any{
+			"redis_cache_name": "redis-test",
+		},
+	}
+	options := terraform.Options{
+		RootDir:        tfDir,
+		ResourceRecipe: &recipes.ResourceMetadata{},
+		EnvRecipe:      &envRecipe,
+	}
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(expectedOutput, nil)
+
+	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expectedOutput, recipeData)
+	// Verify directory cleanup
+	_, err = os.Stat(tfDir)
+	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+}
+
+func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
+	_, driver := setup(t)
+	driver.options.Path = ""
+	_, _, envRecipe := buildTestInputs()
+
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeGetMetadataFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
+
+	_, err := driver.GetRecipeMetadata(testcontext.New(t), BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
+	require.Error(t, err)
+	require.Equal(t, err, &expErr)
+}
+
+func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	_, _, envRecipe := buildTestInputs()
+
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	options := terraform.Options{
+		RootDir:        tfDir,
+		ResourceRecipe: &recipes.ResourceMetadata{},
+		EnvRecipe:      &envRecipe,
+	}
+
+	expErr := errors.New("Failed to download module")
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, expErr)
+
+	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
+	require.Error(t, err)
+	require.Equal(t, expErr, err)
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {

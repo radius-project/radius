@@ -19,10 +19,9 @@ package v20220901privatepreview
 import (
 	"fmt"
 
-	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest/to"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 const (
@@ -31,7 +30,7 @@ const (
 )
 
 // ConvertTo converts from the versioned Credential resource to version-agnostic datamodel.
-func (cr *AWSCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
+func (cr *AwsCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
 	prop, err := cr.getDataModelCredentialProperties()
 	if err != nil {
 		return nil, err
@@ -56,13 +55,13 @@ func (cr *AWSCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-func (cr *AWSCredentialResource) getDataModelCredentialProperties() (*datamodel.AWSCredentialResourceProperties, error) {
+func (cr *AwsCredentialResource) getDataModelCredentialProperties() (*datamodel.AWSCredentialResourceProperties, error) {
 	if cr.Properties == nil {
 		return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
 	}
 
 	switch p := cr.Properties.(type) {
-	case *AWSAccessKeyCredentialProperties:
+	case *AwsAccessKeyCredentialProperties:
 		var storage *datamodel.CredentialStorageProperties
 
 		switch c := p.Storage.(type) {
@@ -96,7 +95,7 @@ func (cr *AWSCredentialResource) getDataModelCredentialProperties() (*datamodel.
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Credential resource.
-func (dst *AWSCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
+func (dst *AwsCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*datamodel.AWSCredential)
 	if !ok {
 		return v1.ErrInvalidModelConversion
@@ -112,8 +111,8 @@ func (dst *AWSCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	switch dm.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		storage = &InternalCredentialStorageProperties{
-			Kind:       azto.Ptr(string(CredentialStorageKindInternal)),
-			SecretName: azto.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
+			Kind:       to.Ptr(CredentialStorageKindInternal),
+			SecretName: to.Ptr(dm.Properties.Storage.InternalCredential.SecretName),
 		}
 	default:
 		return v1.ErrInvalidModelConversion
@@ -122,9 +121,9 @@ func (dst *AWSCredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	// DO NOT convert any secret values to versioned model.
 	switch dm.Properties.Kind {
 	case datamodel.AWSCredentialKind:
-		dst.Properties = &AWSAccessKeyCredentialProperties{
-			Kind:        azto.Ptr(dm.Properties.Kind),
-			AccessKeyID: azto.Ptr(dm.Properties.AWSCredential.AccessKeyID),
+		dst.Properties = &AwsAccessKeyCredentialProperties{
+			Kind:        to.Ptr(AWSCredentialKind(dm.Properties.Kind)),
+			AccessKeyID: to.Ptr(dm.Properties.AWSCredential.AccessKeyID),
 			Storage:     storage,
 		}
 	default:

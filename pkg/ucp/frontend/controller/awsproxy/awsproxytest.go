@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/store"
 
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 )
 
 const (

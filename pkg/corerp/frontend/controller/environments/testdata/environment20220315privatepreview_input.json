@@ -7,7 +7,7 @@
             "namespace": "default"
         },
         "recipes": {
-            "Applications.Link/mongoDatabases":{
+            "Applications.Datastores/mongoDatabases":{
                 "mongo-azure": {
                     "templateKind": "bicep",
                     "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",

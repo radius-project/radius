@@ -21,16 +21,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/credentials"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	ucp_provider "github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Provider's config parameters need to match the values expected by Terraform

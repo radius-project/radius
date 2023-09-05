@@ -19,17 +19,17 @@ package register
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/bicep"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )
 
@@ -52,13 +52,13 @@ You can specify parameters using the '--parameter' flag ('-p' for short). Parame
 		`,
 		Example: `
 # Add a recipe to an environment
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases
 		
 # Specify a parameter
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases --parameters throughput=400
 		
 # specify multiple parameters using a JSON parameter file
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -73,7 +73,7 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	cmd.Flags().String("template-version", "", "specify the version for the terraform module.")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
-	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
+	cmd.Flags().String("link-type", "", "specify the type of the portable resource this recipe can be consumed by")
 	_ = cmd.MarkFlagRequired("link-type")
 	commonflags.AddParameterFlag(cmd)
 
@@ -174,9 +174,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	envRecipes := envResource.Properties.Recipes
 	if envRecipes == nil {
-		envRecipes = map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
+		envRecipes = map[string]map[string]corerp.RecipePropertiesClassification{}
 	}
-	var properties corerp.EnvironmentRecipePropertiesClassification
+	var properties corerp.RecipePropertiesClassification
 	switch r.TemplateKind {
 	case recipes.TemplateKindTerraform:
 		properties = &corerp.TerraformRecipeProperties{
@@ -195,7 +195,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if val, ok := envRecipes[r.LinkType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		envRecipes[r.LinkType] = map[string]corerp.EnvironmentRecipePropertiesClassification{
+		envRecipes[r.LinkType] = map[string]corerp.RecipePropertiesClassification{
 			r.RecipeName: properties,
 		}
 	}

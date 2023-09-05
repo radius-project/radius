@@ -19,10 +19,10 @@ package kubernetes
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/helm"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 

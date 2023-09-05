@@ -22,15 +22,15 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/to"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/test/radcli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,12 +100,12 @@ func Test_Run(t *testing.T) {
 	t.Run("Create aws provider", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
-			expectedPut := ucp.AWSCredentialResource{
+			expectedPut := ucp.AwsCredentialResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(cli_credential.AWSCredential),
-				Properties: &ucp.AWSAccessKeyCredentialProperties{
+				Properties: &ucp.AwsAccessKeyCredentialProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
 					AccessKeyID:     to.Ptr(testAccessKeyId),
 					SecretAccessKey: to.Ptr(testSecretAccessKey),

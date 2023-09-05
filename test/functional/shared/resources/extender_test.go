@@ -22,10 +22,10 @@ import (
 
 	"os"
 
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_Extender_Manual(t *testing.T) {
@@ -106,7 +106,7 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
 	}
 
-	template := "testdata/corerp-resources-extenders-aws-s3-recipe.bicep"
+	template := "testdata/corerp-resources-extender-aws-s3-recipe.bicep"
 	name := "corerp-resources-extenders-aws-s3-recipe"
 	appName := "corerp-resources-extenders-aws-s3-recipe-app"
 	bucketName := generateS3BucketName()

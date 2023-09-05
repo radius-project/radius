@@ -21,16 +21,16 @@ import (
 	"errors"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -103,15 +103,20 @@ func TestMakeRoleAssignments(t *testing.T) {
 	}, or[1].CreateResource.Data)
 }
 
-func TestMakeFederatedIdentitySA(t *testing.T) {
-	fi := MakeFederatedIdentitySA("app", "sa", "default", &datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "test-cntr",
-				Type: "applications.core/containers",
-			},
+func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
+	base := &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
 		},
-	})
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-cntr",
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
+		},
+	}
+
+	fi := SetWorkloadIdentityServiceAccount(base)
 
 	putOptions := &handlers.PutOptions{
 		Resource: fi,
@@ -149,7 +154,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 		{
 			desc:     "missing user managed identity",
 			resource: &corev1.ServiceAccount{},
-			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
+			err:      nil,
 		},
 		{
 			desc:     "missing client ID",
@@ -180,7 +185,11 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 				DependencyProperties: tc.dep,
 			})
 
-			require.ErrorContains(t, err, tc.err.Error())
+			if tc.err != nil {
+				require.EqualError(t, err, tc.err.Error())
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

@@ -16,7 +16,7 @@ limitations under the License.
 
 package cosmosdb
 
-import "github.com/project-radius/radius/pkg/ucp/store"
+import "github.com/radius-project/radius/pkg/ucp/store"
 
 const (
 	defaultQueryItemCount = 20

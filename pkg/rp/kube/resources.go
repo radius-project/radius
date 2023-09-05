@@ -21,12 +21,12 @@ import (
 	"errors"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	cdm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	cdm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // FindNamespaceByEnvID finds the environment-scope Kubernetes namespace. If the environment ID is invalid or the environment is not a Kubernetes

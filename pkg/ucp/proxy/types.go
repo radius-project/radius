@@ -17,201 +17,125 @@ limitations under the License.
 package proxy
 
 import (
-	"context"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
-
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-type UCPRequestInfo struct {
-	PlaneURL   string
-	PlaneKind  string
-	PlaneID    string
-	HTTPScheme string
-	UCPHost    string
-}
-
-type PlaneUrlFieldType string
-type PlaneIdFieldType string
-type HttpSchemeType string
-type UCPHostType string
-type UCPRequestInfoFieldType string
-
-const (
-	LocationHeader                                    = "Location"
-	AzureAsyncOperationHeader                         = "Azure-Asyncoperation"
-	UCPRequestInfoField       UCPRequestInfoFieldType = "ucprequestinfo"
-)
-
+// DirectorFunc is a function that modifies the request before it is sent to the downstream server.
 type DirectorFunc = func(r *http.Request)
+
+// ResponderFunc is a function that modifies the response before it is sent to the client.
 type ResponderFunc = func(r *http.Response) error
+
+// ErrorHandlerFunc is a function that handles errors that occur during the request.
 type ErrorHandlerFunc = func(w http.ResponseWriter, r *http.Request, err error)
 
+// ReverseProxy defines the interface for a reverse proxy.
 type ReverseProxy interface {
 	http.Handler
 }
 
+// ReverseProxyOptions defines the options for creating a reverse proxy.
 type ReverseProxyOptions struct {
-	RoundTripper     http.RoundTripper
-	ProxyAddress     string
-	TrimPlanesPrefix bool
+	// RoundTripper is the round tripper used by the reverse proxy to send requests.
+	RoundTripper http.RoundTripper
 }
 
 type ReverseProxyBuilder struct {
-	Downstream    *url.URL
+	// Downstream is the URL of the downstream server. This is the URL of the destination.
+	//
+	// The downstream URL will replace the request URL's scheme, host, and port. If the downstream
+	// URL contains a path, it will be pre-pended to the request URL's path.
+	Downstream *url.URL
+
+	// EnableLogging enables a set of logging middleware for the proxy.
 	EnableLogging bool
-	Directors     []DirectorFunc
-	Responders    []ResponderFunc
-	ErrorHandler  ErrorHandlerFunc
+
+	// Directors is the set of director functions to be applied to the reverse proxy.
+	// Directors are applied in order and modify the request before it is sent to the downstream server.
+	Directors []DirectorFunc
+
+	// Responders is the set of responder functions to be applied to the reverse proxy.
+	// Responses are applied in REVERSE order and modify the response before it is sent to the client.
+	Responders []ResponderFunc
+
+	// ErrorHandler is the error handler function to be applied to the reverse proxy.
+	// The error handler is called when an Golang error. This is NOT called for HTTP errors such
+	// as 404 or 500.
+	ErrorHandler ErrorHandlerFunc
 
 	// Transport is the transport set on the created httputil.ReverseProxy.
-	Transport Transport
-}
-
-type Transport struct {
-	roundTripper http.RoundTripper
-}
-
-// The RoundTrip function in the Transport struct uses the roundTripper field to make a request and returns the response
-// or an error if one occurs.
-func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	resp, err := t.roundTripper.RoundTrip(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
+	Transport http.RoundTripper
 }
 
 // Build configures a ReverseProxy with the given parameters and returns a http.HandlerFunc.
 func (builder *ReverseProxyBuilder) Build() ReverseProxy {
 	rp := httputil.NewSingleHostReverseProxy(builder.Downstream)
-	rp.Transport = &builder.Transport
 
-	// We don consider workaround28169 required :-/ the default behavior is just broken.
+	// NOTE: there's a built-in director. We prepend it here.
 	//
-	// There's always a default director so this is safe.
-	rp.Director = appendDirector(rp.Director, workaround28169)
-	rp.Director = appendDirector(rp.Director, filterKubernetesAPIServerHeaders)
-	rp.Director = appendDirector(rp.Director, builder.Directors...)
+	// We don't consider workaround28169 optional :-/ the default behavior is just broken.
+	//
+	// We don't want to propagate the Kubernetes authentication headers to the downstream server.
+	directors := []DirectorFunc{rp.Director, workaround28169, filterKubernetesAPIServerHeaders}
+	directors = append(directors, builder.Directors...)
 
-	// There's never a default responder.
-	rp.ModifyResponse = appendResponder(noopResponder, builder.Responders...)
+	responders := builder.Responders
 
-	rp.ErrorHandler = builder.ErrorHandler
-	if rp.ErrorHandler == nil {
-		rp.ErrorHandler = defaultErrorHandler
+	errorHandler := defaultErrorHandler
+	if builder.ErrorHandler != nil {
+		errorHandler = builder.ErrorHandler
 	}
 
 	if builder.EnableLogging {
 		// Insert handlers before AND after for logging.
-		rp.Director = appendDirector(logUpstreamRequest, rp.Director, logDownstreamRequest)
-		rp.ModifyResponse = appendResponder(logDownstreamResponse, rp.ModifyResponse, logUpstreamResponse)
-		rp.ErrorHandler = appendErrorHandler(logConnectionError, rp.ErrorHandler)
+		directors = append([]DirectorFunc{logUpstreamRequest}, directors...)
+		directors = append(directors, logDownstreamRequest)
+
+		responders = append([]ResponderFunc{logUpstreamResponse}, responders...)
+		responders = append(responders, logDownstreamResponse)
+
+		errorHandler = logConnectionError(errorHandler)
 	}
 
-	return http.HandlerFunc(rp.ServeHTTP)
+	rp.Transport = builder.Transport
+	rp.Director = director(directors)
+	rp.ModifyResponse = responder(responders)
+	rp.ErrorHandler = errorHandler
+
+	return rp
 }
 
-func (p *armProxy) processAsyncResponse(resp *http.Response) error {
-	ctx := resp.Request.Context()
-	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
-		// As per https://docs.microsoft.com/en-us/azure/azure-resource-manager/management/async-operations,
-		// first check for Azure-AsyncOperation header and if not found, check for LocationHeader
-		if header, ok := resp.Header[AzureAsyncOperationHeader]; ok {
-			if err := convertHeaderToUCPIDs(ctx, AzureAsyncOperationHeader, header, resp); err != nil {
+func director(directors []DirectorFunc) DirectorFunc {
+	return func(r *http.Request) {
+		for _, director := range directors {
+			director(r)
+		}
+	}
+}
+
+func responder(directors []ResponderFunc) ResponderFunc {
+	return func(r *http.Response) error {
+		for i := len(directors) - 1; i >= 0; i-- {
+			err := directors[i](r)
+			if err != nil {
 				return err
 			}
 		}
-		if header, ok := resp.Header[LocationHeader]; ok {
-			if err := convertHeaderToUCPIDs(ctx, LocationHeader, header, resp); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
 
-func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []string, resp *http.Response) error {
-	segments := strings.Split(strings.TrimSuffix(strings.TrimPrefix(header[0], "/"), "/"), "/")
-	// segment 0 -> http
-	// segment 1 -> ""
-	// segment 2 -> hostname + port
-	key := segments[0] + "//" + segments[2]
-
-	if ctx.Value(UCPRequestInfoField) == nil {
-		return fmt.Errorf("Could not find ucp request data in %s header", headerName)
-	}
-	requestInfo := ctx.Value(UCPRequestInfoField).(UCPRequestInfo)
-	ucpHost, err := hasUCPHost(requestInfo, headerName, header)
-	if err != nil {
-		return err
-	}
-	if ucpHost {
 		return nil
 	}
-
-	// Doing a reverse lookup of the URL of the responding server to find the corresponding plane ID
-	if requestInfo.PlaneURL == "" {
-		return fmt.Errorf("Could not find plane URL data in %s header", headerName)
-	}
-
-	// Match the Plane URL but without the HTTP Scheme since the RP can return a https location/azure-asyncoperation header
-	// based on the protocol scheme
-	requestInfoPlaneID := strings.TrimSuffix(strings.Split(requestInfo.PlaneURL, "//")[1], "/")
-	headerPlaneID := strings.TrimSuffix(strings.Split(key, "//")[1], "/")
-	if !strings.EqualFold(requestInfoPlaneID, headerPlaneID) {
-		return fmt.Errorf("PlaneURL: %s received in the request context does not match the url found in %s header: %s", requestInfo.PlaneURL, headerName, header[0])
-	}
-
-	if requestInfo.UCPHost == "" {
-		return fmt.Errorf("UCP Host Address unknown. Cannot convert response header")
-	}
-
-	if requestInfo.PlaneKind == "" {
-		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
-	}
-
-	var planeID string
-	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
-		if requestInfo.PlaneID == "" {
-			return fmt.Errorf("Could not find plane ID data in %s header", headerName)
-		}
-		// Doing this only for non UCP Native planes. For UCP Native planes, the request URL will have the plane ID in it and therefore no need to
-		// add the plane ID
-		planeID = requestInfo.PlaneID
-	}
-
-	if requestInfo.HTTPScheme == "" {
-		return fmt.Errorf("Could not find http scheme data in %s header", headerName)
-	}
-
-	// Found a plane matching the URL in the location header
-	// Convert to UCP ID using the planeID corresponding to the URL of the server from where the response was received
-	val := requestInfo.HTTPScheme + "://" + requestInfo.UCPHost + planeID + "/" + strings.Join(segments[3:], "/")
-
-	// Replace the header with the computed value.
-	// Do not use the Del/Set methods on header as it can change the header casing to canonical form
-	resp.Header[headerName] = []string{val}
-
-	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Converting %s header from %s to %s", headerName, header[0], val))
-	return nil
 }
 
-func hasUCPHost(requestInfo UCPRequestInfo, headerName string, header []string) (bool, error) {
-	uri, err := url.Parse(header[0])
-	if err != nil {
-		return false, err
-	}
-	pathBase := v1.ParsePathBase(uri.Path)
-	uriHost := uri.Host + pathBase
+func workaround28169(r *http.Request) {
+	// See: https://github.com/golang/go/issues/28168
+	//
+	// The built-in support will get the Host header wrong, which is a big problem. Almost every
+	// significant service validates its Host header.
+	r.Host = r.URL.Host
+}
 
-	return strings.EqualFold(uriHost, requestInfo.UCPHost), nil
+func defaultErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+	w.WriteHeader(http.StatusBadGateway)
 }

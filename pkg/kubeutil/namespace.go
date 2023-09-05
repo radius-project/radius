@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )

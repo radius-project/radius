@@ -20,18 +20,18 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 )
 
@@ -89,7 +89,7 @@ rad env update myenv --clear-aws
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
 	commonflags.AddOutputFlag(cmd)
-	//TODO: https://github.com/project-radius/radius/issues/5247
+	//TODO: https://github.com/radius-project/radius/issues/5247
 	commonflags.AddEnvironmentNameFlag(cmd)
 
 	return cmd, runner
@@ -145,7 +145,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: Validate Azure scope components (https://github.com/project-radius/radius/issues/5155)
+	// TODO: Validate Azure scope components (https://github.com/radius-project/radius/issues/5155)
 	if cmd.Flags().Changed(commonflags.AzureSubscriptionIdFlag) || cmd.Flags().Changed(commonflags.AzureResourceGroupFlag) {
 		azureSubId, err := cli.RequireAzureSubscriptionId(cmd)
 		if err != nil {
@@ -165,7 +165,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: Validate AWS scope components (https://github.com/project-radius/radius/issues/5155)
+	// TODO: Validate AWS scope components (https://github.com/radius-project/radius/issues/5155)
 	// stsclient can be used to validate
 	if cmd.Flags().Changed(commonflags.AWSRegionFlag) || cmd.Flags().Changed(commonflags.AWSAccountIdFlag) {
 		awsRegion, err := cmd.Flags().GetString(commonflags.AWSRegionFlag)

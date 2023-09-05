@@ -20,16 +20,16 @@ import (
 	"context"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
-	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
-	"github.com/project-radius/radius/pkg/validator"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
+	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
+	resourcegroups_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
+	"github.com/radius-project/radius/pkg/validator"
 )
 
 const (
@@ -108,14 +108,14 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:      resourceGroupResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyPlane,
+			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 		{
 			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/azure/{planeName}/.
 			ParentRouter:      baseRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyPlane,
+			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 	}
 

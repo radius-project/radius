@@ -20,18 +20,18 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/to"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 
 	"github.com/spf13/cobra"
 )
@@ -53,7 +53,7 @@ This command is intended for scripting or advanced use-cases. See 'rad init' for
 to configure these settings.
 
 Radius will use the provided service principal for all interactions with Azure, including Bicep deployment, 
-Radius environments, and Radius links. 
+Radius environments, and Radius portable resources. 
 
 Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
 The provided service principal must have the Contributor or Owner role assigned for the provided resource group
@@ -168,12 +168,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		ID:       to.Ptr(fmt.Sprintf(common.AzureCredentialID, "default")),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			TenantID:     &r.TenantID,
 			ClientID:     &r.ClientID,
 			ClientSecret: &r.ClientSecret,
-			Kind:         to.Ptr("ServicePrincipal"),
+			Kind:         to.Ptr(ucp.AzureCredentialKindServicePrincipal),
 		},
 	}
 

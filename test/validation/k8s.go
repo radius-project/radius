@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	kuberneteskeys "github.com/project-radius/radius/pkg/kubernetes"
+	kuberneteskeys "github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -60,6 +60,7 @@ type K8sObject struct {
 	Labels               map[string]string
 	Kind                 string
 	SkipLabelValidation  bool
+	ResourceName         string
 }
 
 // NewK8sPodForResource creates a new K8sObject with Kind set to "Pod" and the selector labels for the pod
@@ -121,6 +122,19 @@ func NewK8sSecretForResource(application string, name string) K8sObject {
 		},
 		Kind:   "Secret",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+// NewK8sSecretForResourceWithResourceName creates a K8sObject for a secret with the Labels set to the application and name.
+func NewK8sSecretForResourceWithResourceName(resourceName string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "",
+			Version:  "v1",
+			Resource: "secrets",
+		},
+		Kind:         "Secret",
+		ResourceName: resourceName,
 	}
 }
 
@@ -404,7 +418,7 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 }
 
 func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
-	// Need to retry because of AKS error: https://github.com/project-radius/radius/issues/2484
+	// Need to retry because of AKS error: https://github.com/radius-project/radius/issues/2484
 	retries := 3
 	for i := 1; i <= retries; i++ {
 		actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
@@ -522,15 +536,23 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {
-		if expectedResource.SkipLabelValidation {
+		if expectedResource.SkipLabelValidation && expectedResource.Kind != "Secret" {
 			continue
 		}
 		resourceExists := false
 		for idx, actualResource := range actualResources {
-			if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
-				resourceExists = true
-				actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
-				break
+			if expectedResource.SkipLabelValidation {
+				if actualResource.GetName() == expectedResource.ResourceName {
+					resourceExists = true
+					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
+					break
+				}
+			} else {
+				if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
+					resourceExists = true
+					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
+					break
+				}
 			}
 		}
 		if !resourceExists {

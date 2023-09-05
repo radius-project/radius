@@ -23,16 +23,16 @@ import (
 	"net/http"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers/container"
-	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
-	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
-	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers/container"
+	"github.com/radius-project/radius/pkg/corerp/renderers/gateway"
+	"github.com/radius-project/radius/pkg/corerp/renderers/httproute"
+	"github.com/radius-project/radius/pkg/corerp/renderers/volume"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateResource)(nil)

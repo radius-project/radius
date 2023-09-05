@@ -17,12 +17,12 @@ limitations under the License.
 package group
 
 import (
-	group_create "github.com/project-radius/radius/pkg/cli/cmd/group/create"
-	group_delete "github.com/project-radius/radius/pkg/cli/cmd/group/delete"
-	group_switch "github.com/project-radius/radius/pkg/cli/cmd/group/groupswitch"
-	group_list "github.com/project-radius/radius/pkg/cli/cmd/group/list"
-	group_show "github.com/project-radius/radius/pkg/cli/cmd/group/show"
-	"github.com/project-radius/radius/pkg/cli/framework"
+	group_create "github.com/radius-project/radius/pkg/cli/cmd/group/create"
+	group_delete "github.com/radius-project/radius/pkg/cli/cmd/group/delete"
+	group_switch "github.com/radius-project/radius/pkg/cli/cmd/group/groupswitch"
+	group_list "github.com/radius-project/radius/pkg/cli/cmd/group/list"
+	group_show "github.com/radius-project/radius/pkg/cli/cmd/group/show"
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
 

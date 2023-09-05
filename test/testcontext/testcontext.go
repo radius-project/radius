@@ -48,7 +48,8 @@ func Wrap(t *testing.T, ctx context.Context) (context.Context, context.CancelFun
 		ctx = context.Background()
 	}
 
-	ctx = logr.NewContext(ctx, testr.New(t))
+	// Setting verbosity so that everything gets logged.
+	ctx = logr.NewContext(ctx, testr.NewWithOptions(t, testr.Options{LogTimestamp: true, Verbosity: 10000}))
 	deadline, ok := t.Deadline()
 	if ok {
 		return context.WithDeadline(ctx, deadline)

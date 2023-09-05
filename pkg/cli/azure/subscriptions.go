@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 )
 
 // SubscriptionResult is the result of loading Azure subscriptions for the user.

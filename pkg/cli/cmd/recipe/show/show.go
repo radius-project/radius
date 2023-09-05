@@ -21,15 +21,15 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -98,7 +98,7 @@ func NewRunner(factory framework.Factory) *Runner {
 //
 
 // Validate takes in a command and a slice of strings and validates the command line arguments, setting the workspace, environment,
-// recipe name, link type and output format in the Runner struct. It returns an error if any of the arguments are invalid.
+// recipe name, portable resource type and output format in the Runner struct. It returns an error if any of the arguments are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -152,7 +152,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.Recipe{Name: &r.RecipeName, LinkType: &r.LinkType})
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.RecipeGetMetadata{Name: &r.RecipeName, LinkType: &r.LinkType})
 	if err != nil {
 		return err
 	}

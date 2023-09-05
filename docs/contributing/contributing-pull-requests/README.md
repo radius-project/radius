@@ -5,7 +5,7 @@
 We welcome small pull request contributions from anyone (docs improvements, bug fixes, minor features.) as long as they follow a few guidelines:
 
 - For very minor changes like correcting a typo feel free to just send a pull request without any ceremony. Otherwise ... 
-- Please start by [choosing an existing issue](https://github.com/project-radius/radius/issues), or [opening an issue](https://github.com/project-radius/radius/issues/new/choose) to work on.
+- Please start by [choosing an existing issue](https://github.com/radius-project/radius/issues), or [opening an issue](https://github.com/radius-project/radius/issues/new/choose) to work on.
 - The maintainers will respond to your issue, please work with the maintainers to ensure that what you're doing is in scope for the project before writing any code.
 - If you have any doubt whether a contribution would be valuable, feel free to ask.
 
@@ -15,7 +15,7 @@ We the maintainers have discretion over what features and pull requests we accep
 
 > 💡 If you're new to Go or new to open source, our [first commit guide](./../contributing-code/contributing-code-first-commit/) can walk you through the process of making code changes and submitting a pull request.
 
-Please open pull requests against the `main` branch (the default) unless otherwise instructed.
+Please submit pull requests using a forked repo and open pull requests against the `main` branch (the default) unless otherwise instructed.
 
 When opening a pull request, the form will be pre-populated with our template. Please fill out the template to provide structure to your PR message. If you've already written a good commit message (see below) it will be easy to use with our template.
 
@@ -44,7 +44,7 @@ We use Task as a catch-all for changes that have no direct user-visible impact. 
 
 Our pull-request template includes a summary from Github Copilot. This will generate a description of your changes as well as links to the most relevant files. 
 
-You can find an example [here](https://github.com/project-radius/radius/pull/5614).
+You can find an example [here](https://github.com/radius-project/radius/pull/5614).
 
 ## Tips
 
@@ -52,7 +52,7 @@ Keep reading for some tips about how to get your pull requests accepted!
 
 ## How to get help with a pull request
 
-* Notify the Radius Core team by commenting with `@project-radius/radius-core-team ` on your pull-request. 
+* Notify the Radius Core team by commenting with `@radius-project/radius-core-team ` on your pull-request. 
 * Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
 
 ## Writing a good commit message

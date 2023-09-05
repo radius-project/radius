@@ -26,13 +26,13 @@ import (
 
 	armauthorization "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/to"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Create checks if a role assignment already exists for a given managed identity, and if not, creates a new role

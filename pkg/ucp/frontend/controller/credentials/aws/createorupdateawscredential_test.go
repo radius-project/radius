@@ -22,17 +22,17 @@ import (
 	"net/http"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,7 +123,7 @@ func Test_AWS_Credential(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockStorageClient, *mockSecretClient)
 
-			credentialVersionedInput := &v20220901privatepreview.AWSCredentialResource{}
+			credentialVersionedInput := &v20220901privatepreview.AwsCredentialResource{}
 			credentialInput := testutil.ReadFixture(tt.filename)
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
@@ -146,7 +146,7 @@ func Test_AWS_Credential(t *testing.T) {
 }
 
 func getAwsResponse() armrpc_rest.Response {
-	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AWSCredentialResource{
+	return armrpc_rest.NewOKResponseWithHeaders(&v20220901privatepreview.AwsCredentialResource{
 		Location: to.Ptr("West US"),
 		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -154,11 +154,11 @@ func getAwsResponse() armrpc_rest.Response {
 		Tags: map[string]*string{
 			"env": to.Ptr("dev"),
 		},
-		Properties: &v20220901privatepreview.AWSAccessKeyCredentialProperties{
+		Properties: &v20220901privatepreview.AwsAccessKeyCredentialProperties{
 			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:        to.Ptr("AccessKey"),
+			Kind:        to.Ptr(v20220901privatepreview.AWSCredentialKindAccessKey),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
-				Kind:       to.Ptr(string(v20220901privatepreview.CredentialStorageKindInternal)),
+				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
 				SecretName: to.Ptr("aws-awscloud-default"),
 			},
 		},

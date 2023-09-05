@@ -20,21 +20,21 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-// RabbitMQQueue represents RabbitMQQueue link resource.
+// RabbitMQQueue represents RabbitMQQueue portable resource.
 type RabbitMQQueue struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
 	Properties RabbitMQQueueProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	linkrp_dm.LinkMetadata
+	// LinkMetadata represents internal DataModel properties common to all portable resource types.
+	pr_dm.LinkMetadata
 }
 
 // ApplyDeploymentOutput updates the RabbitMQQueue instance with the DeployedOutputResources from the
@@ -56,22 +56,22 @@ func (r *RabbitMQQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
 func (rabbitmq *RabbitMQQueue) ResourceTypeName() string {
-	return linkrp.N_RabbitMQQueuesResourceType
+	return portableresources.RabbitMQQueuesResourceType
 }
 
 // RabbitMQQueueProperties represents the properties of RabbitMQQueue response resource.
 type RabbitMQQueueProperties struct {
 	rpv1.BasicResourceProperties
-	Queue                string                      `json:"queue,omitempty"`
-	Host                 string                      `json:"host,omitempty"`
-	Port                 int32                       `json:"port,omitempty"`
-	VHost                string                      `json:"vHost,omitempty"`
-	Username             string                      `json:"username,omitempty"`
-	Resources            []*linkrp.ResourceReference `json:"resources,omitempty"`
-	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
-	Secrets              RabbitMQSecrets             `json:"secrets,omitempty"`
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
-	TLS                  bool                        `json:"tls,omitempty"`
+	Queue                string                                 `json:"queue,omitempty"`
+	Host                 string                                 `json:"host,omitempty"`
+	Port                 int32                                  `json:"port,omitempty"`
+	VHost                string                                 `json:"vHost,omitempty"`
+	Username             string                                 `json:"username,omitempty"`
+	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
+	Recipe               portableresources.LinkRecipe           `json:"recipe,omitempty"`
+	Secrets              RabbitMQSecrets                        `json:"secrets,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	TLS                  bool                                   `json:"tls,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -82,13 +82,13 @@ type RabbitMQSecrets struct {
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return linkrp.N_RabbitMQQueuesResourceType
+	return portableresources.RabbitMQQueuesResourceType
 }
 
 // Recipe returns the recipe for the RabbitMQQueue. It gets the LinkRecipe associated with the RabbitMQQueue instance
 // if the ResourceProvisioning is not set to Manual, otherwise it returns nil.
-func (r *RabbitMQQueue) Recipe() *linkrp.LinkRecipe {
-	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (r *RabbitMQQueue) Recipe() *portableresources.LinkRecipe {
+	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
@@ -98,9 +98,9 @@ func (r *RabbitMQQueue) Recipe() *linkrp.LinkRecipe {
 func (rabbitmq *RabbitMQQueue) VerifyInputs() error {
 	properties := rabbitmq.Properties
 	msgs := []string{}
-	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if properties.Queue == "" {
-			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", linkrp.ResourceProvisioningManual)}
+			return &v1.ErrClientRP{Code: "Bad Request", Message: fmt.Sprintf("queue is required when resourceProvisioning is %s", portableresources.ResourceProvisioningManual)}
 		}
 		if properties.Host == "" {
 			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")

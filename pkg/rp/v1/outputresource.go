@@ -19,10 +19,10 @@ package v1
 import (
 	"errors"
 
-	"github.com/project-radius/radius/pkg/algorithm/graph"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+	"github.com/radius-project/radius/pkg/algorithm/graph"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -52,6 +52,16 @@ type Resource struct {
 	ResourceType resourcemodel.ResourceType
 	// Dependencies is the set of LocalIDs of the resources that are required to be deployed before this resource can be deployed.
 	Dependencies []string
+}
+
+// ExistDependency checks if the given id is in the Dependencies of the Resource and returns true if it is, false otherwise.
+func (r Resource) ExistDependency(localID string) bool {
+	for _, dependency := range r.Dependencies {
+		if dependency == localID {
+			return true
+		}
+	}
+	return false
 }
 
 // GetResourceType returns the ResourceType of the OutputResource.

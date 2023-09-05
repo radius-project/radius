@@ -19,8 +19,8 @@ package v1
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +30,15 @@ func TestGetDependencies(t *testing.T) {
 	dependencies, err := outputResource.GetDependencies()
 	require.NoError(t, err)
 	require.Equal(t, []string{LocalIDUserAssignedManagedIdentity, LocalIDRoleAssignmentKVKeys}, dependencies)
+}
+
+func TestExistDependency(t *testing.T) {
+	testResource := &Resource{
+		Dependencies: []string{LocalIDSecret},
+	}
+
+	require.True(t, testResource.ExistDependency(LocalIDSecret))
+	require.False(t, testResource.ExistDependency(LocalIDDeployment))
 }
 
 func TestGetDependencies_MissingLocalID(t *testing.T) {

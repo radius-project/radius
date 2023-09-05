@@ -32,24 +32,24 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/radcli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/helm"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/radcli"
 
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -583,7 +583,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 		full           bool
 		azureProvider  *azure.Provider
 		awsProvider    *aws.Provider
-		recipes        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
+		recipes        map[string]map[string]corerp.RecipePropertiesClassification
 		expectedOutput []any
 	}{
 		{
@@ -591,8 +591,8 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			full:          false,
 			azureProvider: nil,
 			awsProvider:   nil,
-			recipes: map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
-				"Applications.Link/redisCaches": {
+			recipes: map[string]map[string]corerp.RecipePropertiesClassification{
+				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
@@ -605,7 +605,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			full:           false,
 			azureProvider:  nil,
 			awsProvider:    nil,
-			recipes:        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 		{
@@ -634,7 +634,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Region:          "us-west-2",
 				AccountID:       "test-account-id",
 			},
-			recipes:        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 		{
@@ -663,7 +663,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			full:           false,
 			azureProvider:  nil,
 			awsProvider:    nil,
-			recipes:        map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+			recipes:        map[string]map[string]corerp.RecipePropertiesClassification{},
 			expectedOutput: []any{},
 		},
 	}
@@ -712,12 +712,12 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 			if tc.awsProvider != nil {
 				credentialManagementClient.EXPECT().
-					PutAWS(context.Background(), ucp.AWSCredentialResource{
+					PutAWS(context.Background(), ucp.AwsCredentialResource{
 						Location: to.Ptr(v1.LocationGlobal),
 						Type:     to.Ptr(cli_credential.AWSCredential),
-						Properties: &ucp.AWSAccessKeyCredentialProperties{
+						Properties: &ucp.AwsAccessKeyCredentialProperties{
 							Storage: &ucp.CredentialStorageProperties{
-								Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+								Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 							},
 							AccessKeyID:     to.Ptr(tc.awsProvider.AccessKeyID),
 							SecretAccessKey: to.Ptr(tc.awsProvider.SecretAccessKey),

@@ -57,7 +57,11 @@ model ApplicationProperties {
 
   @doc("The application extension.")
   @extension("x-ms-identifiers", [])
-  extensions: Array<Extension>;
+  extensions?: Array<Extension>;
+
+  @doc("Status of a resource.")
+  @visibility("read")
+  status?: ResourceStatus;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"

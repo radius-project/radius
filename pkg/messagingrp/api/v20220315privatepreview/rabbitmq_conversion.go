@@ -17,11 +17,11 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts a versioned RabbitMQQueueResource to a version-agnostic datamodel.RabbitMQQueue
@@ -55,7 +55,7 @@ func (src *RabbitMQQueueResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, err
 	}
 
-	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	}
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
@@ -95,7 +95,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQQueueProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(rabbitmq.Properties.Environment),
@@ -109,7 +109,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 		Resources:            fromResourcesDataModel(rabbitmq.Properties.Resources),
 		TLS:                  to.Ptr(rabbitmq.Properties.TLS),
 	}
-	if rabbitmq.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+	if rabbitmq.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 	return nil

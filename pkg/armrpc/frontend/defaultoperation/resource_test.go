@@ -24,13 +24,13 @@ import (
 	"net/url"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 )
@@ -178,7 +178,7 @@ func testResourceDataModelFromVersioned(content []byte, version string) (*TestRe
 // testValidateRequest is an example resource filter.
 //
 // In this case we're validating that the application of an existing resource can't change. This is one of our scenarios
-// for the corerp and linkrp. However we're avoiding calling into that code directly from here to avoid coupling.
+// for the corerp and portable resource providers. However we're avoiding calling into that code directly from here to avoid coupling.
 func testValidateRequest(ctx context.Context, newResource *TestResourceDataModel, oldResource *TestResourceDataModel, options *controller.Options) (rest.Response, error) {
 	if oldResource == nil {
 		return nil, nil
@@ -217,7 +217,7 @@ func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *stat
 	}, mds, msm
 }
 
-// TODO: Use Referer header instead of X-Forwarded-Proto by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
+// TODO: Use Referer header instead of X-Forwarded-Proto by following ARM RPC spec - https://github.com/radius-project/radius/issues/3068
 func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
 	dest := url.URL{
 		Host:   req.Host,

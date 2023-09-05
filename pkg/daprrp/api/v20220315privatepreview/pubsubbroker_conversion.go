@@ -21,11 +21,11 @@ import (
 	"reflect"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts a versioned DaprPubSubBrokerResource to a version-agnostic DaprPubSubBroker. It returns an error
@@ -66,7 +66,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) 
 	// the recipe is expected to create the Dapr Component manifest. However, they are required
 	// when resourceProvisioning is set to manual.
 	msgs := []string{}
-	if converted.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if src.Properties.Recipe != nil && (!reflect.ValueOf(*src.Properties.Recipe).IsZero()) {
 			msgs = append(msgs, "recipe details cannot be specified when resourceProvisioning is set to manual")
 		}
@@ -129,11 +129,11 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		ComponentName:        to.Ptr(daprPubSub.Properties.ComponentName),
 		ProvisioningState:    fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
 		},
 	}
 
-	if daprPubSub.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if daprPubSub.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Metadata = daprPubSub.Properties.Metadata
 		dst.Properties.Type = to.Ptr(daprPubSub.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprPubSub.Properties.Version)

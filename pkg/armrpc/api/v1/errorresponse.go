@@ -32,6 +32,11 @@ type ErrorDetails struct {
 	Details        []ErrorDetails        `json:"details,omitempty"`
 }
 
+// Error returns error message in ErrorDetails to implement error interface.
+func (e ErrorDetails) Error() string {
+	return e.Message
+}
+
 // ErrorAdditionalInfo represents abritrary additional information as part of an error as defined by the ARM API.
 type ErrorAdditionalInfo struct {
 	Type string         `json:"type"`

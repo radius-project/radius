@@ -19,15 +19,15 @@ package unregister
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ import (
 //
 
 // NewCommand creates a new cobra command for unregistering a recipe from an environment, which takes in a factory and returns a cobra command
-// and a runner. It also sets up flags for output, workspace, resource group, environment name and link type, with link type being a required flag.
+// and a runner. It also sets up flags for output, workspace, resource group, environment name and portable resource type, with link-type being a required flag.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 

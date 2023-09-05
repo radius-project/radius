@@ -27,22 +27,22 @@ import (
 
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/rp/util"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	clients "github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/rp/util"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	clients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
-	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
-//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/project-radius/radius/pkg/recipes/driver github.com/project-radius/radius/pkg/recipes/driver Driver
+//go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
@@ -139,6 +139,18 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
 	}
 
+	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included
+	// in the currently deployed resources compared to the list of resources from the previous deployment needs to be deleted
+	// as bicep does not take care of automatically deleting the unused resources.
+	// Identify the output resources that are no longer relevant to the recipe.
+	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+
+	// Deleting obsolete output resources.
+	err = d.deleteGCOutputResources(ctx, diff)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
+	}
+
 	return recipeResponse, nil
 }
 
@@ -171,6 +183,34 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	}
 
 	return nil
+}
+
+// GetRecipeMetadata gets the Bicep recipe parameters information from the container registry
+func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
+	//	{
+	//		"parameters": {
+	//			<parameter-name>: {
+	//				<parameter-constraint-name> : <parameter-constraint-value>
+	// 			}
+	//		}
+	//	}
+	// For example:
+	//	{
+	//		"parameters": {
+	//			"location": {
+	//				"type": "string",
+	//				"defaultValue" : "[resourceGroup().location]"
+	//			}
+	//		}
+	//	}
+	recipeData := make(map[string]any)
+	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
+	if err != nil {
+		return nil, err
+	}
+
+	return recipeData, nil
 }
 
 func hasContextParameter(recipeData map[string]any) bool {
@@ -275,4 +315,41 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 	}
 
 	return recipeResponse, nil
+}
+
+// getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
+// returns a slice of resource ids that contains the elements that are in the "previous" slice but not in the "current".
+func (d *bicepDriver) getGCOutputResources(current []string, previous []string) []string {
+	// We can easily determine which resources have changed via a brute-force search comparing IDs.
+	// The lists of resources we work with are small, so this is fine.
+	diff := []string{}
+	for _, prevResource := range previous {
+		found := false
+		for _, currentResource := range current {
+			if prevResource == currentResource {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			diff = append(diff, prevResource)
+		}
+	}
+
+	return diff
+}
+
+func (d *bicepDriver) deleteGCOutputResources(ctx context.Context, diff []string) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, resource := range diff {
+		logger.Info(fmt.Sprintf("Deleting output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
+		err := d.ResourceClient.Delete(ctx, resource)
+		if err != nil {
+			return err
+		}
+		logger.Info(fmt.Sprintf("Deleted output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
+	}
+
+	return nil
 }

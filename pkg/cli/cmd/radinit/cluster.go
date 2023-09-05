@@ -20,8 +20,8 @@ import (
 	"context"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/version"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 

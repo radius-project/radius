@@ -21,8 +21,8 @@ import (
 	"errors"
 	"sync"
 
-	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/pkg/ucp/util"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/ucp/util"
 )
 
 var (
@@ -61,4 +61,9 @@ func (p *QueueProvider) GetClient(ctx context.Context) (queue.Client, error) {
 	})
 
 	return p.queueClient, err
+}
+
+// SetClient sets the queue client for the QueueProvider. This should be used by tests that need to mock the queue client.
+func (p *QueueProvider) SetClient(client queue.Client) {
+	p.queueClient = client
 }

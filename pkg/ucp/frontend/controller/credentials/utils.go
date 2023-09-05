@@ -18,8 +18,8 @@ package credentials
 import (
 	"strings"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // GetSecretName takes in a resources.ID and returns a string which is the normalized name of the resource.

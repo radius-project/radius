@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 )
 
 const (
@@ -41,6 +41,9 @@ type moduleInspectResult struct {
 	// ResultOutputExists is true if the module contains an output named "result".
 	ResultOutputExists bool
 
+	// The parameter variables defined by the recipe
+	Parameters map[string]any
+
 	// Any other module information required in the future can be added here.
 }
 
@@ -50,7 +53,7 @@ type moduleInspectResult struct {
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
 func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, error) {
-	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false}
+	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
@@ -73,6 +76,20 @@ func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, er
 	// Check if an output named "result" is defined in the module.
 	if _, ok := mod.Outputs[recipes.ResultPropertyName]; ok {
 		result.ResultOutputExists = true
+	}
+
+	// Extract the list of parameters.
+	for variable, value := range mod.Variables {
+		tfVar := map[string]any{
+			"name":         value.Name,
+			"type":         value.Type,
+			"description":  value.Description,
+			"defaultValue": value.Default,
+			"required":     value.Required,
+			"sensitive":    value.Sensitive,
+			"pos":          value.Pos,
+		}
+		result.Parameters[variable] = tfVar
 	}
 
 	return result, nil

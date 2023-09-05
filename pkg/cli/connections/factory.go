@@ -22,19 +22,19 @@ import (
 	"fmt"
 	"strings"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/deployment"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/sdk"
-	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
+	"github.com/radius-project/radius/pkg/cli/deployment"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
@@ -208,12 +208,12 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 
 	clientOptions := sdk.NewClientOptions(connection)
 
-	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialClient(&aztoken.AnonymousCredential{}, clientOptions)
+	awsCredentialClient, err := v20220901privatepreview.NewAwsCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}

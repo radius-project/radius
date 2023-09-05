@@ -19,11 +19,10 @@ package v20220315privatepreview
 import (
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/recipes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 	"golang.org/x/exp/slices"
 )
 
@@ -122,29 +121,26 @@ func stringSlice(s []*string) []string {
 	return r
 }
 
-func isValidLinkType(link string) bool {
-	linkTypes := []string{
-		linkrp.DaprPubSubBrokersResourceType,
-		linkrp.DaprSecretStoresResourceType,
-		linkrp.DaprStateStoresResourceType,
-		linkrp.ExtendersResourceType,
-		linkrp.MongoDatabasesResourceType,
-		linkrp.RabbitMQMessageQueuesResourceType,
-		linkrp.RedisCachesResourceType,
-		linkrp.SqlDatabasesResourceType,
-		// Resources After Split of LinkRP Namespace
-		linkrp.N_RabbitMQQueuesResourceType,
-		linkrp.N_DaprPubSubBrokersResourceType,
-		linkrp.N_DaprSecretStoresResourceType,
-		linkrp.N_DaprStateStoresResourceType,
-		linkrp.N_MongoDatabasesResourceType,
-		linkrp.N_RedisCachesResourceType,
-		linkrp.N_SqlDatabasesResourceType,
-		linkrp.N_ExtendersResourceType,
-	}
-	return slices.Contains(linkTypes, link)
-}
-
 func isValidTemplateKind(templateKind string) bool {
 	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
+}
+
+func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource {
+	var outResources []*OutputResource
+	for _, or := range outputResources {
+		r := &OutputResource{
+			ID: to.Ptr(or.ID.String()),
+		}
+
+		// We will not serialize the following fields if they are empty or nil.
+		if or.LocalID != "" {
+			r.LocalID = to.Ptr(or.LocalID)
+		}
+		if or.RadiusManaged != nil {
+			r.RadiusManaged = or.RadiusManaged
+		}
+
+		outResources = append(outResources, r)
+	}
+	return outResources
 }

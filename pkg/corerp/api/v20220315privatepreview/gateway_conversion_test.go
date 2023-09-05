@@ -20,11 +20,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/test/testutil"
-	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -190,7 +190,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
 	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
-	require.Equal(t, TLSMinVersionOne3, *versioned.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, TLSMinVersionTls13, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayTLSTerminationConvertVersionedToDataModel_NoMinProtocolVersion(t *testing.T) {
@@ -247,7 +247,7 @@ func TestGatewayTLSTerminationConvertDataModelToVersioned_NoMinProtocolVersion(t
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", *versioned.Properties.URL)
 	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 	require.Equal(t, "secretname", *versioned.Properties.TLS.CertificateFrom)
-	require.Equal(t, TLSMinVersionOne2, *versioned.Properties.TLS.MinimumProtocolVersion)
+	require.Equal(t, TLSMinVersionTls12, *versioned.Properties.TLS.MinimumProtocolVersion)
 }
 
 func TestGatewayConvertFromValidation(t *testing.T) {

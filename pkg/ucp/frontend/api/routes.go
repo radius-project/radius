@@ -23,17 +23,17 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
-	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"github.com/project-radius/radius/pkg/validator"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
+	kubernetes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/kubernetes"
+	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/validator"
 )
 
 const (

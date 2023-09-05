@@ -1,0 +1,59 @@
+{
+  "operationId": "RabbitMqQueues_CreateOrUpdate",
+  "title": "Create Or Update a RabbitMQQueue resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "rabbitMQQueueName": "rabbitmq0",
+    "api-version": "2022-03-15-privatepreview",
+    "RabbitMQQueueParameters": {
+      "location": "global",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "resourceProvisioning": "manual",
+        "queue": "rabbitmq0",
+        "secrets": {
+          "connectionString": "connection://string"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
+        "name": "rabbitmq0",
+        "type": "Applications.Messaging/rabbitMQQueues",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "queue": "rabbitmq0",
+          "secrets": {
+            "connectionString": "connection://string"
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Messaging/rabbitMQQueues/rabbitmq1",
+        "name": "rabbitmq1",
+        "type": "Applications.Messaging/rabbitMQQueues",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "queue": "rabbitmq0",
+          "secrets": {
+            "connectionString": "connection://string"
+          }
+        }
+      }
+    }
+  }
+}

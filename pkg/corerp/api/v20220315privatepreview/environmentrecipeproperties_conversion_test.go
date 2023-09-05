@@ -20,17 +20,17 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	types "github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/test/testutil"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	types "github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestEnvironmentRecipePropertiesConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
-		r := &RecipeMetadataProperties{}
+		r := &RecipeGetMetadataResponse{}
 		// act
 		_, err := r.ConvertTo()
 
@@ -49,7 +49,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 			require.NoError(t, err)
 
 			// act
-			versioned := &RecipeMetadataProperties{}
+			versioned := &RecipeGetMetadataResponse{}
 			err = versioned.ConvertFrom(r)
 			// assert
 			require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKin
 		require.NoError(t, err)
 
 		// act
-		versioned := &RecipeMetadataProperties{}
+		versioned := &RecipeGetMetadataResponse{}
 		err = versioned.ConvertFrom(r)
 		// assert
 		require.NoError(t, err)
@@ -89,11 +89,11 @@ func TestRecipeConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
 		filename := "reciperesource.json"
 		expected := &datamodel.Recipe{
-			LinkType: linkrp.MongoDatabasesResourceType,
+			LinkType: portableresources.MongoDatabasesResourceType,
 			Name:     "mongo-azure",
 		}
 		rawPayload := testutil.ReadFixture(filename)
-		r := &Recipe{}
+		r := &RecipeGetMetadata{}
 		err := json.Unmarshal(rawPayload, r)
 		require.NoError(t, err)
 		// act

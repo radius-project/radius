@@ -25,14 +25,14 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	corerpv20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
-	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_radius "github.com/project-radius/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	corerpv20220315 "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/portableresources"
+	ucpv20220901 "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 type UCPApplicationsManagementClient struct {
@@ -44,23 +44,18 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 var (
 	ResourceTypesList = []string{
-		linkrp.MongoDatabasesResourceType,
-		linkrp.RabbitMQMessageQueuesResourceType,
-		linkrp.RedisCachesResourceType,
-		linkrp.SqlDatabasesResourceType,
-		linkrp.DaprStateStoresResourceType,
-		linkrp.DaprSecretStoresResourceType,
-		linkrp.DaprPubSubBrokersResourceType,
-		linkrp.ExtendersResourceType,
+		portableresources.MongoDatabasesResourceType,
+		portableresources.RabbitMQQueuesResourceType,
+		portableresources.RedisCachesResourceType,
+		portableresources.SqlDatabasesResourceType,
+		portableresources.DaprStateStoresResourceType,
+		portableresources.DaprSecretStoresResourceType,
+		portableresources.DaprPubSubBrokersResourceType,
+		portableresources.ExtendersResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
 		"Applications.Core/secretStores",
-		// Resource Types after Splitting Linkrp Namespace
-		linkrp.N_RabbitMQQueuesResourceType,
-		linkrp.N_DaprStateStoresResourceType,
-		linkrp.N_DaprSecretStoresResourceType,
-		linkrp.N_DaprPubSubBrokersResourceType,
 	}
 )
 
@@ -224,7 +219,7 @@ func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context
 		if err != nil {
 			return results, err
 		}
-		applicationList := nextPage.ApplicationResourceList.Value
+		applicationList := nextPage.ApplicationResourceListResult.Value
 		for _, application := range applicationList {
 			results = append(results, *application)
 		}
@@ -441,7 +436,7 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx 
 		if err != nil {
 			return envResourceList, err
 		}
-		applicationList := nextPage.EnvironmentResourceList.Value
+		applicationList := nextPage.EnvironmentResourceListResult.Value
 		for _, application := range applicationList {
 			envResourceList = append(envResourceList, *application)
 		}
@@ -478,7 +473,7 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 			return []corerpv20220315.EnvironmentResource{}, err
 		}
 
-		for _, environment := range nextPage.EnvironmentResourceList.Value {
+		for _, environment := range nextPage.EnvironmentResourceListResult.Value {
 			environments = append(environments, *environment)
 		}
 	}
@@ -592,14 +587,14 @@ func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 // ListUCPGroup is a function that retrieves a list of resource groups from the UCP API and returns them as a slice of
 // ResourceGroupResource objects. It may return an error if there is an issue with the API request.
 func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220901.ResourceGroupResource, error) {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListByRootScopeOptions
+	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListOptions
 	resourceGroupResources := []ucpv20220901.ResourceGroupResource{}
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return resourceGroupResources, err
 	}
 
-	pager := resourcegroupClient.NewListByRootScopePager(planeType, planeName, resourceGroupOptions)
+	pager := resourcegroupClient.NewListPager(planeType, planeName, resourceGroupOptions)
 
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)
@@ -619,16 +614,16 @@ func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 
 // ShowRecipe creates a new EnvironmentsClient, gets the recipe metadata from the
 // environment, and returns the EnvironmentRecipeProperties or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.Recipe) (corerpv20220315.RecipeMetadataProperties, error) {
+func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.RecipeGetMetadata) (corerpv20220315.RecipeGetMetadataResponse, error) {
 	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.RecipeMetadataProperties{}, err
+		return corerpv20220315.RecipeGetMetadataResponse{}, err
 	}
 
-	resp, err := client.GetRecipeMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetRecipeMetadataOptions{})
+	resp, err := client.GetMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetMetadataOptions{})
 	if err != nil {
-		return corerpv20220315.RecipeMetadataProperties{}, err
+		return corerpv20220315.RecipeGetMetadataResponse{}, err
 	}
 
-	return corerpv20220315.RecipeMetadataProperties(resp.RecipeMetadataProperties), nil
+	return corerpv20220315.RecipeGetMetadataResponse(resp.RecipeGetMetadataResponse), nil
 }

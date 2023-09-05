@@ -22,11 +22,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"

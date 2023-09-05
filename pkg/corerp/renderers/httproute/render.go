@@ -25,12 +25,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 type Renderer struct {
@@ -99,8 +99,8 @@ func (r *Renderer) makeService(ctx context.Context, route *datamodel.HTTPRoute, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        kubernetes.NormalizeResourceName(route.Name),
 			Namespace:   options.Environment.Namespace,
-			Labels:      renderers.GetLabels(ctx, options, appId.Name(), route.Name, route.ResourceTypeName()),
-			Annotations: renderers.GetAnnotations(ctx, options),
+			Labels:      renderers.GetLabels(options, appId.Name(), route.Name, route.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(options),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),

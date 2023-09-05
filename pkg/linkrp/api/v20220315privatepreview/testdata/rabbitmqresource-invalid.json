@@ -1,8 +1,0 @@
-{
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
-    "name": "rabbitmq0",
-    "type": "Applications.Link/rabbitMQMessageQueues",
-    "properties": {
-        "queue": 12345
-    }
-}

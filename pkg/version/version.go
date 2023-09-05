@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 // Values for these are injected by the build.

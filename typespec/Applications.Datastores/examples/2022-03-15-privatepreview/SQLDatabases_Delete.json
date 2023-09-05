@@ -1,0 +1,14 @@
+{
+  "operationId": "SqlDatabases_Delete",
+  "title": "Delete a SqlDatabase resource",
+  "parameters": {
+    "rootScope": "planes/radius/local/resourceGroups/testGroup",
+    "sqlDatabaseName": "sql0",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}

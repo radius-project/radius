@@ -22,13 +22,14 @@ import (
 	"net/http"
 	"sort"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	linkrp "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/util"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 	"golang.org/x/exp/maps"
 )
 
@@ -37,10 +38,11 @@ var _ ctrl.Controller = (*GetRecipeMetadata)(nil)
 // GetRecipeMetadata is the controller implementation to get recipe metadata such as parameters and the details of those parameters(type/minValue/etc.).
 type GetRecipeMetadata struct {
 	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
+	engine.Engine
 }
 
 // NewGetRecipeMetadata creates a new controller for retrieving recipe metadata from an environment.
-func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetRecipeMetadata(opts ctrl.Options, engine engine.Engine) (ctrl.Controller, error) {
 	return &GetRecipeMetadata{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Environment]{
@@ -48,6 +50,7 @@ func NewGetRecipeMetadata(opts ctrl.Options) (ctrl.Controller, error) {
 				ResponseConverter: converter.EnvironmentDataModelToVersioned,
 			},
 		),
+		engine,
 	}, nil
 }
 
@@ -79,7 +82,7 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Either recipe with name %q or resource type %q not found on environment with id %q", recipeDatamodel.Name, recipeDatamodel.LinkType, serviceCtx.ResourceID)), nil
 	}
 
-	recipeParams, err := getRecipeMetadataFromRegistry(ctx, recipeProperties.TemplatePath, recipeDatamodel.Name)
+	recipeParams, err := r.GetRecipeMetadataFromRegistry(ctx, recipeProperties, recipeDatamodel)
 	if err != nil {
 		return nil, err
 	}
@@ -98,10 +101,18 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 	return rest.NewOKResponse(versioned), nil
 }
 
-func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, recipeName string) (recipeParameters map[string]any, err error) {
+func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, recipeProperties datamodel.EnvironmentRecipeProperties, recipeDataModel *datamodel.Recipe) (recipeParameters map[string]any, err error) {
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Name:            recipeDataModel.Name,
+		Driver:          recipeProperties.TemplateKind,
+		Parameters:      recipeProperties.Parameters,
+		TemplatePath:    recipeProperties.TemplatePath,
+		TemplateVersion: recipeProperties.TemplateVersion,
+		ResourceType:    recipeDataModel.LinkType,
+	}
+
 	recipeParameters = make(map[string]any)
-	recipeData := make(map[string]any)
-	err = util.ReadFromRegistry(ctx, templatePath, &recipeData)
+	recipeData, err := r.Engine.GetRecipeMetadata(ctx, recipeDefinition)
 	if err != nil {
 		return recipeParameters, err
 	}
@@ -115,24 +126,6 @@ func getRecipeMetadataFromRegistry(ctx context.Context, templatePath string, rec
 }
 
 func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[string]any) error {
-	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
-	//	{
-	//		"parameters": {
-	//			<parameter-name>: {
-	//				<parameter-constraint-name> : <parameter-constraint-value>
-	// 			}
-	//		}
-	//	}
-	// For example:
-	//	{
-	//		"parameters": {
-	//			"location": {
-	//				"type": "string",
-	//				"defaultValue" : "[resourceGroup().location]"
-	//			}
-	//		}
-	//	}
-
 	if recipeData["parameters"] == nil {
 		return nil
 	}
@@ -142,8 +135,8 @@ func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[
 	}
 
 	for paramName, paramValue := range recipeParam {
-		if paramName == linkrp.RecipeContextParameter {
-			// context parameter is only revelant to operator and is generated and passed by linkrp instead of the developer/operators.
+		if paramName == pr_dm.RecipeContextParameter {
+			// context parameter is only revelant to operator and is generated and passed by resource provider instead of the developer/operators.
 			continue
 		}
 

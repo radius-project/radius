@@ -17,7 +17,7 @@ limitations under the License.
 package container
 
 import (
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 
 	corev1 "k8s.io/api/core/v1"
 )

@@ -22,12 +22,12 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	ucp_aws_frontend "github.com/project-radius/radius/pkg/ucp/frontend/aws"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 const (
@@ -43,12 +43,12 @@ func initializeAWSTest(t *testing.T) (*testserver.TestServer, *store.MockStorage
 	cloudControlClient := ucp_aws.NewMockAWSCloudControlClient(ctrl)
 	cloudFormationClient := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
 
-	ucp, storeClient, secretClient := testserver.StartWithMocks(t, func(options modules.Options) []modules.Initializer {
+	ucp := testserver.StartWithMocks(t, func(options modules.Options) []modules.Initializer {
 		module := ucp_aws_frontend.NewModule(options)
 		module.AWSClients.CloudControl = cloudControlClient
 		module.AWSClients.CloudFormation = cloudFormationClient
 		return []modules.Initializer{module}
 	})
 
-	return ucp, storeClient, secretClient, cloudControlClient, cloudFormationClient
+	return ucp, ucp.Mocks.Storage, ucp.Mocks.Secrets, cloudControlClient, cloudFormationClient
 }

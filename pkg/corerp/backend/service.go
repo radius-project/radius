@@ -20,26 +20,26 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/worker"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	backend_ctrl "github.com/project-radius/radius/pkg/corerp/backend/controller"
-	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/model"
-	"github.com/project-radius/radius/pkg/corerp/processors/extenders"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
-	"github.com/project-radius/radius/pkg/recipes/driver"
-	"github.com/project-radius/radius/pkg/recipes/engine"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	backend_ctrl "github.com/radius-project/radius/pkg/corerp/backend/controller"
+	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/model"
+	"github.com/radius-project/radius/pkg/corerp/processors/extenders"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_backend_ctrl "github.com/radius-project/radius/pkg/portableresources/backend/controller"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 const (
@@ -140,20 +140,20 @@ func (w *Service) Run(ctx context.Context) error {
 	opts.GetDeploymentProcessor = nil
 	extenderCreateOrUpdateController := func(options ctrl.Options) (ctrl.Controller, error) {
 		processor := &extenders.Processor{}
-		return linkrp_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
+		return pr_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
 	}
 
 	// Register controllers to run backend processing for extenders.
-	err = w.Controllers.Register(ctx, linkrp.N_ExtendersResourceType, v1.OperationPut, extenderCreateOrUpdateController, opts)
+	err = w.Controllers.Register(ctx, portableresources.ExtendersResourceType, v1.OperationPut, extenderCreateOrUpdateController, opts)
 	if err != nil {
 		return err
 	}
 	err = w.Controllers.Register(
 		ctx,
-		linkrp.N_ExtendersResourceType,
+		portableresources.ExtendersResourceType,
 		v1.OperationDelete,
 		func(options ctrl.Options) (ctrl.Controller, error) {
-			return linkrp_backend_ctrl.NewDeleteResource(options, engine)
+			return pr_backend_ctrl.NewDeleteResource(options, engine)
 		},
 		opts)
 	if err != nil {

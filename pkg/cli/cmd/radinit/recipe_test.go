@@ -21,9 +21,9 @@ import (
 	reflect "reflect"
 	"testing"
 
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,57 +73,57 @@ func Test_getResourceTypeFromPath(t *testing.T) {
 	}
 }
 
-func Test_getLinkType(t *testing.T) {
+func Test_getPortableResourceType(t *testing.T) {
 	tests := []struct {
 		name         string
 		resourceType string
 		want         string
 	}{
 		{
-			"Dapr PubSub Link Type",
-			"daprpubsubbrokers",
-			"Applications.Link/daprPubSubBrokers",
+			"Dapr PubSub Portable Resource",
+			"pubsubbrokers",
+			"Applications.Dapr/pubSubBrokers",
 		},
 		{
-			"Dapr Secret Store Link Type",
-			"daprsecretstores",
-			"Applications.Link/daprSecretStores",
+			"Dapr Secret Store Portable Resource",
+			"secretstores",
+			"Applications.Dapr/secretStores",
 		},
 		{
-			"Dapr State Store Link Type",
-			"daprstatestores",
-			"Applications.Link/daprStateStores",
+			"Dapr State Store Portable Resource",
+			"statestores",
+			"Applications.Dapr/stateStores",
 		},
 		{
-			"Rabbit MQ Link Type",
-			"rabbitmqmessagequeues",
-			"Applications.Link/rabbitMQMessageQueues",
+			"Rabbit MQ Portable Resource",
+			"rabbitmqqueues",
+			"Applications.Messaging/rabbitMQQueues",
 		},
 		{
-			"Redis Cache Link Type",
+			"Redis Cache Portable Resource",
 			"rediscaches",
-			"Applications.Link/redisCaches",
+			"Applications.Datastores/redisCaches",
 		},
 		{
-			"Mongo Database Link Type",
+			"Mongo Database Portable Resource",
 			"mongodatabases",
-			"Applications.Link/mongoDatabases",
+			"Applications.Datastores/mongoDatabases",
 		},
 		{
-			"SQL Database Link Type",
+			"SQL Database Portable Resource",
 			"sqldatabases",
-			"Applications.Link/sqlDatabases",
+			"Applications.Datastores/sqlDatabases",
 		},
 		{
-			"Invalid Link Type",
+			"Invalid Portable Resource",
 			"unsupported",
 			"",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getLinkType(tt.resourceType); got != tt.want {
-				t.Errorf("getLinkType() = %v, want %v", got, tt.want)
+			if got := getPortableResourceType(tt.resourceType); got != tt.want {
+				t.Errorf("getPortableResourceType() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -134,7 +134,7 @@ func Test_processRepositories(t *testing.T) {
 		name  string
 		repos []string
 		tag   string
-		want  map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
+		want  map[string]map[string]corerp.RecipePropertiesClassification
 	}{
 		{
 			"Valid Repository with Redis Cache",
@@ -142,8 +142,8 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/local-dev/rediscaches",
 			},
 			"0.20",
-			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
-				"Applications.Link/redisCaches": {
+			map[string]map[string]corerp.RecipePropertiesClassification{
+				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
@@ -158,14 +158,14 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/local-dev/mongodatabases",
 			},
 			"0.20",
-			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
-				"Applications.Link/redisCaches": {
+			map[string]map[string]corerp.RecipePropertiesClassification{
+				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
 					},
 				},
-				"Applications.Link/mongoDatabases": {
+				"Applications.Datastores/mongoDatabases": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:0.20", DevRecipesRegistry)),
@@ -183,14 +183,14 @@ func Test_processRepositories(t *testing.T) {
 				"recipes/unsupported/unsupported",
 			},
 			"latest",
-			map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{
-				"Applications.Link/redisCaches": {
+			map[string]map[string]corerp.RecipePropertiesClassification{
+				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:latest", DevRecipesRegistry)),
 					},
 				},
-				"Applications.Link/mongoDatabases": {
+				"Applications.Datastores/mongoDatabases": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:latest", DevRecipesRegistry)),

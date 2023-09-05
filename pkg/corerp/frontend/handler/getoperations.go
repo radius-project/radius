@@ -20,10 +20,10 @@ import (
 	"context"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 var _ ctrl.Controller = (*GetOperations)(nil)
@@ -270,7 +270,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Provider:    ProviderNamespaceName,
 					Resource:    "extenders",
 					Operation:   "Create/Update extenders",
-					Description: "Creates or updates a extender link.",
+					Description: "Creates or updates a extender resource.",
 				},
 				IsDataAction: false,
 			},
@@ -280,7 +280,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Provider:    ProviderNamespaceName,
 					Resource:    "extenders",
 					Operation:   "Delete extender",
-					Description: "Deletes a extender link.",
+					Description: "Deletes a extender resource.",
 				},
 				IsDataAction: false,
 			},

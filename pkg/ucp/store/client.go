@@ -20,7 +20,7 @@ import (
 	"context"
 )
 
-//go:generate mockgen -destination=./mock_storageClient.go -package=store -self_package github.com/project-radius/radius/pkg/ucp/store github.com/project-radius/radius/pkg/ucp/store StorageClient
+//go:generate mockgen -destination=./mock_storageClient.go -package=store -self_package github.com/radius-project/radius/pkg/ucp/store github.com/radius-project/radius/pkg/ucp/store StorageClient
 
 type StorageClient interface {
 	Query(ctx context.Context, query Query, options ...QueryOptions) (*ObjectQueryResult, error)

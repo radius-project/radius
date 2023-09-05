@@ -22,8 +22,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
 // HandleAWSError takes in an error and returns an ARMResponse and an error. It checks the error type and returns an

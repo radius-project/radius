@@ -24,17 +24,17 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/radcli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -277,7 +277,7 @@ func Test_Update(t *testing.T) {
 		environment := corerp.EnvironmentResource{
 			Name: to.Ptr("test-env"),
 			Properties: &corerp.EnvironmentProperties{
-				Recipes: map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+				Recipes: map[string]map[string]corerp.RecipePropertiesClassification{},
 				Compute: &corerp.KubernetesCompute{
 					Namespace:  to.Ptr("default"),
 					Kind:       to.Ptr("kubernetes"),
@@ -303,7 +303,7 @@ func Test_Update(t *testing.T) {
 
 		testEnvProperties := &corerp.EnvironmentProperties{
 			Providers: testProviders,
-			Recipes:   map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{},
+			Recipes:   map[string]map[string]corerp.RecipePropertiesClassification{},
 			Compute: &corerp.KubernetesCompute{
 				Namespace:  to.Ptr("default"),
 				Kind:       to.Ptr("kubernetes"),

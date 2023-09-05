@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
@@ -89,7 +89,7 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 	for _, tt := range conversionTests {
 		t.Run(tt.filename, func(t *testing.T) {
 			rawPayload := testutil.ReadFixture(tt.filename)
-			r := &AWSCredentialResource{}
+			r := &AwsCredentialResource{}
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
@@ -109,12 +109,12 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
-		expected *AWSCredentialResource
+		expected *AwsCredentialResource
 		err      error
 	}{
 		{
 			filename: "credentialresourcedatamodel-aws.json",
-			expected: &AWSCredentialResource{
+			expected: &AwsCredentialResource{
 				ID:       to.Ptr("/planes/aws/aws/providers/System.AWS/credentials/default"),
 				Name:     to.Ptr("default"),
 				Type:     to.Ptr("System.AWS/credentials"),
@@ -122,11 +122,11 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
-				Properties: &AWSAccessKeyCredentialProperties{
-					Kind:        to.Ptr("AccessKey"),
+				Properties: &AwsAccessKeyCredentialProperties{
+					Kind:        to.Ptr(AWSCredentialKindAccessKey),
 					AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(string(CredentialStorageKindInternal)),
+						Kind:       to.Ptr(CredentialStorageKindInternal),
 						SecretName: to.Ptr("aws-awscloud-default"),
 					},
 				},
@@ -144,7 +144,7 @@ func TestAWSCredentialConvertDataModelToVersioned(t *testing.T) {
 			err := json.Unmarshal(rawPayload, r)
 			require.NoError(t, err)
 
-			versioned := &AWSCredentialResource{}
+			versioned := &AwsCredentialResource{}
 			err = versioned.ConvertFrom(r)
 
 			if tt.err != nil {

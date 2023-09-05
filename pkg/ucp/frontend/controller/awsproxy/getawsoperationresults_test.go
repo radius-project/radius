@@ -26,10 +26,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 )
 

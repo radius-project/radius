@@ -32,12 +32,12 @@ import (
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/test"
+	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/validation"
 )
 
 var radiusControllerLogSync sync.Once

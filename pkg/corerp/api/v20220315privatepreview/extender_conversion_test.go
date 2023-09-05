@@ -20,13 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
-	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,9 +60,9 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Secrets:              map[string]any{"accountSid": "sid", "authToken": "token"},
-					ResourceRecipe:       linkrp.LinkRecipe{Name: "default"},
+					ResourceRecipe:       portableresources.LinkRecipe{Name: "default"},
 				},
 			},
 		},
@@ -90,8 +90,8 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
-					ResourceRecipe:       linkrp.LinkRecipe{Name: "default"},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					ResourceRecipe:       portableresources.LinkRecipe{Name: "default"},
 				},
 			},
 		},
@@ -118,8 +118,8 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					ResourceRecipe:       linkrp.LinkRecipe{Name: "test-recipe"},
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
+					ResourceRecipe:       portableresources.LinkRecipe{Name: "test-recipe"},
 				},
 			},
 		},
@@ -159,7 +159,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Recipe:               &ResourceRecipe{Name: to.Ptr(""), Parameters: nil},
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
 					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
@@ -181,7 +181,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Recipe:               &ResourceRecipe{Name: to.Ptr(""), Parameters: nil},
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
 					Status:               &ResourceStatus{},
 				},
@@ -203,7 +203,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Recipe:               &ResourceRecipe{Name: to.Ptr("test-recipe"), Parameters: nil},
+					Recipe:               &Recipe{Name: to.Ptr("test-recipe"), Parameters: nil},
 					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{

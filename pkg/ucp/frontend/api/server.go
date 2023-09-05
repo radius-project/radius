@@ -24,28 +24,28 @@ import (
 	"net"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	aws_frontend "github.com/project-radius/radius/pkg/ucp/frontend/aws"
-	azure_frontend "github.com/project-radius/radius/pkg/ucp/frontend/azure"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	radius_frontend "github.com/project-radius/radius/pkg/ucp/frontend/radius"
-	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
-	"github.com/project-radius/radius/pkg/ucp/hostoptions"
-	queueprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-	"github.com/project-radius/radius/pkg/ucp/rest"
-	secretprovider "github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"github.com/project-radius/radius/pkg/validator"
-	"github.com/project-radius/radius/swagger"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/middleware"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
+	azure_frontend "github.com/radius-project/radius/pkg/ucp/frontend/azure"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	radius_frontend "github.com/radius-project/radius/pkg/ucp/frontend/radius"
+	"github.com/radius-project/radius/pkg/ucp/frontend/versions"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/hostoptions"
+	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/rest"
+	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/validator"
+	"github.com/radius-project/radius/swagger"
 
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -171,7 +171,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
-		// TODO: https://github.com/project-radius/radius/issues/5921
+		// TODO: https://github.com/radius-project/radius/issues/5921
 		Handler: app,
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx

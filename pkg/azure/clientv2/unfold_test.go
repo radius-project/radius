@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
 

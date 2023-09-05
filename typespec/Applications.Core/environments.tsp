@@ -109,12 +109,12 @@ model TerraformRecipeProperties extends RecipeProperties {
   templateKind: "terraform";
 
   @doc("Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
-  templateVersion: string;
+  templateVersion?: string;
 }
 
 @doc("Represents the request body of the getmetadata action.")
 model RecipeGetMetadata {
-  @doc("Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'")
+  @doc("Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'")
   linkType: string;
 
   @doc("The name of the recipe registered to the environment")
@@ -130,7 +130,7 @@ model RecipeGetMetadataResponse {
   templatePath: string;
 
   @doc("The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
-  templateVersion: string;
+  templateVersion?: string;
 
   @doc("The key/value parameters to pass to the recipe template at deployment.")
   parameters: {};
@@ -167,8 +167,8 @@ interface Environments {
   >;
 
   @doc("Gets recipe metadata including parameters and any constraints on the parameters.")
-  @action("getmetadata")
-  getmetadata is ArmResourceActionSync<
+  @action("getMetadata")
+  getMetadata is ArmResourceActionSync<
     EnvironmentResource,
     RecipeGetMetadata,
     RecipeGetMetadataResponse,

@@ -28,8 +28,6 @@ using Azure.ResourceManager.Foundations;
 model RootScopeParameter {
   @path
   @minLength(1)
-  @maxLength(90)
-  @pattern("^[-\\w\\._\\(\\)]+$")
   @extension("x-ms-skip-url-encoding", true)
   @extension("x-ms-parameter-location", "client")
   @doc("The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")

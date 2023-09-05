@@ -17,15 +17,13 @@ limitations under the License.
 package renderers
 
 import (
-	"context"
-
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/rp/kube"
 )
 
 // GetLabels merges cumulative label values from Environment, Application, Container and InputExt kubernetes metadata and
 // returns a map of labels.
-func GetLabels(ctx context.Context, options RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
+func GetLabels(options RenderOptions, applicationName string, resourceName string, resourceTypeName string) map[string]string {
 	// Create KubernetesMetadata struct to merge labels
 	lblMap := kube.Metadata{
 		ObjectMetadata: kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resourceTypeName),
@@ -42,7 +40,7 @@ func GetLabels(ctx context.Context, options RenderOptions, applicationName strin
 
 	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, Env->App->Container->InputExt
 	// values are merged in that order. Spec labels are not updated.
-	if metaLabels, _ := lblMap.Merge(ctx); len(metaLabels) > 0 {
+	if metaLabels, _ := lblMap.Merge(); len(metaLabels) > 0 {
 		return metaLabels
 	}
 
@@ -50,7 +48,7 @@ func GetLabels(ctx context.Context, options RenderOptions, applicationName strin
 }
 
 // GetAnnotations returns the merged annotations from Environment and Application KubernetesMetadata.
-func GetAnnotations(ctx context.Context, options RenderOptions) map[string]string {
+func GetAnnotations(options RenderOptions) map[string]string {
 	// Create KubernetesMetadata struct to merge annotations
 	annMap := kube.Metadata{}
 	envOpts := &options.Environment
@@ -65,7 +63,7 @@ func GetAnnotations(ctx context.Context, options RenderOptions) map[string]strin
 
 	// Merge cumulative annotations values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
 	// Spec annotations are not updated.
-	if metaAnnotations, _ := annMap.Merge(ctx); len(metaAnnotations) > 0 {
+	if metaAnnotations, _ := annMap.Merge(); len(metaAnnotations) > 0 {
 		return metaAnnotations
 	}
 

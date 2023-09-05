@@ -24,8 +24,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 var _ aws.CredentialsProvider = (*UCPCredentialProvider)(nil)

@@ -1,0 +1,27 @@
+{
+  "operationId": "ResourceGroups_List",
+  "title": "List resource groups",
+  "parameters": {
+    "api-version": "2022-09-01-privatepreview",
+    "planeName": "local",
+    "planeType": "radius"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourcegroups/rg1",
+            "name": "rg1",
+            "location": "global"
+          },
+          {
+            "id": "/planes/radius/local/resourcegroups/rg2",
+            "name": "rg2",
+            "location": "global"
+          }
+        ]
+      }
+    }
+  }
+}

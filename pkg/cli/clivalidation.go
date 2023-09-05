@@ -23,12 +23,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/config"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/config"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -261,7 +261,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-// example of resource Type: Applications.Core/httpRoutes, Applications.Link/redisCaches
+// example of resource Type: Applications.Core/httpRoutes, Applications.Datastores/redisCaches
 //
 
 // RequireResourceType checks if the first argument provided is a valid resource type and returns it if it is. If the

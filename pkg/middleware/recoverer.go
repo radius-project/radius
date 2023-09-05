@@ -21,9 +21,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Recoverer handles panics and logs the error, returning an Internal Server Error response.

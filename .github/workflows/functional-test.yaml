@@ -44,14 +44,16 @@ env:
   KIND_VER: 'v0.20.0'
   # Dapr version
   DAPR_VER: '1.11.0'
+  # Kubectl version
+  KUBECTL_VER: 'v1.25.0'
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
   # Container registry for storing test images and recipes
-  CACHE_REGISTRY: ghcr.io/project-radius/dev
+  CACHE_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing recipe artifacts
-  # TODO_LAUNCH: Change it to ghcr.io/project-radius/dev - https://github.com/project-radius/radius/issues/5892
+  # TODO_LAUNCH: Change it to ghcr.io/radius-project/dev - https://github.com/radius-project/radius/issues/5892
   BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
@@ -72,11 +74,10 @@ env:
 
   # GitHub Actor for pushing images to GHCR
   GHCR_ACTOR: rad-ci-bot
-
 jobs:
   build:
     name: Build Radius for test
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       DE_IMAGE: 'radius.azurecr.io/deployment-engine'
       DE_TAG: 'latest'
@@ -98,8 +99,8 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: github.event_name == 'pull_request'
         run: |
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
+            echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Set up checkout target (repository_dispatch from /ok-to-test)
         if: github.event_name == 'repository_dispatch'
@@ -290,11 +291,16 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    runs-on: [ self-hosted, 1ES.Pool=1ES-Radius ]
     strategy:
       fail-fast: true
       matrix:
-        name: [ucp,shared,msgrp,daprrp,datastoresrp,samples]
+        os: [ubuntu-latest]
+        name: [ucp,shared,msgrp,daprrp,samples]
+        include:
+          # datastorerp functional tests need the larger VM.
+          - os: ubuntu-latest-m
+            name: datastoresrp
+    runs-on: ${{ matrix.os }}
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
@@ -316,7 +322,7 @@ jobs:
         uses: actions/checkout@v3
         if: matrix.name == 'samples'
         with:
-          repository: project-radius/samples
+          repository: radius-project/samples
           ref: refs/heads/edge
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: samples
@@ -471,7 +477,7 @@ jobs:
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
-          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/project-radius/radius/issues/5892
+          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/radius-project/radius/issues/5892
           az acr login -n ${{ env.BICEP_RECIPE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
@@ -517,6 +523,19 @@ jobs:
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      - uses: azure/setup-kubectl@v3
+        if: always()
+        with:
+          version: ${{ env.KUBECTL_VER }}
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v3
@@ -552,7 +571,7 @@ jobs:
   report-failure:
     name: Report test failure
     needs: [build, tests]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: failure() && github.event_name == 'schedule'
     steps:
       - name: Create failure issue for failing scheduled run

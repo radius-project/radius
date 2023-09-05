@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/test/k8sutil"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

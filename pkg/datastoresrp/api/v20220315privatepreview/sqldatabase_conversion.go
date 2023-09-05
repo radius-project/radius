@@ -17,11 +17,11 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel
@@ -56,7 +56,7 @@ func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(properties.Recipe)
 	}
 	converted.Properties.Resources = toResourcesDataModel(properties.Resources)
@@ -98,14 +98,14 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Server:               to.Ptr(sql.Properties.Server),
 		Port:                 to.Ptr(sql.Properties.Port),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(sql.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(sql.Properties.Environment),
 		Application:       to.Ptr(sql.Properties.Application),
 		Username:          to.Ptr(sql.Properties.Username),
 	}
-	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningRecipe {
+	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
 	}
 	return nil

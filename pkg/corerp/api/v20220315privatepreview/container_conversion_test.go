@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
-	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +38,11 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	}{
 		{
 			filename: "containerresource.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "containerresource-runtimes.json",
 			err:      nil,
 			emptyExt: false,
 		},
@@ -67,7 +72,6 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)
 			} else {
-
 				// assert
 				require.NoError(t, err)
 				ct := dm.(*datamodel.ContainerResource)
@@ -98,13 +102,19 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				} else {
 					require.Equal(t, getTestContainerExtensions(t), ct.Properties.Extensions)
 				}
+
+				if r.Properties.Runtimes != nil {
+					require.NotNil(t, ct.Properties.Runtimes.Kubernetes)
+					require.NotEmpty(t, ct.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, "{\"containers\":[{\"name\":\"sidecar\"}],\"hostNetwork\":true}", ct.Properties.Runtimes.Kubernetes.Pod)
+				}
 			}
 		})
 	}
 }
 
 func TestContainerConvertDataModelToVersioned(t *testing.T) {
-
 	conversionTests := []struct {
 		filename string
 		err      error
@@ -112,6 +122,11 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	}{
 		{
 			filename: "containerresourcedatamodel.json",
+			err:      nil,
+			emptyExt: false,
+		},
+		{
+			filename: "containerresourcedatamodel-runtime.json",
 			err:      nil,
 			emptyExt: false,
 		},
@@ -154,6 +169,20 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, to.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
 				require.Equal(t, to.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
 				require.Equal(t, to.Ptr("/app"), versioned.Properties.Container.WorkingDir)
+
+				if r.Properties.Runtimes != nil {
+					require.NotNil(t, versioned.Properties.Runtimes)
+					require.NotEmpty(t, *versioned.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, r.Properties.Runtimes.Kubernetes.Base, *versioned.Properties.Runtimes.Kubernetes.Base)
+					require.Equal(t, map[string]any{
+						"containers": []any{
+							map[string]any{
+								"name": "sidecar",
+							},
+						},
+						"hostNetwork": true,
+					}, versioned.Properties.Runtimes.Kubernetes.Pod)
+				}
 			}
 		})
 	}

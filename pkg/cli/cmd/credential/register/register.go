@@ -17,10 +17,10 @@ limitations under the License.
 package register
 
 import (
-	"github.com/project-radius/radius/pkg/cli/cmd/credential/common"
-	credential_register_aws "github.com/project-radius/radius/pkg/cli/cmd/credential/register/aws"
-	credential_register_azure "github.com/project-radius/radius/pkg/cli/cmd/credential/register/azure"
-	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
+	credential_register_aws "github.com/radius-project/radius/pkg/cli/cmd/credential/register/aws"
+	credential_register_azure "github.com/radius-project/radius/pkg/cli/cmd/credential/register/azure"
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
 

@@ -17,11 +17,11 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned Redis cache resource to version-agnostic datamodel
@@ -55,7 +55,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-	if converted.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 	}
 	converted.Properties.Resources = toResourcesDataModel(v.Resources)
@@ -100,7 +100,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		TLS:                  to.Ptr(redis.Properties.TLS),
 		Username:             to.Ptr(redis.Properties.Username),
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(redis.Properties.Environment),

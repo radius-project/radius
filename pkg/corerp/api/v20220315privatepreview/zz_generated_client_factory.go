@@ -22,7 +22,9 @@ type ClientFactory struct {
 
 // NewClientFactory creates a new instance of ClientFactory with the specified values.
 // The parameter values will be propagated to any client created from this factory.
-//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
 func NewClientFactory(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*ClientFactory, error) {
@@ -63,6 +65,11 @@ func (c *ClientFactory) NewGatewaysClient() *GatewaysClient {
 
 func (c *ClientFactory) NewHTTPRoutesClient() *HTTPRoutesClient {
 	subClient, _ := NewHTTPRoutesClient(c.rootScope, c.credential, c.options)
+	return subClient
+}
+
+func (c *ClientFactory) NewOperationsClient() *OperationsClient {
+	subClient, _ := NewOperationsClient(c.credential, c.options)
 	return subClient
 }
 

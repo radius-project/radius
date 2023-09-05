@@ -21,13 +21,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/roleassignment"
-	"github.com/project-radius/radius/pkg/logging"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/roleassignment"
+	"github.com/radius-project/radius/pkg/logging"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (

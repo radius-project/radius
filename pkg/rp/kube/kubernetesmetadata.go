@@ -17,11 +17,9 @@ limitations under the License.
 package kube
 
 import (
-	"context"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -39,7 +37,7 @@ type Metadata struct {
 // More info:
 // ObjectMeta: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 // Spec: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]string) {
+func (km *Metadata) Merge() (map[string]string, map[string]string) {
 	mergedDataMap := map[string]string{}
 
 	if km.EnvData != nil {
@@ -51,8 +49,8 @@ func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]st
 	}
 
 	// Reject custom user entries that may affect Radius reserved keys.
-	mergedDataMap = rejectReservedEntries(ctx, mergedDataMap)
-	km.Input = rejectReservedEntries(ctx, km.Input)
+	mergedDataMap = rejectReservedEntries(mergedDataMap)
+	km.Input = rejectReservedEntries(km.Input)
 
 	// Cumulative Env+App Labels (mergeMap) is now merged with new input map. Existing metaLabels and specLabels are subsequently merged with the result map.
 	mergedDataMap = labels.Merge(mergedDataMap, km.Input)
@@ -63,12 +61,9 @@ func (km *Metadata) Merge(ctx context.Context) (map[string]string, map[string]st
 }
 
 // rejectReservedEntries rejects custom user entries that would affect Radius reserved keys
-func rejectReservedEntries(ctx context.Context, inputMap map[string]string) map[string]string {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
+func rejectReservedEntries(inputMap map[string]string) map[string]string {
 	for k := range inputMap {
 		if strings.HasPrefix(k, kubernetes.RadiusDevPrefix) {
-			logger.Info("User provided label/annotation key starts with 'radius.dev/' and is not being applied", "key", k)
 			delete(inputMap, k)
 		}
 	}

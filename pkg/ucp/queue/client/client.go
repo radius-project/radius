@@ -21,7 +21,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 var (
@@ -41,7 +41,7 @@ var (
 	ErrEmptyMessage = errors.New("message must not be nil or message is empty")
 )
 
-//go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/queue/client github.com/project-radius/radius/pkg/ucp/queue/client Client
+//go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/radius-project/radius/pkg/ucp/queue/client github.com/radius-project/radius/pkg/ucp/queue/client Client
 
 // Client is an interface to implement queue operations.
 type Client interface {

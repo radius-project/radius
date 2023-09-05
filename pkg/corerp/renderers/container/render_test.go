@@ -20,20 +20,20 @@ import (
 	"fmt"
 	"testing"
 
-	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
-	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
-	resources_kubernetes "github.com/project-radius/radius/pkg/ucp/resources/kubernetes"
-	"github.com/project-radius/radius/test/testcontext"
+	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	azrenderer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
+	azvolrenderer "github.com/radius-project/radius/pkg/corerp/renderers/volume/azure"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
+	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -237,7 +237,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 
 	properties := datamodel.ContainerProperties{
 		// Simulating error code path
-		// Revert this once TODO: https://github.com/project-radius/core-team/issues/238 is done.
+		// Revert this once TODO: https://github.com/radius-project/core-team/issues/238 is done.
 		Connections: map[string]datamodel.ConnectionProperties{
 			"AzureResourceTest": {
 				Source: "//subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace",
@@ -296,7 +296,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.NotNil(t, deployment)
 
 		expected := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		expected.CreateResource.Dependencies = []string{rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
+		expected.CreateResource.Dependencies = []string{rpv1.LocalIDServiceAccount, rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
 		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
@@ -304,7 +304,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, labels, deployment.Spec.Template.Labels)
 		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
 
-		// See https://github.com/project-radius/radius/issues/3002
+		// See https://github.com/radius-project/radius/issues/3002
 		//
 		// We disable service links and rely on Radius' connections feature instead.
 		require.NotNil(t, deployment.Spec.Template.Spec.EnableServiceLinks)
@@ -330,7 +330,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, expectedEnv, container.Env)
 
 	})
-	require.Len(t, output.Resources, 3)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
@@ -367,7 +367,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		require.NotNil(t, deployment)
 
 		expected := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		expected.CreateResource.Dependencies = []string{rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
+		expected.CreateResource.Dependencies = []string{rpv1.LocalIDServiceAccount, rpv1.LocalIDKubernetesRole, rpv1.LocalIDKubernetesRoleBinding}
 		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
@@ -392,7 +392,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		require.Equal(t, expectedEnv, container.Env)
 
 	})
-	require.Len(t, output.Resources, 3)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
@@ -437,7 +437,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 		require.Equal(t, expected, port)
 
 	})
-	require.Len(t, output.Resources, 4)
+	require.Len(t, output.Resources, 5)
 }
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
@@ -493,7 +493,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		}
 		require.Equal(t, expected, port)
 	})
-	require.Len(t, output.Resources, 3)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_Render_Connections(t *testing.T) {
@@ -594,7 +594,7 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
 	})
-	require.Len(t, output.Resources, 4)
+	require.Len(t, output.Resources, 5)
 }
 
 func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
@@ -641,8 +641,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	require.Equal(t, properties.Container.Image, container.Image)
 	require.Empty(t, container.ImagePullPolicy)
 
-	expectedEnv := []corev1.EnvVar{}
-	require.Equal(t, expectedEnv, container.Env)
+	require.Nil(t, container.Env)
 }
 
 // This test is testing that we hash the connection data and include it in the output. We don't care about the content
@@ -768,7 +767,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	require.Equal(t, 2, len(matches))
 	expected := []rpv1.OutputResource{
 		{
-			LocalID: rpv1.GenerateLocalIDForRoleAssignment(makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
@@ -782,7 +781,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 		{
-			LocalID: rpv1.GenerateLocalIDForRoleAssignment(makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, makeAzureResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
@@ -896,7 +895,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	expected := []rpv1.OutputResource{
 		{
 
-			LocalID: rpv1.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, testARMID, expectedRole),
 			CreateResource: &rpv1.Resource{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resources_azure.ResourceTypeAuthorizationRoleAssignment,
@@ -1542,7 +1541,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
 
 		require.NoError(t, err)
-		require.Len(t, output.Resources, 4)
+		require.Len(t, output.Resources, 5)
 		require.Empty(t, output.SecretValues)
 
 		expectedServicePort := corev1.ServicePort{
@@ -1567,6 +1566,117 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		servicePort := service.Spec.Ports[0]
 		require.Equal(t, expectedServicePort, servicePort)
 	})
+}
+
+func Test_Render_ImagePullPolicySpecified(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image:           "someimage:latest",
+			ImagePullPolicy: "Never",
+			Env: map[string]string{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	ctx := testcontext.New(t)
+	renderer := Renderer{}
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, _ := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+		require.Equal(t, properties.Container.Image, container.Image)
+		require.Equal(t, properties.Container.ImagePullPolicy, string(container.ImagePullPolicy))
+	})
+}
+
+func Test_Render_StrategicPatchMerge(t *testing.T) {
+	const contianerPatchObject = `
+{
+	"containers": [
+		{
+			"name": "test",
+			"image": "magpie"
+		},
+		{
+			"name": "test-container",
+			"command": ["echo", "hello"],
+			"env": [
+				{
+					"name": "env1",
+					"value": "value1"
+				}
+			]
+		}
+	],
+	"hostNetwork": true
+}
+`
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+			Env: map[string]string{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+		},
+		Runtimes: &datamodel.RuntimeProperties{
+			Kubernetes: &datamodel.KubernetesRuntime{
+				Pod: contianerPatchObject,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	ctx := testcontext.New(t)
+	renderer := Renderer{}
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.True(t, deployment.Spec.Template.Spec.HostNetwork)
+	require.Len(t, deployment.Spec.Template.Spec.Containers, 2)
+
+	expectedContainers := []corev1.Container{
+		{
+			Name:    resourceName,
+			Command: []string{"echo", "hello"},
+			Env: []corev1.EnvVar{
+				{Name: "env1", Value: "value1"},
+				{Name: envVarName1, Value: envVarValue1},
+				{Name: envVarName2, Value: envVarValue2},
+			},
+			Image: properties.Container.Image,
+		},
+		{
+			Name:  "test",
+			Env:   nil,
+			Image: "magpie",
+		},
+	}
+
+	require.ElementsMatch(t, expectedContainers, deployment.Spec.Template.Spec.Containers)
 }
 
 func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {

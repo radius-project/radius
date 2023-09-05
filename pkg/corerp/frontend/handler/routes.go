@@ -22,25 +22,26 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
-	"github.com/project-radius/radius/pkg/validator"
-	"github.com/project-radius/radius/swagger"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	frontend_ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/recipes/engine"
+	rp_frontend "github.com/radius-project/radius/pkg/rp/frontend"
+	"github.com/radius-project/radius/pkg/validator"
+	"github.com/radius-project/radius/swagger"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	converter "github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 
-	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
-	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
-	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
-	ext_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/extenders"
-	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateways"
-	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
-	secret_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/secretstores"
-	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"
+	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
+	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
+	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
+	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
+	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
+	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
+	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
+	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 )
 
 const (
@@ -52,7 +53,7 @@ const (
 
 // AddRoutes registers handlers for Container, Application, Gateway, Volume and Secret Store resources, allowing for
 // operations such as List, Get, Put, Patch and Delete.
-func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options, engine engine.Engine) error {
 	rootScopePath := ctrlOpts.PathBase
 	if isARM {
 		rootScopePath += "/subscriptions/{subscriptionID}"
@@ -162,11 +163,13 @@ func AddRoutes(ctx context.Context, r chi.Router, isARM bool, ctrlOpts frontend_
 			},
 		},
 		{
-			ParentRouter:      envResourceRouter,
-			Path:              "/getmetadata",
-			ResourceType:      env_ctrl.ResourceTypeName,
-			Method:            env_ctrl.OperationGetRecipeMetadata,
-			ControllerFactory: env_ctrl.NewGetRecipeMetadata,
+			ParentRouter: envResourceRouter,
+			Path:         "/getmetadata",
+			ResourceType: env_ctrl.ResourceTypeName,
+			Method:       env_ctrl.OperationGetRecipeMetadata,
+			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return env_ctrl.NewGetRecipeMetadata(opt, engine)
+			},
 		},
 	}
 

@@ -21,17 +21,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	resources_azure "github.com/project-radius/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -80,7 +78,7 @@ func MakeRoleAssignments(azResourceID string, roleNames []string) ([]rpv1.Output
 	outputResources := []rpv1.OutputResource{}
 	for _, roleName := range roleNames {
 		roleAssignment := rpv1.OutputResource{
-			LocalID: rpv1.GenerateLocalIDForRoleAssignment(azResourceID, roleName),
+			LocalID: rpv1.NewLocalID(rpv1.LocalIDRoleAssignmentPrefix, azResourceID, roleName),
 			CreateResource: &rpv1.Resource{
 				Data: map[string]string{
 					handlers.RoleNameKey:         roleName,
@@ -141,14 +139,20 @@ func TransformFederatedIdentitySA(ctx context.Context, options *handlers.PutOpti
 		return err
 	}
 
-	sa.Annotations[azureWorkloadIdentityClientID] = clientID
-	sa.Annotations[azureWorkloadIdentityTenantID] = tenantID
+	if clientID != "" && tenantID != "" {
+		sa.Annotations[azureWorkloadIdentityClientID] = clientID
+		sa.Annotations[azureWorkloadIdentityTenantID] = tenantID
+	}
 
 	return nil
 }
 
 func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantID string, err error) {
-	mi := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
+	mi, ok := options.DependencyProperties[rpv1.LocalIDUserAssignedManagedIdentity]
+	if !ok {
+		return "", "", nil
+	}
+
 	if mi == nil {
 		err = errors.New("cannot find LocalIDUserAssignedManagedIdentity")
 		return
@@ -168,30 +172,14 @@ func extractIdentityInfo(options *handlers.PutOptions) (clientID string, tenantI
 	return
 }
 
-// MakeFederatedIdentitySA creates a ServiceAccount with descriptive labels and placeholder annotations for Azure Workload
+// SetWorkloadIdentityServiceAccount creates a ServiceAccount with descriptive labels and placeholder annotations for Azure Workload
 // Identity, and returns an OutputResource with the ServiceAccount and a dependency on the FederatedIdentity.
-func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamodel.ContainerResource) *rpv1.OutputResource {
-	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
-	labels[AzureWorkloadIdentityUseKey] = "true"
+func SetWorkloadIdentityServiceAccount(base *corev1.ServiceAccount) *rpv1.OutputResource {
+	base.ObjectMeta.Labels[AzureWorkloadIdentityUseKey] = "true"
+	base.ObjectMeta.Annotations[azureWorkloadIdentityClientID] = "placeholder"
+	base.ObjectMeta.Annotations[azureWorkloadIdentityTenantID] = "placeholder"
 
-	sa := &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceAccount",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
-			Namespace: namespace,
-			Labels:    labels,
-			Annotations: map[string]string{
-				// ResourceTransformer transforms these values before deploying resource.
-				azureWorkloadIdentityClientID: "placeholder",
-				azureWorkloadIdentityTenantID: "placeholder",
-			},
-		},
-	}
-
-	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, sa, sa.ObjectMeta)
+	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDServiceAccount, base, base.ObjectMeta)
 	or.CreateResource.Dependencies = []string{rpv1.LocalIDFederatedIdentity}
 
 	return &or

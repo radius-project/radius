@@ -20,13 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
-	"github.com/project-radius/radius/test/testutil/resourcetypeutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +44,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
 						Name:     "test-dss",
-						Type:     linkrp.N_DaprSecretStoresResourceType,
+						Type:     portableresources.DaprSecretStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -62,7 +62,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Metadata: map[string]any{
 						"foo": "bar",
 					},
@@ -79,7 +79,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
 						Name:     "test-dss",
-						Type:     linkrp.N_DaprSecretStoresResourceType,
+						Type:     portableresources.DaprSecretStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -97,8 +97,8 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Recipe: linkrp.LinkRecipe{
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
+					Recipe: portableresources.LinkRecipe{
 						Name: "daprSecretStore",
 						Parameters: map[string]any{
 							"foo": "bar",
@@ -157,7 +157,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss"),
 				Name: to.Ptr("test-dss"),
-				Type: to.Ptr(linkrp.N_DaprSecretStoresResourceType),
+				Type: to.Ptr(portableresources.DaprSecretStoresResourceType),
 			},
 		},
 		{
@@ -187,7 +187,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss"),
 				Name: to.Ptr("test-dss"),
-				Type: to.Ptr(linkrp.N_DaprSecretStoresResourceType),
+				Type: to.Ptr(portableresources.DaprSecretStoresResourceType),
 			},
 		},
 	}

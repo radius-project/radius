@@ -20,12 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // CreateEnvProviders forms the provider scope from the given
@@ -80,7 +80,7 @@ func GetNamespace(envResource corerp.EnvironmentResource) string {
 
 // CheckIfRecipeExists checks if a given recipe exists in a given environment and returns the environment resource, recipe
 // properties and an error if the recipe does not exist.
-func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string, resourceType string) (corerp.EnvironmentResource, map[string]map[string]corerp.EnvironmentRecipePropertiesClassification, error) {
+func CheckIfRecipeExists(ctx context.Context, client clients.ApplicationsManagementClient, environmentName string, recipeName string, resourceType string) (corerp.EnvironmentResource, map[string]map[string]corerp.RecipePropertiesClassification, error) {
 	envResource, err := client.GetEnvDetails(ctx, environmentName)
 	if err != nil {
 		return corerp.EnvironmentResource{}, nil, err

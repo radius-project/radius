@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
 // InvalidPlaneTypeErrorResponse returns a 400 response with error code CodeInvalidPlaneType.
