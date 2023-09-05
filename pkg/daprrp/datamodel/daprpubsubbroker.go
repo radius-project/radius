@@ -20,6 +20,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -36,8 +37,15 @@ type DaprPubSubBroker struct {
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output. It updates the
 // OutputResources of the DaprPubSubBroker resource with the output resources from a DeploymentOutput object.
+//
+// TODO: Not sure if this function is being used for Portable Resources after the implementation of Processor.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if cn, ok := do.ComputedValues[renderers.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = cn
+	}
 	return nil
 }
 

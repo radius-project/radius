@@ -20,6 +20,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -37,6 +38,11 @@ type DaprSecretStore struct {
 // ApplyDeploymentOutput updates the status of the secret store with the output resources from a deployment.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
+	r.ComputedValues = do.ComputedValues
+	r.SecretValues = do.SecretValues
+	if cn, ok := do.ComputedValues[renderers.ComponentNameKey].(string); ok {
+		r.Properties.ComponentName = cn
+	}
 	return nil
 }
 
