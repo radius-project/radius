@@ -157,12 +157,11 @@ workspaces:
 		expectedWorkspace := workspaces.Workspace{
 			Name: "abc",
 			Connection: map[string]any{
-				"context": "cool-beans",
+				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
 			},
 			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
 			Scope:       "/planes/radius/local/resourceGroups/test-env",
-			Source:      "userconfig",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
 
