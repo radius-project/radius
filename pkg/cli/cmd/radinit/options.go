@@ -111,8 +111,11 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 
 	options.Recipes.DevRecipes = !r.Full
 
+	// If the user has a current workspace we should overwrite it.
+	// If the user does not have a current workspace we should create a new one called default and set it as current
+	// If the user does not have a current workspace and has an existing one called default we should overwrite it and set it as current
 	if ws == nil {
-		workspace.Name = options.Environment.Name
+		workspace.Name = "default"
 	} else {
 		workspace.Name = ws.Name
 	}
