@@ -163,6 +163,9 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	}
 
 	for _, r := range ct.InitialResources {
+		if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, r.GetNamespace()); err != nil {
+			return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
+		}
 		if err := ct.Options.Client.Create(ctx, &r); err != nil {
 			return fmt.Errorf("failed to create resource %#v:  %w", r, err)
 		}
