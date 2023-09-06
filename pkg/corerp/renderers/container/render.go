@@ -618,14 +618,13 @@ func (r Renderer) makeDeployment(
 	outputResources = append(outputResources, *roleBinding)
 	deps = append(deps, rpv1.LocalIDKubernetesRoleBinding)
 
-	deployment.Spec.Template.ObjectMeta = metav1.ObjectMeta{
-		Labels:      podLabels,
-		Annotations: map[string]string{},
-	}
+	deployment.Spec.Template.ObjectMeta = mergeObjectMeta(deployment.Spec.Template.ObjectMeta, metav1.ObjectMeta{
+		Labels: podLabels,
+	})
 
-	deployment.Spec.Selector = &metav1.LabelSelector{
+	deployment.Spec.Selector = mergeLabelSelector(deployment.Spec.Selector, &metav1.LabelSelector{
 		MatchLabels: kubernetes.MakeSelectorLabels(applicationName, resource.Name),
-	}
+	})
 
 	podSpec.Volumes = append(podSpec.Volumes, volumes...)
 

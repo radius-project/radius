@@ -1,0 +1,84 @@
+{
+  "kind": "Deployment",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "name": "test-container",
+    "creationTimestamp": null,
+    "labels": {
+      "app": "test-container",
+      "app.kubernetes.io/managed-by": "radius-rp",
+      "app.kubernetes.io/name": "test-container",
+      "app.kubernetes.io/part-of": "test-app",
+      "radius.dev/application": "test-app",
+      "radius.dev/resource": "test-container",
+      "radius.dev/resource-type": "applications.core-containers"
+    },
+    "annotations": {
+      "source": "base-manifest-test"
+    }
+  },
+  "spec": {
+    "replicas": 3,
+    "selector": {
+      "matchLabels": {
+        "app": "test-container",
+        "basemanifest": "default",
+        "radius.dev/application": "test-app",
+        "radius.dev/resource": "test-container"
+      }
+    },
+    "template": {
+      "metadata": {
+        "creationTimestamp": null,
+        "labels": {
+          "app.kubernetes.io/managed-by": "radius-rp",
+          "app.kubernetes.io/name": "test-container",
+          "app.kubernetes.io/part-of": "test-app",
+          "radius.dev/application": "test-app",
+          "radius.dev/resource": "test-container",
+          "radius.dev/resource-type": "applications.core-containers"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "sidecar",
+            "image": "sidecar:latest",
+            "ports": [
+              {
+                "containerPort": 80,
+                "protocol": "TCP"
+              }
+            ],
+            "env": [
+              {
+                "name": "KEY",
+                "value": "VALUE"
+              }
+            ],
+            "resources": {}
+          },
+          {
+            "name": "test-container",
+            "image": "someimage:latest",
+            "env": [
+              {
+                "name": "TEST_VAR_1",
+                "value": "TEST_VALUE_1"
+              },
+              {
+                "name": "TEST_VAR_2",
+                "value": "81"
+              }
+            ],
+            "resources": {}
+          }
+        ],
+        "serviceAccountName": "test-container",
+        "enableServiceLinks": false
+      }
+    },
+    "strategy": {}
+  },
+  "status": {}
+}

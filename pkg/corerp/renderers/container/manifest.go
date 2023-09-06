@@ -33,7 +33,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
@@ -159,15 +158,6 @@ func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *
 	defaultAccount.ObjectMeta = getObjectMeta(defaultAccount.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
 
 	return defaultAccount
-}
-
-func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:        kubernetes.NormalizeResourceName(resourceName),
-		Namespace:   options.Environment.Namespace,
-		Labels:      labels.Merge(metaObj.Labels, renderers.GetLabels(options, appName, resourceName, resourceType)),
-		Annotations: labels.Merge(metaObj.Annotations, renderers.GetAnnotations(options)),
-	}
 }
 
 // populateAllBaseResources populates all remaining resources from manifest into outputResources.
