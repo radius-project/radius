@@ -96,7 +96,7 @@ func Test_enterInitOptions(t *testing.T) {
 		require.NoError(t, err)
 
 		expectedWorkspace := workspaces.Workspace{
-			Name: "test-env",
+			Name: "default",
 			Connection: map[string]any{
 				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
