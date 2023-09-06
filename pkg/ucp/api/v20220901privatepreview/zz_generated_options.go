@@ -118,3 +118,8 @@ type ResourceGroupsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ResourcesClientListOptions contains the optional parameters for the ResourcesClient.NewListPager method.
+type ResourcesClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
