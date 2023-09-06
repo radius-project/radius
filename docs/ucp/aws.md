@@ -61,4 +61,4 @@ Many AWS resources have a generated name and the resource schema does not necess
 
 To address this issue, we will introduce state storage in UCP. The user will specify a friendly name for the resource in the bicep file that is unique in the deployment scope (which will be the Radius resource group). UCP will create a mapping between the friendly name and the actual AWS resource deployed. After this point, UCP will use this mapping to determine if the resource with the particular friendly name is being created or updated.
 
-The details of this design can be found at: https://microsoft.sharepoint.com/:w:/t/radiuscoreteam/Ef0J0DM89-1Foyb36i4_a_EBn4zW61Dk8paVfJ9p9RUDOg?e=9tnaV1
+The details of this design can be found at: https://github.com/radius-project/design-notes/pull/21
