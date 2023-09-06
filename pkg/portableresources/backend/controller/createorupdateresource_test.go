@@ -61,7 +61,6 @@ func (r *TestResource) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	r.ComputedValues = do.ComputedValues
 	r.SecretValues = do.SecretValues
-
 	return nil
 }
 

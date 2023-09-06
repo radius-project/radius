@@ -19,6 +19,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -1466,6 +1467,12 @@ func validateHTTPProxy(t *testing.T, outputResources []rpv1.OutputResource, expe
 	httpProxy, httpProxyOutputResource := kubernetes.FindContourHTTPProxy(outputResources)
 
 	expectedHTTPProxyOutputResource := rpv1.NewKubernetesOutputResource(rpv1.LocalIDGateway, httpProxy, httpProxy.ObjectMeta)
+	for _, r := range outputResources {
+		if strings.Contains(r.LocalID, rpv1.LocalIDHttpRoute) {
+			expectedHTTPProxyOutputResource.CreateResource.Dependencies = append(expectedHTTPProxyOutputResource.CreateResource.Dependencies, r.LocalID)
+		}
+	}
+
 	require.Equal(t, expectedHTTPProxyOutputResource, httpProxyOutputResource)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), httpProxy.Name)
 	require.Equal(t, applicationName, httpProxy.Namespace)

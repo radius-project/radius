@@ -66,6 +66,8 @@ func (s *SecretStore) ResourceTypeName() string {
 // object and returns no error.
 func (s *SecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
 	s.Properties.Status.OutputResources = do.DeployedOutputResources
+	s.ComputedValues = do.ComputedValues
+	s.SecretValues = do.SecretValues
 	return nil
 }
 
