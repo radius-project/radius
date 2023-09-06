@@ -84,7 +84,7 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet, w.KubeDiscoveryClient)
+	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet, w.KubeDiscoveryClient, w.KubeDynamicClientSet)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
