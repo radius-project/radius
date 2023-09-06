@@ -7,117 +7,125 @@
 
 package v20220901privatepreview
 
-// AwsCredentialClientCreateOrUpdateResponse contains the response from method AwsCredentialClient.CreateOrUpdate.
-type AwsCredentialClientCreateOrUpdateResponse struct {
+// AwsCredentialsClientCreateOrUpdateResponse contains the response from method AwsCredentialsClient.CreateOrUpdate.
+type AwsCredentialsClientCreateOrUpdateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
-	AWSCredentialResource
-
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	AwsCredentialResource
 }
 
-// AwsCredentialClientDeleteResponse contains the response from method AwsCredentialClient.Delete.
-type AwsCredentialClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+// AwsCredentialsClientDeleteResponse contains the response from method AwsCredentialsClient.Delete.
+type AwsCredentialsClientDeleteResponse struct {
+	// placeholder for future response values
 }
 
-// AwsCredentialClientGetResponse contains the response from method AwsCredentialClient.Get.
-type AwsCredentialClientGetResponse struct {
+// AwsCredentialsClientGetResponse contains the response from method AwsCredentialsClient.Get.
+type AwsCredentialsClientGetResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
-	AWSCredentialResource
+	AwsCredentialResource
 }
 
-// AwsCredentialClientListByRootScopeResponse contains the response from method AwsCredentialClient.NewListByRootScopePager.
-type AwsCredentialClientListByRootScopeResponse struct {
-	// The response of a AWSCredentialResource list operation.
-	AWSCredentialResourceListResult
+// AwsCredentialsClientListResponse contains the response from method AwsCredentialsClient.NewListPager.
+type AwsCredentialsClientListResponse struct {
+	// The response of a AwsCredentialResource list operation.
+	AwsCredentialResourceListResult
 }
 
-// AzureCredentialClientCreateOrUpdateResponse contains the response from method AzureCredentialClient.CreateOrUpdate.
-type AzureCredentialClientCreateOrUpdateResponse struct {
+// AwsCredentialsClientUpdateResponse contains the response from method AwsCredentialsClient.Update.
+type AwsCredentialsClientUpdateResponse struct {
 	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
-	AzureCredentialResource
-
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	AwsCredentialResource
 }
 
-// AzureCredentialClientDeleteResponse contains the response from method AzureCredentialClient.Delete.
-type AzureCredentialClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
-}
-
-// AzureCredentialClientGetResponse contains the response from method AzureCredentialClient.Get.
-type AzureCredentialClientGetResponse struct {
-	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
+// AzureCredentialsClientCreateOrUpdateResponse contains the response from method AzureCredentialsClient.CreateOrUpdate.
+type AzureCredentialsClientCreateOrUpdateResponse struct {
+	// Represents Azure Credential Resource
 	AzureCredentialResource
 }
 
-// AzureCredentialClientListByRootScopeResponse contains the response from method AzureCredentialClient.NewListByRootScopePager.
-type AzureCredentialClientListByRootScopeResponse struct {
+// AzureCredentialsClientDeleteResponse contains the response from method AzureCredentialsClient.Delete.
+type AzureCredentialsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// AzureCredentialsClientGetResponse contains the response from method AzureCredentialsClient.Get.
+type AzureCredentialsClientGetResponse struct {
+	// Represents Azure Credential Resource
+	AzureCredentialResource
+}
+
+// AzureCredentialsClientListResponse contains the response from method AzureCredentialsClient.NewListPager.
+type AzureCredentialsClientListResponse struct {
 	// The response of a AzureCredentialResource list operation.
 	AzureCredentialResourceListResult
 }
 
-// PlaneTypesClientGetResponse contains the response from method PlaneTypesClient.Get.
-type PlaneTypesClientGetResponse struct {
-	// UCP PlaneResource.
-	PlaneResource
+// AzureCredentialsClientUpdateResponse contains the response from method AzureCredentialsClient.Update.
+type AzureCredentialsClientUpdateResponse struct {
+	// Represents Azure Credential Resource
+	AzureCredentialResource
 }
 
-// PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.CreateOrUpdate.
+// PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.BeginCreateOrUpdate.
 type PlanesClientCreateOrUpdateResponse struct {
-	// UCP PlaneResource.
+	// The plane resource
 	PlaneResource
-
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
 }
 
-// PlanesClientDeleteResponse contains the response from method PlanesClient.Delete.
+// PlanesClientDeleteResponse contains the response from method PlanesClient.BeginDelete.
 type PlanesClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // PlanesClientGetResponse contains the response from method PlanesClient.Get.
 type PlanesClientGetResponse struct {
-	// UCP PlaneResource.
+	// The plane resource
 	PlaneResource
 }
 
-// PlanesClientListByRootScopeResponse contains the response from method PlanesClient.NewListByRootScopePager.
-type PlanesClientListByRootScopeResponse struct {
+// PlanesClientListByTypeResponse contains the response from method PlanesClient.NewListByTypePager.
+type PlanesClientListByTypeResponse struct {
 	// The response of a PlaneResource list operation.
 	PlaneResourceListResult
 }
 
+// PlanesClientListPlanesResponse contains the response from method PlanesClient.NewListPlanesPager.
+type PlanesClientListPlanesResponse struct {
+	// The response of a PlaneResource list operation.
+	PlaneResourceListResult
+}
+
+// PlanesClientUpdateResponse contains the response from method PlanesClient.BeginUpdate.
+type PlanesClientUpdateResponse struct {
+	// The plane resource
+	PlaneResource
+}
+
 // ResourceGroupsClientCreateOrUpdateResponse contains the response from method ResourceGroupsClient.CreateOrUpdate.
 type ResourceGroupsClientCreateOrUpdateResponse struct {
-	// UCP ResourceGroup.
+	// The resource group resource
 	ResourceGroupResource
-
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
 }
 
 // ResourceGroupsClientDeleteResponse contains the response from method ResourceGroupsClient.Delete.
 type ResourceGroupsClientDeleteResponse struct {
-	// RetryAfter contains the information returned from the Retry-After header response.
-	RetryAfter *int32
+	// placeholder for future response values
 }
 
 // ResourceGroupsClientGetResponse contains the response from method ResourceGroupsClient.Get.
 type ResourceGroupsClientGetResponse struct {
-	// UCP ResourceGroup.
+	// The resource group resource
 	ResourceGroupResource
 }
 
-// ResourceGroupsClientListByRootScopeResponse contains the response from method ResourceGroupsClient.NewListByRootScopePager.
-type ResourceGroupsClientListByRootScopeResponse struct {
+// ResourceGroupsClientListResponse contains the response from method ResourceGroupsClient.NewListPager.
+type ResourceGroupsClientListResponse struct {
 	// The response of a ResourceGroupResource list operation.
 	ResourceGroupResourceListResult
+}
+
+// ResourceGroupsClientUpdateResponse contains the response from method ResourceGroupsClient.Update.
+type ResourceGroupsClientUpdateResponse struct {
+	// The resource group resource
+	ResourceGroupResource
 }
 

@@ -81,7 +81,7 @@ func (mr *MockCredentialManagementClientMockRecorder) List(arg0 interface{}) *go
 }
 
 // PutAWS mocks base method.
-func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v20220901privatepreview.AWSCredentialResource) error {
+func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v20220901privatepreview.AwsCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutAWS", arg0, arg1)
 	ret0, _ := ret[0].(error)

@@ -33,7 +33,7 @@ const (
 )
 
 func Test_Planes_GET_BadAPIVersion(t *testing.T) {
-	ucp, _, _ := testserver.StartWithMocks(t, api.DefaultModules)
+	ucp := testserver.StartWithMocks(t, api.DefaultModules)
 
 	response := ucp.MakeRequest(http.MethodGet, "/planes?api-version=unsupported-version", nil)
 	response.EqualsErrorCode(http.StatusBadRequest, v1.CodeInvalidApiVersionParameter)
@@ -41,7 +41,7 @@ func Test_Planes_GET_BadAPIVersion(t *testing.T) {
 }
 
 func Test_Planes_PUT_BadAPIVersion(t *testing.T) {
-	ucp, _, _ := testserver.StartWithMocks(t, api.DefaultModules)
+	ucp := testserver.StartWithMocks(t, api.DefaultModules)
 
 	requestBody := v20220901privatepreview.PlaneResource{
 		Location:   to.Ptr(v1.LocationGlobal),

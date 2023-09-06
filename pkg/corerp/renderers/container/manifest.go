@@ -18,6 +18,7 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
 var errDeploymentNotFound = errors.New("deployment resource must be in outputResources")
@@ -82,7 +84,7 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 		},
 	}
 
-	if resource := manifest.GetFirst(kubeutil.DeploymentV1); resource != nil {
+	if resource := manifest.GetFirst(appsv1.SchemeGroupVersion.WithKind("Deployment")); resource != nil {
 		defaultDeployment = resource.(*appsv1.Deployment)
 	}
 
@@ -132,7 +134,7 @@ func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamod
 			Type:     corev1.ServiceTypeClusterIP,
 		},
 	}
-	if resource := manifest.GetFirst(kubeutil.ServiceV1); resource != nil {
+	if resource := manifest.GetFirst(corev1.SchemeGroupVersion.WithKind("Service")); resource != nil {
 		defaultService = resource.(*corev1.Service)
 	}
 	defaultService.ObjectMeta = getObjectMeta(defaultService.ObjectMeta, appName, r.Name, r.ResourceTypeName(), *options)
@@ -150,7 +152,7 @@ func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *
 		},
 	}
 
-	if resource := manifest.GetFirst(kubeutil.ServiceAccountV1); resource != nil {
+	if resource := manifest.GetFirst(corev1.SchemeGroupVersion.WithKind("ServiceAccount")); resource != nil {
 		defaultAccount = resource.(*corev1.ServiceAccount)
 	}
 
@@ -193,9 +195,9 @@ func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest,
 		localIDPrefix := ""
 
 		switch k {
-		case kubeutil.SecretV1:
+		case corev1.SchemeGroupVersion.WithKind("Secret"):
 			localIDPrefix = rpv1.LocalIDSecret
-		case kubeutil.ConfigMapV1:
+		case corev1.SchemeGroupVersion.WithKind("ConfigMap"):
 			localIDPrefix = rpv1.LocalIDConfigMap
 
 		default:
@@ -215,4 +217,24 @@ func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest,
 	}
 
 	return outputResources
+}
+
+func patchPodSpec(sourceSpec *corev1.PodSpec, patchSpec []byte) (*corev1.PodSpec, error) {
+	podSpecJSON, err := json.Marshal(sourceSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	merged, err := strategicpatch.StrategicMergePatch(podSpecJSON, patchSpec, corev1.PodSpec{})
+	if err != nil {
+		return nil, err
+	}
+
+	patched := &corev1.PodSpec{}
+	err = json.Unmarshal(merged, patched)
+	if err != nil {
+		return nil, err
+	}
+
+	return patched, nil
 }

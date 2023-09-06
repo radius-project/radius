@@ -46,6 +46,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	queueprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	secretprovider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/store"
@@ -68,6 +70,13 @@ type TestServer struct {
 	// BaseURL is the base URL of the server, including the path base.
 	BaseURL string
 
+	// Clients gets access to the clients created by TestServer regardless of whether
+	// they are mocks.
+	Clients *TestServerClients
+
+	// Mocks gets access to the mock clients. Will be nil if StartWithETCD is used.
+	Mocks *TestServerMocks
+
 	// Server provides access to the test HTTP server.
 	Server *httptest.Server
 
@@ -77,6 +86,27 @@ type TestServer struct {
 	t           *testing.T
 	stoppedChan <-chan struct{}
 	shutdown    sync.Once
+}
+
+// TestServerClients provides access to the clients created by the TestServer.
+type TestServerClients struct {
+	// QueueProvider is the queue client provider.
+	QueueProvider *queueprovider.QueueProvider
+
+	// SecretProvider is the secret client provider.
+	SecretProvider *secretprovider.SecretProvider
+
+	// StorageProvider is the storage client provider.
+	StorageProvider dataprovider.DataStorageProvider
+}
+
+// TestServerMocks provides access to mock instances created by the TestServer.
+type TestServerMocks struct {
+	// Secrets is the mock secret client.
+	Secrets *secret.MockClient
+
+	// Storage is the mock storage client.
+	Storage *store.MockStorageClient
 }
 
 // Client provides access to an http.Client that can be used to send requests. Most tests should use the functionality
@@ -104,7 +134,7 @@ func (ts *TestServer) Close() {
 }
 
 // StartWithMocks creates and starts a new TestServer that used an mocks for storage.
-func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) (*TestServer, *store.MockStorageClient, *secret.MockClient) {
+func StartWithMocks(t *testing.T, configureModules func(options modules.Options) []modules.Initializer) *TestServer {
 	ctx, cancel := testcontext.NewWithCancel(t)
 
 	// Generate a random base path to ensure we're handling it correctly.
@@ -117,6 +147,10 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 		GetStorageClient(gomock.Any(), gomock.Any()).
 		Return(dataClient, nil).
 		AnyTimes()
+
+	queueClient := queue.NewMockClient(ctrl)
+	queueProvider := queueprovider.New("System.Resources", queueprovider.QueueProviderOptions{})
+	queueProvider.SetClient(queueClient)
 
 	secretClient := secret.NewMockClient(ctrl)
 	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
@@ -160,13 +194,22 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 
 	ucp := &TestServer{
 		BaseURL: server.URL + pathBase,
-		Server:  server,
-		cancel:  cancel,
-		t:       t,
+		Clients: &TestServerClients{
+			QueueProvider:   queueProvider,
+			SecretProvider:  secretProvider,
+			StorageProvider: dataProvider,
+		},
+		Mocks: &TestServerMocks{
+			Secrets: secretClient,
+			Storage: dataClient,
+		},
+		Server: server,
+		cancel: cancel,
+		t:      t,
 	}
 
 	t.Cleanup(ucp.Close)
-	return ucp, dataClient, secretClient
+	return ucp
 }
 
 // StartWithETCD creates and starts a new TestServer that used an embedded ETCD instance for storage.
@@ -210,11 +253,16 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		Provider: secretprovider.TypeETCDSecret,
 		ETCD:     storageOptions.ETCD,
 	}
+	queueOptions := queueprovider.QueueProviderOptions{
+		Provider: queueprovider.TypeInmemory,
+		InMemory: &queueprovider.InMemoryQueueOptions{},
+	}
 
 	// Generate a random base path to ensure we're handling it correctly.
 	pathBase := "/" + uuid.New().String()
 	dataProvider := dataprovider.NewStorageProvider(storageOptions)
 	secretProvider := secretprovider.NewSecretProvider(secretOptions)
+	queueProvider := queueprovider.New("System.Resources", queueOptions)
 
 	router := chi.NewRouter()
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))
@@ -235,6 +283,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		DataProvider:   dataProvider,
 		SecretProvider: secretProvider,
 		SpecLoader:     specLoader,
+		QueueProvider:  queueProvider,
 	}
 
 	if configureModules == nil {
@@ -258,8 +307,15 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	require.NoError(t, err, "failed to query etcd")
 	logger.Info("Connected to data store")
 
+	// TODO: start worker
+
 	ucp := &TestServer{
-		BaseURL:     server.URL + pathBase,
+		BaseURL: server.URL + pathBase,
+		Clients: &TestServerClients{
+			QueueProvider:   queueProvider,
+			SecretProvider:  secretProvider,
+			StorageProvider: dataProvider,
+		},
 		Server:      server,
 		cancel:      cancel,
 		etcdService: etcd,

@@ -154,7 +154,7 @@ func TestGetDeploymentBase(t *testing.T) {
 		{
 			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
-				kubeutil.DeploymentV1: []runtime.Object{
+				appsv1.SchemeGroupVersion.WithKind("Deployment"): []runtime.Object{
 					&appsv1.Deployment{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "Deployment",
@@ -276,7 +276,7 @@ func TestGetServiceBase(t *testing.T) {
 		{
 			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
-				kubeutil.ServiceV1: []runtime.Object{
+				corev1.SchemeGroupVersion.WithKind("Service"): []runtime.Object{
 					&corev1.Service{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "Service",
@@ -365,7 +365,7 @@ func TestGetServiceAccountBase(t *testing.T) {
 		{
 			name: "with base manifest",
 			manifest: kubeutil.ObjectManifest{
-				kubeutil.ServiceAccountV1: []runtime.Object{
+				corev1.SchemeGroupVersion.WithKind("ServiceAccount"): []runtime.Object{
 					&corev1.ServiceAccount{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "ServiceAccount",
@@ -459,4 +459,48 @@ func TestPopulateAllBaseResources(t *testing.T) {
 		require.Len(t, outputResources[0].CreateResource.Dependencies, 4)
 		require.ElementsMatch(t, []string{"Secret-dtl+8w==", "Secret-ddl9YA==", "ConfigMap-6BU8tQ==", "ConfigMap-5xU7Ig=="}, outputResources[0].CreateResource.Dependencies)
 	})
+}
+
+func TestPatchPodSpec(t *testing.T) {
+	podSpec := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name: "sidecar",
+			},
+			{
+				Name: "test-container",
+			},
+		},
+	}
+
+	patchingPod := `
+{
+	"containers": [
+		{
+			"name": "sidecar",
+			"image": "fluent-bit:latest"
+		}
+	],
+	"nodeName": "test",
+	"hostNetwork": true
+}
+`
+
+	expected := &corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  "sidecar",
+				Image: "fluent-bit:latest",
+			},
+			{
+				Name: "test-container",
+			},
+		},
+		NodeName:    "test",
+		HostNetwork: true,
+	}
+
+	patched, err := patchPodSpec(podSpec, []byte(patchingPod))
+	require.NoError(t, err)
+	require.Equal(t, expected, patched)
 }

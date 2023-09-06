@@ -651,6 +651,15 @@ func (r Renderer) makeDeployment(
 		deps = append(deps, rpv1.LocalIDSecret)
 	}
 
+	// Patching Runtimes.Kubernetes.Pod to the PodSpec in deployment resource.
+	if properties.Runtimes != nil && properties.Runtimes.Kubernetes != nil && properties.Runtimes.Kubernetes.Pod != "" {
+		patchedPodSpec, err := patchPodSpec(podSpec, []byte(properties.Runtimes.Kubernetes.Pod))
+		if err != nil {
+			return []rpv1.OutputResource{}, nil, fmt.Errorf("failed to patch PodSpec: %w", err)
+		}
+		deployment.Spec.Template.Spec = *patchedPodSpec
+	}
+
 	deploymentOutput := rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, deployment, deployment.ObjectMeta)
 	deploymentOutput.CreateResource.Dependencies = deps
 

@@ -712,12 +712,12 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 			if tc.awsProvider != nil {
 				credentialManagementClient.EXPECT().
-					PutAWS(context.Background(), ucp.AWSCredentialResource{
+					PutAWS(context.Background(), ucp.AwsCredentialResource{
 						Location: to.Ptr(v1.LocationGlobal),
 						Type:     to.Ptr(cli_credential.AWSCredential),
-						Properties: &ucp.AWSAccessKeyCredentialProperties{
+						Properties: &ucp.AwsAccessKeyCredentialProperties{
 							Storage: &ucp.CredentialStorageProperties{
-								Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+								Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 							},
 							AccessKeyID:     to.Ptr(tc.awsProvider.AccessKeyID),
 							SecretAccessKey: to.Ptr(tc.awsProvider.SecretAccessKey),

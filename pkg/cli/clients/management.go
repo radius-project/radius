@@ -587,14 +587,14 @@ func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 // ListUCPGroup is a function that retrieves a list of resource groups from the UCP API and returns them as a slice of
 // ResourceGroupResource objects. It may return an error if there is an issue with the API request.
 func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220901.ResourceGroupResource, error) {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListByRootScopeOptions
+	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListOptions
 	resourceGroupResources := []ucpv20220901.ResourceGroupResource{}
 	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return resourceGroupResources, err
 	}
 
-	pager := resourcegroupClient.NewListByRootScopePager(planeType, planeName, resourceGroupOptions)
+	pager := resourcegroupClient.NewListPager(planeType, planeName, resourceGroupOptions)
 
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)

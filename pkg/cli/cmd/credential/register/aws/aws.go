@@ -148,12 +148,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	credential := ucp.AWSCredentialResource{
+	credential := ucp.AwsCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AWSCredential),
-		Properties: &ucp.AWSAccessKeyCredentialProperties{
+		Properties: &ucp.AwsAccessKeyCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			AccessKeyID:     &r.AccessKeyID,
 			SecretAccessKey: &r.SecretAccessKey,

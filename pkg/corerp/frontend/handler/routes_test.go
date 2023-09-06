@@ -26,6 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
@@ -231,6 +232,7 @@ func TestHandlers(t *testing.T) {
 
 	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 	mockSC := store.NewMockStorageClient(mctrl)
+	mockEngine := engine.NewMockEngine(mctrl)
 
 	mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(&store.Object{}, nil).AnyTimes()
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -240,7 +242,7 @@ func TestHandlers(t *testing.T) {
 		// Test handlers for UCP resources.
 		rpctest.AssertRouters(t, handlerTests, "/api.ucp.dev", "/planes/radius/local", func(ctx context.Context) (chi.Router, error) {
 			r := chi.NewRouter()
-			return r, AddRoutes(ctx, r, false, ctrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP})
+			return r, AddRoutes(ctx, r, false, ctrl.Options{PathBase: "/api.ucp.dev", DataProvider: mockSP}, mockEngine)
 		})
 	})
 
@@ -257,7 +259,7 @@ func TestHandlers(t *testing.T) {
 		// Test handlers for Azure resources
 		rpctest.AssertRouters(t, azureHandlerTests, "", "/subscriptions/00000000-0000-0000-0000-000000000000", func(ctx context.Context) (chi.Router, error) {
 			r := chi.NewRouter()
-			return r, AddRoutes(ctx, r, true, ctrl.Options{PathBase: "", DataProvider: mockSP})
+			return r, AddRoutes(ctx, r, true, ctrl.Options{PathBase: "", DataProvider: mockSP}, mockEngine)
 		})
 	})
 }

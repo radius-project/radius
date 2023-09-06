@@ -31,4 +31,7 @@ const (
 
 	// Used for errors encountered while cleaning up of obsolete resources during patch operation.
 	RecipeGarbageCollectionFailed = "RecipeGarbageCollectionFailed"
+
+	// Used for errors encountered when getting recipe parameters.
+	RecipeGetMetadataFailed = "RecipeGetMetadataFailed"
 )

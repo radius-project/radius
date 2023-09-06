@@ -18,9 +18,10 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
-	appv1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,6 +35,7 @@ import (
 
 const (
 	manifestTargetProperty = "$.properties.runtimes.kubernetes.base"
+	podTargetProperty      = "$.properties.runtimes.kubernetes.pod"
 )
 
 // ValidateAndMutateRequest checks if the newResource has a user-defined identity and if so, returns a bad request
@@ -51,20 +53,45 @@ func ValidateAndMutateRequest(ctx context.Context, newResource, oldResource *dat
 	}
 
 	runtimes := newResource.Properties.Runtimes
-	if runtimes != nil && runtimes.Kubernetes != nil && runtimes.Kubernetes.Base != "" {
-		err := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
-		if err != nil {
-			return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+	if runtimes != nil && runtimes.Kubernetes != nil {
+		if runtimes.Kubernetes.Base != "" {
+			err := validateBaseManifest([]byte(runtimes.Kubernetes.Base), newResource)
+			if err != nil {
+				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+			}
+		}
+
+		if runtimes.Kubernetes.Pod != "" {
+			err := validatePodSpec([]byte(runtimes.Kubernetes.Pod))
+			if err != nil {
+				return rest.NewBadRequestARMResponse(v1.ErrorResponse{Error: err.(v1.ErrorDetails)}), nil
+			}
 		}
 	}
 
 	return nil, nil
 }
 
+// validatePodSpec is doing only syntactic validation for PodSpec by deserialzing the given JSON patch
+// to PodSpec object at this time. The semantic validation will be done when Radius applies the
+// patched object to Kubernetes API server.
+func validatePodSpec(patch []byte) error {
+	podSpec := &corev1.PodSpec{}
+	err := json.Unmarshal(patch, podSpec)
+	if err != nil {
+		return v1.ErrorDetails{
+			Code:    v1.CodeInvalidRequestContent,
+			Target:  podTargetProperty,
+			Message: fmt.Sprintf("Invalid PodSpec for patching: %s.", err.Error()),
+		}
+	}
+	return nil
+}
+
 func errMultipleResources(typeName string, num int) v1.ErrorDetails {
 	return v1.ErrorDetails{
 		Code:    v1.CodeInvalidRequestContent,
-		Target:  "$.properties.runtimes.kubernetes.base",
+		Target:  manifestTargetProperty,
 		Message: fmt.Sprintf("only one %s is allowed, but the manifest includes %d resources.", typeName, num),
 	}
 }
@@ -76,7 +103,7 @@ func errUnmatchedName(obj runtime.Object, name string) v1.ErrorDetails {
 
 	return v1.ErrorDetails{
 		Code:    v1.CodeInvalidRequestContent,
-		Target:  "$.properties.runtimes.kubernetes.base",
+		Target:  manifestTargetProperty,
 		Message: fmt.Sprintf("%s name %s in manifest does not match resource name %s.", typeName, resourceName, name),
 	}
 }
@@ -117,16 +144,16 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 		}
 
 		switch k {
-		case kubeutil.DeploymentV1:
+		case appsv1.SchemeGroupVersion.WithKind("Deployment"):
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Deployment", len(resources)))
 			}
-			deployment := resources[0].(*appv1.Deployment)
+			deployment := resources[0].(*appsv1.Deployment)
 			if deployment.Name != newResource.Name {
 				errDetails = append(errDetails, errUnmatchedName(deployment, newResource.Name))
 			}
 
-		case kubeutil.ServiceV1:
+		case corev1.SchemeGroupVersion.WithKind("Service"):
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("Service", len(resources)))
 			}
@@ -135,7 +162,7 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(srv, newResource.Name))
 			}
 
-		case kubeutil.ServiceAccountV1:
+		case corev1.SchemeGroupVersion.WithKind("ServiceAccount"):
 			if len(resources) != 1 {
 				errDetails = append(errDetails, errMultipleResources("ServiceAccount", len(resources)))
 			}
@@ -144,24 +171,24 @@ func validateBaseManifest(manifest []byte, newResource *datamodel.ContainerResou
 				errDetails = append(errDetails, errUnmatchedName(sa, newResource.Name))
 			}
 
-			deployment := resourceMap.GetFirst(kubeutil.DeploymentV1)
+			deployment := resourceMap.GetFirst(appsv1.SchemeGroupVersion.WithKind("Deployment"))
 			if deployment == nil {
 				// skip if there is no deployment.
 				continue
 			}
 
-			podSA := deployment.(*appv1.Deployment).Spec.Template.Spec.ServiceAccountName
+			podSA := deployment.(*appsv1.Deployment).Spec.Template.Spec.ServiceAccountName
 			if podSA != sa.Name {
 				errDetails = append(errDetails, v1.ErrorDetails{
 					Code:    v1.CodeInvalidRequestContent,
-					Target:  "$.properties.runtimes.kubernetes.base",
+					Target:  manifestTargetProperty,
 					Message: fmt.Sprintf("ServiceAccount name %s in PodSpec does not match the name %s in ServiceAccount.", podSA, sa.Name),
 				})
 			}
 
 		// No limitations for ConfigMap and Secret resources.
-		case kubeutil.SecretV1:
-		case kubeutil.ConfigMapV1:
+		case corev1.SchemeGroupVersion.WithKind("Secret"):
+		case corev1.SchemeGroupVersion.WithKind("ConfigMap"):
 
 		default:
 			errDetails = append(errDetails, v1.ErrorDetails{

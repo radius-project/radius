@@ -23,7 +23,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/portableresources/api/v20220315privatepreview"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
@@ -126,7 +125,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
 					Host:                 "mynewhost.com",
 					Port:                 10256,
-					Recipe:               portableresources.LinkRecipe{Name: v20220315privatepreview.DefaultRecipeName, Parameters: nil},
+					Recipe:               portableresources.LinkRecipe{Name: portableresources.DefaultRecipeName, Parameters: nil},
 				},
 			},
 		},

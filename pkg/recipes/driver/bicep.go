@@ -185,6 +185,34 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	return nil
 }
 
+// GetRecipeMetadata gets the Bicep recipe parameters information from the container registry
+func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (map[string]any, error) {
+	// Recipe parameters can be found in the recipe data pulled from the registry in the following format:
+	//	{
+	//		"parameters": {
+	//			<parameter-name>: {
+	//				<parameter-constraint-name> : <parameter-constraint-value>
+	// 			}
+	//		}
+	//	}
+	// For example:
+	//	{
+	//		"parameters": {
+	//			"location": {
+	//				"type": "string",
+	//				"defaultValue" : "[resourceGroup().location]"
+	//			}
+	//		}
+	//	}
+	recipeData := make(map[string]any)
+	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
+	if err != nil {
+		return nil, err
+	}
+
+	return recipeData, nil
+}
+
 func hasContextParameter(recipeData map[string]any) bool {
 	parametersAny, ok := recipeData[recipeParameters]
 	if !ok {

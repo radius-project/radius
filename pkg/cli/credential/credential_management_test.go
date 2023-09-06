@@ -62,7 +62,7 @@ func Test_AzureCredential_Put(t *testing.T) {
 				Type:     to.Ptr(AzureCredential),
 				Properties: &ucp.AzureServicePrincipalProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
 					ClientID:     to.Ptr(clientID),
 					ClientSecret: to.Ptr("cool-client-secret"),
@@ -105,7 +105,7 @@ func Test_AWSCredential_Put(t *testing.T) {
 		name       string
 		planeType  string
 		planeName  string
-		credential ucp.AWSCredentialResource
+		credential ucp.AwsCredentialResource
 		err        error
 		setupMocks func(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string)
 	}{
@@ -113,13 +113,13 @@ func Test_AWSCredential_Put(t *testing.T) {
 			name:      "create aws credential success",
 			planeType: AWSPlaneType,
 			planeName: AWSPlaneName,
-			credential: ucp.AWSCredentialResource{
+			credential: ucp.AwsCredentialResource{
 				Name:     to.Ptr(awsProviderName),
 				Location: to.Ptr(v1.LocationGlobal),
 				Type:     to.Ptr(AWSCredential),
-				Properties: &ucp.AWSAccessKeyCredentialProperties{
+				Properties: &ucp.AwsAccessKeyCredentialProperties{
 					Storage: &ucp.CredentialStorageProperties{
-						Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+						Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 					},
 					AccessKeyID:     to.Ptr("access-key-id"),
 					SecretAccessKey: to.Ptr("secret-access-key"),

@@ -10,7 +10,7 @@ In general you should ask for guidance before creating a new top-level folder in
 | ---------- | --------------------------------------------------------------------------------------|
 | `build/`   | Makefiles and scripts referenced from the root Makefile                               |
 | `cmd/`     | Entry points for executables built in the repository                                  |
-| `cadl/`    | Definitions for generating Radius swagger files.                                      |
+| `typespec/`    | Definitions for generating Radius swagger files.                                      |
 | `deploy/`  | Assets used to package, deploy, and install Radius                                    |
 | `docs/`    | All project documentation                                                             |
 | `hack/`    | Utility code to generate Radius bicep types                                           | 
