@@ -34,9 +34,8 @@ type DaprSecretStore struct {
 	pr_dm.LinkMetadata
 }
 
-// ApplyDeploymentOutput updates the status of the secret store with the output resources from a deployment.
+// ApplyDeploymentOutput updates the DaprSecretStore resource with the DeploymentOutput values.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
