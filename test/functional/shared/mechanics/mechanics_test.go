@@ -269,19 +269,9 @@ func Test_CommunicationCycle(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "routea",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "mechanicsg",
 						Type: validation.ContainersResource,
 						App:  "corerp-mechanics-communication-cycle",
-					},
-					{
-						Name: "routeb",
-						Type: validation.HttpRoutesResource,
-						App:  name,
 					},
 					{
 						Name: "cyclea",
@@ -326,15 +316,6 @@ func Test_InvalidResourceIDs(t *testing.T) {
 				{
 					Code:            "BadRequest",
 					MessageContains: "application ID \"not_an_id\" for the resource",
-				},
-			},
-		},
-		{
-			Code: "ResourceDeploymentFailure",
-			Details: []step.DeploymentErrorDetail{
-				{
-					Code:            "BadRequest",
-					MessageContains: "application ID \"global\" for the resource",
 				},
 			},
 		},

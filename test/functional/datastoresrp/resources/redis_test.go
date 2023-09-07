@@ -50,11 +50,6 @@ func Test_Redis_Manual(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "rds-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "rds-rds",
 						Type: validation.RedisCachesResource,
 						App:  name,
@@ -66,7 +61,6 @@ func Test_Redis_Manual(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "rds-app-ctnr"),
 						validation.NewK8sPodForResource(name, "rds-ctnr"),
-						validation.NewK8sServiceForResource(name, "rds-rte"),
 					},
 				},
 			},

@@ -64,18 +64,9 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
       ports: {
         rabbitmq: {
           containerPort: rabbitmqPort
-          provides: rabbitmqRoute.id
         }
       }
     }
-  }
-}
-
-resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'rmq-rte'
-  properties: {
-    application: app.id
-    port: rabbitmqPort
   }
 }
 
@@ -86,8 +77,8 @@ resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2022-03-15-privateprevi
     environment: environment
     resourceProvisioning: 'manual'
     queue: 'queue'
-    host: rabbitmqRoute.properties.hostname
-    port:rabbitmqRoute.properties.port
+    host: 'rmq-ctnr'
+    port: rabbitmqPort
     username:username
     secrets: {
       password: password

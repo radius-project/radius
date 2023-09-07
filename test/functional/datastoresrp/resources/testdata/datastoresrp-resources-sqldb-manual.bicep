@@ -63,23 +63,14 @@ resource db 'Applications.Datastores/sqlDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
-    server: sqlRoute.properties.hostname
+    server: 'sql-ctnr'
     database: 'master'
     resourceProvisioning: 'manual'
-    port: sqlRoute.properties.port
+    port: sqlPort
     username: username
     secrets:{
       password: password
     }
-  }
-}
-
-resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'sql-rte'
-  location: location
-  properties: {
-    application: app.id
-    port: sqlPort
   }
 }
 
@@ -98,7 +89,6 @@ resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' =
       ports: {
         sql: {
           containerPort: sqlPort
-          provides: sqlRoute.id
         }
       }
     }
