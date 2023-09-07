@@ -1,4 +1,4 @@
-# Running Radius functional tests
+# Functional Test Guidelines
 
 This document outlines guidelines for when to add functional tests, what features should be tested, and what user scenarios each test should cover. 
 
