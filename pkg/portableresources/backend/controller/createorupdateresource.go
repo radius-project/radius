@@ -131,7 +131,12 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		ResourceID:    data.GetBaseResource().ID,
 	}
 
-	return c.engine.Execute(ctx, request, prevState)
+	return c.engine.Execute(ctx, engine.ExecuteOptions{
+		BaseOptions: engine.BaseOptions{
+			Recipe: request,
+		},
+		PrevState: prevState,
+	})
 }
 
 func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
