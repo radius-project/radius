@@ -61,12 +61,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	templateKind := "bicep"
-	linkType := "Applications.Datastores/mongoDatabases"
+	resourceType := "Applications.Datastores/mongoDatabases"
 	file := "testdata/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
@@ -75,12 +75,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		output, err := cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
 		require.Regexp(t, recipeName, output)
-		require.Regexp(t, linkType, output)
+		require.Regexp(t, resourceType, output)
 		require.Regexp(t, recipeTemplate, output)
 	})
 
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName, linkType)
+		output, err := cli.RecipeUnregister(ctx, envName, recipeName, resourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
@@ -88,15 +88,15 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
-		showRecipeLinkType := "Applications.Datastores/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeLinkType)
+		showRecipeResourceType := "Applications.Datastores/mongoDatabases"
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeResourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, resourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeLinkType)
+		require.Contains(t, output, showRecipeResourceType)
 		require.Contains(t, output, "mongodbName")
 		require.Contains(t, output, "documentdbName")
 		require.Contains(t, output, "location")
@@ -111,15 +111,15 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 			moduleServer = "http://localhost:8999"
 		}
 		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
-		showRecipeLinkType := "Applications.Datastores/redisCaches"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeLinkType)
+		showRecipeResourceType := "Applications.Datastores/redisCaches"
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeLinkType)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeLinkType)
+		require.Contains(t, output, showRecipeResourceType)
 		require.Contains(t, output, "redis_cache_name")
 		require.Contains(t, output, "string")
 	})
@@ -131,7 +131,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, resourceType)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
 		output, err = cli.RecipeList(ctx, envName)

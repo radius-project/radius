@@ -30,8 +30,8 @@ type DaprSecretStore struct {
 	// Properties is the properties of the resource.
 	Properties DaprSecretStoreProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resource types.
-	pr_dm.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resource types.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the DaprSecretStore resource with the DeploymentOutput values.
@@ -61,13 +61,13 @@ type DaprSecretStoreProperties struct {
 	Type                 string                                 `json:"type,omitempty"`
 	Version              string                                 `json:"version,omitempty"`
 	Metadata             map[string]any                         `json:"metadata,omitempty"`
-	Recipe               portableresources.LinkRecipe           `json:"recipe,omitempty"`
+	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
 // Recipe returns the Recipe from the DaprSecretStore Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (daprSecretStore *DaprSecretStore) Recipe() *portableresources.LinkRecipe {
+func (daprSecretStore *DaprSecretStore) Recipe() *portableresources.ResourceRecipe {
 	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}

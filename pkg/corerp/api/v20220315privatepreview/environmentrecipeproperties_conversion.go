@@ -48,7 +48,7 @@ func (dst *RecipeGetMetadataResponse) ConvertFrom(src v1.DataModelInterface) err
 // ConvertTo converts from the versioned Environment Recipe Properties resource to version-agnostic datamodel.
 func (src *RecipeGetMetadata) ConvertTo() (v1.DataModelInterface, error) {
 	return &datamodel.Recipe{
-		Name:     to.String(src.Name),
-		LinkType: to.String(src.LinkType),
+		Name:         to.String(src.Name),
+		ResourceType: to.String(src.ResourceType),
 	}, nil
 }

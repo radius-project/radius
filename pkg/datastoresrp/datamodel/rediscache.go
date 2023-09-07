@@ -33,8 +33,8 @@ type RedisCache struct {
 	// Properties is the properties of the resource.
 	Properties RedisCacheProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	pr_dm.LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all resource types.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
@@ -58,9 +58,9 @@ func (redis *RedisCache) ResourceTypeName() string {
 	return portableresources.RedisCachesResourceType
 }
 
-// Recipe returns the LinkRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
+// Recipe returns the ResourceRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (redis *RedisCache) Recipe() *portableresources.LinkRecipe {
+func (redis *RedisCache) Recipe() *portableresources.ResourceRecipe {
 	if redis.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
@@ -115,7 +115,7 @@ type RedisCacheProperties struct {
 	TLS bool `json:"tls,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
-	Recipe portableresources.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 
 	// Secrets provided by resource
 	Secrets RedisCacheSecrets `json:"secrets,omitempty"`

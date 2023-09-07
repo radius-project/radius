@@ -80,9 +80,9 @@ func AddParameterFlag(cmd *cobra.Command) {
 	cmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 }
 
-// AddLinkTypeFlag adds a flag to the given command that allows the user to specify the type of the link this recipe can be consumed by.
-func AddLinkTypeFlag(cmd *cobra.Command) {
-	cmd.Flags().String("link-type", "", "Specify the type of the link this recipe can be consumed by")
+// AddResourceTypeFlag adds a flag to the given command that allows the user to specify the type of the portable resource this recipe can be consumed by.
+func AddResourceTypeFlag(cmd *cobra.Command) {
+	cmd.Flags().String("resource-type", "", "Specify the type of the portable resource this recipe can be consumed by")
 }
 
 // AddAzureScopeFlags adds flags to a command to specify an Azure subscription and resource group, and marks them as

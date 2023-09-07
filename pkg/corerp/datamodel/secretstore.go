@@ -52,7 +52,7 @@ type SecretStore struct {
 	v1.BaseResource
 
 	// TODO: remove this from CoreRP
-	LinkMetadata
+	PortableResourceMetadata
 	// Properties is the properties of the resource.
 	Properties *SecretStoreProperties `json:"properties"`
 }
