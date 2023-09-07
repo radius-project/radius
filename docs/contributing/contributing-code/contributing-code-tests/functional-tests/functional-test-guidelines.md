@@ -1,10 +1,8 @@
 # Functional Test Guidelines
 
-This document outlines guidelines for when to add functional tests, what features should be tested, and what user scenarios each test should cover. 
+This document outlines guidelines for when to add functional tests, what features should be tested, and what user scenarios each test should cover. For the purposes of this document, we’re going to draw a distinction between two categories of functional tests: E2E tests and feature-level tests.  
 
-For the purposes of this discussion, we’re going to draw a distinction between two categories of functional tests: E2E tests and feature-level tests.  
-
-E2E tests covers a complete user scenario that utilizes an application. An example would be deploying a MongoDB resource. When doing so, a user has to set up an application, environment, deploy the app, ensure the connection succeeds, and eventually delete the app. This would be considered an E2E scenario since we are testing the entire life cycle of a resource/feature. Most resource-driven tests (i.e. Redis, Mongo, Containers, etc) will be E2E tests.  
+E2E tests cover a complete user scenario that utilizes an application. An example would be deploying a MongoDB resource. When doing so, a user has to set up an application, environment, deploy the app, ensure the connection succeeds, and eventually delete the app. This would be considered an E2E scenario since we are testing the entire life cycle of a resource/feature. Most resource-driven tests (i.e. Redis, Mongo, Containers, etc) will be E2E tests.  
 
 Feature-level tests cover targeted components of the code. An example would be many of the CLI tests. The purpose of these tests is to check very specific scenarios (i.e. validating application deletion, testing Recipe commands, etc).  
 
@@ -16,7 +14,7 @@ Generally, anything related to the outcomes a user might care about should be te
 
 **Any major behavior of Radius should be tested.**  
 
-As discussed earlier, we want to cover most testing through unit tests. However, there are features that crosscut multiple resources and components (i.e. Recipes is a feature that extends to multiple resources) that are hard to cover with unit tests. These types of behaviors should be covered in functional tests.  
+We want to cover most testing through unit tests. However, there are features that crosscut multiple resources and components (i.e. Recipes is a feature that extends to multiple resources) that are hard to cover with unit tests. These types of behaviors should be covered in functional tests.  
 
 It’s important to analyze the nature of the work being done to determine if a functional test is needed. This is largely up to the discretion of the developers to decide, but if any of these apply to the work that is being done, a functional test may be needed: 
 
@@ -39,7 +37,7 @@ Unknowns are always going to come up when developing or updating complex feature
 
 **Functional tests must cover distinct user scenarios and outcomes. The specific scenarios will be determined based on the feature.**  
 
-As stated earlier, functional tests are used to test user outcomes. We need to approach defining scenarios from a user’s perspective. How might a user use Radius in their day-to-day development? An example of a user scenario is deploying an application to Radius. Within this scenario, a user must install and set up Radius, define a bicep template with the application information, deploy the template, and verify the application gets created. Eventually, they’ll want to delete the application too. All these steps encompass one scenario. Anything that lies outside of what a user might care about should be covered by unit tests, not functional tests.  
+Functional tests are used to test user outcomes. We need to approach defining scenarios from a user’s perspective. How might a user use Radius in their day-to-day development? An example of a user scenario is deploying an application to Radius. Within this scenario, a user must install and set up Radius, define a bicep template with the application information, deploy the template, and verify the application gets created. Eventually, they’ll want to delete the application too. All these steps encompass one scenario. Anything that lies outside of what a user might care about should be covered by unit tests, not functional tests.  
 
 This largely applies to E2E tests; feature-level tests may not require all these steps, but they should still cover a scenario. For example, in the CLI functional tests we verify Recipe CLI commands (register, list, show, etc), but don’t deploy the Recipe or use it with a portable resource. The scenario here is that we’re verifying Recipe CLI commands work, but we’re not necessarily testing the lifecycle of a Recipe through deployment, validation, and deletion.   
 
