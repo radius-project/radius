@@ -49,7 +49,6 @@ type SqlDatabase struct {
 // ApplyDeploymentOutput updates the output resources of a SQL database resource with the output resources of a DeploymentOutput
 // object and returns no error.
 func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 

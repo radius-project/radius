@@ -40,7 +40,6 @@ type RabbitMQQueue struct {
 // ApplyDeploymentOutput updates the RabbitMQQueue instance with the DeployedOutputResources from the
 // DeploymentOutput object and returns no error.
 func (r *RabbitMQQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 

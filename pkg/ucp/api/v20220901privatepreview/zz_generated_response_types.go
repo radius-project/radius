@@ -129,3 +129,9 @@ type ResourceGroupsClientUpdateResponse struct {
 	ResourceGroupResource
 }
 
+// ResourcesClientListResponse contains the response from method ResourcesClient.NewListPager.
+type ResourcesClientListResponse struct {
+	// The response of a GenericResource list operation.
+	GenericResourceListResult
+}
+

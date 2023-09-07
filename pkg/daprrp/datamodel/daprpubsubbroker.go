@@ -34,10 +34,8 @@ type DaprPubSubBroker struct {
 	pr_dm.LinkMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output. It updates the
-// OutputResources of the DaprPubSubBroker resource with the output resources from a DeploymentOutput object.
+// ApplyDeploymentOutput updates the DaprPubSubBroker resource with the DeploymentOutput values.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
