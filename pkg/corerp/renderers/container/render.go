@@ -183,11 +183,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	for _, port := range properties.Container.Ports {
+	for portName, port := range properties.Container.Ports {
 		// if the container has an exposed port, note that down.
 		// A single service will be generated for a container with one or more exposed ports.
 		if port.ContainerPort == 0 {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort, but ContainerPort was: %d.", port.ContainerPort))
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort, but ContainerPort is: %d.", port.ContainerPort))
+		}
+
+		if port.Port == 0 {
+			port.Port = port.ContainerPort
+			properties.Container.Ports[portName] = port
 		}
 
 		// if the container has an exposed port, but no 'provides' field, it requires DNS service generation.
@@ -242,14 +247,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	// If the container has an exposed port and uses DNS-SD, generate a service for it.
 	if needsServiceGeneration {
 		containerPorts := containerPorts{
-			values: []int32{},
-			names:  []string{},
+			values:            []int32{},
+			names:             []string{},
+			servicePortValues: []int32{},
 		}
 
 		for portName, port := range resource.Properties.Container.Ports {
 			// store portNames and portValues for use in service generation.
 			containerPorts.names = append(containerPorts.names, portName)
 			containerPorts.values = append(containerPorts.values, port.ContainerPort)
+			containerPorts.servicePortValues = append(containerPorts.servicePortValues, port.Port)
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
@@ -272,8 +279,9 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 }
 
 type containerPorts struct {
-	values []int32
-	names  []string
+	values            []int32
+	names             []string
+	servicePortValues []int32
 }
 
 func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
@@ -285,9 +293,10 @@ func (r Renderer) makeService(base *corev1.Service, resource *datamodel.Containe
 	// Ensure that we don't have any duplicate ports.
 SKIPINSERT:
 	for i, port := range containerPorts.values {
+		fmt.Println(port)
 		newPort := corev1.ServicePort{
 			Name:       containerPorts.names[i],
-			Port:       port,
+			Port:       containerPorts.servicePortValues[i],
 			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
 			Protocol:   corev1.ProtocolTCP,
 		}

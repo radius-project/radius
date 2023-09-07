@@ -1538,7 +1538,8 @@ func Test_ParseURL(t *testing.T) {
 }
 
 func Test_DNS_Service_Generation(t *testing.T) {
-	var containerPortNumber int32 = 80
+	var containerPortNumber int32 = 3000
+	var servicePortNumber int32 = 80
 	t.Run("verify service generation", func(t *testing.T) {
 		properties := datamodel.ContainerProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -1549,6 +1550,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 				Ports: map[string]datamodel.ContainerPort{
 					"web": {
 						ContainerPort: int32(containerPortNumber),
+						Port:          int32(servicePortNumber),
 					},
 				},
 			},
@@ -1565,8 +1567,8 @@ func Test_DNS_Service_Generation(t *testing.T) {
 
 		expectedServicePort := corev1.ServicePort{
 			Name:       "web",
-			Port:       containerPortNumber,
-			TargetPort: intstr.FromInt(80),
+			Port:       80,
+			TargetPort: intstr.FromInt(int(containerPortNumber)),
 			Protocol:   "TCP",
 		}
 
