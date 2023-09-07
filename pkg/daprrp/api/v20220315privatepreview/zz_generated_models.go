@@ -11,11 +11,11 @@ import "time"
 
 // DaprPubSubBrokerProperties - Dapr PubSubBroker portable resource properties
 type DaprPubSubBrokerProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]any
@@ -90,10 +90,10 @@ type DaprPubSubBrokerResourceUpdate struct {
 
 // DaprPubSubBrokerResourceUpdateProperties - The updatable properties of the DaprPubSubBrokerResource.
 type DaprPubSubBrokerResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -117,11 +117,11 @@ type DaprPubSubBrokerResourceUpdateProperties struct {
 
 // DaprSecretStoreProperties - Dapr SecretStore portable resource properties
 type DaprSecretStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]any
@@ -193,10 +193,10 @@ type DaprSecretStoreResourceUpdate struct {
 
 // DaprSecretStoreResourceUpdateProperties - The updatable properties of the DaprSecretStoreResource.
 type DaprSecretStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
@@ -217,11 +217,11 @@ type DaprSecretStoreResourceUpdateProperties struct {
 
 // DaprStateStoreProperties - Dapr StateStore portable resource properties
 type DaprStateStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
-	Environment *string
-
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
+
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec
 	Metadata map[string]any
@@ -296,10 +296,10 @@ type DaprStateStoreResourceUpdate struct {
 
 // DaprStateStoreResourceUpdateProperties - The updatable properties of the DaprStateStoreResource.
 type DaprStateStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
+	// Fully qualified resource ID for the application that the portable resource is consumed by
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to
+	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 	Environment *string
 
 	// The metadata for Dapr resource which must match the values specified in Dapr component spec

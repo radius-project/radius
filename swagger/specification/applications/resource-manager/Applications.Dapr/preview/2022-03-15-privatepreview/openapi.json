@@ -959,11 +959,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -1010,7 +1010,7 @@
         }
       },
       "required": [
-        "environment"
+        "application"
       ]
     },
     "DaprPubSubBrokerResource": {
@@ -1077,11 +1077,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
         "metadata": {
           "type": "object",
@@ -1119,11 +1119,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -1163,7 +1163,7 @@
         }
       },
       "required": [
-        "environment"
+        "application"
       ]
     },
     "DaprSecretStoreResource": {
@@ -1230,11 +1230,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
         "metadata": {
           "type": "object",
@@ -1265,11 +1265,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -1316,7 +1316,7 @@
         }
       },
       "required": [
-        "environment"
+        "application"
       ]
     },
     "DaprStateStoreResource": {
@@ -1383,11 +1383,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
         },
         "metadata": {
           "type": "object",

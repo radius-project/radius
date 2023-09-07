@@ -46,7 +46,7 @@ model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
 
 @doc("Dapr StateStore portable resource properties")
 model DaprStateStoreProperties {
-  ...EnvironmentScopedResource;
+  ...ApplicationScopedResource;
   ...DaprResourceProperties;
 
   @doc("A collection of references to resources associated with the state store")
