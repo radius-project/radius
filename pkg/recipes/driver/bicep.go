@@ -22,10 +22,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"golang.org/x/sync/errgroup"
 
-	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -47,6 +49,8 @@ const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
 	recipeParameters = "parameters"
+
+	ErrNotFound = "NotFound"
 )
 
 var _ Driver = (*bicepDriver)(nil)
@@ -116,7 +120,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		ctx,
 		clients.Deployment{
 			Properties: &clients.DeploymentProperties{
-				Mode:           deployments.DeploymentModeIncremental,
+				Mode:           armresources.DeploymentModeIncremental,
 				ProviderConfig: &providerConfig,
 				Parameters:     parameters,
 				Template:       recipeData,
@@ -144,9 +148,21 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	// as bicep does not take care of automatically deleting the unused resources.
 	// Identify the output resources that are no longer relevant to the recipe.
 	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+	outputResourcesToDelete := make([]rpv1.OutputResource, len(diff))
+	for i, resourceID := range diff {
+		id, err := resources.Parse(resourceID)
+		if err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
+		}
+		outputResourcesToDelete[i] = rpv1.OutputResource{
+			ID: id,
+		}
+	}
 
 	// Deleting obsolete output resources.
-	err = d.deleteGCOutputResources(ctx, diff)
+	d.Delete(ctx, DeleteOptions{
+		OutputResources: outputResourcesToDelete,
+	})
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
 	}
@@ -159,27 +175,49 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	orderedOutputResources, err := rpv1.OrderOutputResources(opts.OutputResources)
-	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+	// Create a waitgroup to track the deletion of each output resource
+	g, groupCtx := errgroup.WithContext(ctx)
+
+	for i := range opts.OutputResources {
+		outputResource := opts.OutputResources[i]
+
+		// Create a goroutine that handles the deletion of one resource
+		g.Go(func() error {
+			id := outputResource.ID.String()
+			logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
+
+			// If the resource is not managed by Radius, skip the deletion
+			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
+				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id), id)
+				return nil
+			}
+
+			// todo willsmith: change this to pass retry logic to pipeline
+			err := d.ResourceClient.Delete(groupCtx, id)
+			if err != nil {
+				// todo willsmith: fix the 404 handling
+				resourceErr, ok := err.(*processors.ResourceError)
+				resourceErrInner := resourceErr.Unwrap()
+				resourceErrInnerInner, okInner := resourceErrInner.(*azcore.ResponseError)
+				if ok && okInner && resourceErrInnerInner.ErrorCode == ErrNotFound {
+					// If the resource is not found, then it is already deleted
+					logger.Info(fmt.Sprintf("Output resource: %q is already deleted", id))
+				} else {
+					deletionErr := fmt.Errorf("failed to delete output resource: %q with error: %v", id, err)
+					logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
+					return deletionErr
+				}
+			} else {
+				// If the err is nil, then the resource is deleted successfully
+				logger.Info(fmt.Sprintf("Deleted output resource: %q", id), id)
+			}
+
+			return nil
+		})
 	}
 
-	// Loop over each output resource and delete in reverse dependency order
-	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
-		outputResource := orderedOutputResources[i]
-
-		resourceType := outputResource.GetResourceType()
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID.String(), outputResource.LocalID, resourceType.Type))
-		if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-			continue
-		}
-
-		err = d.ResourceClient.Delete(ctx, outputResource.ID.String())
-		if err != nil {
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %q", outputResource.ID.String()), ucplog.LogFieldTargetResourceID, outputResource.ID.String())
-
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	return nil
@@ -286,7 +324,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -338,18 +376,4 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 	}
 
 	return diff
-}
-
-func (d *bicepDriver) deleteGCOutputResources(ctx context.Context, diff []string) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-	for _, resource := range diff {
-		logger.Info(fmt.Sprintf("Deleting output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
-		err := d.ResourceClient.Delete(ctx, resource)
-		if err != nil {
-			return err
-		}
-		logger.Info(fmt.Sprintf("Deleted output resource: %s", resource), ucplog.LogFieldTargetResourceID, resource)
-	}
-
-	return nil
 }

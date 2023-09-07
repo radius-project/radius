@@ -43,8 +43,8 @@ func NewPipeline(connection Connection) runtime.Pipeline {
 
 // NewClientOptions creates a new ARM client options object with the given connection's endpoint, audience, transport and
 // removes the authorization header policy.
-func NewClientOptions(connection Connection) *arm.ClientOptions {
-	return &arm.ClientOptions{
+func NewClientOptions(connection Connection, clientOptions *arm.ClientOptions) *arm.ClientOptions {
+	defaultClientOptions := &arm.ClientOptions{
 		ClientOptions: policy.ClientOptions{
 			Cloud: cloud.Configuration{
 				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
@@ -52,6 +52,16 @@ func NewClientOptions(connection Connection) *arm.ClientOptions {
 						Endpoint: connection.Endpoint(),
 						Audience: "https://management.core.windows.net",
 					},
+				},
+			},
+			Retry: policy.RetryOptions{
+				StatusCodes: []int{
+					http.StatusRequestTimeout,
+					http.StatusTooManyRequests,
+					http.StatusInternalServerError,
+					http.StatusBadGateway,
+					http.StatusServiceUnavailable,
+					http.StatusGatewayTimeout,
 				},
 			},
 			PerRetryPolicies: []policy.Policy{
@@ -66,6 +76,8 @@ func NewClientOptions(connection Connection) *arm.ClientOptions {
 		},
 		DisableRPRegistration: true,
 	}
+
+	return defaultClientOptions
 }
 
 var _ policy.Policy = (*removeAuthorizationHeaderPolicy)(nil)
