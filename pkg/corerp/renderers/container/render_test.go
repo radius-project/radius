@@ -497,6 +497,10 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 }
 
 func Test_Render_Connections(t *testing.T) {
+	containerConnectionHostname := "containerB"
+	containerConnectionScheme := "http"
+	containerConnectionPort := "80"
+
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
@@ -507,6 +511,9 @@ func Test_Render_Connections(t *testing.T) {
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
+			},
+			"containerB": {
+				Source: fmt.Sprintf("%s://%s:%s", containerConnectionScheme, containerConnectionHostname, containerConnectionPort),
 			},
 		},
 		Container: datamodel.Container{
@@ -570,6 +577,18 @@ func Test_Render_Connections(t *testing.T) {
 						Key: "CONNECTION_A_COMPUTEDKEY2",
 					},
 				},
+			},
+			{
+				Name:  "CONNECTION_CONTAINERB_HOSTNAME",
+				Value: containerConnectionHostname,
+			},
+			{
+				Name:  "CONNECTION_CONTAINERB_PORT",
+				Value: containerConnectionPort,
+			},
+			{
+				Name:  "CONNECTION_CONTAINERB_SCHEME",
+				Value: containerConnectionScheme,
 			},
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},
