@@ -692,9 +692,9 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 					return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
 				}
 
-				env["CONNECTIONS_"+name+"_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
-				env["CONNECTIONS_"+name+"_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
-				env["CONNECTIONS_"+name+"_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
+				env["CONNECTION_"+name+"_SCHEME"] = corev1.EnvVar{Name: "CONNECTION_" + name + "_SCHEME", Value: scheme}
+				env["CONNECTION_"+name+"_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTION_" + name + "_HOSTNAME", Value: hostname}
+				env["CONNECTION_"+name+"_PORT"] = corev1.EnvVar{Name: "CONNECTION_" + name + "_PORT", Value: port}
 
 				continue
 			}
