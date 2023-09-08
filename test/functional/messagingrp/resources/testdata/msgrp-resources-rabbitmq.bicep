@@ -48,7 +48,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     connections: {
       rabbitmq: {
-        source: rabbitmq.id
+        source: 'http://rmq-ctnr:5672'
       }
     }
   }
@@ -64,18 +64,9 @@ resource rabbitmqContainer 'Applications.Core/containers@2022-03-15-privateprevi
       ports: {
         rabbitmq: {
           containerPort: rabbitmqPort
-          provides: rabbitmqRoute.id
         }
       }
     }
-  }
-}
-
-resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'rmq-rte'
-  properties: {
-    application: app.id
-    port: rabbitmqPort
   }
 }
 

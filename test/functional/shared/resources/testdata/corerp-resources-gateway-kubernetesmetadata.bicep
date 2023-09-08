@@ -41,29 +41,20 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
     routes: [
       {
         path: '/'
-        destination: frontendRoute.id
+        destination: 'http://http-gtwy-front-ctnr-kme:81'
       }
       {
         path: '/backend1'
-        destination: backendRoute.id
+        destination: 'http://http-gtwy-back-ctnr-kme:3000'
       }
       {
         // Route /backend2 requests to the backend, and
         // transform the request to /
         path: '/backend2'
-        destination: backendRoute.id
+        destination: 'http://http-gtwy-back-ctnr-kme:3000'
         replacePrefix: '/'
       }
     ]
-  }
-}
-
-resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-front-rte-kme'
-  location: location
-  properties: {
-    application: app.id
-    port: 81
   }
 }
 
@@ -77,7 +68,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
       ports: {
         web: {
           containerPort: port
-          provides: frontendRoute.id
+          port: 81
         }
       }
       readinessProbe: {
@@ -88,17 +79,9 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
     }
     connections: {
       backend: {
-        source: backendRoute.id
+        source: 'http://http-gtwy-back-ctnr-kme:3000'
       }
     }
-  }
-}
-
-resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'http-gtwy-back-rte-kme'
-  location: location
-  properties: {
-    application: app.id
   }
 }
 
@@ -115,7 +98,6 @@ resource backendContainer 'Applications.Core/containers@2022-03-15-privateprevie
       ports: {
         web: {
           containerPort: port
-          provides: backendRoute.id
         }
       }
       readinessProbe: {

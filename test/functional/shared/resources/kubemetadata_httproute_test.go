@@ -40,11 +40,11 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 
 	expectedLabels := map[string]string{
 		"app.kubernetes.io/managed-by": "radius-rp",
-		"app.kubernetes.io/name":       "ctnr-rte-kme",
+		"app.kubernetes.io/name":       "ctnr-rte-kme-ctnr",
 		"app.kubernetes.io/part-of":    "corerp-app-rte-kme",
 		"radius.dev/application":       "corerp-app-rte-kme",
-		"radius.dev/resource":          "ctnr-rte-kme",
-		"radius.dev/resource-type":     "applications.core-httproutes",
+		"radius.dev/resource":          "ctnr-rte-kme-ctnr",
+		"radius.dev/resource-type":     "applications.core-containers",
 		"user.lbl.1":                   "user.lbl.val.1",
 		"user.lbl.2":                   "user.lbl.val.2",
 	}
@@ -63,25 +63,20 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 						Type: validation.ContainersResource,
 						App:  name,
 					},
-					{
-						Name: "ctnr-rte-kme",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-rte-kme-ctnr"),
-						validation.NewK8sServiceForResource(name, "ctnr-rte-kme"),
+						validation.NewK8sServiceForResource(name, "ctnr-rte-kme-ctnr"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 				// Verify service labels and annotations
-				service, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-rte-kme", metav1.GetOptions{})
+				service, err := test.Options.K8sClient.CoreV1().Services(appNamespace).Get(ctx, "ctnr-rte-kme-ctnr", metav1.GetOptions{})
 				require.NoError(t, err)
 				require.NotNil(t, service)
 

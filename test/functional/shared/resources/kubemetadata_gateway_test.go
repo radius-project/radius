@@ -51,18 +51,8 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "http-gtwy-front-rte-kme",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "http-gtwy-front-ctnr-kme",
 						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "http-gtwy-back-rte-kme",
-						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
@@ -78,10 +68,8 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 						validation.NewK8sPodForResource(name, "http-gtwy-front-ctnr-kme"),
 						validation.NewK8sPodForResource(name, "http-gtwy-back-ctnr-kme"),
 						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-kme"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-front-rte-kme"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-front-rte-kme"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-back-rte-kme"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-back-rte-kme"),
+						validation.NewK8sServiceForResource(name, "http-gtwy-front-ctnr-kme"),
+						validation.NewK8sServiceForResource(name, "http-gtwy-back-ctnr-kme"),
 					},
 				},
 			},

@@ -52,7 +52,6 @@ resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview'
       ports: {
         mongo: {
           containerPort: 27017
-          provides: mongoRoute.id
         }
       }
     }
@@ -60,14 +59,6 @@ resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview'
   }
 }
 
-resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'mdb-us-rte'
-  location: 'global'
-  properties: {
-    application: app.id
-    port: 27017
-  }
-}
 
 resource mongo 'Applications.Datastores/mongoDatabases@2022-03-15-privatepreview' = {
   name: 'mdb-us-db'
@@ -76,12 +67,12 @@ resource mongo 'Applications.Datastores/mongoDatabases@2022-03-15-privatepreview
     application: app.id
     environment: environment
     resourceProvisioning: 'manual'
-    host: mongoRoute.properties.hostname
-    port: mongoRoute.properties.port
+    host: 'mdb-us-ctnr'
+    port: 27017
     database: 'mongodb-${app.name}'
     username: username
     secrets: {
-      connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}/mongodb-${app.name}'
+      connectionString: 'mongodb://${username}:${password}@mdb-us-ctnr:27017/mongodb-${app.name}'
       password: password
     }
   }
