@@ -248,7 +248,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 
 	// If the container has an exposed port and uses DNS-SD, generate a service for it.
 	if needsServiceGeneration {
-
 		for portName, port := range resource.Properties.Container.Ports {
 			// store portNames and portValues for use in service generation.
 			servicePort := corev1.ServicePort{
@@ -266,7 +265,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		outputResources = append(outputResources, serviceResource)
 	}
 
