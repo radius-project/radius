@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/test/functional"
@@ -26,28 +27,28 @@ import (
 	"github.com/radius-project/radius/test/validation"
 )
 
-func Test_DaprSecretStore_Manual(t *testing.T) {
-	template := "resources/testdata/daprrp-resources-secretstore-manual.bicep"
-	name := "daprrp-rs-secretstore-manual"
-	appNamespace := "default-daprrp-rs-secretstore-manual"
+func Test_DaprStateStore_Manual(t *testing.T) {
+	template := "testdata/daprrp-resources-statestore-manual.bicep"
+	name := "daprrp-rs-statestore-manual"
+	appNamespace := "default-daprrp-rs-statestore-manual"
 
-	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
+	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace)),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: name,
+						Name: "daprrp-rs-statestore-manual",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gnrc-scs-ctnr",
+						Name: "dapr-sts-manual-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs-manual",
-						Type: validation.DaprSecretStoresResource,
+						Name: "dapr-sts-manual",
+						Type: validation.DaprStateStoresResource,
 						App:  name,
 					},
 				},
@@ -55,48 +56,58 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-ctnr"),
 
-						// Not sure why we skip validating the labels
-						validation.NewDaprComponent(name, "gnrc-scs-manual").
+						// Deployed as supporting resources using Kubernetes Bicep extensibility.
+						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis").
+							ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis").
+							ValidateLabels(false),
+
+						validation.NewDaprComponent(name, "dapr-sts-manual").
 							ValidateLabels(false),
 					},
 				},
 			},
 		},
-	}, shared.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+	})
 
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-manual", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-manual", appNamespace)
 	}
 
 	test.Test(t)
 }
 
-func Test_DaprSecretStore_Recipe(t *testing.T) {
-	template := "resources/testdata/daprrp-resources-secretstore-recipe.bicep"
-	name := "daprrp-rs-secretstore-recipe"
-	appNamespace := "daprrp-rs-secretstore-recipe"
+func Test_DaprStateStore_Recipe(t *testing.T) {
+	template := "testdata/daprrp-resources-statestore-recipe.bicep"
+	name := "daprrp-rs-sts-recipe"
+	appNamespace := "daprrp-env-recipes-env"
 
-	test := shared.NewRPTest(t, appNamespace, []shared.TestStep{
+	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: name,
-						Type: validation.ApplicationsResource,
+						Name: "daprrp-env-recipes-env",
+						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "gnrc-scs-ctnr-recipe",
+						Name: "daprrp-rs-sts-recipe",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "dapr-sts-recipe-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gnrc-scs-recipe",
-						Type: validation.DaprSecretStoresResource,
+						Name: "dapr-sts-recipe",
+						Type: validation.DaprStateStoresResource,
 						App:  name,
 					},
 				},
@@ -104,21 +115,21 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").
+						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr").
 							ValidateLabels(false),
 
-						validation.NewDaprComponent(name, "gnrc-scs-recipe").
+						validation.NewDaprComponent(name, "dapr-sts-recipe").
 							ValidateLabels(false),
 					},
 				},
 			},
 		},
-	}, shared.K8sSecretResource(appNamespace, "mysecret", "", "fakekey", []byte("fakevalue")))
+	})
 
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
 
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/secretStores", "gnrc-scs-recipe", appNamespace)
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/stateStores", "dapr-sts-recipe", appNamespace)
 	}
 
 	test.Test(t)

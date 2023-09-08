@@ -28,7 +28,7 @@ import (
 )
 
 func Test_DaprPubSubBroker_Manual(t *testing.T) {
-	template := "resources/testdata/daprrp-resources-pubsub-broker-manual.bicep"
+	template := "testdata/daprrp-resources-pubsub-broker-manual.bicep"
 	name := "dpsb-manual-app"
 	appNamespace := "default-dpsb-manual-app"
 
@@ -80,7 +80,7 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 }
 
 func Test_DaprPubSubBroker_Recipe(t *testing.T) {
-	template := "resources/testdata/daprrp-resources-pubsub-broker-recipe.bicep"
+	template := "testdata/daprrp-resources-pubsub-broker-recipe.bicep"
 	name := "dpsb-recipe-app"
 	appNamespace := "dpsb-recipe-env"
 

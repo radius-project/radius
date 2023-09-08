@@ -26,7 +26,7 @@ import (
 )
 
 func Test_DaprComponentNameConflict(t *testing.T) {
-	template := "resources/testdata/daprrp-resources-component-name-conflict.bicep"
+	template := "testdata/daprrp-resources-component-name-conflict.bicep"
 	name := "daprrp-rs-component-name-conflict"
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
