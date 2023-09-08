@@ -29,7 +29,9 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -98,6 +100,40 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprStateSt
 	deployed := rpv1.NewKubernetesOutputResource("Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})
 	deployed.RadiusManaged = to.Ptr(true)
 	resource.Properties.Status.OutputResources = append(resource.Properties.Status.OutputResources, deployed)
+
+	return nil
+}
+
+// Delete implements the processors.Processor interface for DaprStateStore resources. If the resource is being
+// provisioned manually, it deletes the Dapr component in Kubernetes.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprStateStore, options processors.Options) error {
+	if resource.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
+		// If the resource was provisioned by recipe then we expect the recipe engine to delete the Dapr Component
+		// in Kubernetes. At this point we're done so we can just return.
+		return nil
+	}
+
+	applicationID, err := resources.ParseResource(resource.Properties.Application)
+	if err != nil {
+		return err // This should already be validated by this point.
+	}
+
+	component := unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": dapr.DaprAPIVersion,
+			"kind":       dapr.DaprKind,
+			"metadata": map[string]any{
+				"namespace": options.RuntimeConfiguration.Kubernetes.Namespace,
+				"name":      kubernetes.NormalizeDaprResourceName(resource.Properties.ComponentName),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, portableresources.DaprStateStoresResourceType),
+			},
+		},
+	}
+
+	err = p.Client.Delete(ctx, &component)
+	if err != nil {
+		return &processors.ResourceError{Inner: err}
+	}
 
 	return nil
 }

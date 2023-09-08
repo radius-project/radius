@@ -27,6 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -43,11 +44,11 @@ var outputResource = rpv1.OutputResource{
 
 func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine) {
+	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
-
 		msc := store.NewMockStorageClient(mctrl)
 		eng := engine.NewMockEngine(mctrl)
+		cfg := configloader.NewMockConfigurationLoader(mctrl)
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
@@ -59,7 +60,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 		return func(tb testing.TB) {
 			mctrl.Finish()
-		}, msc, req, eng
+		}, msc, req, eng, cfg
 	}
 
 	t.Parallel()
@@ -78,7 +79,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range deleteCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			teardownTest, msc, req, eng := setupTest(t)
+			teardownTest, msc, req, eng, configLoader := setupTest(t)
 			defer teardownTest(t)
 
 			status := rpv1.ResourceStatus{
@@ -125,6 +126,21 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 					Return(tt.engDelErr).
 					Times(1)
 				if tt.engDelErr == nil {
+					configLoader.EXPECT().
+						LoadConfiguration(gomock.Any(), gomock.Any()).
+						Return(
+							&recipes.Configuration{
+								Runtime: recipes.RuntimeConfiguration{
+									Kubernetes: &recipes.KubernetesRuntime{
+										Namespace:            "test-namespace",
+										EnvironmentNamespace: "test-env-namespace",
+									},
+								},
+							},
+							nil,
+						).
+						Times(1)
+
 					msc.EXPECT().
 						Delete(gomock.Any(), gomock.Any()).
 						Return(tt.scDelErr).
@@ -135,7 +151,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 				StorageClient: msc,
 			}
 
-			ctrl, err := NewDeleteResource(opts, eng)
+			ctrl, err := NewDeleteResource(successProcessorReference, eng, configLoader, opts)
 			require.NoError(t, err)
 
 			_, err = ctrl.Run(context.Background(), req)
@@ -147,48 +163,4 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.T) {
-
-	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *gomock.Controller) {
-		mctrl := gomock.NewController(t)
-
-		msc := store.NewMockStorageClient(mctrl)
-
-		req := &ctrl.Request{
-			OperationID:      uuid.New(),
-			OperationType:    "APPLICATIONS.DAPR/INVALID|DELETE",
-			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/invalidType/invalid",
-			CorrelationID:    uuid.NewString(),
-			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
-		}
-
-		return func(tb testing.TB) {
-			mctrl.Finish()
-		}, msc, req, mctrl
-	}
-
-	t.Parallel()
-
-	t.Run("deleting-invalid-resource", func(t *testing.T) {
-		teardownTest, msc, req, mctrl := setupTest(t)
-		defer teardownTest(t)
-
-		msc.EXPECT().
-			Get(gomock.Any(), gomock.Any()).
-			Return(&store.Object{}, nil).
-			Times(1)
-		opts := ctrl.Options{
-			StorageClient: msc,
-		}
-
-		eng := engine.NewMockEngine(mctrl)
-		ctrl, err := NewDeleteResource(opts, eng)
-		require.NoError(t, err)
-
-		_, err = ctrl.Run(context.Background(), req)
-		require.Error(t, err)
-		require.Equal(t, "async delete operation unsupported on resource type: \"applications.dapr/invalidtype\". Resource ID: \"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/invalidType/invalid\"", err.Error())
-	})
 }

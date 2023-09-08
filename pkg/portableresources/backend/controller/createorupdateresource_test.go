@@ -98,6 +98,11 @@ func (p *SuccessProcessor) Process(ctx context.Context, data *TestResource, opti
 	return nil
 }
 
+// Delete returns no error.
+func (p *SuccessProcessor) Delete(ctx context.Context, data *TestResource, options processors.Options) error {
+	return nil
+}
+
 var successProcessorReference = processors.ResourceProcessor[*TestResource, TestResource](&SuccessProcessor{})
 
 type ErrorProcessor struct {
@@ -105,12 +110,16 @@ type ErrorProcessor struct {
 
 // Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
-	return processorErr
+	return errProcessor
+}
+
+func (p *ErrorProcessor) Delete(ctx context.Context, data *TestResource, options processors.Options) error {
+	return nil
 }
 
 var errorProcessorReference = processors.ResourceProcessor[*TestResource, TestResource](&ErrorProcessor{})
-var processorErr = errors.New("processor error")
-var configurationErr = errors.New("configuration error")
+var errProcessor = errors.New("processor error")
+var errConfiguration = errors.New("configuration error")
 
 var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1"
 
@@ -204,11 +213,11 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			nil,
 			false,
 			nil,
-			configurationErr,
+			errConfiguration,
 			nil,
 			nil,
 			nil,
-			configurationErr,
+			errConfiguration,
 		},
 		{
 			"processor-err",
@@ -219,10 +228,10 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			false,
 			nil,
 			nil,
-			processorErr,
+			errProcessor,
 			nil,
 			nil,
-			processorErr,
+			errProcessor,
 		},
 		{
 			"save-err",

@@ -66,8 +66,8 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, namespace string, componentNa
 	// Translate into Dapr State Store schema
 	item := unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "dapr.io/v1alpha1",
-			"kind":       "Component",
+			"apiVersion": DaprAPIVersion,
+			"kind":       DaprKind,
 			"metadata": map[string]any{
 				"namespace": namespace,
 				"name":      kubernetes.NormalizeDaprResourceName(componentName),

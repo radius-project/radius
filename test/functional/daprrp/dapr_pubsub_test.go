@@ -17,6 +17,7 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -56,14 +57,25 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "dpsb-manual-app-ctnr"),
-						validation.NewK8sPodForResource(name, "dpsb-manual-redis").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dpsb-manual-redis").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dpsb-manual-redis").
+							ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "dpsb-manual-redis").
+							ValidateLabels(false),
+
+						validation.NewDaprComponent(name, "dpsb-manual").
+							ValidateLabels(false),
 					},
 				},
 			},
 		},
 	})
+
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-manual", appNamespace)
+	}
+
 	test.Test(t)
 }
 
@@ -101,12 +113,22 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-recipe-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(name, "dpsb-recipe-ctnr").
+							ValidateLabels(false),
+
+						validation.NewDaprComponent(name, "dpsb-recipe").
+							ValidateLabels(false),
 					},
 				},
 			},
 		},
 	})
+
 	test.RequiredFeatures = []shared.RequiredFeature{shared.FeatureDapr}
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		verifyDaprComponentsDeleted(ctx, t, test, "Applications.Dapr/pubSubBrokers", "dpsb-recipe", appNamespace)
+	}
+
 	test.Test(t)
 }

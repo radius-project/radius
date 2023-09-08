@@ -142,19 +142,22 @@ func (w *Service) Run(ctx context.Context) error {
 		processor := &extenders.Processor{}
 		return pr_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
 	}
+	extenderDeleteController := func(options ctrl.Options) (ctrl.Controller, error) {
+		processor := &extenders.Processor{}
+		return pr_backend_ctrl.NewDeleteResource[*datamodel.Extender, datamodel.Extender](processor, engine, configLoader, options)
+	}
 
 	// Register controllers to run backend processing for extenders.
 	err = w.Controllers.Register(ctx, portableresources.ExtendersResourceType, v1.OperationPut, extenderCreateOrUpdateController, opts)
 	if err != nil {
 		return err
 	}
+
 	err = w.Controllers.Register(
 		ctx,
 		portableresources.ExtendersResourceType,
 		v1.OperationDelete,
-		func(options ctrl.Options) (ctrl.Controller, error) {
-			return pr_backend_ctrl.NewDeleteResource(options, engine)
-		},
+		extenderDeleteController,
 		opts)
 	if err != nil {
 		return err
