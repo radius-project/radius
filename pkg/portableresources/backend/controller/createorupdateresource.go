@@ -135,7 +135,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		BaseOptions: engine.BaseOptions{
 			Recipe: request,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 }
 

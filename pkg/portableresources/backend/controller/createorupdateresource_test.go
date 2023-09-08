@@ -337,7 +337,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 						BaseOptions: engine.BaseOptions{
 							Recipe: recipeMetadata,
 						},
-						PrevState: prevState,
+						PreviousState: prevState,
 					}).
 					Return(&recipes.RecipeOutput{}, tt.recipeErr).
 					Times(1)
@@ -347,7 +347,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 						BaseOptions: engine.BaseOptions{
 							Recipe: recipeMetadata,
 						},
-						PrevState: prevState,
+						PreviousState: prevState,
 					}).
 					Return(&recipes.RecipeOutput{}, nil).
 					Times(1)

@@ -52,7 +52,7 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 	executionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PrevState)
+	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
 		result = metrics.FailedOperationState
 	}

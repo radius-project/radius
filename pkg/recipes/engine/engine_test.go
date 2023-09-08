@@ -116,7 +116,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		BaseOptions: BaseOptions{
 			Recipe: recipeMetadata,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
@@ -179,7 +179,7 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		BaseOptions: BaseOptions{
 			Recipe: recipeMetadata,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 	require.Nil(t, result)
 	require.Error(t, err)
@@ -254,7 +254,7 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		BaseOptions: BaseOptions{
 			Recipe: recipeMetadata,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
@@ -290,7 +290,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		BaseOptions: BaseOptions{
 			Recipe: recipeMetadata,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "could not find driver invalid")
@@ -320,7 +320,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 		BaseOptions: BaseOptions{
 			Recipe: recipeMetadata,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 	require.Error(t, err)
 }
@@ -358,7 +358,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		BaseOptions: BaseOptions{
 			Recipe: recipeMetadata,
 		},
-		PrevState: prevState,
+		PreviousState: prevState,
 	})
 	require.Error(t, err)
 }

@@ -34,8 +34,8 @@ const (
 	// recipeDownloadDuration is the metric name for the recipe download duration.
 	recipeDownloadDuration = "recipe.download.duration"
 
-	// recipeGCDuration is the metric name for the recipe garbage collection duration.
-	recipeGCDuration = "recipe.garbage.collection.duration"
+	// recipeGCDuration is the metric name for the bicep recipe garbage collection duration.
+	recipeGCDuration = "recipe.bicep.garbage.collection.duration"
 
 	// terraformInstallationDuration is the metric name for the Terraform installation duration.
 	terraformInstallationDuration = "recipe.tf.installation.duration"
@@ -52,7 +52,7 @@ const (
 	// RecipeEngineOperationDownloadRecipe represents the Download Recipe operation of the Recipe Engine.
 	RecipeEngineOperationDownloadRecipe = "download.recipe"
 
-	// RecipeEngineOperationDownloadRecipe represents the Download Recipe operation of the Recipe Engine.
+	// RecipeEngineOperationGC represents the Garbage Collection operation of the Recipe Engine.
 	RecipeEngineOperationGC = "garbage.collection.recipe"
 )
 
