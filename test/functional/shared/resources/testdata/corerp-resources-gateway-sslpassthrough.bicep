@@ -40,18 +40,9 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
     } 
     routes: [
       {
-        destination: frontendRoute.id
+        destination: 'https://ssl-gtwy-front-ctnr:443'
       }
     ]
-  }
-}
-
-resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'ssl-gtwy-front-rte'
-  location: location
-  properties: {
-    application: app.id
-    port: 443
   }
 }
 
@@ -69,7 +60,7 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
-          provides: frontendRoute.id
+          port: 443
         }
       }
       readinessProbe: {

@@ -17,14 +17,6 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource routea 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'routea'
-  location: location
-  properties: {
-    application: app.id
-  }
-}
-
 resource mechanicsg 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'mechanicsg'
   location: location
@@ -32,7 +24,7 @@ resource mechanicsg 'Applications.Core/containers@2023-10-01-preview' = {
     application: app.id
     connections: {
       b: {
-        source: routeb.id
+        source: 'http://cyclea:3000'
       }
     }
     container: {
@@ -40,18 +32,9 @@ resource mechanicsg 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: routea.id
-        }
+       }
       }
     }
-  }
-}
-
-resource routeb 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'routeb'
-  location: location
-  properties: {
-    application: app.id
   }
 }
 
@@ -62,7 +45,7 @@ resource cyclea 'Applications.Core/containers@2023-10-01-preview' = {
     application: app.id
     connections: {
       a: {
-        source: routea.id
+        source: 'http://mechanicsg:3000'
       }
     }
     container: {
@@ -70,7 +53,6 @@ resource cyclea 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: 3000
-          provides: routeb.id
         }
       }
     }

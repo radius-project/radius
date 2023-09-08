@@ -17,14 +17,6 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource httpRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'invalid-rte'
-  location: location
-  properties: {
-    application: app.location
-  }
-}
-
 resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   name: 'invalid-gtwy'
   location: location
