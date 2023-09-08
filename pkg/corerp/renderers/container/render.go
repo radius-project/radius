@@ -244,24 +244,25 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
 	}
 
+	var servicePorts []corev1.ServicePort
+
 	// If the container has an exposed port and uses DNS-SD, generate a service for it.
 	if needsServiceGeneration {
-		containerPorts := containerPorts{
-			values:            []int32{},
-			names:             []string{},
-			servicePortValues: []int32{},
-		}
 
 		for portName, port := range resource.Properties.Container.Ports {
 			// store portNames and portValues for use in service generation.
-			containerPorts.names = append(containerPorts.names, portName)
-			containerPorts.values = append(containerPorts.values, port.ContainerPort)
-			containerPorts.servicePortValues = append(containerPorts.servicePortValues, port.Port)
+			servicePort := corev1.ServicePort{
+				Name:       portName,
+				Port:       port.Port,
+				TargetPort: intstr.FromInt(int(port.ContainerPort)),
+				Protocol:   corev1.ProtocolTCP,
+			}
+			servicePorts = append(servicePorts, servicePort)
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
 		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
-		serviceResource, err := r.makeService(basesrv, resource, options, ctx, containerPorts)
+		serviceResource, err := r.makeService(basesrv, resource, options, ctx, servicePorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -278,13 +279,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-type containerPorts struct {
-	values            []int32
-	names             []string
-	servicePortValues []int32
-}
-
-func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, servicePorts []corev1.ServicePort) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -292,15 +287,7 @@ func (r Renderer) makeService(base *corev1.Service, resource *datamodel.Containe
 
 	// Ensure that we don't have any duplicate ports.
 SKIPINSERT:
-	for i, port := range containerPorts.values {
-		fmt.Println(port)
-		newPort := corev1.ServicePort{
-			Name:       containerPorts.names[i],
-			Port:       containerPorts.servicePortValues[i],
-			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
-			Protocol:   corev1.ProtocolTCP,
-		}
-
+	for _, newPort := range servicePorts {
 		// Skip to add new port. Instead, upsert port if it already exists.
 		for j, p := range base.Spec.Ports {
 			if strings.EqualFold(p.Name, newPort.Name) || p.Port == newPort.Port || p.TargetPort.IntVal == newPort.TargetPort.IntVal {
