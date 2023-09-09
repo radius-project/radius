@@ -219,20 +219,20 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql/listsecrets",
 		Method:        http.MethodPost,
 	}, {
-		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGet},
 		Path:          "/providers/applications.messaging/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGetOperationResult},
+		OperationType: v1.OperationType{Type: "Applications.Messaging/operationResults", Method: v1.OperationGet},
 		Path:          "/providers/applications.messaging/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	},
 	{
-		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGet},
 		Path:          "/providers/applications.dapr/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGetOperationResult},
+		OperationType: v1.OperationType{Type: "Applications.Dapr/operationResults", Method: v1.OperationGet},
 		Path:          "/providers/applications.dapr/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	},

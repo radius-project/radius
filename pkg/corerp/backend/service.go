@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/model"
 	"github.com/radius-project/radius/pkg/corerp/processors/extenders"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_backend_ctrl "github.com/radius-project/radius/pkg/portableresources/backend/controller"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -84,16 +85,21 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, w.KubeClient, w.KubeClientSet, w.KubeDiscoveryClient, w.KubeDynamicClientSet)
+	k8s, err := kubeutil.NewClients(w.Options.K8sConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize kubernetes clients: %w", err)
+	}
+
+	coreAppModel, err := model.NewApplicationModel(w.Options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient, k8s.DynamicClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
 	opts := ctrl.Options{
 		DataProvider: w.StorageProvider,
-		KubeClient:   w.KubeClient,
+		KubeClient:   k8s.RuntimeClient,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.KubeClient, w.KubeClientSet)
+			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, k8s.RuntimeClient, k8s.ClientSet)
 		},
 	}
 
@@ -113,7 +119,7 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
-	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, w.KubeClient, w.KubeDiscoveryClient)
+	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, k8s.RuntimeClient, k8s.DiscoveryClient)
 	clientOptions := sdk.NewClientOptions(w.Options.UCPConnection)
 
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
@@ -133,18 +139,18 @@ func (w *Service) Run(ctx context.Context) error {
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(w.Options.UCPConnection, provider.NewSecretProvider(w.Options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: w.Options.Config.Terraform.Path,
-				}, w.KubeClientSet),
+				}, k8s.ClientSet),
 		},
 	})
 
 	opts.GetDeploymentProcessor = nil
 	extenderCreateOrUpdateController := func(options ctrl.Options) (ctrl.Controller, error) {
 		processor := &extenders.Processor{}
-		return pr_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](processor, engine, client, configLoader, options)
+		return pr_backend_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](options, processor, engine, client, configLoader)
 	}
 	extenderDeleteController := func(options ctrl.Options) (ctrl.Controller, error) {
 		processor := &extenders.Processor{}
-		return pr_backend_ctrl.NewDeleteResource[*datamodel.Extender, datamodel.Extender](processor, engine, configLoader, options)
+		return pr_backend_ctrl.NewDeleteResource[*datamodel.Extender, datamodel.Extender](options, processor, engine, configLoader)
 	}
 
 	// Register controllers to run backend processing for extenders.

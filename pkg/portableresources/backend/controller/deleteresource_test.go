@@ -151,7 +151,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 				StorageClient: msc,
 			}
 
-			ctrl, err := NewDeleteResource(successProcessorReference, eng, configLoader, opts)
+			ctrl, err := NewDeleteResource(opts, successProcessorReference, eng, configLoader)
 			require.NoError(t, err)
 
 			_, err = ctrl.Run(context.Background(), req)

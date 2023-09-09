@@ -49,7 +49,7 @@ func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, 
 
 	ot := v1.OperationType{Type: resourceType, Method: method}
 
-	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
+	storageClient, err := h.sp.GetStorageClient(ctx, resourceType)
 	if err != nil {
 		return err
 	}

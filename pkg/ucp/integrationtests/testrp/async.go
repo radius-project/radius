@@ -58,13 +58,10 @@ func AsyncResource(t *testing.T, ts *testserver.TestServer, rootScope string, pu
 
 	resourceType := "System.Test/testResources"
 
-	operationStoreClient, err := ts.Clients.StorageProvider.GetStorageClient(ctx, "System.Test/operationStatuses")
-	require.NoError(t, err)
-
 	queueClient, err := ts.Clients.QueueProvider.GetClient(ctx)
 	require.NoError(t, err)
 
-	statusManager := statusmanager.New(operationStoreClient, queueClient, "System.Test", v1.LocationGlobal)
+	statusManager := statusmanager.New(ts.Clients.StorageProvider, queueClient, v1.LocationGlobal)
 
 	backendOpts := backend_ctrl.Options{
 		DataProvider: ts.Clients.StorageProvider,

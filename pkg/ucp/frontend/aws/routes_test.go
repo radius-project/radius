@@ -83,11 +83,11 @@ func Test_Routes(t *testing.T) {
 			Method:        http.MethodPost,
 			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/Stream/:delete",
 		}, {
-			OperationType: v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationResult},
+			OperationType: v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			Method:        http.MethodGet,
 			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/locations/global/operationResults/00000000-0000-0000-0000-000000000000",
 		}, {
-			OperationType: v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationStatuses},
+			OperationType: v1.OperationType{Type: OperationStatusResourceType, Method: v1.OperationGet},
 			Method:        http.MethodGet,
 			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/locations/global/operationStatuses/00000000-0000-0000-0000-000000000000",
 		},
