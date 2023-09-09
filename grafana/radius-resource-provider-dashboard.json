@@ -1922,7 +1922,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "(sum(rate(recipe_operation_duration_count{operation_state=\"failed\"}[$__rate_interval])) by (recipe_template_path, operation_type)) / (sum(rate(recipe_operation_duration_count[$__rate_interval])) by (recipe_template_path, operation_type))",
+          "expr": "(sum(rate(recipe_operation_duration_count{operation_state!=\"success\"}[$__rate_interval])) by (recipe_template_path, operation_type)) / (sum(rate(recipe_operation_duration_count[$__rate_interval])) by (recipe_template_path, operation_type))",
           "format": "time_series",
           "instant": false,
           "interval": "",
