@@ -17,6 +17,8 @@ limitations under the License.
 package setup
 
 import (
+	"time"
+
 	asyncctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -36,6 +38,11 @@ import (
 
 	ext_processor "github.com/radius-project/radius/pkg/corerp/processors/extenders"
 	pr_ctrl "github.com/radius-project/radius/pkg/portableresources/backend/controller"
+)
+
+const (
+	// AsyncOperationRetryAfter is polling interval for async create/update or delete resource operations.
+	AsyncOperationRetryAfter = time.Duration(5) * time.Second
 )
 
 // SetupNamespace builds the namespace for core resource provider.
@@ -84,13 +91,16 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		ResponseConverter: converter.HTTPRouteDataModelToVersioned,
 
 		Put: builder.Operation[datamodel.HTTPRoute]{
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.HTTPRoute]{
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.HTTPRoute]{
-			AsyncJobController: backend_ctrl.NewDeleteResource,
+			AsyncJobController:       backend_ctrl.NewDeleteResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
 
@@ -103,17 +113,20 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.ContainerResource]{
 			UpdateFilters: []apictrl.UpdateFilter[datamodel.ContainerResource]{
 				rp_frontend.PrepareRadiusResource[*datamodel.ContainerResource],
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.ContainerResource]{
-			AsyncJobController: backend_ctrl.NewDeleteResource,
+			AsyncJobController:       backend_ctrl.NewDeleteResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
 
@@ -126,17 +139,20 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
 				gw_ctrl.ValidateAndMutateRequest,
 			},
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.Gateway]{
 			UpdateFilters: []apictrl.UpdateFilter[datamodel.Gateway]{
 				rp_frontend.PrepareRadiusResource[*datamodel.Gateway],
 				gw_ctrl.ValidateAndMutateRequest,
 			},
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.Gateway]{
-			AsyncJobController: backend_ctrl.NewDeleteResource,
+			AsyncJobController:       backend_ctrl.NewDeleteResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
 
@@ -149,17 +165,20 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 				vol_ctrl.ValidateRequest,
 			},
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.VolumeResource]{
 			UpdateFilters: []apictrl.UpdateFilter[datamodel.VolumeResource]{
 				rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
 				vol_ctrl.ValidateRequest,
 			},
-			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+			AsyncJobController:       backend_ctrl.NewCreateOrUpdateResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.VolumeResource]{
-			AsyncJobController: backend_ctrl.NewDeleteResource,
+			AsyncJobController:       backend_ctrl.NewDeleteResource,
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 	})
 
@@ -204,16 +223,22 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewCreateOrUpdateResource(options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.Extender]{
 			UpdateFilters: []apictrl.UpdateFilter[datamodel.Extender]{
 				rp_frontend.PrepareRadiusResource[*datamodel.Extender],
 			},
+			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
+				return pr_ctrl.NewCreateOrUpdateResource(options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+			},
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.Extender]{
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewDeleteResource(options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
+			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Custom: map[string]builder.Operation[datamodel.Extender]{
 			"listsecrets": {
