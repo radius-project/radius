@@ -89,6 +89,9 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		Patch: builder.Operation[datamodel.HTTPRoute]{
 			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
 		},
+		Delete: builder.Operation[datamodel.HTTPRoute]{
+			AsyncJobController: backend_ctrl.NewDeleteResource,
+		},
 	})
 
 	_ = ns.AddResource("containers", &builder.ResourceOption[*datamodel.ContainerResource, datamodel.ContainerResource]{
@@ -108,6 +111,9 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				ctr_ctrl.ValidateAndMutateRequest,
 			},
 			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+		},
+		Delete: builder.Operation[datamodel.ContainerResource]{
+			AsyncJobController: backend_ctrl.NewDeleteResource,
 		},
 	})
 
@@ -129,6 +135,9 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			},
 			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
 		},
+		Delete: builder.Operation[datamodel.Gateway]{
+			AsyncJobController: backend_ctrl.NewDeleteResource,
+		},
 	})
 
 	_ = ns.AddResource("volumes", &builder.ResourceOption[*datamodel.VolumeResource, datamodel.VolumeResource]{
@@ -148,6 +157,9 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				vol_ctrl.ValidateRequest,
 			},
 			AsyncJobController: backend_ctrl.NewCreateOrUpdateResource,
+		},
+		Delete: builder.Operation[datamodel.VolumeResource]{
+			AsyncJobController: backend_ctrl.NewDeleteResource,
 		},
 	})
 
