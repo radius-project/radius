@@ -33,14 +33,13 @@ type RabbitMQQueue struct {
 	// Properties is the properties of the resource.
 	Properties RabbitMQQueueProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resource types.
-	pr_dm.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resource types.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the RabbitMQQueue instance with the DeployedOutputResources from the
 // DeploymentOutput object and returns no error.
 func (r *RabbitMQQueue) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
@@ -68,7 +67,7 @@ type RabbitMQQueueProperties struct {
 	VHost                string                                 `json:"vHost,omitempty"`
 	Username             string                                 `json:"username,omitempty"`
 	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
-	Recipe               portableresources.LinkRecipe           `json:"recipe,omitempty"`
+	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
 	Secrets              RabbitMQSecrets                        `json:"secrets,omitempty"`
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	TLS                  bool                                   `json:"tls,omitempty"`
@@ -85,9 +84,9 @@ func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
 	return portableresources.RabbitMQQueuesResourceType
 }
 
-// Recipe returns the recipe for the RabbitMQQueue. It gets the LinkRecipe associated with the RabbitMQQueue instance
+// Recipe returns the recipe for the RabbitMQQueue. It gets the ResourceRecipe associated with the RabbitMQQueue instance
 // if the ResourceProvisioning is not set to Manual, otherwise it returns nil.
-func (r *RabbitMQQueue) Recipe() *portableresources.LinkRecipe {
+func (r *RabbitMQQueue) Recipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}

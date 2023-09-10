@@ -3048,8 +3048,8 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeGetMetadata.
 func (r RecipeGetMetadata) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "linkType", r.LinkType)
 	populate(objectMap, "name", r.Name)
+	populate(objectMap, "resourceType", r.ResourceType)
 	return json.Marshal(objectMap)
 }
 
@@ -3062,11 +3062,11 @@ func (r *RecipeGetMetadata) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "linkType":
-				err = unpopulate(val, "LinkType", &r.LinkType)
-			delete(rawMsg, key)
 		case "name":
 				err = unpopulate(val, "Name", &r.Name)
+			delete(rawMsg, key)
+		case "resourceType":
+				err = unpopulate(val, "ResourceType", &r.ResourceType)
 			delete(rawMsg, key)
 		}
 		if err != nil {

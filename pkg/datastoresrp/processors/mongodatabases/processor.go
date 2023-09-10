@@ -52,6 +52,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDataba
 	return nil
 }
 
+// Delete implements the processors.Processor interface for MongoDatabase resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.MongoDatabase, options processors.Options) error {
+	return nil
+}
+
 func (p *Processor) computeConnectionString(resource *datamodel.MongoDatabase) string {
 	connectionString := "mongodb://"
 

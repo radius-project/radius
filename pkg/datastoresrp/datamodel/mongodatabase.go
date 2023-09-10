@@ -23,7 +23,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -31,8 +30,8 @@ import (
 type MongoDatabase struct {
 	v1.BaseResource
 
-	// LinkMetadata represents internal DataModel properties common to all portable resources.
-	pr_dm.LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all portable resources.
+	pr_dm.PortableResourceMetadata
 
 	// Properties is the properties of the resource.
 	Properties MongoDatabaseProperties `json:"properties"`
@@ -50,7 +49,7 @@ type MongoDatabaseProperties struct {
 	// Database name of the target Mongo database
 	Database string `json:"database,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Mongo database link
-	Recipe portableresources.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 	// List of the resource IDs that support the Mongo database resource
 	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
@@ -103,13 +102,6 @@ func (mongodb *MongoDatabase) VerifyInputs() error {
 // ApplyDeploymentOutput updates the Mongo database instance's database property, output resources, computed values
 // and secret values with the given DeploymentOutput.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if database, ok := do.ComputedValues[renderers.DatabaseNameValue].(string); ok {
-		r.Properties.Database = database
-	}
-
 	return nil
 }
 
@@ -123,9 +115,9 @@ func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// Recipe returns the LinkRecipe associated with the Mongo database instance, or nil if the
+// Recipe returns the ResourceRecipe associated with the Mongo database instance, or nil if the
 // ResourceProvisioning is set to Manual.
-func (r *MongoDatabase) Recipe() *portableresources.LinkRecipe {
+func (r *MongoDatabase) Recipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}

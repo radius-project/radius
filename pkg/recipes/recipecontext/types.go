@@ -44,7 +44,7 @@ type Context struct {
 }
 
 // Resource contains the information needed to deploy a recipe.
-// In the case the resource is a Link, it represents the Link's id, name and type.
+// In the case the resource is a portable resource, it represents the resource's id, name and type.
 type Resource struct {
 	// ResourceInfo represents name and id of the resource
 	ResourceInfo

@@ -65,7 +65,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 			TemplateVersion: "",
 			Driver:          "bicep",
-			ResourceType:    *envInput.LinkType,
+			ResourceType:    *envInput.ResourceType,
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -113,7 +113,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			TemplatePath:    "Azure/cosmosdb/azurerm",
 			TemplateVersion: "1.1.0",
 			Driver:          "terraform",
-			ResourceType:    *envInput.LinkType,
+			ResourceType:    *envInput.ResourceType,
 		}
 		recipeData := map[string]any{
 			"parameters": map[string]any{
@@ -237,7 +237,7 @@ func TestGetRecipeMetadataRun_20220315PrivatePreview(t *testing.T) {
 			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 			TemplateVersion: "",
 			Driver:          "bicep",
-			ResourceType:    *envInput.LinkType,
+			ResourceType:    *envInput.ResourceType,
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
 		mEngine.EXPECT().GetRecipeMetadata(ctx, recipeDefinition).Return(nil, engineErr)

@@ -183,11 +183,16 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	for _, port := range properties.Container.Ports {
+	for portName, port := range properties.Container.Ports {
 		// if the container has an exposed port, note that down.
 		// A single service will be generated for a container with one or more exposed ports.
 		if port.ContainerPort == 0 {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort, but ContainerPort was: %d.", port.ContainerPort))
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid ports definition: must define a ContainerPort, but ContainerPort is: %d.", port.ContainerPort))
+		}
+
+		if port.Port == 0 {
+			port.Port = port.ContainerPort
+			properties.Container.Ports[portName] = port
 		}
 
 		// if the container has an exposed port, but no 'provides' field, it requires DNS service generation.
@@ -239,26 +244,27 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
 	}
 
+	var servicePorts []corev1.ServicePort
+
 	// If the container has an exposed port and uses DNS-SD, generate a service for it.
 	if needsServiceGeneration {
-		containerPorts := containerPorts{
-			values: []int32{},
-			names:  []string{},
-		}
-
 		for portName, port := range resource.Properties.Container.Ports {
 			// store portNames and portValues for use in service generation.
-			containerPorts.names = append(containerPorts.names, portName)
-			containerPorts.values = append(containerPorts.values, port.ContainerPort)
+			servicePort := corev1.ServicePort{
+				Name:       portName,
+				Port:       port.Port,
+				TargetPort: intstr.FromInt(int(port.ContainerPort)),
+				Protocol:   corev1.ProtocolTCP,
+			}
+			servicePorts = append(servicePorts, servicePort)
 		}
 
 		// if a container has an exposed port, then we need to create a service for it.
 		basesrv := getServiceBase(baseManifest, appId.Name(), resource, &options)
-		serviceResource, err := r.makeService(basesrv, resource, options, ctx, containerPorts)
+		serviceResource, err := r.makeService(basesrv, resource, options, ctx, servicePorts)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		outputResources = append(outputResources, serviceResource)
 	}
 
@@ -271,12 +277,7 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 	}, nil
 }
 
-type containerPorts struct {
-	values []int32
-	names  []string
-}
-
-func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, containerPorts containerPorts) (rpv1.OutputResource, error) {
+func (r Renderer) makeService(base *corev1.Service, resource *datamodel.ContainerResource, options renderers.RenderOptions, ctx context.Context, servicePorts []corev1.ServicePort) (rpv1.OutputResource, error) {
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return rpv1.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), resource.Properties.Application))
@@ -284,14 +285,7 @@ func (r Renderer) makeService(base *corev1.Service, resource *datamodel.Containe
 
 	// Ensure that we don't have any duplicate ports.
 SKIPINSERT:
-	for i, port := range containerPorts.values {
-		newPort := corev1.ServicePort{
-			Name:       containerPorts.names[i],
-			Port:       port,
-			TargetPort: intstr.FromInt(int(containerPorts.values[i])),
-			Protocol:   corev1.ProtocolTCP,
-		}
-
+	for _, newPort := range servicePorts {
 		// Skip to add new port. Instead, upsert port if it already exists.
 		for j, p := range base.Spec.Ports {
 			if strings.EqualFold(p.Name, newPort.Name) || p.Port == newPort.Port || p.TargetPort.IntVal == newPort.TargetPort.IntVal {
@@ -691,9 +685,13 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 					return map[string]corev1.EnvVar{}, map[string][]byte{}, fmt.Errorf("failed to parse source URL: %w", err)
 				}
 
-				env["CONNECTIONS_"+name+"_SCHEME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_SCHEME", Value: scheme}
-				env["CONNECTIONS_"+name+"_HOSTNAME"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_HOSTNAME", Value: hostname}
-				env["CONNECTIONS_"+name+"_PORT"] = corev1.EnvVar{Name: "CONNECTIONS_" + name + "_PORT", Value: port}
+				schemeKey := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), "SCHEME")
+				hostnameKey := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), "HOSTNAME")
+				portKey := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), "PORT")
+
+				env[schemeKey] = corev1.EnvVar{Name: schemeKey, Value: scheme}
+				env[hostnameKey] = corev1.EnvVar{Name: hostnameKey, Value: hostname}
+				env[portKey] = corev1.EnvVar{Name: portKey, Value: port}
 
 				continue
 			}

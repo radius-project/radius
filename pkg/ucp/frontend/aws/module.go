@@ -23,6 +23,14 @@ import (
 	"github.com/radius-project/radius/pkg/validator"
 )
 
+const (
+	// OperationTypeAWSResource is the operation status type for AWS resources.
+	OperationStatusResourceType = "System.AWS/operationStatuses"
+
+	// OperationTypeAWSResource is the operation result type for AWS resources.
+	OperationResultsResourceType = "System.AWS/operationResults"
+)
+
 // NewModule creates a new AWS module.
 func NewModule(options modules.Options) *Module {
 	m := Module{options: options}

@@ -61,10 +61,10 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	err := s.Start(ctx, server.Options{
-		Address:           opts.Address,
-		ProviderNamespace: s.ProviderName,
-		Location:          s.Options.Config.Env.RoleLocation,
-		PathBase:          s.Options.Config.Server.PathBase,
+		Address:     opts.Address,
+		ServiceName: s.ProviderName,
+		Location:    s.Options.Config.Env.RoleLocation,
+		PathBase:    s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done

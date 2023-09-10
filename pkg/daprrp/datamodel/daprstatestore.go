@@ -20,7 +20,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -31,18 +30,12 @@ type DaprStateStore struct {
 	// Properties is the properties of the resource.
 	Properties DaprStateStoreProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable types.
-	pr_dm.LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all portable types.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the DaprStateStore resource with the DeploymentOutput values.
 func (r *DaprStateStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if cn, ok := do.ComputedValues[renderers.ComponentNameKey].(string); ok {
-		r.Properties.ComponentName = cn
-	}
 	return nil
 }
 
@@ -62,7 +55,7 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 }
 
 // Recipe returns the recipe information of the resource. It returns nil if the ResourceProvisioning is set to manual.
-func (r *DaprStateStore) Recipe() *portableresources.LinkRecipe {
+func (r *DaprStateStore) Recipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
@@ -76,7 +69,7 @@ type DaprStateStoreProperties struct {
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	Metadata             map[string]any                         `json:"metadata,omitempty"`
-	Recipe               portableresources.LinkRecipe           `json:"recipe,omitempty"`
+	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
 	Resources            []*portableresources.ResourceReference `json:"resources,omitempty"`
 	Type                 string                                 `json:"type,omitempty"`
 	Version              string                                 `json:"version,omitempty"`

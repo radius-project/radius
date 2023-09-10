@@ -175,10 +175,10 @@ func buildMongoDBWithRecipe() dsrp_dm.MongoDatabase {
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
 		},
-		LinkMetadata: pr_dm.LinkMetadata{
+		PortableResourceMetadata: pr_dm.PortableResourceMetadata{
 			RecipeData: portableresources.RecipeData{
 				RecipeProperties: portableresources.RecipeProperties{
-					LinkRecipe: portableresources.LinkRecipe{
+					ResourceRecipe: portableresources.ResourceRecipe{
 						Name: "mongoDB",
 						Parameters: map[string]any{
 							"ResourceGroup": "testRG",
@@ -1043,7 +1043,7 @@ func Test_getResourceDataByID(t *testing.T) {
 
 		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo")
 		mongoResource := buildMongoDBWithRecipe()
-		mongoResource.LinkMetadata.RecipeData = portableresources.RecipeData{}
+		mongoResource.PortableResourceMetadata.RecipeData = portableresources.RecipeData{}
 		mr := store.Object{
 			Metadata: store.Metadata{
 				ID: mongoResource.ID,

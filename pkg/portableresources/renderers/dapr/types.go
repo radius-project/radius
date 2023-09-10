@@ -14,16 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package datamodel
+package dapr
 
-// Resource represents a resource within a UCP resource group
-type Resource struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
-
-// ResourceList represents a list of resources
-type ResourceList struct {
-	Value []Resource `json:"value" yaml:"value"`
-}
+const (
+	DaprAPIVersion = "dapr.io/v1alpha1"
+	DaprKind       = "Component"
+)

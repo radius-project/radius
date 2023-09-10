@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
-	"github.com/radius-project/radius/pkg/ucp/util"
 )
 
 var (
@@ -31,7 +30,6 @@ var (
 
 // QueueProvider is the provider to create and manage queue client.
 type QueueProvider struct {
-	name    string
 	options QueueProviderOptions
 
 	queueClient queue.Client
@@ -39,9 +37,8 @@ type QueueProvider struct {
 }
 
 // New creates new QueueProvider instance.
-func New(name string, opts QueueProviderOptions) *QueueProvider {
+func New(opts QueueProviderOptions) *QueueProvider {
 	return &QueueProvider{
-		name:        util.NormalizeStringToLower(name),
 		queueClient: nil,
 		options:     opts,
 	}
@@ -56,7 +53,7 @@ func (p *QueueProvider) GetClient(ctx context.Context) (queue.Client, error) {
 	err := ErrUnsupportedStorageProvider
 	p.once.Do(func() {
 		if fn, ok := clientFactory[p.options.Provider]; ok {
-			p.queueClient, err = fn(ctx, p.name, p.options)
+			p.queueClient, err = fn(ctx, p.options)
 		}
 	})
 

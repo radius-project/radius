@@ -158,8 +158,8 @@ func Test_Process(t *testing.T) {
 
 		generated := &unstructured.Unstructured{
 			Object: map[string]any{
-				"apiVersion": "dapr.io/v1alpha1",
-				"kind":       "Component",
+				"apiVersion": dapr.DaprAPIVersion,
+				"kind":       dapr.DaprKind,
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-component",

@@ -53,6 +53,20 @@ model ResourceGroupProperties {
   provisioningState?: ProvisioningState;
 }
 
+@doc("Represents resource data.")
+@parentResource(ResourceGroupResource)
+model GenericResource extends ProxyResource<ResourceProperties> {
+  @doc("The name of resource")
+  @path
+  @key("resourceName")
+  @segment("resources")
+  @visibility("read")
+  name: ResourceNameString;
+}
+
+@doc("The resource properties")
+model ResourceProperties {}
+
 @doc("The UCP HTTP request base parameters.")
 model ResourceGroupBaseParameters<TResource, TPlaneBase = PlaneResource> {
   ...PlaneBaseParameters<TPlaneBase>;
@@ -90,4 +104,10 @@ interface ResourceGroups {
     ResourceGroupResource,
     ResourceGroupBaseParameters<ResourceGroupResource>
   >;
+}
+
+@armResourceOperations
+interface Resources {
+  @doc("List resources in a resource group")
+  list is UcpResourceList<GenericResource, PlaneBaseParameters<PlaneResource>>;
 }

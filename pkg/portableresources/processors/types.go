@@ -34,6 +34,9 @@ type ResourceProcessor[P interface {
 	// Process is called to process the results of recipe execution or any other changes to the resource
 	// data model. Process should modify the datamodel in place to perform updates.
 	Process(ctx context.Context, resource P, options Options) error
+
+	// Delete is called to delete all the resources created by the resource processor.
+	Delete(ctx context.Context, resource P, options Options) error
 }
 
 // Options defines the options passed to the resource processor.

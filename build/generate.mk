@@ -32,7 +32,7 @@ generate-tsp-installed:
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
-generate-openapi-spec:
+generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 	@echo  "Generating openapi specs from typespec models."
 	cd typespec/UCP && npx$(CMD_EXT) tsp compile . 
 	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .

@@ -593,3 +593,16 @@ func labelsEqual(expectedLabels map[string]string, actualLabels map[string]strin
 	}
 	return true
 }
+
+// NewDaprComponent creates a K8sObject for a Dapr component with the Labels set to the application and name.
+func NewDaprComponent(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "dapr.io",
+			Version:  "v1alpha1",
+			Resource: "components",
+		},
+		Kind:   "Component",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}

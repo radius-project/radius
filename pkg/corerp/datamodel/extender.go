@@ -32,8 +32,8 @@ type Extender struct {
 	// Properties is the properties of the resource.
 	Properties ExtenderProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resource types.
-	LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all portable resource types.
+	PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the Status of Properties of the Extender resource with the DeployedOutputResources and returns no error.
@@ -57,9 +57,9 @@ func (extender *Extender) ResourceTypeName() string {
 	return ExtenderResourceType
 }
 
-// Recipe returns the LinkRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
+// Recipe returns the ResourceRecipe associated with the Extender if the ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (extender *Extender) Recipe() *portableresources.LinkRecipe {
+func (extender *Extender) Recipe() *portableresources.ResourceRecipe {
 	if extender.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
@@ -74,7 +74,7 @@ type ExtenderProperties struct {
 	// Secrets values provided for the resource
 	Secrets map[string]any `json:"secrets,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Extender
-	ResourceRecipe portableresources.LinkRecipe `json:"recipe,omitempty"`
+	ResourceRecipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
 	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }

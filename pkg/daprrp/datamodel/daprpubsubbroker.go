@@ -30,14 +30,12 @@ type DaprPubSubBroker struct {
 	// Properties is the properties of the resource.
 	Properties DaprPubSubBrokerProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resource types.
-	pr_dm.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resource types.
+	pr_dm.PortableResourceMetadata
 }
 
-// ApplyDeploymentOutput applies the properties changes based on the deployment output. It updates the
-// OutputResources of the DaprPubSubBroker resource with the output resources from a DeploymentOutput object.
+// ApplyDeploymentOutput updates the DaprPubSubBroker resource with the DeploymentOutput values.
 func (r *DaprPubSubBroker) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
@@ -57,7 +55,7 @@ func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 }
 
 // Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.
-func (r *DaprPubSubBroker) Recipe() *portableresources.LinkRecipe {
+func (r *DaprPubSubBroker) Recipe() *portableresources.ResourceRecipe {
 	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
@@ -76,7 +74,7 @@ type DaprPubSubBrokerProperties struct {
 	Metadata map[string]any `json:"metadata,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Dapr Pub/Sub Broker resource.
-	Recipe portableresources.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 
 	// List of the resource IDs that support the Dapr Pub/Sub Broker resource.
 	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`

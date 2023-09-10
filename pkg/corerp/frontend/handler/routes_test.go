@@ -217,11 +217,11 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		Path:          "/resourcegroups/testrg/providers/applications.core/volumes/volume0",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGetOperationStatuses},
+		OperationType: v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGet},
 		Path:          "/providers/applications.core/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGetOperationResult},
+		OperationType: v1.OperationType{Type: "Applications.Core/operationResults", Method: v1.OperationGet},
 		Path:          "/providers/applications.core/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
 	},

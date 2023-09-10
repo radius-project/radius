@@ -21,8 +21,13 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-// LinkMetadata represents internal DataModel properties common to all portable resource types.
-type LinkMetadata struct {
+const (
+	// RecipeContextParameter is the parameter context for recipe deployment
+	RecipeContextParameter string = "context"
+)
+
+// PortableResourceMetadata represents internal DataModel properties common to all portable resource types.
+type PortableResourceMetadata struct {
 	// ComputedValues map is any resource values that will be needed for more operations.
 	// For example; database name to generate secrets for cosmos DB.
 	ComputedValues map[string]any `json:"computedValues,omitempty"`
@@ -32,17 +37,3 @@ type LinkMetadata struct {
 
 	RecipeData portableresources.RecipeData `json:"recipeData,omitempty"`
 }
-
-// LinkMode specifies how to build a portable resource. Options are to build automatically via ‘recipe’ or ‘resource’, or build manually via ‘values’. Selection determines which set of fields to additionally require.
-type LinkMode string
-
-const (
-	// LinkModeRecipe is the recipe mode for portable resource deployment
-	LinkModeRecipe LinkMode = "recipe"
-	// LinkModeResource is the resource mode for portable resource deployment
-	LinkModeResource LinkMode = "resource"
-	// LinkModeResource is the values mode for portable resource deployment
-	LinkModeValues LinkMode = "values"
-	// RecipeContextParameter is the parameter context for recipe deployment
-	RecipeContextParameter string = "context"
-)

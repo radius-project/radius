@@ -74,12 +74,12 @@ func (r *GetRecipeMetadata) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 	var recipeProperties datamodel.EnvironmentRecipeProperties
-	recipe, exists := resource.Properties.Recipes[recipeDatamodel.LinkType]
+	recipe, exists := resource.Properties.Recipes[recipeDatamodel.ResourceType]
 	if exists {
 		recipeProperties, exists = recipe[recipeDatamodel.Name]
 	}
 	if !exists {
-		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Either recipe with name %q or resource type %q not found on environment with id %q", recipeDatamodel.Name, recipeDatamodel.LinkType, serviceCtx.ResourceID)), nil
+		return rest.NewNotFoundMessageResponse(fmt.Sprintf("Either recipe with name %q or resource type %q not found on environment with id %q", recipeDatamodel.Name, recipeDatamodel.ResourceType, serviceCtx.ResourceID)), nil
 	}
 
 	recipeParams, err := r.GetRecipeMetadataFromRegistry(ctx, recipeProperties, recipeDatamodel)
@@ -108,7 +108,7 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 		Parameters:      recipeProperties.Parameters,
 		TemplatePath:    recipeProperties.TemplatePath,
 		TemplateVersion: recipeProperties.TemplateVersion,
-		ResourceType:    recipeDataModel.LinkType,
+		ResourceType:    recipeDataModel.ResourceType,
 	}
 
 	recipeParameters = make(map[string]any)
