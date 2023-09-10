@@ -32,7 +32,6 @@ spec:
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
-        - --run-portableresource
         - --portableresource-config=/etc/config/portableresource-self-host.yaml
         env:
         - name: SKIP_ARM

@@ -24,7 +24,8 @@ import (
 )
 
 func TestGetClient_ValidQueue(t *testing.T) {
-	p := New("Applications.Core", QueueProviderOptions{
+	p := New(QueueProviderOptions{
+		Name:     "Applications.Core",
 		Provider: TypeInmemory,
 		InMemory: &InMemoryQueueOptions{},
 	})
@@ -38,7 +39,8 @@ func TestGetClient_ValidQueue(t *testing.T) {
 }
 
 func TestGetClient_InvalidQueue(t *testing.T) {
-	p := New("Applications.Core", QueueProviderOptions{
+	p := New(QueueProviderOptions{
+		Name:     "Applications.Core",
 		Provider: QueueProviderType("undefined"),
 	})
 

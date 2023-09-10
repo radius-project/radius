@@ -45,7 +45,7 @@ type DeleteResource[P interface {
 func NewDeleteResource[P interface {
 	*T
 	rpv1.RadiusResourceModel
-}, T any](processor processors.ResourceProcessor[P, T], eng engine.Engine, configurationLoader configloader.ConfigurationLoader, opts ctrl.Options) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, processor processors.ResourceProcessor[P, T], eng engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
 	return &DeleteResource[P, T]{
 		ctrl.NewBaseAsyncController(opts),
 		processor,

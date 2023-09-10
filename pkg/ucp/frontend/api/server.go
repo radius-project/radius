@@ -117,7 +117,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := chi.NewRouter()
 
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
-	s.queueProvider = queueprovider.New(s.options.ProviderName, s.options.QueueProviderOptions)
+	s.queueProvider = queueprovider.New(s.options.QueueProviderOptions)
 	s.secretProvider = secretprovider.NewSecretProvider(s.options.SecretProviderOptions)
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, []string{s.options.PathBase}, "")
@@ -154,7 +154,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.PathBase, "global")(app)
-	app = middleware.WithLogger("ucp")(app)
+	app = middleware.WithLogger(app)
 
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),

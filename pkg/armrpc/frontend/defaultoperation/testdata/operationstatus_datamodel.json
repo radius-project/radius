@@ -5,8 +5,8 @@
     "operationType": "PUT",
     "location": "West US",
     "status": "Succeeded",
-    "startTime": "2022-05-16T10:24:58+0000",
-    "endTime": "2022-05-16T17:24:58+0000",
+    "startTime": "2022-05-16T10:24:58.000000Z",
+    "endTime": "2022-05-16T17:24:58.000000Z",
     "percentComplete": "100",
     "properties": {
         "provisioningState": "Succeeded"

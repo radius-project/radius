@@ -58,17 +58,12 @@ func (s *Service) Init(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
-	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
-	opSC, err := s.StorageProvider.GetStorageClient(ctx, s.ProviderName+"/operationstatuses")
-	if err != nil {
-		return err
-	}
+	qp := qprovider.New(s.Options.Config.QueueProvider)
 	reqQueueClient, err := qp.GetClient(ctx)
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(opSC, reqQueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
-
+	s.OperationStatusManager = manager.New(s.StorageProvider, reqQueueClient, s.Options.Config.Env.RoleLocation)
 	s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err

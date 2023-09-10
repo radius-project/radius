@@ -33,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -139,7 +140,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 	cases := []struct {
 		description             string
-		factory                 func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error)
+		factory                 func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error)
 		getErr                  error
 		conversionFailure       bool
 		recipeErr               error
@@ -151,8 +152,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 	}{
 		{
 			"get-not-found",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			&store.ErrNotFound{ID: TestResourceID},
 			false,
@@ -165,8 +166,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"get-error",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			&store.ErrInvalid{},
 			false,
@@ -179,8 +180,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"conversion-failure",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			nil,
 			true,
@@ -193,8 +194,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"recipe-err",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -207,8 +208,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"runtime-configuration-err",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -221,8 +222,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"processor-err",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(errorProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, errorProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -235,8 +236,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"save-err",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, successProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -249,8 +250,8 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 		},
 		{
 			"success",
-			func(eng engine.Engine, client processors.ResourceClient, cfg configloader.ConfigurationLoader, options ctrl.Options) (ctrl.Controller, error) {
-				return NewCreateOrUpdateResource(successProcessorReference, eng, client, cfg, options)
+			func(recipeCfg *controllerconfig.RecipeControllerConfig, options ctrl.Options) (ctrl.Controller, error) {
+				return NewCreateOrUpdateResource(options, successProcessorReference, recipeCfg.Engine, recipeCfg.ResourceClient, recipeCfg.ConfigLoader)
 			},
 			nil,
 			false,
@@ -403,7 +404,13 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				StorageClient: msc,
 			}
 
-			genCtrl, err := tt.factory(eng, client, cfg, opts)
+			recipeCfg := &controllerconfig.RecipeControllerConfig{
+				Engine:         eng,
+				ResourceClient: client,
+				ConfigLoader:   cfg,
+			}
+
+			genCtrl, err := tt.factory(recipeCfg, opts)
 			require.NoError(t, err)
 
 			res, err := genCtrl.Run(context.Background(), req)

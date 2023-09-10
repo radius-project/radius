@@ -21,6 +21,9 @@ type QueueProviderOptions struct {
 	// Provider configures the storage provider.
 	Provider QueueProviderType `yaml:"provider"`
 
+	// Name represents the unique name of queue.
+	Name string `yaml:"name"`
+
 	// InMemory represents inmemory queue client options. (Optional)
 	InMemory *InMemoryQueueOptions `yaml:"inMemoryQueue,omitempty"`
 
