@@ -24,21 +24,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	sdk_cred "github.com/project-radius/radius/pkg/ucp/credentials"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
-	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
-	aws_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/aws"
-	"github.com/project-radius/radius/pkg/ucp/hostoptions"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"github.com/project-radius/radius/pkg/validator"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
+	awsproxy_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
+	aws_credential_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/credentials/aws"
+	"github.com/radius-project/radius/pkg/ucp/hostoptions"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/validator"
 )
 
 const (
@@ -84,8 +84,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			// URLs for standard UCP resource async status result.
 			ParentRouter:  server.NewSubrouter(baseRouter, operationResultsPath),
-			Method:        v1.OperationGetOperationResult,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationResult},
+			Method:        v1.OperationGet,
+			OperationType: &v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewGetAWSOperationResults(opt, m.AWSClients)
 			},
@@ -93,8 +93,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			// URLs for standard UCP resource async status.
 			ParentRouter:  server.NewSubrouter(baseRouter, operationStatusesPath),
-			Method:        v1.OperationGetOperationStatuses,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationStatuses},
+			Method:        v1.OperationGet,
+			OperationType: &v1.OperationType{Type: OperationStatusResourceType, Method: v1.OperationGet},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts, m.AWSClients)
 			},

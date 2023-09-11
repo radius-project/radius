@@ -20,10 +20,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -74,8 +75,7 @@ func TestHTTPRouteConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, int32(8080), r.Properties.Port)
 	require.Equal(t, "http", r.Properties.Scheme)
 	require.Equal(t, "http://testapplications.com/httproute/", r.Properties.URL)
-	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
-	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
+	require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 }
 
 func TestHTTPRouteConvertFromValidation(t *testing.T) {
@@ -83,7 +83,7 @@ func TestHTTPRouteConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

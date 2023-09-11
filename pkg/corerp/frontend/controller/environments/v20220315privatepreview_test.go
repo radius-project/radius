@@ -19,9 +19,9 @@ package environments
 import (
 	"encoding/json"
 
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 const testHeaderfile = "requestheaders20220315privatepreview.json"
@@ -44,9 +44,9 @@ func getTestModels20220315privatepreview() (*v20220315privatepreview.Environment
 	return envInput, envDataModel, expectedOutput
 }
 
-func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.Recipe, *datamodel.Environment, *v20220315privatepreview.RecipeMetadataProperties) {
+func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepreview.RecipeGetMetadata, *datamodel.Environment, *v20220315privatepreview.RecipeGetMetadataResponse) {
 	rawInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input.json")
-	envInput := &v20220315privatepreview.Recipe{}
+	envInput := &v20220315privatepreview.RecipeGetMetadata{}
 	_ = json.Unmarshal(rawInput, envInput)
 
 	rawExistingDataModel := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_datamodel.json")
@@ -54,15 +54,31 @@ func getTestModelsGetRecipeMetadata20220315privatepreview() (*v20220315privatepr
 	_ = json.Unmarshal(rawExistingDataModel, envExistingDataModel)
 
 	rawExpectedOutput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_output.json")
-	expectedOutput := &v20220315privatepreview.RecipeMetadataProperties{}
+	expectedOutput := &v20220315privatepreview.RecipeGetMetadataResponse{}
 	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
 
 	return envInput, envExistingDataModel, expectedOutput
 }
 
-func getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview() (*v20220315privatepreview.Recipe, *datamodel.Environment) {
+func getTestModelsGetTFRecipeMetadata20220315privatepreview() (*v20220315privatepreview.RecipeGetMetadata, *datamodel.Environment, *v20220315privatepreview.RecipeGetMetadataResponse) {
+	rawInput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_input_terraform.json")
+	envInput := &v20220315privatepreview.RecipeGetMetadata{}
+	_ = json.Unmarshal(rawInput, envInput)
+
+	rawExistingDataModel := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_datamodel.json")
+	envExistingDataModel := &datamodel.Environment{}
+	_ = json.Unmarshal(rawExistingDataModel, envExistingDataModel)
+
+	rawExpectedOutput := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_output_terraform.json")
+	expectedOutput := &v20220315privatepreview.RecipeGetMetadataResponse{}
+	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
+
+	return envInput, envExistingDataModel, expectedOutput
+}
+
+func getTestModelsGetRecipeMetadataForNonExistingRecipe20220315privatepreview() (*v20220315privatepreview.RecipeGetMetadata, *datamodel.Environment) {
 	rawInput := testutil.ReadFixture("environmentgetmetadatanonexistingrecipe20220315privatepreview_input.json")
-	envInput := &v20220315privatepreview.Recipe{}
+	envInput := &v20220315privatepreview.RecipeGetMetadata{}
 	_ = json.Unmarshal(rawInput, envInput)
 
 	rawExistingDataModel := testutil.ReadFixture("environmentgetrecipemetadata20220315privatepreview_datamodel.json")

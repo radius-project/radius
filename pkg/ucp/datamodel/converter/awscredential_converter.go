@@ -19,16 +19,16 @@ package converter
 import (
 	"encoding/json"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 // AWSCredentialDataModelToVersioned converts version agnostic AWS credential datamodel to versioned model.
 func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.AWSCredentialResource{}
+		versioned := &v20220901privatepreview.AwsCredentialResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -43,7 +43,7 @@ func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version s
 func AWSCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AWSCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.AWSCredentialResource{}
+		vm := &v20220901privatepreview.AwsCredentialResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}

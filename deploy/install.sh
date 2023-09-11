@@ -71,7 +71,7 @@ runAsRoot() {
     local CMD="$*"
 
     if [ $EUID -ne 0 -a $USE_SUDO = "true" ]; then
-        echo "Additional permissions needed. Please enter your sudo password..."
+        echo "Additional permission needed. Please enter your sudo password if prompted..."
         CMD="sudo $CMD"
     fi
 
@@ -185,7 +185,7 @@ fail_trap() {
     result=$?
     if [ "$result" != "0" ]; then
         echo "Failed to install Radius CLI"
-        echo "For support, go to https://github.com/project-radius/radius"
+        echo "For support, go to https://github.com/radius-project/radius"
     fi
     cleanup
     exit $result

@@ -19,7 +19,7 @@ package portforward
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 )
 
 var _ Interface = (*Impl)(nil)

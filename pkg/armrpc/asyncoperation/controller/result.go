@@ -17,7 +17,7 @@ limitations under the License.
 package controller
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
 // Result is the response of async operation controller.
@@ -53,10 +53,7 @@ func (r *Result) SetFailed(err v1.ErrorDetails, requeue bool) {
 	}
 	r.Requeue = requeue
 	r.SetProvisioningState(v1.ProvisioningStateFailed)
-	r.Error = &v1.ErrorDetails{
-		Code:    err.Code,
-		Message: err.Message,
-	}
+	r.Error = &err
 }
 
 // SetCanceled sets the Result's Requeue field to false, sets the ProvisioningState to Canceled and sets the Error field

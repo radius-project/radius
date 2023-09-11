@@ -1,4 +1,4 @@
-module github.com/project-radius/radius/test/magpiego
+module github.com/radius-project/radius/test/magpiego
 
 go 1.20
 

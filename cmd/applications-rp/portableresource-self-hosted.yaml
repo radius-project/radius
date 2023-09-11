@@ -1,0 +1,51 @@
+# This configuration file is used in development when launching from VS Code.
+#
+# This configures the Portable Resources' Providers to...
+#
+# - Use Kubernetes (namespace: radius-testing) for storage and secrets
+# - Listen on port 8081
+# - Talk to UCP on port 9000
+# - Disables metrics and profiler
+#
+environment:
+  name: Dev
+  roleLocation: "global"
+storageProvider:
+  provider: "apiserver"
+  apiserver:
+    context: ''
+    namespace: 'radius-testing'
+queueProvider:
+  provider: "apiserver"
+  name: radiusportable
+  apiserver:
+    context: ''
+    namespace: 'radius-testing'
+profilerProvider:
+  enabled: false
+  port: 6060
+secretProvider:
+  provider: "kubernetes"
+metricsProvider:
+  prometheus:
+    enabled: false
+    path: "/metrics"
+    port: 9090
+featureFlags:
+  - "PLACEHOLDER"
+server:
+  host: "0.0.0.0"
+  port: 8081
+  enableArmAuth: false
+workerServer:
+  maxOperationConcurrency: 3
+  maxOperationRetryCount: 2
+ucp:
+  kind: direct
+  direct:
+    endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
+logging:
+  level: "info"
+  json: false
+terraform:
+  path: "/tmp"

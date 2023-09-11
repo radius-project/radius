@@ -22,12 +22,12 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/helm"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -96,7 +96,7 @@ func Test_enterInitOptions(t *testing.T) {
 		require.NoError(t, err)
 
 		expectedWorkspace := workspaces.Workspace{
-			Name: "test-env",
+			Name: "default",
 			Connection: map[string]any{
 				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
@@ -157,12 +157,76 @@ workspaces:
 		expectedWorkspace := workspaces.Workspace{
 			Name: "abc",
 			Connection: map[string]any{
-				"context": "cool-beans",
+				"context": "kind-kind",
 				"kind":    workspaces.KindKubernetes,
 			},
 			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
 			Scope:       "/planes/radius/local/resourceGroups/test-env",
-			Source:      "userconfig",
+		}
+		require.Equal(t, expectedWorkspace, *workspace)
+
+		expectedOptions := initOptions{
+			Cluster: clusterOptions{
+				Context:   "kind-kind",
+				Install:   true,
+				Namespace: "radius-system",
+				Version:   version.Version(),
+			},
+			Environment: environmentOptions{
+				Create:    true,
+				Name:      "test-env",
+				Namespace: "test-namespace",
+			},
+		}
+		require.Equal(t, expectedOptions, *options)
+	})
+
+	t.Run("existing-workspace-with-default-as-an-entry", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		prompter := prompt.NewMockInterface(ctrl)
+		k8s := kubernetes.NewMockInterface(ctrl)
+		helm := helm.NewMockInterface(ctrl)
+
+		var yaml = `
+workspaces:
+  default: default
+  items:
+    abc:
+      connection:
+        kind: kubernetes
+        context: cool-beans
+      scope: /a/b/c
+      environment: /a/b/c/providers/Applications.Core/environments/ice-cold
+    default:
+      connection:
+        kind: kubernetes
+        context: hot-beans
+      scope: /d/e/f
+      environment: /a/b/c/providers/Applications.Core/environments/hot-coffee
+`
+		v, err := makeConfig(yaml)
+		runner := Runner{Prompter: prompter, KubernetesInterface: k8s, HelmInterface: helm, Full: true, ConfigHolder: &framework.ConfigHolder{Config: v}}
+
+		require.NoError(t, err)
+		initGetKubeContextSuccess(k8s)
+		initKubeContextWithKind(prompter)
+		initHelmMockRadiusNotInstalled(helm)
+		initEnvNamePrompt(prompter, "test-env")
+		initNamespacePrompt(prompter, "test-namespace")
+		initAddCloudProviderPromptNo(prompter)
+		setScaffoldApplicationPromptNo(prompter)
+
+		options, workspace, err := runner.enterInitOptions(context.Background())
+		require.NoError(t, err)
+
+		expectedWorkspace := workspaces.Workspace{
+			Name: "default",
+			Connection: map[string]any{
+				"context": "kind-kind",
+				"kind":    workspaces.KindKubernetes,
+			},
+			Environment: "/planes/radius/local/resourceGroups/test-env/providers/Applications.Core/environments/test-env",
+			Scope:       "/planes/radius/local/resourceGroups/test-env",
 		}
 		require.Equal(t, expectedWorkspace, *workspace)
 

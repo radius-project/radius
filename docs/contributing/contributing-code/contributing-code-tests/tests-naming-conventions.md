@@ -1,5 +1,5 @@
 # Radius functional test naming conventions
-Today, the [functional tests](https://github.com/project-radius/radius/tree/main/test/functional/shared/resources) use some abbreviations to make sure that the resource labels will not exceed 63 characters (application + resource name). Here are a list of some of the abbreviations and patterns:
+Today, the [functional tests](https://github.com/radius-project/radius/tree/main/test/functional/shared/resources) use some abbreviations to make sure that the resource labels will not exceed 63 characters (application + resource name). Here are a list of some of the abbreviations and patterns:
 
 |Keyword|Abbreviation|
 |-|-|

@@ -24,9 +24,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/project-radius/radius/pkg/metrics"
-	"github.com/project-radius/radius/pkg/metrics/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/metrics/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 )
 

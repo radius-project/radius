@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,10 +38,9 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(payload)
 			versionedResource := &DaprStateStoreResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -53,7 +53,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/stateStore0",
 						Name:     "stateStore0",
-						Type:     linkrp.N_DaprStateStoresResourceType,
+						Type:     portableresources.DaprStateStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -74,19 +74,19 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 				},
 			}
 			if payload == "statestore_values_resource.json" {
-				expected.Properties.ResourceProvisioning = linkrp.ResourceProvisioningManual
+				expected.Properties.ResourceProvisioning = portableresources.ResourceProvisioningManual
 				expected.Properties.Type = "state.zookeeper"
 				expected.Properties.Version = "v1"
 				expected.Properties.Metadata = map[string]any{
 					"foo": "bar",
 				}
-				expected.Properties.Resources = []*linkrp.ResourceReference{
+				expected.Properties.Resources = []*portableresources.ResourceReference{
 					{
 						ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
 					},
 				}
 			} else if payload == "statestore_recipe_resource.json" {
-				expected.Properties.ResourceProvisioning = linkrp.ResourceProvisioningRecipe
+				expected.Properties.ResourceProvisioning = portableresources.ResourceProvisioningRecipe
 				expected.Properties.Recipe.Name = "recipe-test"
 			}
 
@@ -107,10 +107,9 @@ func TestDaprStateStore_ConvertVersionedToDataModel_Invalid(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + test.payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(test.payload)
 			versionedResource := &DaprStateStoreResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -130,10 +129,9 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, payload := range testset {
 		t.Run(payload, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(payload)
 			resource := &datamodel.DaprStateStore{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &DaprStateStoreResource{}
@@ -146,7 +144,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			expected := &DaprStateStoreResource{
 				ID:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/stateStore0"),
 				Name:     to.Ptr("stateStore0"),
-				Type:     to.Ptr(linkrp.N_DaprStateStoresResourceType),
+				Type:     to.Ptr(portableresources.DaprStateStoresResourceType),
 				Location: to.Ptr(v1.LocationGlobal),
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -156,15 +154,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
 					ComponentName:     to.Ptr("stateStore0"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "kubernetes",
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 			}
 
@@ -197,7 +187,7 @@ func TestDaprStateStore_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

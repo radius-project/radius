@@ -20,20 +20,20 @@ import (
 	"net/http"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_Handler_MethodNotAllowed(t *testing.T) {
-	ucp, _, _ := testserver.StartWithMocks(t, testserver.NoModules)
+	ucp := testserver.StartWithMocks(t, testserver.NoModules)
 
 	response := ucp.MakeRequest(http.MethodDelete, "/planes?api-version=2022-09-01-privatepreview", nil)
 	require.Equal(t, "failed to parse route: undefined route path", response.Error.Error.Details[0].Message)
 }
 
 func Test_Handler_NotFound(t *testing.T) {
-	ucp, _, _ := testserver.StartWithMocks(t, testserver.NoModules)
+	ucp := testserver.StartWithMocks(t, testserver.NoModules)
 
 	response := ucp.MakeRequest(http.MethodGet, "/abc", nil)
 	response.EqualsErrorCode(http.StatusNotFound, v1.CodeNotFound)

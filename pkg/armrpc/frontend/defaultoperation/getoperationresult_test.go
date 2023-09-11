@@ -24,39 +24,48 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetOperationResultRun(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
-
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
-
 	rawDataModel := testutil.ReadFixture("operationstatus_datamodel.json")
 	osDataModel := &manager.Status{}
-	_ = json.Unmarshal(rawDataModel, osDataModel)
+	err := json.Unmarshal(rawDataModel, osDataModel)
+	require.NoError(t, err)
 
 	rawExpectedOutput := testutil.ReadFixture("operationstatus_output.json")
 	expectedOutput := &v1.AsyncOperationStatus{}
-	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
+	err = json.Unmarshal(rawExpectedOutput, expectedOutput)
+	require.NoError(t, err)
 
 	t.Run("get non-existing resource", func(t *testing.T) {
+		mctrl := gomock.NewController(t)
+
+		operationResultStoreClient := store.NewMockStorageClient(mctrl)
+		operationStatusStoreClient := store.NewMockStorageClient(mctrl)
+
+		dataProvider := dataprovider.NewMockDataStorageProvider(mctrl)
+		dataProvider.EXPECT().
+			GetStorageClient(gomock.Any(), "Applications.Core/operationstatuses").
+			Return(operationStatusStoreClient, nil).
+			Times(1)
+
 		w := httptest.NewRecorder()
-		req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
-		mStorageClient.
+		operationStatusStoreClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -64,7 +73,8 @@ func TestGetOperationResultRun(t *testing.T) {
 			})
 
 		ctl, err := NewGetOperationResult(ctrl.Options{
-			StorageClient: mStorageClient,
+			DataProvider:  dataProvider,
+			StorageClient: operationResultStoreClient, // Will not be used.
 		})
 
 		require.NoError(t, err)
@@ -114,15 +124,25 @@ func TestGetOperationResultRun(t *testing.T) {
 
 	for _, tt := range opResTestCases {
 		t.Run(tt.desc, func(t *testing.T) {
+			mctrl := gomock.NewController(t)
+			operationResultStoreClient := store.NewMockStorageClient(mctrl)
+			operationStatusStoreClient := store.NewMockStorageClient(mctrl)
+
+			dataProvider := dataprovider.NewMockDataStorageProvider(mctrl)
+			dataProvider.EXPECT().
+				GetStorageClient(gomock.Any(), "Applications.Core/operationstatuses").
+				Return(operationStatusStoreClient, nil).
+				Times(1)
+
 			w := httptest.NewRecorder()
-			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
+			req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
 			require.NoError(t, err)
 			ctx := rpctest.NewARMRequestContext(req)
 
 			osDataModel.Status = tt.provisioningState
 			osDataModel.RetryAfter = time.Second * 5
 
-			mStorageClient.
+			operationStatusStoreClient.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -133,7 +153,8 @@ func TestGetOperationResultRun(t *testing.T) {
 				})
 
 			ctl, err := NewGetOperationResult(ctrl.Options{
-				StorageClient: mStorageClient,
+				DataProvider:  dataProvider,
+				StorageClient: operationResultStoreClient, // Will not be used.
 			})
 
 			require.NoError(t, err)

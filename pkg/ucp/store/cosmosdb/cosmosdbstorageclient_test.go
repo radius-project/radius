@@ -25,11 +25,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"github.com/vippsas/go-cosmosdb/cosmosapi"
 )
@@ -743,12 +743,12 @@ func TestGetPartitionKey(t *testing.T) {
 	}{
 		{
 			"env-partition-key",
-			"subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"00000000000000001000000000000001",
 		},
 		{
 			"env-no-subscription-partition-key",
-			"resourcegroups/testGroup/providers/applications.core/environments/env0",
+			"/resourcegroups/testGroup/providers/applications.core/environments/env0",
 			"",
 		},
 		{

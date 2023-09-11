@@ -30,7 +30,7 @@ concurrency:
 jobs:
   linter_check:
     name: Lint
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       GOVER: '^1.21'
@@ -42,13 +42,13 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
-      - name: Setup npm
+      - name: Setup NodeJS
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
-      - name: Install cadl compiler
+          node-version: '18'
+      - name: Install TypeSpec compiler
         run: |
-          pushd cadl
+          pushd typespec
           npm ci
           popd
       - name: Install autorest

@@ -25,17 +25,17 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/radcli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/radcli"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -47,7 +47,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Unregister Command",
-			Input:         []string{"test_recipe", "--link-type", "link-type"},
+			Input:         []string{"test_recipe", "--resource-type", "resource-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -56,7 +56,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "test_recipe", "--link-type", "link-type"},
+			Input:         []string{"-e", "my-env", "test_recipe", "--resource-type", "resource-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -74,7 +74,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with too many args",
-			Input:         []string{"foo", "bar", "foo1", "--link-type", "link-type"},
+			Input:         []string{"foo", "bar", "foo1", "--resource-type", "resource-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -82,7 +82,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Unregister Command without link type",
+			Name:          "Unregister Command without resource type",
 			Input:         []string{"foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -100,8 +100,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{
@@ -158,8 +158,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
@@ -202,7 +202,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -214,8 +214,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -247,7 +247,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{
@@ -274,8 +274,8 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
-					Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-						linkrp.MongoDatabasesResourceType: {
+					Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+						portableresources.MongoDatabasesResourceType: {
 							"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -297,14 +297,14 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB1",
-				LinkType:          "Applications.Link/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
 		})
 
-		t.Run("Unregister recipe with linkType doesn't exist in the environment", func(t *testing.T) {
+		t.Run("Unregister recipe with resourceType doesn't exist in the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			envResource := v20220315privatepreview.EnvironmentResource{
 				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
@@ -312,8 +312,8 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
-					Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-						linkrp.MongoDatabasesResourceType: {
+					Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+						portableresources.MongoDatabasesResourceType: {
 							"testResource": &v20220315privatepreview.BicepRecipeProperties{
 								TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 								TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -335,7 +335,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "testResource",
-				LinkType:          "Applications.Link/redisCaches",
+				ResourceType:      "Applications.Datastores/redisCaches",
 			}
 
 			err := runner.Run(context.Background())
@@ -365,7 +365,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Link/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -376,14 +376,14 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+					portableresources.MongoDatabasesResourceType: {
 						"testResource": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
-					linkrp.RedisCachesResourceType: {
+					portableresources.RedisCachesResourceType: {
 						"testResource": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1"),
@@ -418,7 +418,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "testResource",
-				LinkType:          "Applications.Link/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{

@@ -19,10 +19,11 @@ package frontend
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // PrepareRadiusResource validates the Radius resource and prepare new resource data.
@@ -44,6 +45,22 @@ func PrepareRadiusResource[P interface {
 	// Keep outputresource from existing resource since the incoming request hasn't had an outputresource
 	// processed by the backend yet.
 	newProp.Status.DeepCopy(&oldProp.Status)
+
+	return nil, nil
+}
+
+// PrepareDaprResource validates if the cluster has Dapr installed.
+func PrepareDaprResource[P interface {
+	*T
+	rpv1.RadiusResourceModel
+}, T any](ctx context.Context, newResource *T, oldResource *T, options *controller.Options) (rest.Response, error) {
+	isDaprSupported, err := datamodel.IsDaprInstalled(ctx, options.KubeClient)
+	if err != nil {
+		return nil, err
+	}
+	if !isDaprSupported {
+		return rest.NewDependencyMissingResponse(datamodel.DaprMissingError), nil
+	}
 
 	return nil, nil
 }

@@ -17,10 +17,10 @@ limitations under the License.
 package datamodel
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // DaprSecretStore represents Dapr SecretStore portable resource.
@@ -30,13 +30,12 @@ type DaprSecretStore struct {
 	// Properties is the properties of the resource.
 	Properties DaprSecretStoreProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resource types.
-	linkrp_dm.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resource types.
+	pr_dm.PortableResourceMetadata
 }
 
-// ApplyDeploymentOutput updates the status of the secret store with the output resources from a deployment.
+// ApplyDeploymentOutput updates the DaprSecretStore resource with the DeploymentOutput values.
 func (r *DaprSecretStore) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
@@ -52,24 +51,24 @@ func (r *DaprSecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of the DaprSecretStore resource.
 func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
-	return linkrp.N_DaprSecretStoresResourceType
+	return portableresources.DaprSecretStoresResourceType
 }
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.
 type DaprSecretStoreProperties struct {
 	rpv1.BasicResourceProperties
 	rpv1.BasicDaprResourceProperties
-	Type                 string                      `json:"type,omitempty"`
-	Version              string                      `json:"version,omitempty"`
-	Metadata             map[string]any              `json:"metadata,omitempty"`
-	Recipe               linkrp.LinkRecipe           `json:"recipe,omitempty"`
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	Type                 string                                 `json:"type,omitempty"`
+	Version              string                                 `json:"version,omitempty"`
+	Metadata             map[string]any                         `json:"metadata,omitempty"`
+	Recipe               portableresources.ResourceRecipe       `json:"recipe,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 }
 
 // Recipe returns the Recipe from the DaprSecretStore Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (daprSecretStore *DaprSecretStore) Recipe() *linkrp.LinkRecipe {
-	if daprSecretStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (daprSecretStore *DaprSecretStore) Recipe() *portableresources.ResourceRecipe {
+	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &daprSecretStore.Properties.Recipe

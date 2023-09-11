@@ -27,10 +27,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -113,7 +113,7 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 		},
 	}
 
-	resourceId = ucpresources.MakeUCPID(scopes, types...)
+	resourceId = ucpresources.MakeUCPID(scopes, types, nil)
 	providerConfig := dc.GetProviderConfigs(options)
 
 	poller, err := dc.Client.CreateOrUpdate(ctx,
@@ -290,12 +290,14 @@ func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name str
 		{Type: "radius", Name: "local"},
 		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
-	types := ucpresources.TypeSegment{
-		Type: "Microsoft.Resources/deployments",
-		Name: name,
+	types := []ucpresources.TypeSegment{
+		{
+			Type: "Microsoft.Resources/deployments",
+			Name: name,
+		},
 	}
 
-	resourceId = ucpresources.MakeUCPID(scopes, types)
+	resourceId = ucpresources.MakeUCPID(scopes, types, nil)
 
 	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, sdkclients.DeploymentOperationsClientAPIVersion, nil)
 	if err != nil {

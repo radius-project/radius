@@ -17,16 +17,13 @@ limitations under the License.
 package datamodel
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // RedisCache represents Redis cache portable resource.
@@ -36,40 +33,13 @@ type RedisCache struct {
 	// Properties is the properties of the resource.
 	Properties RedisCacheProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	linkrp_dm.LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all resource types.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
 // Redis cache instance based on the DeploymentOutput object.
 func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if host, ok := do.ComputedValues[renderers.Host].(string); ok {
-		r.Properties.Host = host
-	}
-	if port, ok := do.ComputedValues[renderers.Port]; ok {
-		if port != nil {
-			switch p := port.(type) {
-			case float64:
-				r.Properties.Port = int32(p)
-			case int32:
-				r.Properties.Port = p
-			case string:
-				converted, err := strconv.Atoi(p)
-				if err != nil {
-					return err
-				}
-				r.Properties.Port = int32(converted)
-			default:
-				return errors.New("unhandled type for the property port")
-			}
-		}
-	}
-	if username, ok := do.ComputedValues[renderers.UsernameStringValue].(string); ok {
-		r.Properties.Username = username
-	}
 	return nil
 }
 
@@ -85,13 +55,13 @@ func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of Redis cache resource.
 func (redis *RedisCache) ResourceTypeName() string {
-	return linkrp.N_RedisCachesResourceType
+	return portableresources.RedisCachesResourceType
 }
 
-// Recipe returns the LinkRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
+// Recipe returns the ResourceRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (redis *RedisCache) Recipe() *linkrp.LinkRecipe {
-	if redis.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (redis *RedisCache) Recipe() *portableresources.ResourceRecipe {
+	if redis.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &redis.Properties.Recipe
@@ -106,7 +76,7 @@ func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 // and returns an error if not.
 func (redisCache *RedisCache) VerifyInputs() error {
 	msgs := []string{}
-	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if redisCache.Properties.Host == "" {
 			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
@@ -145,16 +115,16 @@ type RedisCacheProperties struct {
 	TLS bool `json:"tls,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
-	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 
 	// Secrets provided by resource
 	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
 
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 
 	// List of the resource IDs that support the Redis resource
-	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -166,5 +136,5 @@ type RedisCacheSecrets struct {
 
 // ResourceTypeName returns the resource type of RedisCache resource.
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return linkrp.N_RedisCachesResourceType
+	return portableresources.RedisCachesResourceType
 }

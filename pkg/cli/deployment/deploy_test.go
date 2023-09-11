@@ -19,8 +19,8 @@ package deployment
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 )
 

@@ -8,7 +8,7 @@ Radius consists of a few processes that get deployed inside a Kubernetes cluster
 
  This includes:
 
-- Applications.Core RP / Applications.Link RP (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
+- Applications.Core RP / Portable Resources' Providers (applications-rp) - The resource provider that handles processing of core resources as well as recipes.
 - Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources.
 - Deployment Engine (bicep-de) - Handles deployment orchestration for bicep files.
 
@@ -22,13 +22,13 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 - UCP: port 9000
 - AppCore Namespace: port 8080
-- AppLink Namespace: port 8081
+- AppPortableResource Namespace: port 8081 (Applications.Datastores, Applications.Dapr and Applications.Messaging are hosted)
 - Deployment Engine: port 5017
 
 ## Prerequisites
 
 1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
-2. Clone the `project-radius/radius` and `project-radius/deployment-engine` repo next to each other. 
+2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other. 
 3. Run `git submodule update --init` in the `deployment-engine` repo
 4. Install .NET 6.0 SDK - https://dotnet.microsoft.com/en-us/download/dotnet/6.0
 5. Install C# VS Code extension - https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp
@@ -44,10 +44,10 @@ Run one of the following two commands:
 
 ```sh
 # Choose this by default
-rad init --dev
+rad init
 
 # Choose this if you want to do advanced setup
-rad init
+rad init --full
 ```
 
 This will install Radius and configure an environment for you. The database that's used **will NOT** be shared with your debug setup, so it mostly doesn't matter what choices you make.
@@ -141,7 +141,7 @@ Now you can launch the Radius locally through the VSCode menu.
 
 ### I got an error saying I need to clone the deployment engine
 
-> The project-radius/deployment-engine is not cloned as a sibling to the radius repo. Please clone the project-radius/deployment-engine repo next to the Radius repo and try again.
+> The radius-project/deployment-engine is not cloned as a sibling to the radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
 
 You should be to successfully the following commands from the Radius repository root:
 

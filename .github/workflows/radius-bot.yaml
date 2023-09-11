@@ -7,7 +7,7 @@ on:
 jobs:
   radius-bot:
     name: Run Radius Bot script
-    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3

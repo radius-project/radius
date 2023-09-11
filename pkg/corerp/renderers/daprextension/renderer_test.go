@@ -20,15 +20,15 @@ import (
 	"context"
 	"testing"
 
-	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -45,12 +45,14 @@ func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options ren
 	deployment := appsv1.Deployment{}
 
 	deploymentResource := rpv1.OutputResource{
-		Resource: &deployment,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.Deployment,
-			Provider: resourcemodel.ProviderKubernetes,
-		},
 		LocalID: rpv1.LocalIDDeployment,
+		CreateResource: &rpv1.Resource{
+			Data: &deployment,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resources_kubernetes.ResourceTypeDeployment,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+		},
 	}
 
 	output := renderers.RendererOutput{

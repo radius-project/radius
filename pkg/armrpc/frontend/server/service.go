@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"net/http"
 
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/armrpc/authentication"
-	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/armrpc/authentication"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -58,17 +58,12 @@ func (s *Service) Init(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	s.StorageProvider = dataprovider.NewStorageProvider(s.Options.Config.StorageProvider)
-	qp := qprovider.New(s.ProviderName, s.Options.Config.QueueProvider)
-	opSC, err := s.StorageProvider.GetStorageClient(ctx, s.ProviderName+"/operationstatuses")
-	if err != nil {
-		return err
-	}
+	qp := qprovider.New(s.Options.Config.QueueProvider)
 	reqQueueClient, err := qp.GetClient(ctx)
 	if err != nil {
 		return err
 	}
-	s.OperationStatusManager = manager.New(opSC, reqQueueClient, s.ProviderName, s.Options.Config.Env.RoleLocation)
-
+	s.OperationStatusManager = manager.New(s.StorageProvider, reqQueueClient, s.Options.Config.Env.RoleLocation)
 	s.KubeClient, err = kubeutil.NewRuntimeClient(s.Options.K8sConfig)
 	if err != nil {
 		return err

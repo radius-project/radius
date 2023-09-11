@@ -24,7 +24,7 @@ import (
 	"path"
 	"runtime"
 
-	"github.com/project-radius/radius/pkg/version"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.

@@ -1,0 +1,4 @@
+{
+    "name":"mongo-terraform",
+    "resourceType":"Applications.Datastores/mongoDatabases"
+}

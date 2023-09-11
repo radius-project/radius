@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +44,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
 						Name:     "rabbitmq0",
-						Type:     linkrp.N_RabbitMQQueuesResourceType,
+						Type:     portableresources.RabbitMQQueuesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -61,7 +62,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Queue:                "testQueue",
 					Host:                 "test-host",
 					VHost:                "test-vhost",
@@ -83,7 +84,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
 						Name:     "rabbitmq0",
-						Type:     linkrp.N_RabbitMQQueuesResourceType,
+						Type:     portableresources.RabbitMQQueuesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -101,9 +102,9 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
 					TLS:                  false,
-					Recipe: linkrp.LinkRecipe{
+					Recipe: portableresources.ResourceRecipe{
 						Name: "rabbitmq",
 						Parameters: map[string]any{
 							"foo": "bar",
@@ -116,10 +117,9 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			versionedResource := &RabbitMQQueueResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -156,22 +156,14 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 					Port:                 to.Ptr(int32(5672)),
 					Username:             to.Ptr("test-user"),
 					TLS:                  to.Ptr(true),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "rabbitmqProvider",
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0"),
 				Name: to.Ptr("rabbitmq0"),
-				Type: to.Ptr(linkrp.N_RabbitMQQueuesResourceType),
+				Type: to.Ptr(portableresources.RabbitMQQueuesResourceType),
 			},
 		},
 		{
@@ -196,31 +188,22 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 							"foo": "bar",
 						},
 					},
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "rabbitmqProvider",
-							},
-						},
-					},
+					Status: resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0"),
 				Name: to.Ptr("rabbitmq0"),
-				Type: to.Ptr(linkrp.N_RabbitMQQueuesResourceType),
+				Type: to.Ptr(portableresources.RabbitMQQueuesResourceType),
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			resource := &datamodel.RabbitMQQueue{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &RabbitMQQueueResource{}
@@ -255,10 +238,9 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/" + test.payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(test.payload)
 			versionedResource := &RabbitMQQueueResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -275,7 +257,7 @@ func TestRabbitMQQueue_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -288,10 +270,9 @@ func TestRabbitMQQueue_ConvertFromValidation(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
-	rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/rabbitmqsecrets.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("rabbitmqsecrets.json")
 	versioned := &RabbitMQSecrets{}
-	err = json.Unmarshal(rawPayload, versioned)
+	err := json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
 	// act
@@ -305,10 +286,9 @@ func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := v20220315privatepreview.LoadTestData("./testdata/rabbitmqsecretsdatamodel.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("rabbitmqsecretsdatamodel.json")
 	secrets := &datamodel.RabbitMQSecrets{}
-	err = json.Unmarshal(rawPayload, secrets)
+	err := json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act
@@ -325,7 +305,7 @@ func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&v20220315privatepreview.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

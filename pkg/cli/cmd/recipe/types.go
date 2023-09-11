@@ -18,7 +18,7 @@ package recipe
 
 type EnvironmentRecipe struct {
 	Name            string `json:"name"`
-	LinkType        string `json:"linkType"`
+	ResourceType    string `json:"resourceType"`
 	TemplateKind    string `json:"templateKind"`
 	TemplatePath    string `json:"templatePath"`
 	TemplateVersion string `json:"templateVersion"`

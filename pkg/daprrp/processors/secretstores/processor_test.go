@@ -20,17 +20,16 @@ import (
 	"context"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/k8sutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers/dapr"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -125,7 +124,7 @@ func Test_Process(t *testing.T) {
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
-				ResourceProvisioning: linkrp.ResourceProvisioningManual,
+				ResourceProvisioning: portableresources.ResourceProvisioningManual,
 				Metadata:             map[string]any{"config": "extrasecure"},
 				Type:                 "secretstores.kubernetes",
 				Version:              "v1",
@@ -151,12 +150,12 @@ func Test_Process(t *testing.T) {
 		expectedSecrets := map[string]rpv1.SecretValueReference{}
 		generated := &unstructured.Unstructured{
 			Object: map[string]any{
-				"apiVersion": "dapr.io/v1alpha1",
-				"kind":       "Component",
+				"apiVersion": dapr.DaprAPIVersion,
+				"kind":       dapr.DaprKind,
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", linkrp.N_DaprSecretStoresResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", portableresources.DaprSecretStoresResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -172,9 +171,8 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		component := rpv1.NewKubernetesOutputResource(resourcekinds.DaprComponent, "Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
+		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
 		component.RadiusManaged = to.Ptr(true)
-		component.Resource = generated
 		expectedOutputResources := []rpv1.OutputResource{component}
 		require.NoError(t, err)
 
@@ -266,7 +264,7 @@ func Test_Process(t *testing.T) {
 			"test-component",
 			"test-app",
 			"some-other-other-name",
-			linkrp.N_DaprSecretStoresResourceType)
+			portableresources.DaprSecretStoresResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{
@@ -285,7 +283,7 @@ func Test_Process(t *testing.T) {
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
 				},
-				ResourceProvisioning: linkrp.ResourceProvisioningManual,
+				ResourceProvisioning: portableresources.ResourceProvisioningManual,
 				Metadata:             map[string]any{"config": "extrasecure"},
 				Type:                 "secretstores.kubernetes",
 				Version:              "v1",

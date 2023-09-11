@@ -1,0 +1,28 @@
+{
+  "operationId": "HttpRoutes_Update",
+  "title": "Update a httpRoutes resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "httpRouteName": "route0",
+    "api-version": "2022-03-15-privatepreview",
+    "HttpRouteResource": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/httpRoutes/routes0",
+        "name": "routes0",
+        "type": "Applications.Core/httpRoutes",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+        }
+      }
+    }
+  }
+}

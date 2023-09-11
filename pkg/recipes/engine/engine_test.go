@@ -22,23 +22,23 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/configloader"
-	"github.com/project-radius/radius/pkg/recipes/driver"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
+	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
-func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, driver.MockDriver) {
+func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, recipedriver.MockDriver) {
 	ctrl := gomock.NewController(t)
 	configLoader := configloader.NewMockConfigurationLoader(ctrl)
-	mDriver := driver.NewMockDriver(ctrl)
+	mDriver := recipedriver.NewMockDriver(ctrl)
 	options := Options{
 		ConfigurationLoader: configLoader,
-		Drivers: map[string]driver.Driver{
+		Drivers: map[string]recipedriver.Driver{
 			recipes.TemplateKindBicep:     mDriver,
 			recipes.TemplateKindTerraform: mDriver,
 		},
@@ -58,6 +58,9 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
+	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -84,16 +87,32 @@ func Test_Engine_Execute_Success(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+	driver.EXPECT().
+		Execute(ctx, recipedriver.ExecuteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    *recipeDefinition,
+			},
+			PrevState: prevState,
+		}).
+		Times(1).
+		Return(recipeResult, nil)
 
-	result, err := engine.Execute(ctx, recipeMetadata)
+	result, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
@@ -107,6 +126,9 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
+	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -123,16 +145,32 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to execute recipe"))
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+	driver.EXPECT().
+		Execute(ctx, recipedriver.ExecuteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    *recipeDefinition,
+			},
+			PrevState: prevState,
+		}).
+		Times(1).
+		Return(nil, errors.New("failed to execute recipe"))
 
-	result, err := engine.Execute(ctx, recipeMetadata)
+	result, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "failed to execute recipe")
@@ -147,6 +185,9 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
+	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 	}
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -174,16 +215,32 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		Driver:          recipes.TemplateKindTerraform,
 		TemplatePath:    "Azure/redis/azurerm",
 		TemplateVersion: "1.1.0",
-		ResourceType:    "Applications.Link/mongoDatabases",
+		ResourceType:    "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(envConfig, nil)
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	driver.EXPECT().Execute(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(recipeResult, nil)
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+	driver.EXPECT().
+		Execute(ctx, recipedriver.ExecuteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    *recipeDefinition,
+			},
+			PrevState: prevState,
+		}).
+		Times(1).
+		Return(recipeResult, nil)
 
-	result, err := engine.Execute(ctx, recipeMetadata)
+	result, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
@@ -195,7 +252,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       "invalid",
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	recipeMetadata := recipes.ResourceMetadata{
@@ -207,9 +264,14 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	_, err := engine.Execute(ctx, recipeMetadata)
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "could not find driver invalid")
 }
@@ -226,8 +288,14 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
-	_, err := engine.Execute(ctx, recipeMetadata)
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
+	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
 }
 
@@ -243,51 +311,128 @@ func Test_Engine_Load_Error(t *testing.T) {
 			"resourceName": "resource1",
 		},
 	}
+	prevState := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
+	}
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(recipeDefinition, nil)
-	configLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("unable to fetch namespace information"))
-	_, err := engine.Execute(ctx, recipeMetadata)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(recipeDefinition, nil)
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(nil, errors.New("unable to fetch namespace information"))
+	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
 }
 
 func Test_Engine_Delete_Success(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
 
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
-	driver.EXPECT().Delete(ctx, outputResources).Times(1).Return(nil)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(&recipeDefinition, nil)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
+	driver.EXPECT().
+		Delete(ctx, recipedriver.DeleteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    recipeDefinition,
+			},
+			OutputResources: outputResources,
+		}).
+		Times(1).
+		Return(nil)
 
 	err := engine.Delete(ctx, recipeMetadata, outputResources)
 	require.NoError(t, err)
 }
 
 func Test_Engine_Delete_Error(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
+
+	envConfig := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace: "default",
+			},
+		},
+		Providers: datamodel.Providers{
+			Azure: datamodel.ProvidersAzure{
+				Scope: "scope",
+			},
+		},
+	}
 
 	ctx := testcontext.New(t)
 	engine, configLoader, driver := setup(t)
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
-	driver.EXPECT().Delete(ctx, outputResources).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(&recipeDefinition, nil)
+
+	configLoader.EXPECT().
+		LoadConfiguration(ctx, recipeMetadata).
+		Times(1).
+		Return(envConfig, nil)
+
+	driver.EXPECT().
+		Delete(ctx, recipedriver.DeleteOptions{
+			BaseOptions: recipedriver.BaseOptions{
+				Configuration: *envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    recipeDefinition,
+			},
+			OutputResources: outputResources,
+		}).
+		Times(1).
+		Return(fmt.Errorf("could not find API version for type %q, no supported API versions",
+			outputResources[0].ID))
 
 	err := engine.Delete(ctx, recipeMetadata, outputResources)
 	require.Error(t, err)
 }
 
 func Test_Delete_InvalidDriver(t *testing.T) {
-	recipeMetadata, recipeDefinition, outputResources := getDeleteInputs()
+	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 	recipeDefinition.Driver = "invalid"
 
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(&recipeDefinition, nil)
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(&recipeDefinition, nil)
 	err := engine.Delete(ctx, recipeMetadata, outputResources)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "could not find driver invalid")
@@ -296,19 +441,67 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 func Test_Delete_Lookup_Error(t *testing.T) {
 	ctx := testcontext.New(t)
 	engine, configLoader, _ := setup(t)
-	recipeMetadata, _, outputResources := getDeleteInputs()
+	recipeMetadata, _, outputResources := getRecipeInputs()
 
-	configLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
+	configLoader.EXPECT().
+		LoadRecipe(ctx, &recipeMetadata).
+		Times(1).
+		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
 	err := engine.Delete(ctx, recipeMetadata, outputResources)
 	require.Error(t, err)
 }
 
-func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
+func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
+	_, recipeDefinition, _ := getRecipeInputs()
+
+	ctx := testcontext.New(t)
+	engine, _, driver := setup(t)
+	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
+
+	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
+	}).Times(1).Return(outputParams, nil)
+
+	recipeData, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	require.NoError(t, err)
+	require.Equal(t, outputParams, recipeData)
+}
+
+func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
+	_, recipeDefinition, _ := getRecipeInputs()
+
+	ctx := testcontext.New(t)
+	engine, _, driver := setup(t)
+
+	driver.EXPECT().GetRecipeMetadata(ctx, recipedriver.BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
+	}).Times(1).Return(nil, errors.New("driver failure"))
+
+	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "driver failure")
+}
+
+func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
+	_, recipeDefinition, _ := getRecipeInputs()
+	recipeDefinition.Driver = "invalid"
+
+	ctx := testcontext.New(t)
+	engine, _, _ := setup(t)
+
+	_, err := engine.GetRecipeMetadata(ctx, recipeDefinition)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not find driver invalid")
+}
+
+func getRecipeInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition, []rpv1.OutputResource) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/test-db",
 		Parameters: map[string]any{
 			"resourceName": "resource1",
 		},
@@ -317,18 +510,12 @@ func getDeleteInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
-		ResourceType: "Applications.Link/mongoDatabases",
+		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	outputResources := []rpv1.OutputResource{
 		{
-			LocalID: "/planes/deployments/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Microsoft.Resources/deployments",
-					Provider: "azure",
-				},
-			},
+			ID: resources.MustParse("/subscriptions/test-sub/resourcegroups/test-rg/providers/Microsoft.DocumentDB/accounts/test-account"),
 		},
 	}
 	return recipeMetadata, recipeDefinition, outputResources

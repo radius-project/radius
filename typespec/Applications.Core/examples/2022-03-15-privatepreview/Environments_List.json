@@ -1,0 +1,125 @@
+{
+  "operationId": "Environments_ListByScope",
+  "title": "Get environments by resource group",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2022-03-15-privatepreview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "name": "env0",
+            "type": "Applications.Core/environments",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "compute": {
+                "kind": "Kubernetes",
+                "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
+              },
+              "providers" : {
+                "azure" : {
+                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+                }
+              },
+              "recipes": {
+                "Applications.Datastores/mongoDatabases":{
+                  "cosmos-recipe": {
+                    "templateKind": "bicep",
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                  },
+                  "default":{
+                    "templateKind": "bicep",
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongo"
+                  }
+                },
+                "Applications.Datastores/redisCaches":{
+                  "redis-recipe": {
+                    "templateKind": "bicep",
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscache"
+                  },
+                  "default":{
+                    "templateKind": "bicep",
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/redis"
+                  }
+                }
+              },
+              "extensions": [
+                {
+                  "kind": "kubernetesMetadata",
+                  "annotations": {
+                    "prometheus.io/scrape": "true",
+                    "prometheus.io/port": "80"
+                  },
+                  "labels": {
+                    "foo/bar/team": "credit",
+                    "foo/bar/contact": "radiususer"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+            "name": "env0",
+            "type": "Applications.Core/environments",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "compute": {
+                "kind": "Kubernetes",
+                "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
+              },
+              "providers" : {
+                "aws" : {
+                    "scope":"/planes/aws/aws/accounts/140313373712/regions/us-west-2" 
+                }
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+            "name": "env1",
+            "type": "Applications.Core/environments",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "compute": {
+                "kind": "Kubernetes",
+                "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster1",
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
+              },
+              "providers" : {
+                "azure" : {
+                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+                }
+              },
+              "recipes": {
+                "Applications.Datastores/mongoDatabases":{
+                  "cosmos-recipe": {
+                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                  } 
+                }
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

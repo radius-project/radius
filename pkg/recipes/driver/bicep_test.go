@@ -17,21 +17,23 @@ limitations under the License.
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	gomock "github.com/golang/mock/gomock"
-	corerp_datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	clients "github.com/project-radius/radius/pkg/sdk/clients"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/testcontext"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	clients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,10 +85,10 @@ func Test_CreateRecipeParameters_WithContextParameter(t *testing.T) {
 	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "Applications.Link/mongoDatabases",
+			Type: "Applications.Datastores/mongoDatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
@@ -131,10 +133,10 @@ func Test_CreateRecipeParameters_EmptyResourceParameters(t *testing.T) {
 	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "Applications.Link/mongoDatabases",
+			Type: "Applications.Datastores/mongoDatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
@@ -183,10 +185,10 @@ func Test_CreateRecipeParameters_ResourceAndEnvParameters(t *testing.T) {
 	recipeContext := recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "Applications.Link/mongoDatabases",
+			Type: "Applications.Datastores/mongoDatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
@@ -226,7 +228,7 @@ func Test_createDeploymentID(t *testing.T) {
 	expected, err := resources.ParseResource("/planes/radius/local/resourceGroups/cool-group/providers/Microsoft.Resources/deployments/test-deployment")
 	require.NoError(t, err)
 
-	actual, err := createDeploymentID("/planes/radius/local/resourceGroups/cool-group/providers/Applications.Link/mongoDatabases/test-db", "test-deployment")
+	actual, err := createDeploymentID("/planes/radius/local/resourceGroups/cool-group/providers/Applications.Datastores/mongoDatabases/test-db", "test-deployment")
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
@@ -368,41 +370,31 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	outputResources := []rpv1.OutputResource{
 		{
 			LocalID: "RecipeResource0",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Service",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "apps/unknown",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
 			RadiusManaged: to.Ptr(true),
 		},
 		{
 			LocalID: "RecipeResource1",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "Service",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "apps/unknown",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"",
+				"Service",
+				"recipe-app",
+				"redis"),
 			// We don't expect a call to delete to be made when RadiusManaged is false.
 			RadiusManaged: to.Ptr(false),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(nil)
+	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
-	err := driver.Delete(ctx, outputResources)
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
 	require.NoError(t, err)
 }
 
@@ -411,24 +403,137 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	driver, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
-			LocalID: "RecipeResource0",
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     "KubernetesService",
-					Provider: "kubernetes",
-				},
-				Data: map[string]any{
-					"apiVersion": "invalid api versionn",
-					"kind":       "Deployment",
-					"name":       "redis",
-					"namespace":  "recipe-app",
-				},
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
 			RadiusManaged: to.Ptr(true),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis", resourcemodel.APIVersionUnknown).Times(1).Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].Identity.ResourceType.Type))
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+		},
+	}
+	client.EXPECT().
+		Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
+		Times(1)
 
-	err := driver.Delete(ctx, outputResources)
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
 	require.Error(t, err)
+	require.Equal(t, err, &recipeError)
+}
+
+func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver := bicepDriver{}
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Name:         "mongo-azure",
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+
+	expectedOutput := map[string]any{
+		"documentdbName": map[string]any{"type": "string"},
+		"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
+		"mongodbName":    map[string]any{"type": "string"},
+	}
+
+	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, expectedOutput, recipeData["parameters"])
+}
+
+func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver := bicepDriver{}
+	recipeDefinition := recipes.EnvironmentDefinition{
+		Name:         "mongo-azure",
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "radiusdev.azurecr.io/test-non-existent-recipe",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+
+	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: recipeDefinition,
+	})
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeLanguageFailure,
+			Message: "failed to fetch repository from the path \"radiusdev.azurecr.io/test-non-existent-recipe\": radiusdev.azurecr.io/test-non-existent-recipe:latest: not found",
+		},
+	}
+
+	require.Error(t, err)
+	require.Equal(t, err, &expErr)
+}
+
+func Test_GetGCOutputResources(t *testing.T) {
+	d := &bicepDriver{}
+	before := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	after := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
+	}
+	exp := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	res := d.getGCOutputResources(after, before)
+	require.Equal(t, exp, res)
+}
+
+func Test_DeleteGCOutputResources(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	tests := []struct {
+		desc              string
+		err               error
+		gcOutputResources []string
+	}{
+		{
+			desc: "success",
+			err:  nil,
+			gcOutputResources: []string{
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+			},
+		},
+		{
+			desc: "deletion failed",
+			err:  errors.New("test-error"),
+			gcOutputResources: []string{
+				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+			},
+		},
+	}
+	for _, tt := range tests {
+		for _, resource := range tt.gcOutputResources {
+			client.EXPECT().
+				Delete(ctx, resource).
+				Return(tt.err).
+				Times(1)
+		}
+		err := driver.deleteGCOutputResources(ctx, tt.gcOutputResources)
+		if tt.err != nil {
+			require.Equal(t, err, tt.err)
+		} else {
+			require.NoError(t, err)
+		}
+	}
+
 }

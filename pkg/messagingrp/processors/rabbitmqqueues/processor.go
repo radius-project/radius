@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 )
 
 const (
@@ -58,6 +58,11 @@ func (p *Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue,
 		return err
 	}
 
+	return nil
+}
+
+// Delete implements the processors.Processor interface for RabbitMQQueue resources.
+func (p *Processor) Delete(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
 	return nil
 }
 

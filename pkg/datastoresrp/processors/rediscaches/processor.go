@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 )
 
 const (
@@ -62,6 +62,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.RedisCache,
 		return err
 	}
 
+	return nil
+}
+
+// Delete implements the processors.Processor interface for RedisCache resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.RedisCache, options processors.Options) error {
 	return nil
 }
 

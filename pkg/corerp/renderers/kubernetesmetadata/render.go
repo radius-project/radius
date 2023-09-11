@@ -19,12 +19,12 @@ package kubernetesmetadata
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/kube"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/rp/kube"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
@@ -66,12 +66,13 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	}
 
 	for _, ores := range output.Resources {
-		if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
+		resourceType := ores.GetResourceType()
+		if resourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		dep, ok := ores.Resource.(*appsv1.Deployment)
+		dep, ok := ores.CreateResource.Data.(*appsv1.Deployment)
 		if !ok {
 			continue
 		}
@@ -106,7 +107,7 @@ func processAnnotations(ctx context.Context, options renderers.RenderOptions, de
 	}
 
 	// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	metaAnnotations, specAnnotations := ann.Merge(ctx)
+	metaAnnotations, specAnnotations := ann.Merge()
 	setAnnotations(dep, metaAnnotations, specAnnotations)
 }
 
@@ -133,7 +134,7 @@ func processLabels(ctx context.Context, options renderers.RenderOptions, dep *ap
 	}
 
 	// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-	metaLabels, specLabels := lbl.Merge(ctx)
+	metaLabels, specLabels := lbl.Merge()
 	setLabels(dep, metaLabels, specLabels)
 }
 

@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
 const (
@@ -307,8 +307,8 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 }
 
 // RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and
-// link type, and returns the output string or an error.
-func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, linkType string) (string, error) {
+// resource type, and returns the output string or an error.
+func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, resourceType string) (string, error) {
 	args := []string{
 		"recipe",
 		"register",
@@ -316,32 +316,32 @@ func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templat
 		"--environment", envName,
 		"--template-kind", templateKind,
 		"--template-path", templatePath,
-		"--link-type", linkType,
+		"--resource-type", resourceType,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-// RecipeUnregister runs a command to unregister a recipe from an environment, given the recipe name and link type.
+// RecipeUnregister runs a command to unregister a recipe from an environment, given the recipe name and resource type.
 // It returns a string and an error if the command fails.
-func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName, linkType string) (string, error) {
+func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName, resourceType string) (string, error) {
 	args := []string{
 		"recipe",
 		"unregister",
 		recipeName,
-		"--link-type", linkType,
+		"--resource-type", resourceType,
 		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-// RecipeShow runs a command to show a recipe with the given environment name, recipe name and link type, and returns the
+// RecipeShow runs a command to show a recipe with the given environment name, recipe name and resource type, and returns the
 // output string or an error.
-func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, linkType string) (string, error) {
+func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, resourceType string) (string, error) {
 	args := []string{
 		"recipe",
 		"show",
 		recipeName,
-		"--link-type", linkType,
+		"--resource-type", resourceType,
 		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)

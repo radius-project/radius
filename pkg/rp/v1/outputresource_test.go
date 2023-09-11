@@ -19,8 +19,8 @@ package v1
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,25 +29,26 @@ func TestGetDependencies(t *testing.T) {
 
 	dependencies, err := outputResource.GetDependencies()
 	require.NoError(t, err)
-	require.Equal(t, []string{LocalIDUserAssignedManagedIdentity, LocalIDRoleAssignmentKVKeys},
-		dependencies)
+	require.Equal(t, []string{LocalIDUserAssignedManagedIdentity, LocalIDRoleAssignmentKVKeys}, dependencies)
+}
+
+func TestExistDependency(t *testing.T) {
+	testResource := &Resource{
+		Dependencies: []string{LocalIDSecret},
+	}
+
+	require.True(t, testResource.ExistDependency(LocalIDSecret))
+	require.False(t, testResource.ExistDependency(LocalIDDeployment))
 }
 
 func TestGetDependencies_MissingLocalID(t *testing.T) {
-	testResource1 := OutputResource{
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
-		},
-	}
+	testResource1 := OutputResource{}
 
 	testResource2 := OutputResource{
 		LocalID: LocalIDRoleAssignmentKVKeys,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
+		CreateResource: &Resource{
+			Dependencies: []string{testResource1.LocalID},
 		},
-		Dependencies: []Dependency{{LocalID: testResource1.LocalID}},
 	}
 
 	_, err := testResource2.GetDependencies()
@@ -58,10 +59,6 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 func TestGetDependencies_Empty(t *testing.T) {
 	testOutputResource := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
 	}
 
 	dependencies, err := testOutputResource.GetDependencies()
@@ -87,30 +84,19 @@ func TestOrderOutputResources(t *testing.T) {
 func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputResource) {
 	managedIdentity := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID: LocalIDRoleAssignmentKVKeys,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
+		CreateResource: &Resource{
+			Dependencies: []string{managedIdentity.LocalID},
 		},
-		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
 	federatedIdentity := OutputResource{
 		LocalID: LocalIDFederatedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureFederatedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{
-			{LocalID: managedIdentity.LocalID},
-			{LocalID: roleAssignmentKeys.LocalID},
+		CreateResource: &Resource{
+			Dependencies: []string{managedIdentity.LocalID, roleAssignmentKeys.LocalID},
 		},
 	}
 
@@ -129,36 +115,19 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 
 	managedIdentity := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi"),
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID: LocalIDRoleAssignmentKVKeys,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
-		}, "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi", "2020-01-01"),
-		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.Authorization/roleAssignments/test-ra"),
 	}
 
 	federatedIdentity := OutputResource{
 		LocalID: LocalIDFederatedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureFederatedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{
-			{LocalID: managedIdentity.LocalID},
-			{LocalID: roleAssignmentKeys.LocalID},
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi/federatedIdentities/test-fi"),
 	}
+
 	after = append(after, managedIdentity)
 	after = append(after, roleAssignmentKeys)
 	after = append(after, federatedIdentity)
@@ -176,27 +145,13 @@ func TestGetGCOutputResources_ResourceDiffersByID(t *testing.T) {
 	after := []OutputResource{
 		{
 			LocalID: LocalIDRoleAssignmentKVKeys,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: resourcemodel.ProviderAzure,
-			}, "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/after", "2020-01-01"),
+			ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/after"),
 		},
 	}
 	before := []OutputResource{
 		{
 			LocalID: LocalIDRoleAssignmentKVKeys,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Identity: resourcemodel.NewARMIdentity(&resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: resourcemodel.ProviderAzure,
-			}, "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/before", "2020-01-01"),
+			ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/before"),
 		},
 	}
 
@@ -210,31 +165,17 @@ func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 
 	managedIdentity := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi"),
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID: LocalIDRoleAssignmentKVKeys,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.Authorization/roleAssignments/test-ra"),
 	}
 
 	federatedIdentity := OutputResource{
 		LocalID: LocalIDFederatedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureFederatedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{
-			{LocalID: managedIdentity.LocalID},
-			{LocalID: roleAssignmentKeys.LocalID},
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi/federatedIdentities/test-fi"),
 	}
 
 	after = append(after, managedIdentity)
@@ -255,31 +196,17 @@ func TestGetGCOutputResources_ManagedIdentityShouldBeDeleted(t *testing.T) {
 
 	managedIdentity := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi"),
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID: LocalIDRoleAssignmentKVKeys,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.Authorization/roleAssignments/test-ra"),
 	}
 
 	federatedIdentity := OutputResource{
 		LocalID: LocalIDFederatedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureFederatedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{
-			{LocalID: managedIdentity.LocalID},
-			{LocalID: roleAssignmentKeys.LocalID},
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi/federatedIdentities/test-fi"),
 	}
 
 	after = append(after, roleAssignmentKeys)
@@ -300,40 +227,22 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 
 	managedIdentity1 := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi1"),
 	}
 
 	managedIdentity2 := OutputResource{
 		LocalID: LocalIDUserAssignedManagedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type: resourcekinds.AzureUserAssignedManagedIdentity,
-			// Fixme: Kubernetes is not possible?
-			Provider: resourcemodel.ProviderKubernetes,
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi2"),
 	}
 
 	roleAssignmentKeys := OutputResource{
 		LocalID: LocalIDRoleAssignmentKVKeys,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{{LocalID: managedIdentity1.LocalID}},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.Authorization/roleAssignments/test-ra"),
 	}
 
 	federatedIdentity := OutputResource{
 		LocalID: LocalIDFederatedIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureFederatedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Dependencies: []Dependency{
-			{LocalID: managedIdentity1.LocalID},
-			{LocalID: roleAssignmentKeys.LocalID},
-		},
+		ID:      resources.MustParse("/subscriptions/test-subscription/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-mi/federatedIdentities/test-fi"),
 	}
 
 	after = append(after, managedIdentity1)
@@ -350,38 +259,28 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 	require.Equal(t, []OutputResource{managedIdentity2}, diff)
 }
 
-func TestGetGCOutputResources_Secret(t *testing.T) {
+func TestGetGCOutputResources_ResourceRemoved(t *testing.T) {
 	after := []OutputResource{}
 	before := []OutputResource{}
 
 	deployment := OutputResource{
 		LocalID: LocalIDDeployment,
-		Identity: resourcemodel.ResourceIdentity{
-			ResourceType: &resourcemodel.ResourceType{
-				Type:     resourcekinds.Deployment,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-		},
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.Deployment,
-			Provider: resourcemodel.ProviderKubernetes,
-		},
-		Dependencies: nil,
+		ID: resources_kubernetes.IDFromParts(
+			resources_kubernetes.PlaneNameTODO,
+			"",
+			resources_kubernetes.KindDeployment,
+			"test-namespace",
+			"test-deployment"),
 	}
 
 	secret := OutputResource{
 		LocalID: LocalIDSecret,
-		Identity: resourcemodel.ResourceIdentity{
-			ResourceType: &resourcemodel.ResourceType{
-				Type:     resourcekinds.Secret,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-		},
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.Secret,
-			Provider: resourcemodel.ProviderKubernetes,
-		},
-		Dependencies: nil,
+		ID: resources_kubernetes.IDFromParts(
+			resources_kubernetes.PlaneNameTODO,
+			"",
+			resources_kubernetes.KindSecret,
+			"test-namespace",
+			"test-secret"),
 	}
 
 	after = append(after, deployment)

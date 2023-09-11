@@ -19,25 +19,21 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // WithLogger adds logger to the context based on the Resource ID (if present).
-func WithLogger(serviceName string) func(h http.Handler) http.Handler {
-	return func(h http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			id, err := resources.Parse(r.URL.Path)
-			if err != nil {
-				// This just means the request is for an ARM resource. Not an error.
-				h.ServeHTTP(w, r)
-				return
-			}
-
-			ctx := ucplog.WrapLogContext(r.Context(), ucplog.LogFieldResourceID, id.String())
-			h.ServeHTTP(w, r.WithContext(ctx))
+func WithLogger(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := resources.Parse(r.URL.Path)
+		if err != nil {
+			// This just means the request is for an ARM resource. Not an error.
+			h.ServeHTTP(w, r)
+			return
 		}
 
-		return http.HandlerFunc(fn)
-	}
+		ctx := ucplog.WrapLogContext(r.Context(), ucplog.LogFieldResourceID, id.String())
+		h.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

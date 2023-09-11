@@ -20,15 +20,15 @@ import (
 	"context"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -118,14 +118,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	var envRecipes []types.EnvironmentRecipe
-	for link, recipes := range envResource.Properties.Recipes {
+	for resourceType, recipes := range envResource.Properties.Recipes {
 		for recipeName, recipeDetails := range recipes {
 			recipe := types.EnvironmentRecipe{}
 			switch c := recipeDetails.(type) {
 			case *corerp.TerraformRecipeProperties:
 				recipe = types.EnvironmentRecipe{
 					Name:            recipeName,
-					LinkType:        link,
+					ResourceType:    resourceType,
 					TemplatePath:    *c.TemplatePath,
 					TemplateKind:    *c.TemplateKind,
 					TemplateVersion: *c.TemplateVersion,
@@ -133,7 +133,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			case *corerp.BicepRecipeProperties:
 				recipe = types.EnvironmentRecipe{
 					Name:         recipeName,
-					LinkType:     link,
+					ResourceType: resourceType,
 					TemplatePath: *c.TemplatePath,
 					TemplateKind: *c.TemplateKind,
 				}

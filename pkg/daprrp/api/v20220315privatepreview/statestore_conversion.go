@@ -5,11 +5,11 @@ import (
 	"reflect"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel and returns an error
@@ -50,7 +50,7 @@ func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	// the recipe is expected to create the Dapr Component manifest. However, they are required
 	// when resourceProvisioning is set to manual.
 	msgs := []string{}
-	if converted.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if converted.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if src.Properties.Recipe != nil && (!reflect.ValueOf(*src.Properties.Recipe).IsZero()) {
 			msgs = append(msgs, "recipe details cannot be specified when resourceProvisioning is set to manual")
 		}
@@ -106,7 +106,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 	dst.Properties = &DaprStateStoreProperties{
 		Status: &ResourceStatus{
-			OutputResources: rpv1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+			OutputResources: toOutputResources(daprStateStore.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(daprStateStore.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(daprStateStore.Properties.Environment),
@@ -116,7 +116,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src v1.DataModelInterface) error 
 		Resources:            fromResourcesDataModel(daprStateStore.Properties.Resources),
 	}
 
-	if daprStateStore.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if daprStateStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		dst.Properties.Type = to.Ptr(daprStateStore.Properties.Type)
 		dst.Properties.Version = to.Ptr(daprStateStore.Properties.Version)
 		dst.Properties.Metadata = daprStateStore.Properties.Metadata

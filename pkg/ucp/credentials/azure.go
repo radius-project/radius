@@ -22,11 +22,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/to"
-	ucpapi "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/to"
+	ucpapi "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 )
 
 var _ CredentialProvider[AzureCredential] = (*AzureCredentialProvider)(nil)
@@ -34,13 +34,13 @@ var _ CredentialProvider[AzureCredential] = (*AzureCredentialProvider)(nil)
 // AzureCredentialProvider is UCP credential provider for Azure.
 type AzureCredentialProvider struct {
 	secretProvider *provider.SecretProvider
-	client         *ucpapi.AzureCredentialClient
+	client         *ucpapi.AzureCredentialsClient
 }
 
 // NewAzureCredentialProvider creates a new AzureCredentialProvider by creating a new AzureCredentialClient with the given
 // credential and connection, and returns an error if one occurs.
 func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AzureCredentialProvider, error) {
-	cli, err := ucpapi.NewAzureCredentialClient(credential, sdk.NewClientOptions(ucpConn))
+	cli, err := ucpapi.NewAzureCredentialsClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.C
 // Kubernetes secret store) and returns an AzureCredential struct. If an error occurs, an error is returned.
 func (p *AzureCredentialProvider) Fetch(ctx context.Context, planeName, name string) (*AzureCredential, error) {
 	// 1. Fetch the secret name of Azure service principal credentials from UCP.
-	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AzureCredentialClientGetOptions{})
+	cred, err := p.client.Get(ctx, planeName, name, &ucpapi.AzureCredentialsClientGetOptions{})
 	if err != nil {
 		return nil, err
 	}

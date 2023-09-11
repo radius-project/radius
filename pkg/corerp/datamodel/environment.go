@@ -17,8 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const EnvironmentResourceType = "Applications.Core/environments"
@@ -54,8 +54,8 @@ type EnvironmentRecipeProperties struct {
 
 // Recipe represents input properties for recipe getMetadata api.
 type Recipe struct {
-	// Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
-	LinkType string `json:"linkType,omitempty"`
+	// Type of the portable resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'
+	ResourceType string `json:"resourceType,omitempty"`
 
 	// Name of the recipe registered to the environment.
 	Name string `json:"recipeName,omitempty"`

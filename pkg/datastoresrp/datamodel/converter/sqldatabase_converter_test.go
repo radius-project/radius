@@ -21,10 +21,10 @@ import (
 	"errors"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/datastoresrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	linkrp_util "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,10 +52,10 @@ func TestSqlDatabaseDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := linkrp_util.LoadTestData(tc.dataModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.SqlDatabase{}
-			_ = json.Unmarshal(c, dm)
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
 			am, err := SqlDatabaseDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -102,8 +102,7 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := linkrp_util.LoadTestData(tc.versionedModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.versionedModelFile)
 			dm, err := SqlDatabaseDataModelFromVersioned(c, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
@@ -144,10 +143,10 @@ func TestSqlDatabaseSecretsDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.apiVersion, func(t *testing.T) {
-			c, err := linkrp_util.LoadTestData(tc.dataModelFile)
-			require.NoError(t, err)
+			c := testutil.ReadFixture("../" + tc.dataModelFile)
 			dm := &datamodel.SqlDatabaseSecrets{}
-			_ = json.Unmarshal(c, dm)
+			err := json.Unmarshal(c, dm)
+			require.NoError(t, err)
 			am, err := SqlDatabaseSecretsDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)

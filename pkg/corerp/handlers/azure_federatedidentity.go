@@ -24,16 +24,14 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/logging"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	"github.com/radius-project/radius/pkg/logging"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -109,7 +107,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 		return nil, errors.New("fails to get identity resource id")
 	}
 
-	rs := options.Resource.Resource
+	rs := options.Resource.CreateResource.Data
 	federatedName, err := GetMapValue[string](rs, FederatedIdentityNameKey)
 	if err != nil {
 		return nil, err
@@ -141,8 +139,8 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 		return nil, err
 	}
 
-	subID := rID.FindScope(resources.SubscriptionsSegment)
-	rgName := rID.FindScope(resources.ResourceGroupsSegment)
+	subID := rID.FindScope(resources_azure.ScopeSubscriptions)
+	rgName := rID.FindScope(resources_azure.ScopeResourceGroups)
 
 	client, err := clientv2.NewFederatedIdentityClient(subID, &handler.arm.ClientOptions)
 	if err != nil {
@@ -156,25 +154,17 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 	}
 
 	// WORKAROUND: Ensure that federal identity credential is populated. (Why not they provide async api?)
-	_, err = client.Get(ctx, rgName, rID.Name(), federatedName, nil)
+	response, err := client.Get(ctx, rgName, rID.Name(), federatedName, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	options.Resource.Identity = resourcemodel.ResourceIdentity{
-		ResourceType: &resourcemodel.ResourceType{
-			Type:     resourcekinds.AzureFederatedIdentity,
-			Provider: resourcemodel.ProviderAzure,
-		},
-		Data: resourcemodel.AzureFederatedIdentity{
-			Resource:   identityID,
-			OIDCIssuer: issuer,
-			Subject:    subject,
-			Audience:   AzureFederatedIdentityAudience,
-			Name:       federatedName,
-		},
+	id, err := resources.ParseResource(*response.ID)
+	if err != nil {
+		return nil, err
 	}
 
+	options.Resource.ID = id
 	logger.Info("Created federated identity for Azure AD identity.", logging.LogFieldLocalID, rpv1.LocalIDFederatedIdentity)
 
 	return map[string]string{}, nil
@@ -186,23 +176,32 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 // azureFederatedIdentityHandler.Delete deletes an Azure Federated Identity resource from the Azure cloud given the
 // resource's data and subscription ID.
 func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	fi := &resourcemodel.AzureFederatedIdentity{}
-	if err := store.DecodeMap(options.Resource.Identity.Data, fi); err != nil {
-		return err
-	}
-
-	rID, err := resources.ParseResource(fi.Resource)
-	if err != nil {
-		return err
-	}
-
-	subscriptionID := rID.FindScope(resources.SubscriptionsSegment)
+	subscriptionID := options.Resource.ID.FindScope(resources_azure.ScopeSubscriptions)
 
 	client, err := clientv2.NewFederatedIdentityClient(subscriptionID, &handler.arm.ClientOptions)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.Delete(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), fi.Name, nil)
+	// Validate the ID matches the expected type before we start taking it apart to get the names.
+	expected := resources.KnownType{
+		Types: []resources.TypeSegment{
+			{
+				Type: "Microsoft.ManagedIdentity/userAssignedIdentities",
+				Name: "*",
+			},
+			{
+				Type: "federatedIdentityCredentials",
+				Name: "*",
+			},
+		},
+	}
+	err = options.Resource.ID.ValidateResourceType(expected)
+	if err != nil {
+		return err
+	}
+
+	typeSegments := options.Resource.ID.TypeSegments()
+	_, err = client.Delete(ctx, options.Resource.ID.FindScope(resources_azure.ScopeResourceGroups), typeSegments[0].Name, typeSegments[1].Name, nil)
 	return err
 }

@@ -17,7 +17,6 @@ limitations under the License.
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -63,6 +62,7 @@ func GetMapValue[T any](collection any, key string) (T, error) {
 			return defaultValue, fmt.Errorf("value is not %T type", *new(T))
 		}
 		return s, nil
+	default:
+		return defaultValue, fmt.Errorf("unsupported type: %T", c)
 	}
-	return defaultValue, errors.New("unsupported type")
 }

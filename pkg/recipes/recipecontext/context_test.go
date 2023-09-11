@@ -19,15 +19,15 @@ package recipecontext
 import (
 	"testing"
 
-	coredm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewContext(t *testing.T) {
 	testMetadata := &recipes.ResourceMetadata{
-		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 	}
@@ -60,10 +60,10 @@ func TestNewContext(t *testing.T) {
 			out: &Context{
 				Resource: Resource{
 					ResourceInfo: ResourceInfo{
-						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 						Name: "mongo0",
 					},
-					Type: "applications.link/mongodatabases",
+					Type: "applications.datastores/mongodatabases",
 				},
 				Application: ResourceInfo{
 					Name: "testApplication",
@@ -110,10 +110,10 @@ func TestNewContext(t *testing.T) {
 			out: &Context{
 				Resource: Resource{
 					ResourceInfo: ResourceInfo{
-						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 						Name: "mongo0",
 					},
-					Type: "applications.link/mongodatabases",
+					Type: "applications.datastores/mongodatabases",
 				},
 				Application: ResourceInfo{
 					Name: "testApplication",
@@ -150,10 +150,10 @@ func TestNewContext(t *testing.T) {
 			out: &Context{
 				Resource: Resource{
 					ResourceInfo: ResourceInfo{
-						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+						ID:   "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 						Name: "mongo0",
 					},
-					Type: "applications.link/mongodatabases",
+					Type: "applications.datastores/mongodatabases",
 				},
 				Application: ResourceInfo{
 					Name: "testApplication",
@@ -220,7 +220,7 @@ func TestNewContext_failures(t *testing.T) {
 		{
 			name: "invalid env id",
 			metadata: &recipes.ResourceMetadata{
-				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				EnvironmentID: "invalid-env",
 				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -230,7 +230,7 @@ func TestNewContext_failures(t *testing.T) {
 		{
 			name: "invalid app id",
 			metadata: &recipes.ResourceMetadata{
-				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				ApplicationID: "invalid-app",
 			},
@@ -240,7 +240,7 @@ func TestNewContext_failures(t *testing.T) {
 		{
 			name: "invalid azure scope",
 			metadata: &recipes.ResourceMetadata{
-				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -265,7 +265,7 @@ func TestNewContext_failures(t *testing.T) {
 		{
 			name: "invalid aws scope",
 			metadata: &recipes.ResourceMetadata{
-				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},

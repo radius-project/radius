@@ -26,11 +26,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
@@ -106,6 +107,8 @@ func Test_Gateway(t *testing.T) {
 				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
+
+				require.Equal(t, "Valid HTTPProxy", metadata.Status)
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
@@ -369,6 +372,50 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_Gateway_Failure(t *testing.T) {
+	template := "testdata/corerp-resources-gateway-failure.bicep"
+	name := "corerp-resources-gateway-failure"
+	secret := "secret"
+
+	// We might see either of these states depending on the timing.
+	validateFn := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "Internal",
+					MessageContains: "invalid TLS certificate",
+				},
+			},
+		},
+	})
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor:                               step.NewDeployErrorExecutor(template, validateFn),
+			SkipObjectValidation:                   true,
+			SkipKubernetesOutputResourceValidation: true,
+		},
+	},
+		unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]interface{}{
+					"name":      secret,
+					"namespace": "mynamespace",
+				},
+				"type": "Opaque",
+				"data": map[string]interface{}{
+					"tls.crt": "",
+					"tls.key": "",
+				},
+			},
+		})
+
+	test.Test(t)
+}
+
 func testGatewayWithPortForward(t *testing.T, ctx context.Context, at shared.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
@@ -454,4 +501,3 @@ func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
 		Transport: transport,
 	}
 }
-

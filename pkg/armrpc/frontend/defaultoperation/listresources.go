@@ -20,10 +20,10 @@ import (
 	"context"
 	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 // ListResources is the controller implementation to get the list of resources in resource group.
@@ -43,7 +43,7 @@ func NewListResources[P interface {
 	return &ListResources[P, T]{ctrl.NewOperation[P](opts, ctrlOpts), ctrlOpts.ListRecursiveQuery}, nil
 }
 
-// Run queries the resource data store with a given type and scope and returns the paginated resource list. An internal error 
+// Run queries the resource data store with a given type and scope and returns the paginated resource list. An internal error
 // is returned if the query fails.
 func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)

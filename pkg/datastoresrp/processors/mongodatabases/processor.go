@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers"
 )
 
 // Processor is a processor for MongoDB resources.
@@ -49,6 +49,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.MongoDataba
 		return err
 	}
 
+	return nil
+}
+
+// Delete implements the processors.Processor interface for MongoDatabase resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.MongoDatabase, options processors.Options) error {
 	return nil
 }
 

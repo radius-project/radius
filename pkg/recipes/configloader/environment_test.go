@@ -19,10 +19,10 @@ package configloader
 import (
 	"testing"
 
-	model "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
+	model "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,8 +34,8 @@ const (
 	appResourceId   = "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/app0"
 	azureScope      = "/subscriptions/test-sub/resourceGroups/testRG"
 	awsScope        = "/planes/aws/aws/accounts/000/regions/cool-region"
-	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/mongoDatabases/mongo-database-0"
-	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Link/redisCaches/redis-0"
+	mongoResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0"
+	redisID         = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/redisCaches/redis-0"
 
 	recipeName      = "cosmosDB"
 	terraformRecipe = "terraform-cosmosDB"
@@ -220,8 +220,8 @@ func TestGetRecipeDefinition(t *testing.T) {
 					Scope: to.Ptr(azureScope),
 				},
 			},
-			Recipes: map[string]map[string]model.EnvironmentRecipePropertiesClassification{
-				"Applications.Link/mongoDatabases": {
+			Recipes: map[string]map[string]model.RecipePropertiesClassification{
+				"Applications.Datastores/mongoDatabases": {
 					recipeName: &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
@@ -264,7 +264,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		expected := recipes.EnvironmentDefinition{
 			Name:         recipeName,
 			Driver:       recipes.TemplateKindBicep,
-			ResourceType: "Applications.Link/mongoDatabases",
+			ResourceType: "Applications.Datastores/mongoDatabases",
 			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			Parameters: map[string]any{
 				"foo": "bar",
@@ -279,7 +279,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		expected := recipes.EnvironmentDefinition{
 			Name:            terraformRecipe,
 			Driver:          recipes.TemplateKindTerraform,
-			ResourceType:    "Applications.Link/mongoDatabases",
+			ResourceType:    "Applications.Datastores/mongoDatabases",
 			TemplatePath:    "Azure/cosmosdb/azurerm",
 			TemplateVersion: "1.1.0",
 		}

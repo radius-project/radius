@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -104,4 +105,32 @@ func TestDecodeMap_WithTimeDecodeHook(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, now, out.CreatedAt.UTC())
 	}
+}
+
+func TestDecodeMap_WithResourceIDs(t *testing.T) {
+	type datatype struct {
+		ID resources.ID
+	}
+
+	t.Run("valid", func(t *testing.T) {
+		data := map[string]any{
+			"ID": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app",
+		}
+
+		out := datatype{}
+		err := DecodeMap(data, &out)
+		require.NoError(t, err)
+
+		require.Equal(t, data["ID"], out.ID.String())
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		data := map[string]any{
+			"ID": "asdf",
+		}
+
+		out := datatype{}
+		err := DecodeMap(data, &out)
+		require.Error(t, err)
+	})
 }

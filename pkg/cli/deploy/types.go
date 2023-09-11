@@ -19,9 +19,9 @@ package deploy
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
 // Interface is the interface for executing Bicep deployments in the CLI.
@@ -60,7 +60,7 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 }
 
-//go:generate mockgen -destination=./mock_deploy.go -package=deploy -self_package github.com/project-radius/radius/pkg/cli/deploy github.com/project-radius/radius/pkg/cli/deploy Interface
+//go:generate mockgen -destination=./mock_deploy.go -package=deploy -self_package github.com/radius-project/radius/pkg/cli/deploy github.com/radius-project/radius/pkg/cli/deploy Interface
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used
 // from the CLI and thus logs to the console.

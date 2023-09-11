@@ -22,7 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 )
 
-//go:generate mockgen -destination=./mock_awscloudformationclient.go -package=aws -self_package github.com/project-radius/radius/pkg/ucp/aws github.com/project-radius/radius/pkg/ucp/aws AWSCloudFormationClient
+//go:generate mockgen -destination=./mock_awscloudformationclient.go -package=aws -self_package github.com/radius-project/radius/pkg/ucp/aws github.com/radius-project/radius/pkg/ucp/aws AWSCloudFormationClient
 type AWSCloudFormationClient interface {
 	DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error)
 }

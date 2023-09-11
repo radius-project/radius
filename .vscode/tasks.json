@@ -7,7 +7,7 @@
 			"command": "bash",
 			"args": [
 				"-c",
-				"(test -d ../deployment-engine/src && test -d ../deployment-engine/submodules/bicep-extensibility/src) || { echo >&1 \"The project-radius/deployment-engine is not cloned as a sibling to the radius repo or is missing submodules. Please clone the project-radius/deployment-engine repo next to the Radius repo and run git submodule update --init and try again.\"; exit 1; }"
+				"(test -d ../deployment-engine/src && test -d ../deployment-engine/submodules/bicep-extensibility/src) || { echo >&1 \"The radius-project/deployment-engine is not cloned as a sibling to the radius repo or is missing submodules. Please clone the radius-project/deployment-engine repo next to the Radius repo and run git submodule update --init and try again.\"; exit 1; }"
 			],
 			"type": "shell",
 			"options": {
@@ -23,7 +23,7 @@
 		},
 		{
 			"label": "Build Deployment Engine",
-			"detail": "Builds the Deployment Engine. This requires the project-radius/deployment engine repo to be cloned as a sibling to the project-radius/radius repo",
+			"detail": "Builds the Deployment Engine. This requires the radius-project/deployment engine repo to be cloned as a sibling to the radius-project/radius repo",
 			"dependsOn": ["Check for Deployment Engine"],
 			"command": "dotnet build",
 			"type": "shell",

@@ -18,31 +18,30 @@ package server
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	hostOpts "github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	metricsprovider "github.com/project-radius/radius/pkg/metrics/provider"
-	metricsservice "github.com/project-radius/radius/pkg/metrics/service"
-	profilerprovider "github.com/project-radius/radius/pkg/profiler/provider"
-	profilerservice "github.com/project-radius/radius/pkg/profiler/service"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/trace"
-	"github.com/project-radius/radius/pkg/ucp/backend"
-	"github.com/project-radius/radius/pkg/ucp/config"
-	"github.com/project-radius/radius/pkg/ucp/data"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/hosting"
-	"github.com/project-radius/radius/pkg/ucp/hostoptions"
-	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	hostOpts "github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
+	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
+	profilerprovider "github.com/radius-project/radius/pkg/profiler/provider"
+	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/trace"
+	"github.com/radius-project/radius/pkg/ucp/backend"
+	"github.com/radius-project/radius/pkg/ucp/config"
+	"github.com/radius-project/radius/pkg/ucp/data"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	"github.com/radius-project/radius/pkg/ucp/hosting"
+	"github.com/radius-project/radius/pkg/ucp/hostoptions"
+	qprovider "github.com/radius-project/radius/pkg/ucp/queue/provider"
+	"github.com/radius-project/radius/pkg/ucp/rest"
+	"github.com/radius-project/radius/pkg/ucp/secret/provider"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	kube_rest "k8s.io/client-go/rest"
 )
@@ -114,7 +113,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	var cfg *kube_rest.Config
 	if opts.Config.UCP.Kind == config.UCPConnectionKindKubernetes {
 		cfg, err = kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-			// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+			// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
 			ContextName: "",
 			QPS:         kubeutil.DefaultServerQPS,
 			Burst:       kubeutil.DefaultServerBurst,
@@ -151,9 +150,6 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 // NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
 // enabled) based on the given Options.
 func NewServer(options *Options) (*hosting.Host, error) {
-	var enableAsyncWorker bool
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
-
 	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
 			ProviderName:           UCPProviderName,
@@ -191,19 +187,17 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, profilerservice.NewService(profilerOptions))
 	}
 
-	if enableAsyncWorker {
-		backendServiceOptions := hostOpts.HostOptions{
-			Config: &hostOpts.ProviderConfig{
-				StorageProvider:  options.StorageProviderOptions,
-				SecretProvider:   options.SecretProviderOptions,
-				QueueProvider:    options.QueueProviderOptions,
-				MetricsProvider:  options.MetricsProviderOptions,
-				TracerProvider:   options.TracerProviderOptions,
-				ProfilerProvider: options.ProfilerProviderOptions,
-			},
-		}
-		hostingServices = append(hostingServices, backend.NewService(backendServiceOptions))
+	backendServiceOptions := hostOpts.HostOptions{
+		Config: &hostOpts.ProviderConfig{
+			StorageProvider:  options.StorageProviderOptions,
+			SecretProvider:   options.SecretProviderOptions,
+			QueueProvider:    options.QueueProviderOptions,
+			MetricsProvider:  options.MetricsProviderOptions,
+			TracerProvider:   options.TracerProviderOptions,
+			ProfilerProvider: options.ProfilerProviderOptions,
+		},
 	}
+	hostingServices = append(hostingServices, backend.NewService(backendServiceOptions))
 
 	return &hosting.Host{
 		Services: hostingServices,

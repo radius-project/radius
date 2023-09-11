@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_apiver "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,9 +60,9 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
 					Secrets:              map[string]any{"accountSid": "sid", "authToken": "token"},
-					ResourceRecipe:       linkrp.LinkRecipe{Name: "default"},
+					ResourceRecipe:       portableresources.ResourceRecipe{Name: "default"},
 				},
 			},
 		},
@@ -89,8 +90,8 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
-					ResourceRecipe:       linkrp.LinkRecipe{Name: "default"},
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					ResourceRecipe:       portableresources.ResourceRecipe{Name: "default"},
 				},
 			},
 		},
@@ -117,8 +118,8 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					ResourceRecipe:       linkrp.LinkRecipe{Name: "test-recipe"},
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
+					ResourceRecipe:       portableresources.ResourceRecipe{Name: "test-recipe"},
 				},
 			},
 		},
@@ -126,10 +127,9 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 
 	for _, payload := range testset {
 		// arrange
-		rawPayload, err := linkrp_apiver.LoadTestData("./testdata/" + payload.file)
-		require.NoError(t, err)
+		rawPayload := testutil.ReadFixture(payload.file)
 		versionedResource := &ExtenderResource{}
-		err = json.Unmarshal(rawPayload, versionedResource)
+		err := json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 
 		// act
@@ -159,17 +159,9 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Recipe:               &ResourceRecipe{Name: to.Ptr(""), Parameters: nil},
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "ExtenderProvider",
-							},
-						},
-					},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -189,7 +181,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningManual),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Recipe:               &ResourceRecipe{Name: to.Ptr(""), Parameters: nil},
+					Recipe:               &Recipe{Name: to.Ptr(""), Parameters: nil},
 					AdditionalProperties: map[string]any{"fromNumber": "222-222-2222"},
 					Status:               &ResourceStatus{},
 				},
@@ -211,16 +203,8 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					Application:          to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication"),
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Recipe:               &ResourceRecipe{Name: to.Ptr("test-recipe"), Parameters: nil},
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "ExtenderProvider",
-							},
-						},
-					},
+					Recipe:               &Recipe{Name: to.Ptr("test-recipe"), Parameters: nil},
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
@@ -234,10 +218,9 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 
 	for _, tc := range testset {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := linkrp_apiver.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			resource := &datamodel.Extender{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &ExtenderResource{}
@@ -257,7 +240,7 @@ func TestExtender_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

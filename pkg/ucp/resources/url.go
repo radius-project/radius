@@ -25,7 +25,7 @@ import (
 // ExtractPlanesPrefixFromURLPath splits a URL path into segments and checks if the first two segments are valid, returning
 //
 //	the first two segments and the remainder of the URL path if valid, or an error if not.
-func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error) {
+func ExtractPlanesPrefixFromURLPath(path string) (planeType string, planeName string, remainder string, err error) {
 	// Remove the /planes/foo/bar/ prefix from the URL with the minimum amount of
 	// garbage allocated during parsing.
 	splitCount := 5
@@ -54,7 +54,7 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 		return "", "", "", errors.New("URL paths should not contain empty segments")
 	}
 
-	remainder := "/"
+	remainder = "/"
 	if len(segments) > minimumSegmentCount {
 		remainder = SegmentSeparator + segments[3]
 	}

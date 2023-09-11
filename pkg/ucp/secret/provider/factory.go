@@ -20,12 +20,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/secret"
-	"github.com/project-radius/radius/pkg/ucp/secret/etcd"
-	kubernetes_client "github.com/project-radius/radius/pkg/ucp/secret/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/secret"
+	"github.com/radius-project/radius/pkg/ucp/secret/etcd"
+	kubernetes_client "github.com/radius-project/radius/pkg/ucp/secret/kubernetes"
+	"github.com/radius-project/radius/pkg/ucp/store/etcdstore"
 	"k8s.io/kubectl/pkg/scheme"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -56,7 +56,7 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	s := scheme.Scheme
 	cfg, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		// TODO: Allow to use custom context via configuration. - https://github.com/project-radius/radius/issues/5433
+		// TODO: Allow to use custom context via configuration. - https://github.com/radius-project/radius/issues/5433
 		ContextName: "",
 		QPS:         kubeutil.DefaultServerQPS,
 		Burst:       kubeutil.DefaultServerBurst,

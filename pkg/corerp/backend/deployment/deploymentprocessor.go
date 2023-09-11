@@ -24,25 +24,23 @@ import (
 	"os"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rp_util "github.com/project-radius/radius/pkg/rp/util"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rp_util "github.com/radius-project/radius/pkg/rp/util"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
-	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/model"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
+	corerp_dm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/model"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
 
-	dapr_dm "github.com/project-radius/radius/pkg/daprrp/datamodel"
-	datastores_dm "github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	msg_dm "github.com/project-radius/radius/pkg/messagingrp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
+	datastores_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
@@ -50,7 +48,7 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
+//go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
@@ -80,8 +78,8 @@ type ResourceData struct {
 	OutputResources []rpv1.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rpv1.SecretValueReference
-	AppID           *resources.ID     // Application ID for which the resource is created
-	RecipeData      linkrp.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
+	AppID           *resources.ID                // Application ID for which the resource is created
+	RecipeData      portableresources.RecipeData // Relevant only for portable resources created with recipes to find relevant connections created by that recipe
 }
 
 // Render fetches the resource renderer, the application, environment and application options, and the dependencies of the
@@ -149,11 +147,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
-		if or.ResourceType.Provider == "" {
+		resourceType := or.GetResourceType()
+		if resourceType.Provider == "" {
 			return renderers.RendererOutput{}, fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 		}
-		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
+		if !dp.appmodel.IsProviderSupported(resourceType.Provider) {
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", resourceType.Provider, resourceType.Type))
 		}
 	}
 
@@ -176,9 +175,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	or := putOptions.Resource
-	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, or.ResourceType))
+	resourceType := or.GetResourceType()
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, resourceType))
 
-	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(or.ResourceType)
+	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
 	if err != nil {
 		return err
 	}
@@ -194,8 +194,8 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return err
 	}
 
-	if or.Identity.ResourceType == nil {
-		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", or.LocalID)
+	if or.ID.IsEmpty() {
+		err = fmt.Errorf("output resource %q does not have an id. This is a bug in the handler", or.LocalID)
 		return err
 	}
 
@@ -216,7 +216,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
-			value, _, err := pointer.Get(or.Resource)
+			value, _, err := pointer.Get(or.CreateResource)
 			if err != nil {
 				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
@@ -250,26 +250,22 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	deployedOutputResourceProperties := map[string]map[string]string{}
 
 	for _, outputResource := range orderedOutputResources {
-		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
+		resourceType := outputResource.GetResourceType()
+		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, resourceType))
 
 		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rpv1.DeploymentOutput{}, err
 		}
 
-		if outputResource.Identity.ResourceType == nil {
-			return rpv1.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
+		if outputResource.ID.IsEmpty() {
+			return rpv1.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an id. This is a bug in the handler", outputResource.LocalID)
 		}
 
 		// Build database resource - copy updated properties to Resource field
 		outputResource := rpv1.OutputResource{
-			LocalID:      outputResource.LocalID,
-			ResourceType: outputResource.ResourceType,
-			Identity:     outputResource.Identity,
-			Status: rpv1.OutputResourceStatus{
-				ProvisioningState:        string(v1.ProvisioningStateProvisioned),
-				ProvisioningErrorDetails: "",
-			},
+			LocalID: outputResource.LocalID,
+			ID:      outputResource.ID,
 		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
 	}
@@ -304,12 +300,13 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
 		outputResource := deployedOutputResources[i]
-		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+		resourceType := outputResource.GetResourceType()
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
 		if err != nil {
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
+		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, resourceType))
 		err = outputResourceModel.ResourceHandler.Delete(ctx, &handlers.DeleteOptions{Resource: &outputResource})
 		if err != nil {
 			return err
@@ -467,133 +464,85 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.GatewayResourceType):
 		obj := &corerp_dm.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.VolumeResourceType):
 		obj := &corerp_dm.VolumeResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.HTTPRouteResourceType):
 		obj := &corerp_dm.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.SecretStoreResourceType):
 		obj := &corerp_dm.SecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
-	case strings.ToLower(linkrp.MongoDatabasesResourceType):
-		obj := &link_dm.MongoDatabase{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.SqlDatabasesResourceType):
-		obj := &link_dm.SqlDatabase{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.RedisCachesResourceType):
-		obj := &link_dm.RedisCache{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.RabbitMQMessageQueuesResourceType):
-		obj := &link_dm.RabbitMQMessageQueue{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.ExtendersResourceType):
-		obj := &link_dm.Extender{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
-	case strings.ToLower(linkrp.DaprStateStoresResourceType):
-		obj := &link_dm.DaprStateStore{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprSecretStoresResourceType):
-		obj := &link_dm.DaprSecretStore{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.DaprPubSubBrokersResourceType):
-		obj := &link_dm.DaprPubSubBroker{}
-		if err = resource.As(obj); err != nil {
-			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
-		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.N_MongoDatabasesResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.MongoDatabasesResourceType):
 		obj := &datastores_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.N_SqlDatabasesResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.SqlDatabasesResourceType):
 		obj := &datastores_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.N_RedisCachesResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.RedisCachesResourceType):
 		obj := &datastores_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.N_RabbitMQQueuesResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.RabbitMQQueuesResourceType):
 		obj := &msg_dm.RabbitMQQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	case strings.ToLower(corerp_dm.ExtenderResourceType):
 		obj := &corerp_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, linkrp.RecipeData{})
-	case strings.ToLower(linkrp.N_DaprStateStoresResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.DaprStateStoresResourceType):
 		obj := &dapr_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.N_DaprSecretStoresResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.DaprSecretStoresResourceType):
 		obj := &dapr_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
-	case strings.ToLower(linkrp.N_DaprPubSubBrokersResourceType):
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
+	case strings.ToLower(portableresources.DaprPubSubBrokersResourceType):
 		obj := &dapr_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
 	default:
 		return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData linkrp.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []rpv1.OutputResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference, recipeData portableresources.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
@@ -601,8 +550,8 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = &parsedID
-	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.LinkRPNamespace) {
-		// Application id is optional for link resource types
+	} else if portableresources.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
+		// Application id is optional for portable resource types
 		appID = nil
 	} else {
 		return ResourceData{}, fmt.Errorf("missing required application id for the resource %q", resourceID.String())
@@ -621,9 +570,9 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 
 func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, dependency ResourceData) (renderers.RendererDependency, error) {
 	// Get dependent resource identity
-	outputResourceIdentity := map[string]resourcemodel.ResourceIdentity{}
+	outputResourceIDs := map[string]resources.ID{}
 	for _, outputResource := range dependency.OutputResources {
-		outputResourceIdentity[outputResource.LocalID] = outputResource.Identity
+		outputResourceIDs[outputResource.LocalID] = outputResource.ID
 	}
 
 	// Get  dependent resource computedValues
@@ -648,7 +597,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 		ResourceID:      dependency.ID,
 		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
-		OutputResources: outputResourceIdentity,
+		OutputResources: outputResourceIDs,
 	}
 
 	return rendererDependency, nil

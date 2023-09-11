@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 )
 
-//go:generate mockgen -destination=./mock_client.go -package=secret -self_package github.com/project-radius/radius/pkg/ucp/secret github.com/project-radius/radius/pkg/ucp/secret Client
+//go:generate mockgen -destination=./mock_client.go -package=secret -self_package github.com/radius-project/radius/pkg/ucp/secret github.com/radius-project/radius/pkg/ucp/secret Client
 
 // Client is an interface to implement secret operations.
 type Client interface {

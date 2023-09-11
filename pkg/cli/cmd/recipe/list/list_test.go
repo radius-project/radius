@@ -21,19 +21,19 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	types "github.com/project-radius/radius/pkg/cli/cmd/recipe"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/radcli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,8 +85,8 @@ func Test_Run(t *testing.T) {
 			Type:     to.Ptr("applications.core/environments"),
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20220315privatepreview.EnvironmentProperties{
-				Recipes: map[string]map[string]v20220315privatepreview.EnvironmentRecipePropertiesClassification{
-					linkrp.MongoDatabasesResourceType: {
+				Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+					portableresources.MongoDatabasesResourceType: {
 						"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -103,13 +103,13 @@ func Test_Run(t *testing.T) {
 		recipes := []types.EnvironmentRecipe{
 			{
 				Name:         "cosmosDB",
-				LinkType:     linkrp.MongoDatabasesResourceType,
+				ResourceType: portableresources.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			},
 			{
 				Name:            "cosmosDB-terraform",
-				LinkType:        linkrp.MongoDatabasesResourceType,
+				ResourceType:    portableresources.MongoDatabasesResourceType,
 				TemplateKind:    recipes.TemplateKindTerraform,
 				TemplatePath:    "Azure/cosmosdb/azurerm",
 				TemplateVersion: "1.1.0",

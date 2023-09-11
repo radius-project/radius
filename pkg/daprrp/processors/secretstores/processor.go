@@ -19,18 +19,19 @@ package secretstores
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/daprrp/datamodel"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/kubeutil"
-	"github.com/project-radius/radius/pkg/linkrp"
-	"github.com/project-radius/radius/pkg/linkrp/handlers"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/portableresources/handlers"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/portableresources/renderers/dapr"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -50,7 +51,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return err
 	}
 
-	if resource.Properties.ResourceProvisioning != linkrp.ResourceProvisioningManual {
+	if resource.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
 		// If the resource is being provisioned by recipe then we expect the recipe to create the Dapr Component
 		// in Kubernetes. At this point we're done so we can just return.
 		return nil
@@ -73,7 +74,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		resource.Properties.ComponentName,
 		applicationID.Name(),
 		resource.Name,
-		linkrp.N_DaprSecretStoresResourceType)
+		portableresources.DaprSecretStoresResourceType)
 	if err != nil {
 		return err
 	}
@@ -83,7 +84,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ResourceError{Inner: err}
 	}
 
-	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, linkrp.N_DaprSecretStoresResourceType)
+	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, portableresources.DaprSecretStoresResourceType)
 	if err != nil {
 		return &processors.ValidationError{Message: err.Error()}
 	}
@@ -93,9 +94,43 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ResourceError{Inner: err}
 	}
 
-	deployed := rpv1.NewKubernetesOutputResource(resourcekinds.DaprComponent, "Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})
+	deployed := rpv1.NewKubernetesOutputResource("Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})
 	deployed.RadiusManaged = to.Ptr(true)
 	resource.Properties.Status.OutputResources = append(resource.Properties.Status.OutputResources, deployed)
+
+	return nil
+}
+
+// Delete implements the processors.Processor interface for DaprSecretStore resources. If the resource is being
+// provisioned manually, it deletes the Dapr component in Kubernetes.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprSecretStore, options processors.Options) error {
+	if resource.Properties.ResourceProvisioning != portableresources.ResourceProvisioningManual {
+		// If the resource was provisioned by recipe then we expect the recipe engine to delete the Dapr Component
+		// in Kubernetes. At this point we're done so we can just return.
+		return nil
+	}
+
+	applicationID, err := resources.ParseResource(resource.Properties.Application)
+	if err != nil {
+		return err // This should already be validated by this point.
+	}
+
+	component := unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": dapr.DaprAPIVersion,
+			"kind":       dapr.DaprKind,
+			"metadata": map[string]any{
+				"namespace": options.RuntimeConfiguration.Kubernetes.Namespace,
+				"name":      kubernetes.NormalizeDaprResourceName(resource.Properties.ComponentName),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, portableresources.DaprSecretStoresResourceType),
+			},
+		},
+	}
+
+	err = p.Client.Delete(ctx, &component)
+	if err != nil {
+		return &processors.ResourceError{Inner: err}
+	}
 
 	return nil
 }

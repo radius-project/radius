@@ -20,16 +20,16 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-// Recipe returns the LinkRecipe associated with the SQL database instance if the ResourceProvisioning is not
+// Recipe returns the ResourceRecipe associated with the SQL database instance if the ResourceProvisioning is not
 // set to Manual, otherwise it returns nil.
-func (sql *SqlDatabase) Recipe() *linkrp.LinkRecipe {
-	if sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (sql *SqlDatabase) Recipe() *portableresources.ResourceRecipe {
+	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &sql.Properties.Recipe
@@ -42,14 +42,13 @@ type SqlDatabase struct {
 	// Properties is the properties of the resource.
 	Properties SqlDatabaseProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resources.
-	linkrp_dm.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resources.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the output resources of a SQL database resource with the output resources of a DeploymentOutput
 // object and returns no error.
 func (r *SqlDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
 	return nil
 }
 
@@ -65,14 +64,14 @@ func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of the SQL database resource.
 func (sql *SqlDatabase) ResourceTypeName() string {
-	return linkrp.N_SqlDatabasesResourceType
+	return portableresources.SqlDatabasesResourceType
 }
 
 // SqlDatabaseProperties represents the properties of SQL database resource.
 type SqlDatabaseProperties struct {
 	rpv1.BasicResourceProperties
 	// The recipe used to automatically deploy underlying infrastructure for the SQL database resource
-	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 	// Database name of the target SQL database resource
 	Database string `json:"database,omitempty"`
 	// The fully qualified domain name of the SQL database resource
@@ -80,9 +79,9 @@ type SqlDatabaseProperties struct {
 	// Port value of the target SQL database resource
 	Port int32 `json:"port,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	// List of the resource IDs that support the SQL database resource
-	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 	// Username of the SQL database resource
 	Username string `json:"username,omitempty"`
 	// Secrets values provided for the resource
@@ -102,7 +101,7 @@ type SqlDatabaseSecrets struct {
 // if any of the required fields are not set.
 func (sql *SqlDatabase) VerifyInputs() error {
 	msgs := []string{}
-	if sql.Properties.ResourceProvisioning != "" && sql.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if sql.Properties.ResourceProvisioning != "" && sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if sql.Properties.Server == "" {
 			msgs = append(msgs, "server must be specified when resourceProvisioning is set to manual")
 		}
@@ -136,5 +135,5 @@ func (sqlSecrets SqlDatabaseSecrets) IsEmpty() bool {
 
 // ResourceTypeName returns the resource type of the SQL database resource.
 func (sqlSecrets *SqlDatabaseSecrets) ResourceTypeName() string {
-	return linkrp.N_SqlDatabasesResourceType
+	return portableresources.SqlDatabasesResourceType
 }

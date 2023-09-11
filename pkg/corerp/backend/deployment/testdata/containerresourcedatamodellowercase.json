@@ -1,60 +1,58 @@
 {
-    "id": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource",
-    "name": "test-resource",
-    "type": "applications.core/containers",
-    "systemData": {
-        "createdBy": "fakeid@live.com",
-        "createdByType": "User",
-        "createdAt": "2021-09-24T19:09:54.2403864Z",
-        "lastModifiedBy": "fakeid@live.com",
-        "lastModifiedByType": "User",
-        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
-    },
-    "tags": {
-        "env": "dev"
-    },
-    "properties": {
-        "status": {
-          "outputResources": [{
-            "LocalID": "Service",
-            "ResourceType": {
-              "Type": "Service",
-              "Provider": "kubernetes"
-            }
-          }]
-        },
-        "provisioningState": "Succeeded",
-        "application": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-        "connections": { 
-            "inventory": { 
-              "source": "inventory_route_id", 
-              "iam": {
-                "kind": "Http",
-                "roles": [
-                  "administrator"
-                ]
-              }
-            } 
-          },
-        "container": { 
-            "image": "radius.azurecr.io/webapptutorial-todoapp",
-            "livenessProbe": {
-              "kind": "tcp",
-              "tcp": {
-                "healthProbeBase": {
-                  "failureThreshold": 5,
-                  "initialDelaySeconds": 5,
-                  "periodSeconds": 5
-                },
-                "containerPort": 8080
-              }
-            },
-            "ports": {
-              "web":{
-                "containerPort": 5000,
-                "provides": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application/HttpRoute/B"
-              }
-            }
+  "id": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource",
+  "name": "test-resource",
+  "type": "applications.core/containers",
+  "systemData": {
+    "createdBy": "fakeid@live.com",
+    "createdByType": "User",
+    "createdAt": "2021-09-24T19:09:54.2403864Z",
+    "lastModifiedBy": "fakeid@live.com",
+    "lastModifiedByType": "User",
+    "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+  },
+  "tags": {
+    "env": "dev"
+  },
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
+      ]
+    },
+    "provisioningState": "Succeeded",
+    "application": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+    "connections": {
+      "inventory": {
+        "source": "inventory_route_id",
+        "iam": {
+          "kind": "Http",
+          "roles": [
+            "administrator"
+          ]
+        }
+      }
+    },
+    "container": {
+      "image": "radius.azurecr.io/webapptutorial-todoapp",
+      "livenessProbe": {
+        "kind": "tcp",
+        "tcp": {
+          "healthProbeBase": {
+            "failureThreshold": 5,
+            "initialDelaySeconds": 5,
+            "periodSeconds": 5
+          },
+          "containerPort": 8080
+        }
+      },
+      "ports": {
+        "web": {
+          "containerPort": 5000,
+          "provides": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application/HttpRoute/B"
+        }
+      }
     }
+  }
 }

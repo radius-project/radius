@@ -20,10 +20,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_SQLDatabase_Manual(t *testing.T) {
@@ -83,7 +83,7 @@ func Test_SQLDatabase_Manual(t *testing.T) {
 
 // Test_SQLDatabase_Recipe validates:
 // the creation of a sql database from recipe
-// container using the sql database link to connect to the sql database resource
+// container using the sqlDatabases portable resource to connect to the sql database resource
 func Test_SQLDatabase_Recipe(t *testing.T) {
 	template := "testdata/datastoresrp-resources-sqldb-recipe.bicep"
 	name := "dsrp-resources-sqldb-recipe"

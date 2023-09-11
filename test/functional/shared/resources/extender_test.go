@@ -22,11 +22,10 @@ import (
 
 	"os"
 
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_Extender_Manual(t *testing.T) {
@@ -99,18 +98,19 @@ func Test_Extender_Recipe(t *testing.T) {
 }
 
 func Test_Extender_RecipeAWS(t *testing.T) {
-	awsAccountId := os.Getenv("AWS_ACCOUNT_ID")
+	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set
 	// for running locally set the environment variables
-	if awsAccountId == "" || awsRegion == "" {
+	if awsAccountID == "" || awsRegion == "" {
 		t.Error("This test needs the env variables AWS_ACCOUNT_ID and AWS_REGION to be set")
 	}
 
-	template := "testdata/corerp-resources-extenders-aws-s3-recipe.bicep"
+	template := "testdata/corerp-resources-extender-aws-s3-recipe.bicep"
 	name := "corerp-resources-extenders-aws-s3-recipe"
 	appName := "corerp-resources-extenders-aws-s3-recipe-app"
 	bucketName := generateS3BucketName()
+	bucketID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.S3/Bucket/%s", awsAccountID, awsRegion, bucketName)
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
@@ -138,8 +138,7 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								Provider: resourcemodel.ProviderAWS,
-								LocalID:  "RecipeResource0",
+								ID: bucketID,
 							},
 						},
 					},

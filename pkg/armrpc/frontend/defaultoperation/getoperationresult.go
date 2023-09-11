@@ -23,12 +23,12 @@ import (
 	"net/http"
 	"time"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*GetOperationResult)(nil)
@@ -56,10 +56,22 @@ func (e *GetOperationResult) Run(ctx context.Context, w http.ResponseWriter, req
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	os := &manager.Status{}
-	_, err = e.GetResource(ctx, id.String(), os)
-	if err != nil && errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
+	// Avoid using GetResource or e.StorageClient since they will use a different
+	// storage client than the one we want.
+	storageClient, err := e.DataProvider().GetStorageClient(ctx, id.ProviderNamespace()+"/operationstatuses")
+	if err != nil {
+		return nil, err
+	}
+
+	obj, err := storageClient.Get(ctx, id.String())
+	if errors.Is(&store.ErrNotFound{ID: id.String()}, err) {
 		return rest.NewNotFoundResponse(id), nil
+	}
+
+	os := &manager.Status{}
+	err = obj.As(os)
+	if err != nil {
+		return nil, err
 	}
 
 	if !os.Status.IsTerminal() {

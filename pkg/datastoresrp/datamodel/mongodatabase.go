@@ -20,19 +20,18 @@ import (
 	"fmt"
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/portableresources"
+	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // MongoDatabase represents Mongo database portable resource.
 type MongoDatabase struct {
 	v1.BaseResource
 
-	// LinkMetadata represents internal DataModel properties common to all portable resources.
-	linkrp_dm.LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all portable resources.
+	pr_dm.PortableResourceMetadata
 
 	// Properties is the properties of the resource.
 	Properties MongoDatabaseProperties `json:"properties"`
@@ -50,11 +49,11 @@ type MongoDatabaseProperties struct {
 	// Database name of the target Mongo database
 	Database string `json:"database,omitempty"`
 	// The recipe used to automatically deploy underlying infrastructure for the Mongo database link
-	Recipe linkrp.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 	// List of the resource IDs that support the Mongo database resource
-	Resources []*linkrp.ResourceReference `json:"resources,omitempty"`
+	Resources []*portableresources.ResourceReference `json:"resources,omitempty"`
 	// Specifies how the underlying service/resource is provisioned and managed
-	ResourceProvisioning linkrp.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
+	ResourceProvisioning portableresources.ResourceProvisioning `json:"resourceProvisioning,omitempty"`
 	// Username of the Mongo database
 	Username string `json:"username,omitempty"`
 }
@@ -73,7 +72,7 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 // VerifyInputs checks if the manual resource provisioning fields are set and returns an error if any of them are missing.
 func (mongodb *MongoDatabase) VerifyInputs() error {
 	msgs := []string{}
-	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if mongodb.Properties.Host == "" {
 			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
@@ -103,13 +102,6 @@ func (mongodb *MongoDatabase) VerifyInputs() error {
 // ApplyDeploymentOutput updates the Mongo database instance's database property, output resources, computed values
 // and secret values with the given DeploymentOutput.
 func (r *MongoDatabase) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if database, ok := do.ComputedValues[renderers.DatabaseNameValue].(string); ok {
-		r.Properties.Database = database
-	}
-
 	return nil
 }
 
@@ -123,10 +115,10 @@ func (r *MongoDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-// Recipe returns the LinkRecipe associated with the Mongo database instance, or nil if the
+// Recipe returns the ResourceRecipe associated with the Mongo database instance, or nil if the
 // ResourceProvisioning is set to Manual.
-func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
-	if r.Properties.ResourceProvisioning == linkrp.ResourceProvisioningManual {
+func (r *MongoDatabase) Recipe() *portableresources.ResourceRecipe {
+	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
 	return &r.Properties.Recipe
@@ -134,10 +126,10 @@ func (r *MongoDatabase) Recipe() *linkrp.LinkRecipe {
 
 // ResourceTypeName returns the resource type for Mongo database resource.
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
-	return linkrp.N_MongoDatabasesResourceType
+	return portableresources.MongoDatabasesResourceType
 }
 
 // ResourceTypeName returns the resource type for Mongo database resource.
 func (mongo *MongoDatabase) ResourceTypeName() string {
-	return linkrp.N_MongoDatabasesResourceType
+	return portableresources.MongoDatabasesResourceType
 }

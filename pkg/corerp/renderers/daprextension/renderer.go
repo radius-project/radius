@@ -21,11 +21,11 @@ import (
 	"errors"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,12 +72,13 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 	// the desired annotations.
 
 	for i := range output.Resources {
-		if output.Resources[i].ResourceType.Provider != resourcemodel.ProviderKubernetes {
+		resourceType := output.Resources[i].GetResourceType()
+		if resourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}
 
-		o, ok := output.Resources[i].Resource.(runtime.Object)
+		o, ok := output.Resources[i].CreateResource.Data.(runtime.Object)
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}

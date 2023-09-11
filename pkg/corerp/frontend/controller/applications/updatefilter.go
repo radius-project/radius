@@ -20,16 +20,16 @@ import (
 	"context"
 	"fmt"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	rp_kube "github.com/radius-project/radius/pkg/rp/kube"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -120,7 +120,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		KubernetesCompute: rpv1.KubernetesComputeProperties{Namespace: kubeNamespace},
 	}
 
-	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
+	// TODO: Move it to backend controller - https://github.com/radius-project/radius/issues/4742
 	err = opt.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
 	if apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", kubeNamespace)

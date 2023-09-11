@@ -27,7 +27,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       namespace: '${basename}-env'
     }
     recipes: {
-      'Applications.Link/extenders': {
+      'Applications.Core/extenders': {
         '${environmentRecipeName}': {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/${recipe}:${version}'
@@ -51,7 +51,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource extender 'Applications.Link/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
   name: basename
   properties: {
     application: app.id

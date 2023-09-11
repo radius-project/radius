@@ -20,9 +20,9 @@ import (
 	"context"
 	"sync"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 )
 
 type ControllerFactoryFunc func(opts ctrl.Options) (ctrl.Controller, error)
@@ -49,7 +49,7 @@ func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, 
 
 	ot := v1.OperationType{Type: resourceType, Method: method}
 
-	storageClient, err := opts.DataProvider.GetStorageClient(ctx, resourceType)
+	storageClient, err := h.sp.GetStorageClient(ctx, resourceType)
 	if err != nil {
 		return err
 	}

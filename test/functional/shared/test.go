@@ -24,16 +24,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/sdk"
-	"github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/test"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/testcontext"
 )
 
 // NewRPTestOptions sets up the test environment by loading configs, creating a test context, creating an

@@ -1,0 +1,22 @@
+{
+    "id": "/planes/radius/local/providers/System.Resources/resources/asdf",
+    "name": "asdf",
+    "type": "System.Resources/resources",
+    "location": "global",
+    "systemData": {
+        "createdBy": "fakeid@live.com",
+        "createdByType": "User",
+        "createdAt": "2021-09-24T19:09:54.2403864Z",
+        "lastModifiedBy": "fakeid@live.com",
+        "lastModifiedByType": "User",
+        "lastModifiedAt": "2021-09-24T20:09:54.2403864Z"
+    },
+    "tags": {
+        "env": "dev"
+    },
+    "properties": {
+        "id": "/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/applications/test-app",
+        "type": "Applications.Core/applications",
+        "name": "test-app"
+    }
+}

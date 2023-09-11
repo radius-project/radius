@@ -17,8 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const HTTPRouteResourceType = "Applications.Core/httpRoutes"
@@ -28,7 +28,7 @@ type HTTPRoute struct {
 	v1.BaseResource
 
 	// TODO: remove this from CoreRP
-	LinkMetadata
+	PortableResourceMetadata
 	// Properties is the properties of the resource.
 	Properties *HTTPRouteProperties `json:"properties"`
 }

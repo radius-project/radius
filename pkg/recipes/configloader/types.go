@@ -19,7 +19,7 @@ package configloader
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes"
 )
 
 type ConfigurationLoader interface {

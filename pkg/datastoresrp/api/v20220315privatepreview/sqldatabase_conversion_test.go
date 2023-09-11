@@ -20,12 +20,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/datastoresrp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp"
-	linkrp_shared "github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +44,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
 						Name:     "sql0",
-						Type:     linkrp.N_SqlDatabasesResourceType,
+						Type:     portableresources.SqlDatabasesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -61,8 +62,8 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningManual,
-					Resources: []*linkrp.ResourceReference{
+					ResourceProvisioning: portableresources.ResourceProvisioningManual,
+					Resources: []*portableresources.ResourceReference{
 						{
 							ID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
 						},
@@ -86,7 +87,7 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
 						Name:     "sql0",
-						Type:     linkrp.N_SqlDatabasesResourceType,
+						Type:     portableresources.SqlDatabasesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -104,8 +105,8 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
-					ResourceProvisioning: linkrp.ResourceProvisioningRecipe,
-					Recipe: linkrp.LinkRecipe{
+					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
+					Recipe: portableresources.ResourceRecipe{
 						Name: "sql-test",
 						Parameters: map[string]any{
 							"foo": "bar",
@@ -118,10 +119,9 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
 			// arrange
-			rawPayload, err := linkrp_shared.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			versionedResource := &SQLDatabaseResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			// act
@@ -161,22 +161,14 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					Port:              to.Ptr(int32(1433)),
 					Username:          to.Ptr("testUser"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "azure",
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0"),
 				Name: to.Ptr("sql0"),
-				Type: to.Ptr(linkrp.N_SqlDatabasesResourceType),
+				Type: to.Ptr(portableresources.SqlDatabasesResourceType),
 			},
 		},
 		{
@@ -199,31 +191,22 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 						},
 					},
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status: &ResourceStatus{
-						OutputResources: []map[string]any{
-							{
-								"Identity": nil,
-								"LocalID":  "Deployment",
-								"Provider": "azure",
-							},
-						},
-					},
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0"),
 				Name: to.Ptr("sql0"),
-				Type: to.Ptr(linkrp.N_SqlDatabasesResourceType),
+				Type: to.Ptr(portableresources.SqlDatabasesResourceType),
 			},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			rawPayload, err := linkrp_shared.LoadTestData("./testdata/" + tc.file)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(tc.file)
 			resource := &datamodel.SqlDatabase{}
-			err = json.Unmarshal(rawPayload, resource)
+			err := json.Unmarshal(rawPayload, resource)
 			require.NoError(t, err)
 
 			versionedResource := &SQLDatabaseResource{}
@@ -258,10 +241,9 @@ func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 
 	for _, test := range testset {
 		t.Run(test.payload, func(t *testing.T) {
-			rawPayload, err := linkrp_shared.LoadTestData("./testdata/" + test.payload)
-			require.NoError(t, err)
+			rawPayload := testutil.ReadFixture(test.payload)
 			versionedResource := &SQLDatabaseResource{}
-			err = json.Unmarshal(rawPayload, versionedResource)
+			err := json.Unmarshal(rawPayload, versionedResource)
 			require.NoError(t, err)
 
 			dm, err := versionedResource.ConvertTo()
@@ -278,7 +260,7 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&linkrp_shared.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 
@@ -291,10 +273,9 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 
 func TestSqlDatabaseSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload, err := linkrp_shared.LoadTestData("./testdata/sqldatabase_secrets_datamodel.json")
-	require.NoError(t, err)
+	rawPayload := testutil.ReadFixture("sqldatabase_secrets_datamodel.json")
 	secrets := &datamodel.SqlDatabaseSecrets{}
-	err = json.Unmarshal(rawPayload, secrets)
+	err := json.Unmarshal(rawPayload, secrets)
 	require.NoError(t, err)
 
 	// act
@@ -312,7 +293,7 @@ func TestSqlDatabaseSecrets_ConvertFromValidation(t *testing.T) {
 		src v1.DataModelInterface
 		err error
 	}{
-		{&linkrp_shared.FakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

@@ -33,19 +33,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/cli/bicep"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/test/functional"
-	"github.com/project-radius/radius/test/functional/shared"
-	"github.com/project-radius/radius/test/radcli"
-	"github.com/project-radius/radius/test/step"
-	"github.com/project-radius/radius/test/testcontext"
-	"github.com/project-radius/radius/test/validation"
+	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/functional/shared"
+	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 const (
@@ -61,12 +61,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	templateKind := "bicep"
-	linkType := "Applications.Link/mongoDatabases"
+	resourceType := "Applications.Datastores/mongoDatabases"
 	file := "testdata/corerp-redis-recipe.bicep"
 	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
@@ -75,12 +75,12 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		output, err := cli.RecipeList(ctx, envName)
 		require.NoError(t, err)
 		require.Regexp(t, recipeName, output)
-		require.Regexp(t, linkType, output)
+		require.Regexp(t, resourceType, output)
 		require.Regexp(t, recipeTemplate, output)
 	})
 
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName, linkType)
+		output, err := cli.RecipeUnregister(ctx, envName, recipeName, resourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully unregistered recipe")
 	})
@@ -88,20 +88,40 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
-		showRecipeLinkType := "Applications.Link/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeLinkType)
+		showRecipeResourceType := "Applications.Datastores/mongoDatabases"
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeResourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, linkType)
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, resourceType)
 		require.NoError(t, err)
 		require.Contains(t, output, showRecipeName)
 		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeLinkType)
+		require.Contains(t, output, showRecipeResourceType)
 		require.Contains(t, output, "mongodbName")
 		require.Contains(t, output, "documentdbName")
 		require.Contains(t, output, "location")
 		require.Contains(t, output, "string")
 		require.Contains(t, output, "resourceGroup().location]")
+	})
+
+	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
+		showRecipeName := "redistesttf"
+		moduleServer := os.Getenv("TF_RECIPE_MODULE_SERVER_URL")
+		if moduleServer == "" {
+			moduleServer = "http://localhost:8999"
+		}
+		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
+		showRecipeResourceType := "Applications.Datastores/redisCaches"
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
+		require.NoError(t, err)
+		require.Contains(t, output, showRecipeName)
+		require.Contains(t, output, showRecipeTemplate)
+		require.Contains(t, output, showRecipeResourceType)
+		require.Contains(t, output, "redis_cache_name")
+		require.Contains(t, output, "string")
 	})
 
 	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
@@ -111,7 +131,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, linkType)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, resourceType)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
 		output, err = cli.RecipeList(ctx, envName)
@@ -173,7 +193,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
-		t.Skip("https://github.com/project-radius/radius/issues/3232")
+		t.Skip("https://github.com/radius-project/radius/issues/3232")
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 

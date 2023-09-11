@@ -20,9 +20,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +39,7 @@ func TestEnvironmentRecipePropertiesDataModelToVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/environmentrecipepropertiesdatamodel.json",
 			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RecipeMetadataProperties{},
+			&v20220315privatepreview.RecipeGetMetadataResponse{},
 			nil,
 		},
 		// TODO: add new conversion tests.

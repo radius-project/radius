@@ -16,7 +16,7 @@ limitations under the License.
 
 package workspaces
 
-import "github.com/project-radius/radius/pkg/cli/config"
+import "github.com/radius-project/radius/pkg/cli/config"
 
 // Workspace represents configuration for the rad CLI.
 //

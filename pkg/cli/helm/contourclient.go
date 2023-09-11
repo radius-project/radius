@@ -27,7 +27,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 const (
@@ -63,7 +63,7 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 
 	// https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you
 	// TODO: Apply CRDs because Helm doesn't upgrade CRDs for you.
-	// https://github.com/project-radius/radius/issues/712
+	// https://github.com/radius-project/radius/issues/712
 	// We need the CRDs to be public to do this (or consider unpacking the chart
 	// for the CRDs)
 

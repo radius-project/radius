@@ -23,13 +23,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/project-radius/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -175,7 +176,7 @@ func GetResourceTypeName(ctx context.Context, resource *AWSResource) (string, er
 		return "", err
 	}
 
-	resourceType := resources.ToAWSResourceType(resourceID)
+	resourceType := resources_aws.ToAWSResourceType(resourceID)
 	return resourceType, nil
 }
 

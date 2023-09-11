@@ -25,12 +25,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -47,7 +46,7 @@ var (
 	ErrInvalidOperationTypeOption = errors.New("the resource type and method must be specified if the operation type is not specified")
 )
 
-type ControllerFunc func(ctrl.Options) (ctrl.Controller, error)
+type ControllerFactoryFunc func(ctrl.Options) (ctrl.Controller, error)
 
 // HandlerOptions represents a controller to be registered with the server.
 //
@@ -85,7 +84,7 @@ type HandlerOptions struct {
 	OperationType *v1.OperationType
 
 	// ControllerFactory is a function invoked to create the controller. Will be invoked once during server startup.
-	ControllerFactory ControllerFunc
+	ControllerFactory ControllerFactoryFunc
 
 	// Middlewares are the middlewares to apply to the handler.
 	Middlewares []func(http.Handler) http.Handler
@@ -101,10 +100,16 @@ func NewSubrouter(parent chi.Router, path string, middlewares ...func(http.Handl
 
 // HandlerForController creates a http.HandlerFunc function that runs resource provider frontend controller, renders a
 // http response from the returned rest.Response, and handles the error as a default internal error if this controller returns error.
-func HandlerForController(controller ctrl.Controller) http.HandlerFunc {
+func HandlerForController(controller ctrl.Controller, operationType v1.OperationType) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		addRequestAttributes(ctx, req)
+
+		rpcCtx := v1.ARMRequestContextFromContext(ctx)
+		// Set the operation type in the context.
+		rpcCtx.OperationType = operationType
+
+		// Add OTEL labels for the telemetry.
+		withOtelLabelsForRequest(req)
 
 		response, err := controller.Run(ctx, w, req)
 		if err != nil {
@@ -159,9 +164,8 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 		return nil
 	}
 
-	middlewares := append(opts.Middlewares, servicecontext.WithOperationType(*opts.OperationType))
-	handler := HandlerForController(ctrl)
-	namedRouter := opts.ParentRouter.With(middlewares...)
+	handler := HandlerForController(ctrl, *opts.OperationType)
+	namedRouter := opts.ParentRouter.With(opts.Middlewares...)
 	if opts.Path == CatchAllPath {
 		namedRouter.HandleFunc(opts.Path, handler)
 	} else {
@@ -171,13 +175,13 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	return nil
 }
 
-func addRequestAttributes(ctx context.Context, req *http.Request) {
-	labeler, ok := otelhttp.LabelerFromContext(ctx)
+func withOtelLabelsForRequest(req *http.Request) {
+	labeler, ok := otelhttp.LabelerFromContext(req.Context())
 	if !ok {
 		return
 	}
 
-	armContext := v1.ARMRequestContextFromContext(ctx)
+	armContext := v1.ARMRequestContextFromContext(req.Context())
 	resourceID := armContext.ResourceID
 
 	if resourceID.IsResource() || resourceID.IsResourceCollection() {
@@ -193,7 +197,7 @@ func ConfigureDefaultHandlers(
 	rootScopePath string,
 	isAzureProvider bool,
 	providerNamespace string,
-	operationCtrlFactory ControllerFunc,
+	operationCtrlFactory ControllerFactoryFunc,
 	ctrlOpts ctrl.Options) error {
 	providerNamespace = strings.ToLower(providerNamespace)
 	rt := providerNamespace + "/providers"
@@ -230,7 +234,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:      rootRouter,
 		Path:              opStatus,
 		ResourceType:      statusRT,
-		Method:            v1.OperationGetOperationStatuses,
+		Method:            v1.OperationGet,
 		ControllerFactory: defaultoperation.NewGetOperationStatus,
 	}, ctrlOpts)
 	if err != nil {
@@ -242,7 +246,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:      rootRouter,
 		Path:              opResult,
 		ResourceType:      statusRT,
-		Method:            v1.OperationGetOperationResult,
+		Method:            v1.OperationGet,
 		ControllerFactory: defaultoperation.NewGetOperationResult,
 	}, ctrlOpts)
 	if err != nil {

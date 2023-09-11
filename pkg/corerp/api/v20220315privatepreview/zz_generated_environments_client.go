@@ -27,7 +27,9 @@ type EnvironmentsClient struct {
 }
 
 // NewEnvironmentsClient creates a new instance of EnvironmentsClient with the specified values.
-//   - rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is
+//     /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - pass nil to accept the default values.
 func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*EnvironmentsClient, error) {
@@ -42,17 +44,17 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 	return client, nil
 }
 
-// CreateOrUpdate - Create or update an Environment.
+// CreateOrUpdate - Create a EnvironmentResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - environmentName - The name of the environment
-//   - environmentResource - environment details
+//   - environmentName - environment name
+//   - resource - Resource create parameters.
 //   - options - EnvironmentsClientCreateOrUpdateOptions contains the optional parameters for the EnvironmentsClient.CreateOrUpdate
 //     method.
-func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (EnvironmentsClientCreateOrUpdateResponse, error) {
+func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (EnvironmentsClientCreateOrUpdateResponse, error) {
 	var err error
-	req, err := client.createOrUpdateCreateRequest(ctx, environmentName, environmentResource, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, environmentName, resource, options)
 	if err != nil {
 		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
@@ -69,7 +71,7 @@ func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, environmen
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Context, environmentName string, resource EnvironmentResource, options *EnvironmentsClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
@@ -84,7 +86,7 @@ func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Contex
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, environmentResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, resource); err != nil {
 	return nil, err
 }
 	return req, nil
@@ -99,11 +101,11 @@ func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Respon
 	return result, nil
 }
 
-// Delete - Delete an Environment.
+// Delete - Delete a EnvironmentResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - environmentName - The name of the environment
+//   - environmentName - environment name
 //   - options - EnvironmentsClientDeleteOptions contains the optional parameters for the EnvironmentsClient.Delete method.
 func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName string, options *EnvironmentsClientDeleteOptions) (EnvironmentsClientDeleteResponse, error) {
 	var err error
@@ -115,7 +117,7 @@ func (client *EnvironmentsClient) Delete(ctx context.Context, environmentName st
 	if err != nil {
 		return EnvironmentsClientDeleteResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
 		err = runtime.NewResponseError(httpResp)
 		return EnvironmentsClientDeleteResponse{}, err
 	}
@@ -141,11 +143,11 @@ func (client *EnvironmentsClient) deleteCreateRequest(ctx context.Context, envir
 	return req, nil
 }
 
-// Get - Gets the properties of an Environment.
+// Get - Get a EnvironmentResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - environmentName - The name of the environment
+//   - environmentName - environment name
 //   - options - EnvironmentsClientGetOptions contains the optional parameters for the EnvironmentsClient.Get method.
 func (client *EnvironmentsClient) Get(ctx context.Context, environmentName string, options *EnvironmentsClientGetOptions) (EnvironmentsClientGetResponse, error) {
 	var err error
@@ -193,35 +195,35 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 	return result, nil
 }
 
-// GetRecipeMetadata - Gets recipe metadata including parameters and any constraints on the parameters.
+// GetMetadata - Gets recipe metadata including parameters and any constraints on the parameters.
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - environmentName - The name of the environment
-//   - recipeParameter - Recipe parameters.
-//   - options - EnvironmentsClientGetRecipeMetadataOptions contains the optional parameters for the EnvironmentsClient.GetRecipeMetadata
+//   - environmentName - environment name
+//   - body - The content of the action request
+//   - options - EnvironmentsClientGetMetadataOptions contains the optional parameters for the EnvironmentsClient.GetMetadata
 //     method.
-func (client *EnvironmentsClient) GetRecipeMetadata(ctx context.Context, environmentName string, recipeParameter Recipe, options *EnvironmentsClientGetRecipeMetadataOptions) (EnvironmentsClientGetRecipeMetadataResponse, error) {
+func (client *EnvironmentsClient) GetMetadata(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetMetadataOptions) (EnvironmentsClientGetMetadataResponse, error) {
 	var err error
-	req, err := client.getRecipeMetadataCreateRequest(ctx, environmentName, recipeParameter, options)
+	req, err := client.getMetadataCreateRequest(ctx, environmentName, body, options)
 	if err != nil {
-		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
 	httpResp, err := client.internal.Pipeline().Do(req)
 	if err != nil {
-		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
 		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
-	resp, err := client.getRecipeMetadataHandleResponse(httpResp)
+	resp, err := client.getMetadataHandleResponse(httpResp)
 	return resp, err
 }
 
-// getRecipeMetadataCreateRequest creates the GetRecipeMetadata request.
-func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Context, environmentName string, recipeParameter Recipe, options *EnvironmentsClientGetRecipeMetadataOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getmetadata"
+// getMetadataCreateRequest creates the GetMetadata request.
+func (client *EnvironmentsClient) getMetadataCreateRequest(ctx context.Context, environmentName string, body RecipeGetMetadata, options *EnvironmentsClientGetMetadataOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getMetadata"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
 		return nil, errors.New("parameter environmentName cannot be empty")
@@ -235,22 +237,22 @@ func (client *EnvironmentsClient) getRecipeMetadataCreateRequest(ctx context.Con
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, recipeParameter); err != nil {
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
 	return nil, err
 }
 	return req, nil
 }
 
-// getRecipeMetadataHandleResponse handles the GetRecipeMetadata response.
-func (client *EnvironmentsClient) getRecipeMetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetRecipeMetadataResponse, error) {
-	result := EnvironmentsClientGetRecipeMetadataResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RecipeMetadataProperties); err != nil {
-		return EnvironmentsClientGetRecipeMetadataResponse{}, err
+// getMetadataHandleResponse handles the GetMetadata response.
+func (client *EnvironmentsClient) getMetadataHandleResponse(resp *http.Response) (EnvironmentsClientGetMetadataResponse, error) {
+	result := EnvironmentsClientGetMetadataResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RecipeGetMetadataResponse); err != nil {
+		return EnvironmentsClientGetMetadataResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByScopePager - List all environments in a scope.
+// NewListByScopePager - List EnvironmentResource resources by Scope
 //
 // Generated from API version 2022-03-15-privatepreview
 //   - options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.NewListByScopePager
@@ -301,22 +303,22 @@ func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, 
 // listByScopeHandleResponse handles the ListByScope response.
 func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response) (EnvironmentsClientListByScopeResponse, error) {
 	result := EnvironmentsClientListByScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResourceList); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResourceListResult); err != nil {
 		return EnvironmentsClientListByScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// Update - Update the properties of an existing Environment.
+// Update - Update a EnvironmentResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //
 // Generated from API version 2022-03-15-privatepreview
-//   - environmentName - The name of the environment
-//   - environmentResource - environment details
+//   - environmentName - environment name
+//   - properties - The resource properties to be updated.
 //   - options - EnvironmentsClientUpdateOptions contains the optional parameters for the EnvironmentsClient.Update method.
-func (client *EnvironmentsClient) Update(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsClientUpdateOptions) (EnvironmentsClientUpdateResponse, error) {
+func (client *EnvironmentsClient) Update(ctx context.Context, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (EnvironmentsClientUpdateResponse, error) {
 	var err error
-	req, err := client.updateCreateRequest(ctx, environmentName, environmentResource, options)
+	req, err := client.updateCreateRequest(ctx, environmentName, properties, options)
 	if err != nil {
 		return EnvironmentsClientUpdateResponse{}, err
 	}
@@ -324,7 +326,7 @@ func (client *EnvironmentsClient) Update(ctx context.Context, environmentName st
 	if err != nil {
 		return EnvironmentsClientUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
 		err = runtime.NewResponseError(httpResp)
 		return EnvironmentsClientUpdateResponse{}, err
 	}
@@ -333,7 +335,7 @@ func (client *EnvironmentsClient) Update(ctx context.Context, environmentName st
 }
 
 // updateCreateRequest creates the Update request.
-func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, environmentName string, environmentResource EnvironmentResource, options *EnvironmentsClientUpdateOptions) (*policy.Request, error) {
+func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, environmentName string, properties EnvironmentResourceUpdate, options *EnvironmentsClientUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/environments/{environmentName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if environmentName == "" {
@@ -348,7 +350,7 @@ func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, envir
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, environmentResource); err != nil {
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
 	return nil, err
 }
 	return req, nil

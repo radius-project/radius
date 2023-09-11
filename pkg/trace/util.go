@@ -18,7 +18,7 @@ package trace
 import (
 	"context"
 
-	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"

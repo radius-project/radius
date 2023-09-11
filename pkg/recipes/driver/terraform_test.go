@@ -26,13 +26,13 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	tfjson "github.com/hashicorp/terraform-json"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
-	"github.com/project-radius/radius/pkg/recipes/terraform"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,16 +58,17 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 		Name:          "redis-azure",
 		ApplicationID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/app1",
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
-		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.link/rediscaches/test-redis-recipe",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/applications.datastores/rediscaches/test-redis-recipe",
 		Parameters: map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
 
 	envRecipe := recipes.EnvironmentDefinition{
+		Name:         "redis-azure",
 		Driver:       recipes.TemplateKindBicep,
 		TemplatePath: "Azure/redis/azurerm",
-		ResourceType: "Applications.Link/redisCaches",
+		ResourceType: "Applications.Datastores/redisCaches",
 	}
 
 	return envConfig, recipeMetadata, envRecipe
@@ -115,7 +116,13 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
-	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 	// Verify directory cleanup
@@ -139,12 +146,23 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 		ResourceRecipe: &recipeMetadata,
 		EnvRecipe:      &envRecipe,
 	}
-
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "Failed to deploy terraform module",
+		},
+	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
-	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	_, err := driver.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
 	require.Error(t, err)
-	require.Equal(t, "Failed to deploy terraform module", err.Error())
+	require.Equal(t, err, &recipeError)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
@@ -182,12 +200,23 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 			},
 		},
 	}
-
+	recipeError := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: "failed to read the recipe output \"result\": json: unknown field \"invalid\"",
+		},
+	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
-	_, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	_, err := driver.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
 	require.Error(t, err)
-	require.Equal(t, "json: unknown field \"invalid\"", err.Error())
+	require.Equal(t, err, &recipeError)
 	// Verify directory cleanup
 	_, err = os.Stat(tfDir)
 	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
@@ -197,10 +226,22 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
 	driver.options.Path = ""
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-
-	_, err := driver.Execute(testcontext.New(t), envConfig, recipeMetadata, envRecipe)
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
+	_, err := driver.Execute(testcontext.New(t), ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
 	require.Error(t, err)
-	require.Equal(t, "path is a required option for Terraform driver", err.Error())
+	require.Equal(t, err, &expErr)
+
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
@@ -233,9 +274,18 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
+	tfExecutor.EXPECT().
+		Deploy(ctx, gomock.Any()).
+		Times(1).
+		Return(expectedTFState, nil)
 
-	recipeOutput, err := driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 }
@@ -248,18 +298,174 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
 	require.Panics(t, func() {
-		_, _ = driver.Execute(ctx, envConfig, recipeMetadata, envRecipe)
+		_, _ = driver.Execute(ctx, ExecuteOptions{
+			BaseOptions: BaseOptions{
+				Configuration: envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    envRecipe,
+			},
+		})
 	})
+}
+
+func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	_, _, envRecipe := buildTestInputs()
+
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	expectedOutput := map[string]any{
+		"parameters": map[string]any{
+			"redis_cache_name": "redis-test",
+		},
+	}
+	options := terraform.Options{
+		RootDir:        tfDir,
+		ResourceRecipe: &recipes.ResourceMetadata{},
+		EnvRecipe:      &envRecipe,
+	}
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(expectedOutput, nil)
+
+	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expectedOutput, recipeData)
+	// Verify directory cleanup
+	_, err = os.Stat(tfDir)
+	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+}
+
+func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
+	_, driver := setup(t)
+	driver.options.Path = ""
+	_, _, envRecipe := buildTestInputs()
+
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeGetMetadataFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
+
+	_, err := driver.GetRecipeMetadata(testcontext.New(t), BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
+	require.Error(t, err)
+	require.Equal(t, err, &expErr)
+}
+
+func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
+	ctx := testcontext.New(t)
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, driver := setup(t)
+	_, _, envRecipe := buildTestInputs()
+
+	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
+	options := terraform.Options{
+		RootDir:        tfDir,
+		ResourceRecipe: &recipes.ResourceMetadata{},
+		EnvRecipe:      &envRecipe,
+	}
+
+	expErr := errors.New("Failed to download module")
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, expErr)
+
+	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+		Recipe:     recipes.ResourceMetadata{},
+		Definition: envRecipe,
+	})
+	require.Error(t, err)
+	require.Equal(t, expErr, err)
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
+	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
+	tfExecutor, driver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+
+	tfExecutor.EXPECT().
+		Delete(ctx, gomock.Any()).
+		Times(1).
+		Return(nil)
+
+	err := driver.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+		OutputResources: []rpv1.OutputResource{},
+	})
+	require.NoError(t, err)
+}
+
+func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 	_, driver := setup(t)
+	driver.options.Path = ""
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
-	err := driver.Delete(ctx, []rpv1.OutputResource{})
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: "path is a required option for Terraform driver",
+		},
+	}
+
+	err := driver.Delete(testcontext.New(t), DeleteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+		OutputResources: []rpv1.OutputResource{},
+	})
 	require.Error(t, err)
-	require.Equal(t, "terraform delete support is not implemented yet", err.Error())
+	require.Equal(t, err, &expErr)
+}
+
+func Test_Terraform_Delete_Failure(t *testing.T) {
+	ctx := testcontext.New(t)
+	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
+
+	tfExecutor, driver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+
+	tfExecutor.EXPECT().
+		Delete(ctx, gomock.Any()).
+		Times(1).
+		Return(errors.New("Failed to delete terraform module"))
+
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: "Failed to delete terraform module",
+		},
+	}
+
+	err := driver.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+		OutputResources: []rpv1.OutputResource{},
+	})
+	require.Error(t, err)
+	require.Equal(t, &expErr, err)
 }
 
 func Test_Terraform_PrepareRecipeResponse(t *testing.T) {

@@ -20,26 +20,26 @@ import (
 	"context"
 	"os"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
 
-	"github.com/project-radius/radius/pkg/cli/aws"
-	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	cli_credential "github.com/project-radius/radius/pkg/cli/credential"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/cli/setup"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/to"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/cli/aws"
+	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/helm"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/setup"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -248,7 +248,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		var recipes map[string]map[string]corerp.EnvironmentRecipePropertiesClassification
+		var recipes map[string]map[string]corerp.RecipePropertiesClassification
 		if r.Options.Recipes.DevRecipes {
 			recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
 			if err != nil {
@@ -345,7 +345,7 @@ func (r *Runner) getAzureCredential() ucp.AzureCredentialResource {
 		Type:     to.Ptr(cli_credential.AzureCredential),
 		Properties: &ucp.AzureServicePrincipalProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			TenantID:     &r.Options.CloudProviders.Azure.ServicePrincipal.TenantID,
 			ClientID:     &r.Options.CloudProviders.Azure.ServicePrincipal.ClientID,
@@ -354,13 +354,13 @@ func (r *Runner) getAzureCredential() ucp.AzureCredentialResource {
 	}
 }
 
-func (r *Runner) getAWSCredential() ucp.AWSCredentialResource {
-	return ucp.AWSCredentialResource{
+func (r *Runner) getAWSCredential() ucp.AwsCredentialResource {
+	return ucp.AwsCredentialResource{
 		Location: to.Ptr(v1.LocationGlobal),
 		Type:     to.Ptr(cli_credential.AWSCredential),
-		Properties: &ucp.AWSAccessKeyCredentialProperties{
+		Properties: &ucp.AwsAccessKeyCredentialProperties{
 			Storage: &ucp.CredentialStorageProperties{
-				Kind: to.Ptr(string(ucp.CredentialStorageKindInternal)),
+				Kind: to.Ptr(ucp.CredentialStorageKindInternal),
 			},
 			AccessKeyID:     &r.Options.CloudProviders.AWS.AccessKeyID,
 			SecretAccessKey: &r.Options.CloudProviders.AWS.SecretAccessKey,

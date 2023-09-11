@@ -17,8 +17,8 @@ limitations under the License.
 package datamodel
 
 import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const ContainerResourceType = "Applications.Core/containers"
@@ -28,7 +28,7 @@ type ContainerResource struct {
 	v1.BaseResource
 
 	// TODO: remove this from CoreRP
-	LinkMetadata
+	PortableResourceMetadata
 
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`
@@ -75,6 +75,22 @@ type ContainerProperties struct {
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
 	Identity    *rpv1.IdentitySettings          `json:"identity,omitempty"`
+	Runtimes    *RuntimeProperties              `json:"runtimes,omitempty"`
+}
+
+// KubernetesRuntime represents the Kubernetes runtime configuration.
+type KubernetesRuntime struct {
+	// Base represents the Kubernetes resource definition in the serialized YAML format
+	Base string `json:"base,omitempty"`
+
+	// Pod represents the Kuberetes PodSpec strategic merge patch to be applied to the rendered PodSpec. This is stored as a JSON-encoded string.
+	Pod string `json:"pod,omitempty"`
+}
+
+// RuntimeProperties represents the runtime configuration for the platform-specific functionalities.
+type RuntimeProperties struct {
+	// Kubernetes represents the Kubernetes runtime configuration.
+	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
@@ -86,15 +102,16 @@ type ConnectionProperties struct {
 
 // Container - Definition of a container.
 type Container struct {
-	Image          string                      `json:"image,omitempty"`
-	Env            map[string]string           `json:"env,omitempty"`
-	LivenessProbe  HealthProbeProperties       `json:"livenessProbe,omitempty"`
-	Ports          map[string]ContainerPort    `json:"ports,omitempty"`
-	ReadinessProbe HealthProbeProperties       `json:"readinessProbe,omitempty"`
-	Volumes        map[string]VolumeProperties `json:"volumes,omitempty"`
-	Command        []string                    `json:"command,omitempty"`
-	Args           []string                    `json:"args,omitempty"`
-	WorkingDir     string                      `json:"workingDir,omitempty"`
+	Image           string                      `json:"image,omitempty"`
+	ImagePullPolicy string                      `json:"imagePullPolicy,omitempty"`
+	Env             map[string]string           `json:"env,omitempty"`
+	LivenessProbe   HealthProbeProperties       `json:"livenessProbe,omitempty"`
+	Ports           map[string]ContainerPort    `json:"ports,omitempty"`
+	ReadinessProbe  HealthProbeProperties       `json:"readinessProbe,omitempty"`
+	Volumes         map[string]VolumeProperties `json:"volumes,omitempty"`
+	Command         []string                    `json:"command,omitempty"`
+	Args            []string                    `json:"args,omitempty"`
+	WorkingDir      string                      `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container

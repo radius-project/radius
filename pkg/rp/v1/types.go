@@ -19,7 +19,7 @@ package v1
 import (
 	"strings"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
 // EnvironmentComputeKind is the type of compute resource.
@@ -123,10 +123,13 @@ func BuildExternalOutputResources(outputResources []OutputResource) []map[string
 	var externalOutputResources []map[string]any
 	for _, or := range outputResources {
 		externalOutput := map[string]any{
-			"LocalID":  or.LocalID,
-			"Provider": or.ResourceType.Provider,
-			"Identity": or.Identity.Data,
+			"id": or.ID.String(),
 		}
+
+		if or.LocalID != "" {
+			externalOutput["LocalID"] = or.LocalID
+		}
+
 		externalOutputResources = append(externalOutputResources, externalOutput)
 	}
 

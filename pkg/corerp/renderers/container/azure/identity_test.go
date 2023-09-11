@@ -21,16 +21,16 @@ import (
 	"errors"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/resourcemodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -63,16 +63,17 @@ func TestMakeManagedIdentity(t *testing.T) {
 		or, err := MakeManagedIdentity("mi", provider)
 		require.NoError(t, err)
 		require.Equal(t, &rpv1.OutputResource{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			LocalID:  rpv1.LocalIDUserAssignedManagedIdentity,
-			Deployed: false,
-			Resource: map[string]string{
-				handlers.UserAssignedIdentityNameKey:        "mi",
-				handlers.UserAssignedIdentitySubscriptionID: "test-sub-id",
-				handlers.UserAssignedIdentityResourceGroup:  "test-group",
+			LocalID: rpv1.LocalIDUserAssignedManagedIdentity,
+			CreateResource: &rpv1.Resource{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resources_azure.ResourceTypeManagedIdentityUserAssignedManagedIdentity,
+					Provider: resourcemodel.ProviderAzure,
+				},
+				Data: map[string]string{
+					handlers.UserAssignedIdentityNameKey:        "mi",
+					handlers.UserAssignedIdentitySubscriptionID: "test-sub-id",
+					handlers.UserAssignedIdentityResourceGroup:  "test-group",
+				},
 			},
 		}, or)
 	})
@@ -89,28 +90,33 @@ func TestMakeRoleAssignments(t *testing.T) {
 	require.Len(t, or, 2)
 	require.Len(t, ra, 2)
 
-	require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or[0].Dependencies[0].LocalID)
-	require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or[1].Dependencies[0].LocalID)
+	require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or[0].CreateResource.Dependencies[0])
+	require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or[1].CreateResource.Dependencies[0])
 	require.NotEqual(t, or[0].LocalID, or[1].LocalID)
 	require.Equal(t, map[string]string{
 		handlers.RoleNameKey:         "Role1",
 		handlers.RoleAssignmentScope: miTestResource,
-	}, or[0].Resource)
+	}, or[0].CreateResource.Data)
 	require.Equal(t, map[string]string{
 		handlers.RoleNameKey:         "Role2",
 		handlers.RoleAssignmentScope: miTestResource,
-	}, or[1].Resource)
+	}, or[1].CreateResource.Data)
 }
 
-func TestMakeFederatedIdentitySA(t *testing.T) {
-	fi := MakeFederatedIdentitySA("app", "sa", "default", &datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "test-cntr",
-				Type: "applications.core/containers",
-			},
+func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
+	base := &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
 		},
-	})
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "test-cntr",
+			Labels:      map[string]string{},
+			Annotations: map[string]string{},
+		},
+	}
+
+	fi := SetWorkloadIdentityServiceAccount(base)
 
 	putOptions := &handlers.PutOptions{
 		Resource: fi,
@@ -126,11 +132,11 @@ func TestMakeFederatedIdentitySA(t *testing.T) {
 	// Transform outputresource
 	err := TransformFederatedIdentitySA(context.Background(), putOptions)
 	require.NoError(t, err)
-	sa := fi.Resource.(*corev1.ServiceAccount)
+	sa := fi.CreateResource.Data.(*corev1.ServiceAccount)
 
 	require.Equal(t, sa.Annotations[azureWorkloadIdentityClientID], "newClientID")
 	require.Equal(t, sa.Annotations[azureWorkloadIdentityTenantID], "newTenantID")
-	require.Equal(t, rpv1.LocalIDFederatedIdentity, fi.Dependencies[0].LocalID)
+	require.Equal(t, rpv1.LocalIDFederatedIdentity, fi.CreateResource.Dependencies[0])
 }
 
 func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
@@ -148,7 +154,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 		{
 			desc:     "missing user managed identity",
 			resource: &corev1.ServiceAccount{},
-			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
+			err:      nil,
 		},
 		{
 			desc:     "missing client ID",
@@ -175,11 +181,15 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
 			err := TransformFederatedIdentitySA(context.Background(), &handlers.PutOptions{
-				Resource:             &rpv1.OutputResource{Resource: tc.resource},
+				Resource:             &rpv1.OutputResource{CreateResource: &rpv1.Resource{Data: tc.resource}},
 				DependencyProperties: tc.dep,
 			})
 
-			require.ErrorContains(t, err, tc.err.Error())
+			if tc.err != nil {
+				require.EqualError(t, err, tc.err.Error())
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
@@ -209,11 +219,11 @@ func TestMakeFederatedIdentity(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, rpv1.LocalIDFederatedIdentity, or.LocalID)
-		require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or.Dependencies[0].LocalID)
+		require.Equal(t, rpv1.LocalIDUserAssignedManagedIdentity, or.CreateResource.Dependencies[0])
 		require.Equal(t, map[string]string{
 			handlers.FederatedIdentityNameKey:    "fi",
 			handlers.FederatedIdentitySubjectKey: "system:serviceaccount:default:fi",
 			handlers.FederatedIdentityIssuerKey:  "https://radiusoidc/00000000-0000-0000-0000-000000000000",
-		}, or.Resource)
+		}, or.CreateResource.Data)
 	})
 }

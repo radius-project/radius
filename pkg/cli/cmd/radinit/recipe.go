@@ -21,12 +21,11 @@ import (
 	"fmt"
 	"strings"
 
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/linkrp"
-	recipe_types "github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/version"
-
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/portableresources"
+	recipe_types "github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/version"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -34,9 +33,9 @@ const (
 	DevRecipesRegistry = "radius.azurecr.io"
 )
 
-//go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/project-radius/radius/pkg/cli/cmd/radinit github.com/project-radius/radius/pkg/cli/cmd/radinit DevRecipeClient
+//go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
 type DevRecipeClient interface {
-	GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.EnvironmentRecipePropertiesClassification, error)
+	GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.RecipePropertiesClassification, error)
 }
 
 type devRecipeClient struct {
@@ -49,7 +48,7 @@ func NewDevRecipeClient() DevRecipeClient {
 
 // GetDevRecipes is a function that queries a registry for recipes with a specific tag and returns a map of recipes.
 // If an error occurs, an error is returned.
-func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.EnvironmentRecipePropertiesClassification, error) {
+func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.RecipePropertiesClassification, error) {
 	reg, err := remote.NewRegistry(DevRecipesRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesRegistry, err.Error())
@@ -61,7 +60,7 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 		tag = "latest"
 	}
 
-	recipes := map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
+	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
 	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
@@ -104,8 +103,8 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 }
 
 // processRepositories processes the repositories and returns the recipes.
-func processRepositories(repos []string, tag string) map[string]map[string]corerp.EnvironmentRecipePropertiesClassification {
-	recipes := map[string]map[string]corerp.EnvironmentRecipePropertiesClassification{}
+func processRepositories(repos []string, tag string) map[string]map[string]corerp.RecipePropertiesClassification {
+	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
 
 	// We are using the default recipe.
 	name := "default"
@@ -117,15 +116,15 @@ func processRepositories(repos []string, tag string) map[string]map[string]corer
 			continue
 		}
 
-		linkType := getLinkType(resourceType)
-		// If the link type is empty, it means we don't support the resource type.
-		if linkType == "" {
+		portableResourceType := getPortableResourceType(resourceType)
+		// If the PortableResource type is empty, it means we don't support the resource type.
+		if portableResourceType == "" {
 			continue
 		}
 
 		repoPath := DevRecipesRegistry + "/" + repo
 
-		recipes[linkType] = map[string]corerp.EnvironmentRecipePropertiesClassification{
+		recipes[portableResourceType] = map[string]corerp.RecipePropertiesClassification{
 			name: &corerp.BicepRecipeProperties{
 				TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
 				TemplatePath: to.Ptr(repoPath + ":" + tag),
@@ -152,31 +151,25 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 	return resourceType
 }
 
-// getLinkType returns the link type for the given resource type.
-func getLinkType(resourceType string) string {
+// getPortableResourceType returns the resource type for the given resource.
+func getPortableResourceType(resourceType string) string {
 	switch resourceType {
-	case "daprpubsubbrokers":
-		return linkrp.DaprPubSubBrokersResourceType
-	case "daprsecretstores":
-		return linkrp.DaprSecretStoresResourceType
-	case "daprstatestores":
-		return linkrp.DaprStateStoresResourceType
 	case "mongodatabases":
-		return linkrp.MongoDatabasesResourceType
-	case "rabbitmqmessagequeues":
-		return linkrp.RabbitMQMessageQueuesResourceType
+		return portableresources.MongoDatabasesResourceType
 	case "rediscaches":
-		return linkrp.RedisCachesResourceType
+		return portableresources.RedisCachesResourceType
 	case "sqldatabases":
-		return linkrp.SqlDatabasesResourceType
+		return portableresources.SqlDatabasesResourceType
 	case "rabbitmqqueues":
-		return linkrp.N_RabbitMQQueuesResourceType
+		return portableresources.RabbitMQQueuesResourceType
 	case "pubsubbrokers":
-		return linkrp.N_DaprPubSubBrokersResourceType
+		return portableresources.DaprPubSubBrokersResourceType
 	case "secretstores":
-		return linkrp.N_DaprSecretStoresResourceType
+		return portableresources.DaprSecretStoresResourceType
 	case "statestores":
-		return linkrp.N_DaprStateStoresResourceType
+		return portableresources.DaprStateStoresResourceType
+	case "extenders":
+		return portableresources.ExtendersResourceType
 	default:
 		return ""
 	}

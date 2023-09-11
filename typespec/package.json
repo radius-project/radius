@@ -1,0 +1,19 @@
+{
+  "name": "radius",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@typespec/compiler": "latest",
+    "@azure-tools/typespec-autorest": "latest",
+    "@azure-tools/typespec-azure-core": "latest",
+    "@azure-tools/typespec-azure-resource-manager": "latest",
+    "@azure-tools/typespec-providerhub": "latest",
+    "@typespec/http": "latest",
+    "@typespec/openapi": "latest",
+    "@typespec/rest": "latest",
+    "@typespec/versioning": "latest"
+  },
+  "private": true,
+  "author": "Radius Authors",
+  "license": "Apache-2.0"
+}

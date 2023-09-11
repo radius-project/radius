@@ -20,9 +20,9 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	resources "github.com/project-radius/radius/pkg/ucp/resources"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	resources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // FetchEnvironment fetches an environment resource using the provided environmentID and ClientOptions,

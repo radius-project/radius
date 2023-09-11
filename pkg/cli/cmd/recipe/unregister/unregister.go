@@ -19,15 +19,15 @@ package unregister
 import (
 	"context"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clierrors"
-	"github.com/project-radius/radius/pkg/cli/cmd"
-	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ import (
 //
 
 // NewCommand creates a new cobra command for unregistering a recipe from an environment, which takes in a factory and returns a cobra command
-// and a runner. It also sets up flags for output, workspace, resource group, environment name and link type, with link type being a required flag.
+// and a runner. It also sets up flags for output, workspace, resource group, environment name and portable resource type, with resource-type being a required flag.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -52,8 +52,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	commonflags.AddLinkTypeFlag(cmd)
-	_ = cmd.MarkFlagRequired(cli.LinkTypeFlag)
+	commonflags.AddResourceTypeFlag(cmd)
+	_ = cmd.MarkFlagRequired(cli.ResourceTypeFlag)
 
 	return cmd, runner
 }
@@ -65,7 +65,7 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	RecipeName        string
-	LinkType          string
+	ResourceType      string
 }
 
 // NewRunner creates a new instance of the `rad recipe unregister` runner.
@@ -80,7 +80,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate runs validation for the `rad recipe unregister` command.
 //
 
-// // Runner.Validate checks the command line arguments for a workspace, environment, recipe name, and link type, and
+// // Runner.Validate checks the command line arguments for a workspace, environment, recipe name, and resource type, and
 // returns an error if any of these are not present.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
@@ -102,11 +102,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.RecipeName = recipeName
 
-	linkType, err := cli.RequireLinkType(cmd)
+	resourceType, err := cli.GetResourceType(cmd)
 	if err != nil {
 		return err
 	}
-	r.LinkType = linkType
+	r.ResourceType = resourceType
 
 	return nil
 }
@@ -122,14 +122,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName, r.LinkType)
+	envResource, recipeProperties, err := cmd.CheckIfRecipeExists(ctx, client, r.Workspace.Environment, r.RecipeName, r.ResourceType)
 	if err != nil {
 		return err
 	}
-	if val, ok := recipeProperties[r.LinkType]; ok {
+	if val, ok := recipeProperties[r.ResourceType]; ok {
 		delete(val, r.RecipeName)
 		if len(val) == 0 {
-			delete(recipeProperties, r.LinkType)
+			delete(recipeProperties, r.ResourceType)
 		}
 	}
 	envResource.Properties.Recipes = recipeProperties

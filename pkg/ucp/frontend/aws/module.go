@@ -18,9 +18,17 @@ package aws
 
 import (
 	"github.com/go-chi/chi/v5"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/frontend/modules"
-	"github.com/project-radius/radius/pkg/validator"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/validator"
+)
+
+const (
+	// OperationTypeAWSResource is the operation status type for AWS resources.
+	OperationStatusResourceType = "System.AWS/operationStatuses"
+
+	// OperationTypeAWSResource is the operation result type for AWS resources.
+	OperationResultsResourceType = "System.AWS/operationResults"
 )
 
 // NewModule creates a new AWS module.

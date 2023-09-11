@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -124,11 +124,11 @@ func TestAzureCredentialConvertDataModelToVersioned(t *testing.T) {
 					"env": to.Ptr("dev"),
 				},
 				Properties: &AzureServicePrincipalProperties{
-					Kind:     to.Ptr("ServicePrincipal"),
+					Kind:     to.Ptr(AzureCredentialKindServicePrincipal),
 					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
-						Kind:       to.Ptr(string(CredentialStorageKindInternal)),
+						Kind:       to.Ptr(CredentialStorageKindInternal),
 						SecretName: to.Ptr("azure-azurecloud-default"),
 					},
 				},

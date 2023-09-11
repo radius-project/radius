@@ -15,12 +15,7 @@
     "status": {
       "outputResources": [
         {
-          "LocalID": "AzureCosmosAccount",
-          "Dependencies": null,
-          "ResourceType": {
-            "type": "azure.cosmosdb.account",
-            "provider": "azure"
-          }
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
         }
       ]
     },

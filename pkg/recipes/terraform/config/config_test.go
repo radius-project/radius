@@ -26,12 +26,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/recipes"
-	"github.com/project-radius/radius/pkg/recipes/recipecontext"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/backends"
-	"github.com/project-radius/radius/pkg/recipes/terraform/config/providers"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (
@@ -69,10 +69,10 @@ func getTestRecipeContext() *recipecontext.Context {
 	return &recipecontext.Context{
 		Resource: recipecontext.Resource{
 			ResourceInfo: recipecontext.ResourceInfo{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
 				Name: "mongo0",
 			},
-			Type: "applications.link/mongodatabases",
+			Type: "applications.datastores/mongodatabases",
 		},
 		Application: recipecontext.ResourceInfo{
 			Name: "testApplication",
@@ -155,6 +155,17 @@ func Test_AddRecipeContext(t *testing.T) {
 			metadata: &recipes.ResourceMetadata{
 				Name: testRecipeName,
 			},
+			recipeContext:      getTestRecipeContext(),
+			expectedConfigFile: "testdata/main-noparams.tf.json",
+		},
+		{
+			name: "recipe context with empty resource metadata",
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+			},
+			metadata:           &recipes.ResourceMetadata{},
 			recipeContext:      getTestRecipeContext(),
 			expectedConfigFile: "testdata/main-noparams.tf.json",
 		},

@@ -20,13 +20,13 @@ import (
 	"context"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +120,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 			if tc.err != nil {
 				require.ErrorIs(t, tc.err, err)
 			} else {
-				r := or.Resource.(*csiv1.SecretProviderClass)
+				r := or.CreateResource.Data.(*csiv1.SecretProviderClass)
 				require.Equal(t, string(tc.identityKind), r.Annotations[kubernetes.AnnotationIdentityType])
 				require.Equal(t, tc.beforeParams, r.Spec.Parameters)
 

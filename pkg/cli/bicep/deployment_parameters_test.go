@@ -23,7 +23,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
 )
 

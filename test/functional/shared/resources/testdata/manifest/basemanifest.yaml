@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ctnr-manifest
+  labels:
+    app: ctnr-manifest
+  annotations:
+    source: base-manifest-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ctnr-manifest
+  template:
+    metadata:
+      labels:
+        app: ctnr-manifest
+    spec:
+      serviceAccountName: ctnr-manifest
+      volumes:
+        - name: secret-vol
+          secret:
+            secretName: ctnr-manifest-secret0
+      containers:
+        - name: ctnr-manifest
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          volumeMounts:
+          - name: secret-vol
+            readOnly: true
+            mountPath: /etc/secret-vol
+          env:
+          - name: TEST_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ctnr-manifest-secret1
+                key: secret1
+          - name: TEST_CONFIGMAP_KEY
+            valueFrom:
+              configMapKeyRef:
+                name: ctnr-manifest-config
+                key: TEST_CONFIGMAP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ctnr-manifest
+  annotations:
+    source: base-manifest-test
+spec:
+  selector:
+    app.kubernetes.io/name: ctnr-manifest
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ctnr-manifest
+  annotations:
+    source: base-manifest-test
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ctnr-manifest-secret0
+  annotations:
+    source: base-manifest-test
+type: Opaque
+stringData:
+  'secret0': test-secret-0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ctnr-manifest-secret1
+  annotations:
+    source: base-manifest-test
+type: Opaque
+stringData:
+  'secret1': test-secret-1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ctnr-manifest-config
+  annotations:
+    source: base-manifest-test
+data:
+  TEST_CONFIGMAP: test-configmap

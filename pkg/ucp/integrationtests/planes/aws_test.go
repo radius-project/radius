@@ -19,9 +19,9 @@ package planes
 import (
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/integrationtests/testserver"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 )
 
 const (
@@ -73,7 +73,7 @@ func Test_AWSPlane_GET_Found(t *testing.T) {
 }
 
 func Test_AWSPlane_LIST(t *testing.T) {
-	t.Skip("This functionality is currently broken. See https://github.com/project-radius/radius/issues/4878")
+	t.Skip("This functionality is currently broken. See https://github.com/radius-project/radius/issues/4878")
 
 	server := testserver.StartWithETCD(t, api.DefaultModules)
 	defer server.Close()

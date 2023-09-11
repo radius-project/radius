@@ -24,18 +24,20 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/rpctest"
-	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/ucp/dataprovider"
+	queue "github.com/radius-project/radius/pkg/ucp/queue/client"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
 type asyncOperationsManagerTest struct {
-	manager     StatusManager
-	storeClient *store.MockStorageClient
-	queue       *queue.MockClient
+	manager       StatusManager
+	storeProvider *dataprovider.MockDataStorageProvider
+	storeClient   *store.MockStorageClient
+	queue         *queue.MockClient
 }
 
 const (
@@ -51,13 +53,16 @@ const (
 
 func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	ctrl := gomock.NewController(tb)
+	dp := dataprovider.NewMockDataStorageProvider(ctrl)
 	sc := store.NewMockStorageClient(ctrl)
+	dp.EXPECT().GetStorageClient(gomock.Any(), "Applications.Core/operationstatuses").Return(sc, nil)
 	enq := queue.NewMockClient(ctrl)
-	aom := New(sc, enq, "Test-AsyncOperationsManager", "test-location")
-	return asyncOperationsManagerTest{manager: aom, storeClient: sc, queue: enq}, ctrl
+	aom := New(dp, enq, "test-location")
+	return asyncOperationsManagerTest{manager: aom, storeProvider: dp, storeClient: sc, queue: enq}, ctrl
 }
 
 var reqCtx = &v1.ARMRequestContext{
+	ResourceID:     resources.MustParse("/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/container/container0"),
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
@@ -99,7 +104,7 @@ func TestOperationStatusResourceID(t *testing.T) {
 		},
 	}
 
-	sm := &statusManager{providerName: "applications.core", location: v1.LocationGlobal}
+	sm := &statusManager{location: v1.LocationGlobal}
 
 	for _, tc := range resourceIDTests {
 		t.Run(tc.resourceID, func(t *testing.T) {

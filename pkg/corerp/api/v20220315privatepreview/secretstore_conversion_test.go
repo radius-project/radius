@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/test/testutil"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
 
 	"github.com/stretchr/testify/require"
 )
@@ -107,8 +107,7 @@ func TestSecretStoreConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Core/secretStores", r.Type)
 		require.Equal(t, "dev", r.Tags["env"])
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", r.Properties.Application)
-		identity := versioned.Properties.Status.OutputResources[0]["Identity"].(resourcemodel.KubernetesIdentity)
-		require.Equal(t, "Secret", identity.Kind)
+		require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 		require.Equal(t, "certificate", string(*versioned.Properties.Type))
 		require.Nil(t, versioned.Properties.Data["tls.crt"].Encoding)
 		require.Equal(t, "", to.String(versioned.Properties.Data["tls.crt"].Value))
@@ -150,7 +149,7 @@ func TestSecretStoreConvertFromValidation(t *testing.T) {
 		src v1.ResourceDataModel
 		err error
 	}{
-		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{&resourcetypeutil.FakeResource{}, v1.ErrInvalidModelConversion},
 		{nil, v1.ErrInvalidModelConversion},
 	}
 

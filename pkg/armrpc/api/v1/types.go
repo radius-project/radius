@@ -44,17 +44,15 @@ var (
 type OperationMethod string
 
 var operationMethodToHTTPMethod = map[OperationMethod]string{
-	OperationList:   http.MethodGet,
-	OperationGet:    http.MethodGet,
-	OperationPut:    http.MethodPut,
-	OperationPatch:  http.MethodPatch,
-	OperationDelete: http.MethodDelete,
+	OperationPlaneScopeList: http.MethodGet,
+	OperationList:           http.MethodGet,
+	OperationGet:            http.MethodGet,
+	OperationPut:            http.MethodPut,
+	OperationPatch:          http.MethodPatch,
+	OperationDelete:         http.MethodDelete,
 
 	// ARM RPC specific operations.
-	OperationGetOperations:        http.MethodGet,
-	OperationGetOperationStatuses: http.MethodGet,
-	OperationGetOperationResult:   http.MethodGet,
-	OperationPutSubscriptions:     http.MethodPut,
+	OperationPutSubscriptions: http.MethodPut,
 
 	// Non-idempotent lifecycle operations.
 	OperationGetImperative:    http.MethodPost,
@@ -72,7 +70,7 @@ func (o OperationMethod) HTTPMethod() string {
 	if !ok {
 		// ARM RPC defines CRUD_L operations of one resource type and the custom action should be defined as POST method.
 		// For example, if we want to support `listSecret` API for mongodatabase, this API must be defined as POST method.
-		// POST /subscriptions/{subId}/resourcegroups/{rg}/applications.link/mongodatabases/{mongo}/listSecret
+		// POST /subscriptions/{subId}/resourcegroups/{rg}/applications.datastores/mongodatabases/{mongo}/listSecret
 		return http.MethodPost
 	}
 	return m
@@ -80,16 +78,14 @@ func (o OperationMethod) HTTPMethod() string {
 
 const (
 	// Predefined Operation methods.
-	OperationList                 OperationMethod = "LIST"
-	OperationGet                  OperationMethod = "GET"
-	OperationPut                  OperationMethod = "PUT"
-	OperationPatch                OperationMethod = "PATCH"
-	OperationDelete               OperationMethod = "DELETE"
-	OperationGetOperations        OperationMethod = "GETOPERATIONS"
-	OperationGetOperationStatuses OperationMethod = "GETOPERATIONSTATUSES"
-	OperationGetOperationResult   OperationMethod = "GETOPERATIONRESULT"
-	OperationPutSubscriptions     OperationMethod = "PUTSUBSCRIPTIONS"
-	OperationPost                 OperationMethod = "POST"
+	OperationPlaneScopeList   OperationMethod = "LISTPLANESCOPE"
+	OperationList             OperationMethod = "LIST"
+	OperationGet              OperationMethod = "GET"
+	OperationPut              OperationMethod = "PUT"
+	OperationPatch            OperationMethod = "PATCH"
+	OperationDelete           OperationMethod = "DELETE"
+	OperationPutSubscriptions OperationMethod = "PUTSUBSCRIPTIONS"
+	OperationPost             OperationMethod = "POST"
 
 	// Imperative operation methods for non-idempotent lifecycle operations.
 	// UCP extends the ARM resource lifecycle to support using POST for non-idempotent resource types.

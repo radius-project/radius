@@ -26,7 +26,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/stretchr/testify/require"
 
-	"github.com/project-radius/radius/swagger"
+	"github.com/radius-project/radius/swagger"
 )
 
 func Test_FindParam(t *testing.T) {
@@ -60,7 +60,8 @@ func Test_ToRouteParams(t *testing.T) {
 	}
 
 	t.Run("non-match", func(t *testing.T) {
-		req, err := http.NewRequest("", "http://radius/test", nil)
+		// double slash is an invalid resource ID '//test'
+		req, err := http.NewRequest("", "http://radius//test", nil)
 		require.NoError(t, err)
 		ps := v.toRouteParams(req)
 		require.Empty(t, ps)

@@ -20,13 +20,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 // Test_ResourceList covers the plane and resource-group scope list APIs for all Radius resource types.
@@ -43,7 +44,7 @@ func Test_ResourceList(t *testing.T) {
 
 	parsed, err := resources.ParseScope("/" + scope)
 	require.NoError(t, err)
-	require.NotEmpty(t, parsed.FindScope(resources.ResourceGroupsSegment), "workspace scope must contain resource group segment")
+	require.NotEmpty(t, parsed.FindScope(resources_radius.ScopeResourceGroups), "workspace scope must contain resource group segment")
 
 	resourceGroupScope := parsed.String()
 	planeScope := parsed.Truncate().String()

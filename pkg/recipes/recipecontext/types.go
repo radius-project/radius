@@ -17,7 +17,7 @@ limitations under the License.
 package recipecontext
 
 import (
-	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes"
 )
 
 const (
@@ -25,9 +25,9 @@ const (
 	RecipeContextParamKey = "context"
 )
 
-// Context represents the context information which accesses Link properties. Recipe template authors
-// can leverage the RecipeContext parameter to access Link properties to generate name and properties
-// that are unique for the Link calling the recipe.
+// Context represents the context information which accesses portable resource properties. Recipe template authors
+// can leverage the RecipeContext parameter to access portable resource properties to generate name and properties
+// that are unique for the portable resource calling the recipe.
 type Context struct {
 	// Resource represents the resource information of the deploying recipe resource.
 	Resource Resource `json:"resource,omitempty"`
@@ -44,7 +44,7 @@ type Context struct {
 }
 
 // Resource contains the information needed to deploy a recipe.
-// In the case the resource is a Link, it represents the Link's id, name and type.
+// In the case the resource is a portable resource, it represents the resource's id, name and type.
 type Resource struct {
 	// ResourceInfo represents name and id of the resource
 	ResourceInfo

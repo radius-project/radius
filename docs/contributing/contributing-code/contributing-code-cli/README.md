@@ -41,10 +41,10 @@ Create the following script and place it on your path with a name like `dev-rad`
 ```sh
 #!/bin/sh
 set -eu
-go run ~/github.com/project-radius/radius/cmd/rad/main.go $@
+go run ~/github.com/radius-project/radius/cmd/rad/main.go $@
 ```
 
-Replace `~/github.com/project-radius/radius` with the path to your repository root.
+Replace `~/github.com/radius-project/radius` with the path to your repository root.
 
 Run `chmod +x dev-rad` to mark it executable
 

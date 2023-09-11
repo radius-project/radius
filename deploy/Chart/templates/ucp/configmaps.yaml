@@ -9,7 +9,7 @@ metadata:
 data:
   ucp-config.yaml: |-
     # Radius configuration file.
-    # See https://github.com/project-radius/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
+    # See https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md for more information.
     storageProvider:
       provider: "apiserver"
       apiserver:
@@ -20,7 +20,11 @@ data:
       provider: kubernetes
 
     queueProvider:
-      provider: inmemory
+      provider: "apiserver"
+      name: "ucp"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
 
     profilerProvider:
       enabled: true
@@ -31,7 +35,6 @@ data:
         properties:
           resourceProviders:
             Applications.Core: "http://applications-rp.radius-system:5443"
-            Applications.Link: "http://applications-rp.radius-system:5444"
             Applications.Dapr: "http://applications-rp.radius-system:5444"
             Applications.Datastores: "http://applications-rp.radius-system:5444"
             Applications.Messaging: "http://applications-rp.radius-system:5444"

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/linkrp/processors"
-	"github.com/project-radius/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
+	"github.com/radius-project/radius/pkg/recipes"
 )
 
 // Processor is a processor for Extender resources.
@@ -45,6 +45,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, o
 		resource.Properties.Secrets = options.RecipeOutput.Secrets
 	}
 
+	return nil
+}
+
+// Delete implements the processors.Processor interface for Extender resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.Extender, options processors.Options) error {
 	return nil
 }
 

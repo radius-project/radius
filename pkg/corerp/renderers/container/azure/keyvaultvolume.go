@@ -20,14 +20,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/corerp/handlers"
+	"github.com/radius-project/radius/pkg/corerp/renderers"
+	"github.com/radius-project/radius/pkg/kubernetes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +69,7 @@ func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev
 
 // TransformSecretProviderClass updates the clientID and tenantID for azure workload identity.
 func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOptions) error {
-	spc, ok := options.Resource.Resource.(*csiv1.SecretProviderClass)
+	spc, ok := options.Resource.CreateResource.Data.(*csiv1.SecretProviderClass)
 	if !ok {
 		return errors.New("cannot transform service account")
 	}
@@ -132,17 +131,8 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 		},
 	}
 
-	or := rpv1.NewKubernetesOutputResource(
-		resourcekinds.SecretProviderClass,
-		rpv1.LocalIDSecretProviderClass,
-		secretProvider,
-		secretProvider.ObjectMeta)
-
-	or.Dependencies = []rpv1.Dependency{
-		{
-			LocalID: rpv1.LocalIDServiceAccount,
-		},
-	}
+	or := rpv1.NewKubernetesOutputResource(rpv1.LocalIDSecretProviderClass, secretProvider, secretProvider.ObjectMeta)
+	or.CreateResource.Dependencies = []string{rpv1.LocalIDServiceAccount}
 
 	return &or, nil
 

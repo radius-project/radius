@@ -19,7 +19,7 @@ package objectformats
 import (
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 // GetApplicationStatusTableFormat() sets up the columns and headings for a table to display application names and resource counts.
@@ -211,7 +211,7 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 			},
 			{
 				Heading:  "TYPE",
-				JSONPath: "{ .LinkType }",
+				JSONPath: "{ .ResourceType }",
 			},
 			{
 				Heading:  "TEMPLATE KIND",

@@ -22,13 +22,13 @@ import (
 	"path"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/to"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	ucp_aws "github.com/project-radius/radius/pkg/ucp/aws"
-	"github.com/project-radius/radius/pkg/ucp/aws/servicecontext"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/to"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 var _ armrpc_controller.Controller = (*ListAWSResources)(nil)

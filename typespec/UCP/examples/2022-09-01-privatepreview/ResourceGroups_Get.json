@@ -1,0 +1,19 @@
+{
+  "operationId": "ResourceGroups_Get",
+  "title": "Get a resource group",
+  "parameters": {
+    "api-version": "2022-09-01-privatepreview",
+    "planeName": "local",
+    "planeType": "radius",
+    "resourceGroupName": "rg1"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourcegroups/rg1",
+        "name": "rg1",
+        "location": "global"
+      }
+    }
+  }
+}

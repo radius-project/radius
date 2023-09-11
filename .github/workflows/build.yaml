@@ -42,14 +42,14 @@ env:
   GOTESTSUMVERSION: 1.10.0
 
   # Use radiusdev.azurecr.io for PR build. Otherwise, use radius.azurecr.io.
-  # TODO_LAUNCH: Remove this variable when we opensource the repo - https://github.com/project-radius/radius/issues/5892
+  # TODO_LAUNCH: Remove this variable when we opensource the repo - https://github.com/radius-project/radius/issues/5892
   DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && 'radiusdev.azurecr.io' || 'radius.azurecr.io' }}
 
   # GitHub Actor for pushing images to GHCR
   GHCR_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
-  CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/project-radius/dev' || 'ghcr.io/project-radius/radius' }}
+  CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/radius-project/dev' || 'ghcr.io/radius-project/radius' }}
 
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
@@ -57,7 +57,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: [self-hosted, 1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -126,7 +126,7 @@ jobs:
         with:
           name: rad_cli_release
           path: ${{ env.RELEASE_PATH }}
-      # TOOD_LAUNCH: Remove this step when we opensource the repo - https://github.com/project-radius/radius/issues/5892
+      # TOOD_LAUNCH: Remove this step when we opensource the repo - https://github.com/radius-project/radius/issues/5892
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:
@@ -211,10 +211,10 @@ jobs:
   # - tag the image with the PR version if the trigger was a PR
   # - push the image for pushes to master, or to a tag
 
-  # TODO_LAUNCH: Remove 'image' job when we opensource the repo - https://github.com/project-radius/radius/issues/5892
+  # TODO_LAUNCH: Remove 'image' job when we opensource the repo - https://github.com/radius-project/radius/issues/5892
   images:
     name: Container image build
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -263,7 +263,7 @@ jobs:
   # publish_image is building and publishing images to GHCR.
   publish_images:
     name: Build and publish container images
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -312,13 +312,13 @@ jobs:
   helm:
     name: Helm chart build
     needs: ['images', 'publish_images']
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
       HELM_CHARTS_DIR: deploy/Chart
       OCI_REGISTRY: ghcr.io
-      OCI_REPOSITORY: ${{ startsWith(github.ref, 'refs/tags/v') && 'project-radius/helm-chart' || 'project-radius/dev/helm-chart' }} 
+      OCI_REPOSITORY: ${{ startsWith(github.ref, 'refs/tags/v') && 'radius-project/helm-chart' || 'radius-project/dev/helm-chart' }} 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -353,7 +353,7 @@ jobs:
   publish_release:
     name: Publish GitHub Release
     needs: [ 'build' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
@@ -388,11 +388,11 @@ jobs:
             --verify-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-  # TODO_LAUNCH: Remove this job once we opensource - https://github.com/project-radius/radius/issues/5892
+  # TODO_LAUNCH: Remove this job once we opensource - https://github.com/radius-project/radius/issues/5892
   publish:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
@@ -476,7 +476,7 @@ jobs:
     name: Delete artifacts
     needs: [ 'build', 'publish' ]
     if: ${{ always() && !contains(needs.build.result, 'failure') }}
-    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
+    runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts
         uses: geekyeggo/delete-artifact@v1

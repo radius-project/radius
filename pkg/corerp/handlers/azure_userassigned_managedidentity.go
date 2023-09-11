@@ -21,14 +21,14 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/logging"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpv1 "github.com/project-radius/radius/pkg/rp/v1"
-	"github.com/project-radius/radius/pkg/to"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/azure/armauth"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	"github.com/radius-project/radius/pkg/logging"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -56,7 +56,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	properties, ok := options.Resource.Resource.(map[string]string)
+	properties, ok := options.Resource.CreateResource.Data.(map[string]string)
 	if !ok {
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
@@ -105,7 +105,12 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityClientIDKey] = to.String(identity.Properties.ClientID)
 	properties[UserAssignedIdentityTenantIDKey] = to.String(identity.Properties.TenantID)
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.MSIClientAPIVersion)
+	id, err := resources.ParseResource(properties[UserAssignedIdentityIDKey])
+	if err != nil {
+		return nil, err
+	}
+
+	options.Resource.ID = id
 	logger.Info("Created managed identity for KeyVault access", logging.LogFieldLocalID, rpv1.LocalIDUserAssignedManagedIdentity)
 
 	return properties, nil
@@ -113,24 +118,14 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 
 // Delete deletes a user assigned managed identity from Azure using the provided DeleteOptions.
 func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	msiResourceID, _, err := options.Resource.Identity.RequireARM()
-	if err != nil {
-		return err
-	}
 
-	parsed, err := resources.ParseResource(msiResourceID)
-	if err != nil {
-		return err
-	}
-
-	subscriptionID := parsed.FindScope(resources.SubscriptionsSegment)
-
+	subscriptionID := options.Resource.ID.FindScope(resources_azure.ScopeSubscriptions)
 	msiClient, err := clientv2.NewUserAssignedIdentityClient(subscriptionID, &handler.arm.ClientOptions)
 	if err != nil {
 		return err
 	}
 
-	_, err = msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), nil)
+	_, err = msiClient.Delete(ctx, options.Resource.ID.FindScope(resources_azure.ScopeResourceGroups), options.Resource.ID.Name(), nil)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
