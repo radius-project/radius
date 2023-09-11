@@ -35,7 +35,7 @@ If this workflow run fails, or if we encounter an issue with an RC release, plea
 
 If sample validation passes, we can start the process of creating the final release.
 
-1. Go through steps 1-4 of "Creating an RC release" above, substituting the final release version instead of the RC version. For example, if the RC version is `v0.1.0-rc1`, the final release version would be `v0.1.0`.
+1. Go through steps 1-4 of "Creating an RC release" above, substituting the final release version instead of the RC version. For example, if the RC version number is `0.1.0-rc1`, the final release version would be `0.1.0`.
 
 1. After creating the pull request, there should be an automatically-generated release notes comment. Create a new release note document in the [release-notes](../../release-notes/) directory. Follow the directory's README.md for instructions on how to create a new release note document. Include this file in the release version pull request. [Example](https://github.com/project-radius/radius/pull/6092/files)
 
