@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +52,7 @@ func TestNewRecipeError(t *testing.T) {
 						},
 					},
 				},
-				portableresources.RecipeSetupError,
+				util.RecipeSetupError,
 			},
 		},
 		{
@@ -65,7 +65,7 @@ func TestNewRecipeError(t *testing.T) {
 					Code:    RecipeDeploymentFailed,
 					Message: "test-recipe-deployment-failed-message",
 				},
-				portableresources.ExecutionError,
+				util.ExecutionError,
 			},
 		},
 	}
@@ -93,7 +93,7 @@ func TestGetRecipeErrorDetails(t *testing.T) {
 					Code:    RecipeDeploymentFailed,
 					Message: "test-recipe-deployment-failed-message",
 				},
-				portableresources.RecipeSetupError,
+				util.RecipeSetupError,
 			},
 			expErrorDetails: &v1.ErrorDetails{
 				Code:    RecipeDeploymentFailed,

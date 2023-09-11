@@ -24,8 +24,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/to"
@@ -126,19 +126,19 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	if environment.Properties.Recipes == nil {
 		msg := &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
-		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, msg.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, msg.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
 	}
 
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
 		msg := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
-		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
+		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
 	}
 	recipeName := recipe.Name
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
 		msg := &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
-		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, msg.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, msg.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
 	}
 
 	definition := &recipes.EnvironmentDefinition{

@@ -18,6 +18,8 @@ package portableresources
 
 import (
 	"strings"
+
+	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
 const (
@@ -81,7 +83,7 @@ type ResourceRecipe struct {
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any `json:"parameters,omitempty"`
 	// Deployment status of the recipe
-	DeploymentStatus RecipeDeploymentStatus `json:"recipeStatus,omitempty"`
+	DeploymentStatus util.RecipeDeploymentStatus `json:"recipeStatus,omitempty"`
 }
 
 // ResourceReference represents a reference to a resource that was deployed by the user
@@ -127,17 +129,6 @@ type Kubernetes struct {
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
 }
-
-type RecipeDeploymentStatus string
-
-const (
-	// ExecutionError represents a failure status during recipe execution.
-	ExecutionError RecipeDeploymentStatus = "executionError"
-	// RecipeSetupError represents a failure that happens before a recipe or output resources are deployed.
-	RecipeSetupError RecipeDeploymentStatus = "setupError"
-	// Success represents a successful recipe execution.
-	Success RecipeDeploymentStatus = "success"
-)
 
 // IsValidPortableResourceType checks if the provided resource type is a valid portable resource type.
 // Returns true if the resource type is valid, false otherwise.

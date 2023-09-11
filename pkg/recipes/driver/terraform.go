@@ -25,10 +25,10 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 
 	"github.com/radius-project/radius/pkg/recipes/terraform"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -70,7 +70,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
@@ -85,12 +85,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		EnvRecipe:      &opts.Definition,
 	})
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), portableresources.ExecutionError, recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	recipeOutputs, err := d.prepareRecipeResponse(tfState)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), portableresources.ExecutionError, recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	return recipeOutputs, nil

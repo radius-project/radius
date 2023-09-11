@@ -21,12 +21,12 @@ import (
 	"errors"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
@@ -82,7 +82,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
 			// Set the deployment status to the recipe error code.
-			recipeDataModel.Recipe().DeploymentStatus = portableresources.RecipeDeploymentStatus(recipeError.DeploymentStatus)
+			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &store.Object{
 				Metadata: store.Metadata{
 					ID: req.ResourceID,
@@ -111,7 +111,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	recipeDataModel.Recipe().DeploymentStatus = portableresources.Success
+	if recipeDataModel.Recipe() != nil {
+		recipeDataModel.Recipe().DeploymentStatus = util.Success
+	}
 	update := &store.Object{
 		Metadata: store.Metadata{
 			ID: req.ResourceID,
@@ -136,7 +138,10 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []string {
 
 func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P, prevState []string) (*recipes.RecipeOutput, error) {
 	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
-	recipeDataModel := any(data).(datamodel.RecipeDataModel)
+	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
+	if !supportsRecipes {
+		return nil, nil
+	}
 
 	input := recipeDataModel.Recipe()
 	if input == nil {

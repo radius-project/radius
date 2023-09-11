@@ -23,8 +23,8 @@ import (
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -47,12 +47,12 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), portableresources.RecipeSetupError, nil)
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
 
 	bytes, err := getBytes(ctx, repo, digest)
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), portableresources.RecipeSetupError, nil)
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
 
 	err = json.Unmarshal(bytes, data)
