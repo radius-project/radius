@@ -26,7 +26,7 @@ env:
   AWS_RESOURCE_TYPES: 'AWS::Kinesis::Stream,AWS::S3::Bucket,AWS::RDS::DBInstance,AWS::RDS::DBSubnetGroup,AWS::MemoryDB::Cluster,AWS::MemoryDB::SubnetGroup'
 jobs:
   purge_aws_resources:
-    name: AWS resources clean-ups
+    name: Delete all AWS resources created by tests
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -37,10 +37,13 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Filter and delete resources
         run: |
-          for resource_type in ${${{env.AWS_RESOURCE_TYPES}}//,/ }
+          RESOURCE_TYPES=${{env.AWS_RESOURCE_TYPES}}
+          for resource_type in ${RESOURCE_TYPES//,/ }
           do
+            echo "Deleting resources of type $resource_type"
             aws cloudcontrol list-resources --type-name "$resource_type" --query "ResourceDescriptions[].Identifier" --output text | tr '\t' '\n' | while read identifier
             do
+              echo "Deleting resource $identifier of type $resource_type"
               aws cloudcontrol delete-resource --type-name "$resource_type" --identifier "$identifier"
-            done            
+            done
           done
