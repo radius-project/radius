@@ -17,6 +17,7 @@ limitations under the License.
 package container
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -34,6 +35,7 @@ import (
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -1698,6 +1700,89 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, expectedContainers, deployment.Spec.Template.Spec.Containers)
+}
+
+func Test_Render_BaseManifest(t *testing.T) {
+	manifestTests := []struct {
+		name      string
+		inFile    string
+		container datamodel.ContainerProperties
+		outFile   string
+	}{
+		{
+			name:   "merge container, envvars, and volumes",
+			inFile: "basemanifest-input-merge.yaml",
+			container: datamodel.ContainerProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Application: applicationResourceID,
+				},
+				Container: datamodel.Container{
+					Image: "someimage:latest",
+					Env: map[string]string{
+						envVarName1: envVarValue1,
+						envVarName2: envVarValue2,
+					},
+					Volumes: map[string]datamodel.VolumeProperties{
+						"ephemeralVolume": {
+							Kind: datamodel.Ephemeral,
+							Ephemeral: &datamodel.EphemeralVolume{
+								VolumeBase: datamodel.VolumeBase{
+									MountPath: "/mnt/ephemeral",
+								},
+								ManagedStore: datamodel.ManagedStoreMemory,
+							},
+						},
+					},
+				},
+			},
+			outFile: "basemanifest-output-merge.json",
+		},
+		{
+			name:   "inject new sidecar",
+			inFile: "basemanifest-input-addcontainer.yaml",
+			container: datamodel.ContainerProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Application: applicationResourceID,
+				},
+				Container: datamodel.Container{
+					Image: "someimage:latest",
+					Env: map[string]string{
+						envVarName1: envVarValue1,
+						envVarName2: envVarValue2,
+					},
+				},
+			},
+			outFile: "basemanifest-output-addcontainer.json",
+		},
+	}
+
+	for _, tc := range manifestTests {
+		t.Run(tc.name, func(t *testing.T) {
+			inYAML := testutil.ReadFixture(tc.inFile)
+			tc.container.Runtimes = &datamodel.RuntimeProperties{
+				Kubernetes: &datamodel.KubernetesRuntime{
+					Base: string(inYAML),
+				},
+			}
+
+			resource := makeResource(t, tc.container)
+			dependencies := map[string]renderers.RendererDependency{}
+
+			ctx := testcontext.New(t)
+			renderer := Renderer{}
+			output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+			require.NoError(t, err)
+
+			deployment, _ := kubernetes.FindDeployment(output.Resources)
+			require.NotNil(t, deployment)
+
+			actual, err := json.MarshalIndent(deployment, "", "  ")
+			require.NoError(t, err)
+
+			outputYaml := testutil.ReadFixture(tc.outFile)
+			require.Equal(t, string(outputYaml), string(actual), "actual output: %s", string(actual))
+		})
+	}
 }
 
 func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
