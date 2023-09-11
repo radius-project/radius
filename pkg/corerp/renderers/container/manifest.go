@@ -161,15 +161,6 @@ func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *
 	return defaultAccount
 }
 
-func getObjectMeta(metaObj metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:        kubernetes.NormalizeResourceName(resourceName),
-		Namespace:   options.Environment.Namespace,
-		Labels:      labels.Merge(metaObj.Labels, renderers.GetLabels(options, appName, resourceName, resourceType)),
-		Annotations: labels.Merge(metaObj.Annotations, renderers.GetAnnotations(options)),
-	}
-}
-
 // populateAllBaseResources populates all remaining resources from manifest into outputResources.
 // These resources must be deployed before Deployment resource by adding them as a dependency.
 func populateAllBaseResources(ctx context.Context, base kubeutil.ObjectManifest, outputResources []rpv1.OutputResource, options renderers.RenderOptions) []rpv1.OutputResource {
@@ -237,4 +228,35 @@ func patchPodSpec(sourceSpec *corev1.PodSpec, patchSpec []byte) (*corev1.PodSpec
 	}
 
 	return patched, nil
+}
+
+func mergeLabelSelector(base *metav1.LabelSelector, cur *metav1.LabelSelector) *metav1.LabelSelector {
+	if base == nil {
+		base = &metav1.LabelSelector{}
+	}
+
+	return &metav1.LabelSelector{
+		MatchLabels:      labels.Merge(base.MatchLabels, cur.MatchLabels),
+		MatchExpressions: append(base.MatchExpressions, cur.MatchExpressions...),
+	}
+}
+
+func mergeObjectMeta(base metav1.ObjectMeta, cur metav1.ObjectMeta) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:        cur.Name,
+		Namespace:   cur.Namespace,
+		Labels:      labels.Merge(base.Labels, cur.Labels),
+		Annotations: labels.Merge(base.Annotations, cur.Annotations),
+	}
+}
+
+func getObjectMeta(base metav1.ObjectMeta, appName, resourceName, resourceType string, options renderers.RenderOptions) metav1.ObjectMeta {
+	cur := metav1.ObjectMeta{
+		Name:        kubernetes.NormalizeResourceName(resourceName),
+		Namespace:   options.Environment.Namespace,
+		Labels:      renderers.GetLabels(options, appName, resourceName, resourceType),
+		Annotations: renderers.GetAnnotations(options),
+	}
+
+	return mergeObjectMeta(base, cur)
 }
