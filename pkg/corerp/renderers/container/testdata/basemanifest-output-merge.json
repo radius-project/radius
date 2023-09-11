@@ -1,0 +1,118 @@
+{
+  "kind": "Deployment",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "name": "test-container",
+    "creationTimestamp": null,
+    "labels": {
+      "app": "test-container",
+      "app.kubernetes.io/managed-by": "radius-rp",
+      "app.kubernetes.io/name": "test-container",
+      "app.kubernetes.io/part-of": "test-app",
+      "radius.dev/application": "test-app",
+      "radius.dev/resource": "test-container",
+      "radius.dev/resource-type": "applications.core-containers"
+    },
+    "annotations": {
+      "source": "base-manifest-test"
+    }
+  },
+  "spec": {
+    "replicas": 3,
+    "selector": {
+      "matchLabels": {
+        "app": "test-container",
+        "basemanifest": "default",
+        "radius.dev/application": "test-app",
+        "radius.dev/resource": "test-container"
+      }
+    },
+    "template": {
+      "metadata": {
+        "creationTimestamp": null,
+        "labels": {
+          "app": "test-container",
+          "app.kubernetes.io/managed-by": "radius-rp",
+          "app.kubernetes.io/name": "test-container",
+          "app.kubernetes.io/part-of": "test-app",
+          "basemanifest": "default",
+          "radius.dev/application": "test-app",
+          "radius.dev/resource": "test-container",
+          "radius.dev/resource-type": "applications.core-containers"
+        }
+      },
+      "spec": {
+        "volumes": [
+          {
+            "name": "secret-vol",
+            "secret": {
+              "secretName": "test-container-secret0"
+            }
+          },
+          {
+            "name": "ephemeralVolume",
+            "emptyDir": {
+              "medium": "Memory"
+            }
+          }
+        ],
+        "containers": [
+          {
+            "name": "test-container",
+            "image": "someimage:latest",
+            "ports": [
+              {
+                "containerPort": 80,
+                "protocol": "TCP"
+              }
+            ],
+            "env": [
+              {
+                "name": "TEST_SECRET_KEY",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "test-container-secret1",
+                    "key": "secret1"
+                  }
+                }
+              },
+              {
+                "name": "TEST_CONFIGMAP_KEY",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "name": "test-container-config",
+                    "key": "TEST_CONFIGMAP"
+                  }
+                }
+              },
+              {
+                "name": "TEST_VAR_1",
+                "value": "TEST_VALUE_1"
+              },
+              {
+                "name": "TEST_VAR_2",
+                "value": "81"
+              }
+            ],
+            "resources": {},
+            "volumeMounts": [
+              {
+                "name": "secret-vol",
+                "readOnly": true,
+                "mountPath": "/etc/secret-vol"
+              },
+              {
+                "name": "ephemeralVolume",
+                "mountPath": "/mnt/ephemeral"
+              }
+            ]
+          }
+        ],
+        "serviceAccountName": "test-container",
+        "enableServiceLinks": false
+      }
+    },
+    "strategy": {}
+  },
+  "status": {}
+}

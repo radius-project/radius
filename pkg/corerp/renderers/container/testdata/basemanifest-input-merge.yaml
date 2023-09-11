@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-container
+  labels:
+    app: test-container
+  annotations:
+    source: base-manifest-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: test-container
+      basemanifest: default
+  template:
+    metadata:
+      labels:
+        app: test-container
+        basemanifest: default
+    spec:
+      serviceAccountName: test-container
+      volumes:
+        - name: secret-vol
+          secret:
+            secretName: test-container-secret0
+      containers:
+        - name: test-container
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          volumeMounts:
+          - name: secret-vol
+            readOnly: true
+            mountPath: /etc/secret-vol
+          env:
+          - name: TEST_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: test-container-secret1
+                key: secret1
+          - name: TEST_CONFIGMAP_KEY
+            valueFrom:
+              configMapKeyRef:
+                name: test-container-config
+                key: TEST_CONFIGMAP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-container
+  annotations:
+    source: base-manifest-test
+spec:
+  selector:
+    app.kubernetes.io/name: test-container
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-container
+  annotations:
+    source: base-manifest-test
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-container-secret0
+  annotations:
+    source: base-manifest-test
+type: Opaque
+stringData:
+  'secret0': test-secret-0
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-container-secret1
+  annotations:
+    source: base-manifest-test
+type: Opaque
+stringData:
+  'secret1': test-secret-1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-container-config
+  annotations:
+    source: base-manifest-test
+data:
+  TEST_CONFIGMAP: test-configmap
