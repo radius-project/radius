@@ -39,6 +39,8 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. After creating the pull request, there should be an automatically-generated release notes comment. Create a new release note document in the [release-notes](../../release-notes/) directory. Follow the directory's README.md for instructions on how to create a new release note document. Include this file in the release version pull request. [Example](https://github.com/project-radius/radius/pull/6092/files)
 
+1. Cherry-pick the release notes into the release branch (see the "Patching" section for details). This will ensure that the release notes are included in the release branch. [Example](https://github.com/radius-project/radius/pull/6114/files)
+
 1. Purge the [CDN cache](https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourcegroups/assets/providers/Microsoft.Cdn/profiles/Radius/endpoints/radius/overview).
     ```bash
     $ az login
