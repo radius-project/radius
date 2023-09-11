@@ -474,6 +474,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 			Code:    recipes.RecipeLanguageFailure,
 			Message: "failed to fetch repository from the path \"radiusdev.azurecr.io/test-non-existent-recipe\": radiusdev.azurecr.io/test-non-existent-recipe:latest: not found",
 		},
+		DeploymentStatus: "setupError",
 	}
 
 	require.Error(t, err)

@@ -67,6 +67,7 @@ func (r *SqlDatabase) ResourceTypeName() string {
 	return portableresources.SqlDatabasesResourceType
 }
 
+// SetDeploymentStatus updates the deployment status of the SQL Databse resource.
 func (r *SqlDatabase) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
 	r.Recipe().DeploymentStatus = status
 }

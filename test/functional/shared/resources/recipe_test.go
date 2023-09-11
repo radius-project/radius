@@ -34,8 +34,6 @@ import (
 // behaviors. Some functionality needs to be tested for each driver.
 
 func Test_Recipe_NotFound(t *testing.T) {
-	// t.Skip("Blocked by https://github.com/radius-project/radius/issues/6040")
-
 	template := "testdata/corerp-resources-recipe-notfound.bicep"
 	name := "corerp-resources-recipe-notfound"
 

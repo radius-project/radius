@@ -62,6 +62,7 @@ func (r *DaprStateStore) Recipe() *portableresources.ResourceRecipe {
 	return &r.Properties.Recipe
 }
 
+// SetDeploymentStatus updates the deployment status of the DaprStateStore resource.
 func (r *DaprStateStore) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
 	r.Recipe().DeploymentStatus = status
 }

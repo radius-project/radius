@@ -124,6 +124,7 @@ func (r *MongoDatabase) Recipe() *portableresources.ResourceRecipe {
 	return &r.Properties.Recipe
 }
 
+// SetDeploymentStatus updates the deployment status of the Mongo database resource.
 func (r *MongoDatabase) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
 	r.Recipe().DeploymentStatus = status
 }

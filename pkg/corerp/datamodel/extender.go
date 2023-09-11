@@ -66,6 +66,7 @@ func (r *Extender) Recipe() *portableresources.ResourceRecipe {
 	return &r.Properties.ResourceRecipe
 }
 
+// SetDeploymentStatus updates the deployment status of the Extender resource.
 func (r *Extender) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
 	r.Recipe().DeploymentStatus = status
 }

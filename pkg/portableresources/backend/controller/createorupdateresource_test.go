@@ -41,10 +41,10 @@ import (
 )
 
 const (
-	TestResourceType  = "Applications.Test/testResources"
+	TestResourceType  = "Applications.Core/extenders"
 	TestEnvironmentID = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"
 	TestApplicationID = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"
-	TestResourceID    = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Test/testResources/tr"
+	TestResourceID    = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/tr"
 )
 
 type TestResource struct {
@@ -78,6 +78,11 @@ func (r *TestResource) ResourceMetadata() *rpv1.BasicResourceProperties {
 // Recipe returns a pointer to the ResourceRecipe stored in the Properties field of the TestResource struct.
 func (t *TestResource) Recipe() *portableresources.ResourceRecipe {
 	return &t.Properties.Recipe
+}
+
+// Recipe returns a pointer to the ResourceRecipe stored in the Properties field of the TestResource struct.
+func (t *TestResource) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
+	t.Properties.Recipe.DeploymentStatus = status
 }
 
 type TestResourceProperties struct {
@@ -122,9 +127,9 @@ var errorProcessorReference = processors.ResourceProcessor[*TestResource, TestRe
 var errProcessor = errors.New("processor error")
 var errConfiguration = errors.New("configuration error")
 
-var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1"
+var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Applications.Core/extenders/test1"
 
-var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test2"
+var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Applications.Core/extenders/test2"
 var newOutputResource = rpv1.OutputResource{ID: resources.MustParse(newOutputResourceResourceID)}
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
@@ -199,12 +204,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			},
 			nil,
 			false,
-			&recipes.ErrRecipeNotFound{},
+			&recipes.ErrRecipeNotFound{Name: "test-recipe", Environment: TestEnvironmentID},
 			nil,
 			nil,
 			nil,
 			nil,
-			&recipes.ErrRecipeNotFound{},
+			&recipes.ErrRecipeNotFound{Name: "test-recipe", Environment: TestEnvironmentID},
 		},
 		{
 			"runtime-configuration-err",
@@ -270,7 +275,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 			req := &ctrl.Request{
 				OperationID:      uuid.New(),
-				OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT", // Operation does not affect the behavior of the controller.
+				OperationType:    "APPLICATIONS.CORE/EXTENDERS|PUT", // Operation does not affect the behavior of the controller.
 				ResourceID:       TestResourceID,
 				CorrelationID:    uuid.NewString(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
@@ -278,7 +283,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 			data := map[string]any{
 				"name":     "tr",
-				"type":     "Applications.Test/testResources",
+				"type":     "Applications.Core/Extenders",
 				"id":       TestResourceID,
 				"location": v1.LocationGlobal,
 				"properties": map[string]any{

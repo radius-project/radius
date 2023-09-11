@@ -100,6 +100,7 @@ func (r *RedisCache) VerifyInputs() error {
 	return nil
 }
 
+// SetDeploymentStatus updates the deployment status of the Redis cache resource.
 func (r *RedisCache) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
 	r.Recipe().DeploymentStatus = status
 }
