@@ -24,8 +24,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -102,6 +104,18 @@ func Test_Run(t *testing.T) {
 
 			Name: "kind-kind",
 		}
+
+		groups := []v20220901privatepreview.ResourceGroupResource{
+			{
+				Name: to.Ptr("rg1"),
+				ID:   to.Ptr("/planes/radius/local/resourcegroups/rg1"),
+			},
+			{
+				Name: to.Ptr("rg2"),
+				ID:   to.Ptr("/planes/radius/local/resourcegroups/rg2"),
+			},
+		}
+
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
@@ -113,6 +127,15 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     groups,
+				Options: objectformats.GetResourceGroupTableFormat(),
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
 	})
 
 }
