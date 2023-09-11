@@ -2,8 +2,6 @@
 
 ## Pre-requisites
 
-- Determine the release channel. This is in the form `<major>.<minor>`
-- Determine the release version. This is in the form `v<major>.<minor>.<patch>`
 - Determine the release version number. This is in the form `<major>.<minor>.<patch>`
 
 ### Creating an RC release
