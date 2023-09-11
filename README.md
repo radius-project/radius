@@ -76,4 +76,4 @@ Please refer to our guide on [Reporting security vulnerabilities](SECURITY.md)
 
 ## Code of conduct
 
-Please refer to our [Radius community code of conduct](CODE_OF_CONDUCT.md)
+Please refer to our [Radius Community Code of Conduct](https://github.com/radius-project/community/blob/main/CODE-OF-CONDUCT.md)
