@@ -41,7 +41,7 @@ func Test_Recipe_NotFound(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code:            recipes.RecipeValidationFailed,
+				Code:            recipes.RecipeNotFoundFailure,
 				MessageContains: "could not find recipe \"not found!\" in environment",
 			},
 		},

@@ -58,11 +58,6 @@ func (r *RabbitMQQueue) ResourceTypeName() string {
 	return portableresources.RabbitMQQueuesResourceType
 }
 
-// SetDeploymentStatus updates the deployment status of the RabbitMQ resource.
-func (r *RabbitMQQueue) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
-	r.Recipe().DeploymentStatus = status
-}
-
 // RabbitMQQueueProperties represents the properties of RabbitMQQueue response resource.
 type RabbitMQQueueProperties struct {
 	rpv1.BasicResourceProperties

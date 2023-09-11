@@ -66,11 +66,6 @@ func (r *Extender) Recipe() *portableresources.ResourceRecipe {
 	return &r.Properties.ResourceRecipe
 }
 
-// SetDeploymentStatus updates the deployment status of the Extender resource.
-func (r *Extender) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
-	r.Recipe().DeploymentStatus = status
-}
-
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
 	rpv1.BasicResourceProperties

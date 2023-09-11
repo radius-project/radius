@@ -37,4 +37,7 @@ const (
 
 	// Used for errors encountered when getting recipe parameters.
 	RecipeGetMetadataFailed = "RecipeGetMetadataFailed"
+
+	// Used for errors when checking the existence of a recipe.
+	RecipeNotFoundFailure = "RecipeNotFoundFailure"
 )

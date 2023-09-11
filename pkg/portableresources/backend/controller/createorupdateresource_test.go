@@ -80,11 +80,6 @@ func (t *TestResource) Recipe() *portableresources.ResourceRecipe {
 	return &t.Properties.Recipe
 }
 
-// Recipe returns a pointer to the ResourceRecipe stored in the Properties field of the TestResource struct.
-func (t *TestResource) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
-	t.Properties.Recipe.DeploymentStatus = status
-}
-
 type TestResourceProperties struct {
 	rpv1.BasicResourceProperties
 	IsProcessed bool                             `json:"isProcessed"`

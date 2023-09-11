@@ -28,6 +28,4 @@ import (
 type RecipeDataModel interface {
 	// Recipe provides access to the user-specified recipe configuration. Can return nil.
 	Recipe() *portableresources.ResourceRecipe
-	// SetDeploymentStatus updates the deployment status of the resource.
-	SetDeploymentStatus(status portableresources.RecipeDeploymentStatus)
 }

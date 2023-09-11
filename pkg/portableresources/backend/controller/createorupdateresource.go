@@ -82,7 +82,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
 			// Set the deployment status to the recipe error code.
-			recipeDataModel.SetDeploymentStatus(portableresources.RecipeDeploymentStatus(recipeError.DeploymentStatus))
+			recipeDataModel.Recipe().DeploymentStatus = portableresources.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &store.Object{
 				Metadata: store.Metadata{
 					ID: req.ResourceID,
@@ -111,7 +111,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	recipeDataModel.SetDeploymentStatus(portableresources.Success)
+	recipeDataModel.Recipe().DeploymentStatus = portableresources.Success
 	update := &store.Object{
 		Metadata: store.Metadata{
 			ID: req.ResourceID,

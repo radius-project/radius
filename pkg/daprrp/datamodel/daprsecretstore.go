@@ -54,11 +54,6 @@ func (r *DaprSecretStore) ResourceTypeName() string {
 	return portableresources.DaprSecretStoresResourceType
 }
 
-// SetDeploymentStatus updates the deployment status of the Dapr SecretStore resource.
-func (r *DaprSecretStore) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
-	r.Recipe().DeploymentStatus = status
-}
-
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.
 type DaprSecretStoreProperties struct {
 	rpv1.BasicResourceProperties

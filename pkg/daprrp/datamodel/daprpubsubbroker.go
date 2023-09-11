@@ -62,11 +62,6 @@ func (r *DaprPubSubBroker) Recipe() *portableresources.ResourceRecipe {
 	return &r.Properties.Recipe
 }
 
-// SetDeploymentStatus updates the deployment status of the Dapr Pub/Sub Broker resource.
-func (r *DaprPubSubBroker) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
-	r.Recipe().DeploymentStatus = status
-}
-
 // DaprPubSubBrokerProperties represents the properties of Dapr PubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
 	rpv1.BasicResourceProperties
