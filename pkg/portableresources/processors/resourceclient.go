@@ -17,12 +17,18 @@ limitations under the License.
 package processors
 
 import (
+	"bytes"
 	context "context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	armresourcesv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -39,6 +45,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	CodeNotStabilized                = "NotStabilized"
+	CodeResourceConflict             = "ResourceConflict"
+	CodeConcurrentOperationException = "ConcurrentOperationException"
+	BadRequestStatusCode             = "Status Code: 400"
 )
 
 type resourceClient struct {
@@ -168,7 +181,45 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 	// For AWS resources, the server does not yet validate the API version.
 	//
 	// In the future we should change this to look up API versions dynamically like we do for ARM.
-	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	fmt.Println("start")
+	clientOptions := &arm.ClientOptions{}
+	clientOptions.Retry.MaxRetries = 5
+	clientOptions.Retry.RetryDelay = 1 * time.Minute
+	clientOptions.Retry.MaxRetryDelay = 3 * time.Minute
+	clientOptions.Retry.ShouldRetry = func(response *http.Response, err error) bool {
+		if err != nil {
+			return false
+		}
+
+		responseBuffer := &bytes.Buffer{}
+		_, err = io.Copy(responseBuffer, response.Body)
+		defer response.Body.Close()
+		if err != nil {
+			return false
+		}
+
+		fmt.Println(responseBuffer.String())
+
+		var asyncOperationStatus armresourcesv1.AsyncOperationStatus = armresourcesv1.AsyncOperationStatus{}
+		err = json.Unmarshal(responseBuffer.Bytes(), &asyncOperationStatus)
+		if err != nil {
+			return false
+		}
+
+		fmt.Println(asyncOperationStatus.Error)
+
+		if asyncOperationStatus.Error != nil &&
+			isRetryableAWSError(asyncOperationStatus.Error) &&
+			strings.Contains(asyncOperationStatus.Error.Message, BadRequestStatusCode) {
+			fmt.Println("end: retrying")
+			return true
+		}
+
+		fmt.Println("end: not retrying")
+		return false
+	}
+
+	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection, clientOptions))
 	if err != nil {
 		return err
 	}
@@ -256,4 +307,8 @@ func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id reso
 	}
 
 	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
+}
+
+func isRetryableAWSError(errorDetails *armresourcesv1.ErrorDetails) bool {
+	return errorDetails.Code == CodeNotStabilized || errorDetails.Code == CodeConcurrentOperationException || errorDetails.Code == CodeResourceConflict
 }

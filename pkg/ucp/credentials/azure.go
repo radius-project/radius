@@ -40,7 +40,7 @@ type AzureCredentialProvider struct {
 // NewAzureCredentialProvider creates a new AzureCredentialProvider by creating a new AzureCredentialClient with the given
 // credential and connection, and returns an error if one occurs.
 func NewAzureCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AzureCredentialProvider, error) {
-	cli, err := ucpapi.NewAzureCredentialsClient(credential, sdk.NewClientOptions(ucpConn))
+	cli, err := ucpapi.NewAzureCredentialsClient(credential, sdk.NewClientOptions(ucpConn, nil))
 	if err != nil {
 		return nil, err
 	}

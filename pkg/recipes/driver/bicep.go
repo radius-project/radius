@@ -188,31 +188,28 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 
 			// If the resource is not managed by Radius, skip the deletion
 			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id), id)
+				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id))
 				return nil
 			}
 
-			// todo willsmith: change this to pass retry logic to pipeline
 			err := d.ResourceClient.Delete(groupCtx, id)
 			if err != nil {
-				// todo willsmith: fix the 404 handling
-				resourceErr, ok := err.(*processors.ResourceError)
-				resourceErrInner := resourceErr.Unwrap()
-				resourceErrInnerInner, okInner := resourceErrInner.(*azcore.ResponseError)
-				if ok && okInner && resourceErrInnerInner.ErrorCode == ErrNotFound {
-					// If the resource is not found, then it is already deleted
-					logger.Info(fmt.Sprintf("Output resource: %q is already deleted", id))
-				} else {
-					deletionErr := fmt.Errorf("failed to delete output resource: %q with error: %v", id, err)
-					logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
-					return deletionErr
+				if resourceErr, isResourceErr := err.(*processors.ResourceError); isResourceErr {
+					if responseError, isResponseErr := resourceErr.Unwrap().(*azcore.ResponseError); isResponseErr && responseError.ErrorCode == ErrNotFound {
+						// If the resource is not found, then it is already deleted
+						logger.Info(fmt.Sprintf("Output resource: %q is already deleted", id))
+						return nil
+					}
 				}
+
+				deletionErr := fmt.Errorf("failed to delete output resource: %q with error: %v", id, err)
+				logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
+				return deletionErr
 			} else {
 				// If the err is nil, then the resource is deleted successfully
-				logger.Info(fmt.Sprintf("Deleted output resource: %q", id), id)
+				logger.Info(fmt.Sprintf("Deleted output resource: %q", id))
+				return nil
 			}
-
-			return nil
 		})
 	}
 

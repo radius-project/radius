@@ -19,6 +19,7 @@ package sdk
 import (
 	"net/http"
 
+	"dario.cat/mergo"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -37,8 +38,8 @@ const (
 
 // NewPipeline builds a runtime.Pipeline from a Radius SDK connection. This is used to construct
 // autorest Track2 Go clients.
-func NewPipeline(connection Connection) runtime.Pipeline {
-	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection).ClientOptions)
+func NewPipeline(connection Connection, clientOptions *arm.ClientOptions) runtime.Pipeline {
+	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection, clientOptions).ClientOptions)
 }
 
 // NewClientOptions creates a new ARM client options object with the given connection's endpoint, audience, transport and
@@ -54,16 +55,6 @@ func NewClientOptions(connection Connection, clientOptions *arm.ClientOptions) *
 					},
 				},
 			},
-			Retry: policy.RetryOptions{
-				StatusCodes: []int{
-					http.StatusRequestTimeout,
-					http.StatusTooManyRequests,
-					http.StatusInternalServerError,
-					http.StatusBadGateway,
-					http.StatusServiceUnavailable,
-					http.StatusGatewayTimeout,
-				},
-			},
 			PerRetryPolicies: []policy.Policy{
 				// Autorest will inject an empty bearer token, which conflicts with bearer auth
 				// when its used by Kubernetes. We don't *ever* need Autorest to handle auth for us
@@ -77,7 +68,16 @@ func NewClientOptions(connection Connection, clientOptions *arm.ClientOptions) *
 		DisableRPRegistration: true,
 	}
 
-	return defaultClientOptions
+	if clientOptions == nil {
+		return defaultClientOptions
+	}
+
+	err := mergo.Merge(clientOptions, defaultClientOptions)
+	if err != nil {
+		return defaultClientOptions
+	}
+
+	return clientOptions
 }
 
 var _ policy.Policy = (*removeAuthorizationHeaderPolicy)(nil)

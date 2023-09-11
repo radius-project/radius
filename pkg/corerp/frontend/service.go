@@ -58,7 +58,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	// Creates a new engine with the drivers. The engine will be used to fetch Recipe parameter information from the template path.
-	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
+	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection, nil)
 	engine := engine.NewEngine(engine.Options{
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, nil, nil),

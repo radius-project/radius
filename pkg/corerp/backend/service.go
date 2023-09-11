@@ -114,12 +114,12 @@ func (w *Service) Run(ctx context.Context) error {
 	}
 
 	client := processors.NewResourceClient(w.Options.Arm, w.Options.UCPConnection, w.KubeClient, w.KubeDiscoveryClient)
-	clientOptions := sdk.NewClientOptions(w.Options.UCPConnection)
+	clientOptions := sdk.NewClientOptions(w.Options.UCPConnection, nil)
 
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          w.Options.UCPConnection.Endpoint(),
-		ARMClientOptions: sdk.NewClientOptions(w.Options.UCPConnection),
+		ARMClientOptions: sdk.NewClientOptions(w.Options.UCPConnection, nil),
 	})
 	if err != nil {
 		return err

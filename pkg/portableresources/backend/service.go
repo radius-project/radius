@@ -77,7 +77,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	client := processors.NewResourceClient(s.Options.Arm, s.Options.UCPConnection, s.KubeClient, s.KubeDiscoveryClient)
-	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection)
+	clientOptions := sdk.NewClientOptions(s.Options.UCPConnection, nil)
 
 	deploymentEngineClient, err := clients.NewResourceDeploymentsClient(&clients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
