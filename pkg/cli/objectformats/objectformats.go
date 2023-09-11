@@ -81,7 +81,7 @@ func GetResourceGroupTableFormat() output.FormatterOptions {
 				JSONPath: "{ .ID }",
 			},
 			{
-				Heading:  "Name",
+				Heading:  "NAME",
 				JSONPath: "{ .Name }",
 			},
 		},
