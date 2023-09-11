@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
@@ -74,25 +73,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	id, err := resources.Parse(req.ResourceID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	dataModel, err := getDataModel(id)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if err = obj.As(dataModel); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(data)
 
 	// Now we're ready to process recipes (if needed).
-	recipeDataModel := dataModel.(datamodel.RecipeDataModel)
+	recipeDataModel := any(data).(datamodel.RecipeDataModel)
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
