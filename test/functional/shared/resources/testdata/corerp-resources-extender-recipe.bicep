@@ -17,7 +17,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       'Applications.Core/extenders':{
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/extender-recipe:${version}'
+          templatePath: '${registry}/test/functional/shared/recipes/extender-recipe:${version}' 
           parameters: {
             containerImage: '${registry}/magpiego:${version}'
           }
