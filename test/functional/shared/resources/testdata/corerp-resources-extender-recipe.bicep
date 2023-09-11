@@ -1,9 +1,5 @@
 import radius as radius
 
-param registry string 
-
-param version string
-
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-resources-extender-recipe-env'
   location: 'global'
@@ -17,9 +13,9 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       'Applications.Core/extenders':{
         default: {
           templateKind: 'bicep'
-          templatePath: '${registry}/test/functional/shared/recipes/extender-recipe:${version}' 
+          templatePath: 'shruku.azurecr.io/recipes/extender-invalid-test:1.0' 
           parameters: {
-            containerImage: '${registry}/magpiego:${version}'
+            containerImage: 'qwerty'
           }
         }
       }

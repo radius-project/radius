@@ -28,6 +28,7 @@ import (
 	deployments "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/metrics"
+	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -79,7 +80,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
-		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
@@ -87,7 +88,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&opts.Recipe, &opts.Configuration)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	// get the parameters after resolving the conflict between developer and operator parameters
@@ -98,7 +99,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), portableresources.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
@@ -126,17 +127,17 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		clients.DeploymentsClientAPIVersion,
 	)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), portableresources.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), portableresources.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	recipeResponse, err := d.prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), portableresources.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included
@@ -148,7 +149,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	// Deleting obsolete output resources.
 	err = d.deleteGCOutputResources(ctx, diff)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
+		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), portableresources.ExecutionError, nil)
 	}
 
 	return recipeResponse, nil
@@ -161,7 +162,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 
 	orderedOutputResources, err := rpv1.OrderOutputResources(opts.OutputResources)
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
 	}
 
 	// Loop over each output resource and delete in reverse dependency order
@@ -176,7 +177,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 
 		err = d.ResourceClient.Delete(ctx, outputResource.ID.String())
 		if err != nil {
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
 		}
 		logger.Info(fmt.Sprintf("Deleted output resource: %q", outputResource.ID.String()), ucplog.LogFieldTargetResourceID, outputResource.ID.String())
 

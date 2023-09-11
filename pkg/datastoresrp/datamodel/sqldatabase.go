@@ -63,8 +63,12 @@ func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type of the SQL database resource.
-func (sql *SqlDatabase) ResourceTypeName() string {
+func (r *SqlDatabase) ResourceTypeName() string {
 	return portableresources.SqlDatabasesResourceType
+}
+
+func (r *SqlDatabase) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
+	r.Recipe().DeploymentStatus = status
 }
 
 // SqlDatabaseProperties represents the properties of SQL database resource.

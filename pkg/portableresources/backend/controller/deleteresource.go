@@ -21,6 +21,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -73,8 +74,11 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
-	if supportsRecipes && recipeDataModel.Recipe() != nil {
+	recipeDataModel := any(data).(datamodel.RecipeDataModel)
+
+	// If we have a setup error (error before recipe and output resources are executed, we skip engine/driver deletion.
+	// If we have an execution error, we call engine/driver deletion.
+	if recipeDataModel.Recipe() != nil && recipeDataModel.Recipe().DeploymentStatus != portableresources.RecipeSetupError {
 		recipeData := recipes.ResourceMetadata{
 			Name:          recipeDataModel.Recipe().Name,
 			EnvironmentID: data.ResourceMetadata().Environment,

@@ -70,16 +70,16 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 }
 
 // VerifyInputs checks if the manual resource provisioning fields are set and returns an error if any of them are missing.
-func (mongodb *MongoDatabase) VerifyInputs() error {
+func (r *MongoDatabase) VerifyInputs() error {
 	msgs := []string{}
-	if mongodb.Properties.ResourceProvisioning != "" && mongodb.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		if mongodb.Properties.Host == "" {
+	if r.Properties.ResourceProvisioning != "" && r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
+		if r.Properties.Host == "" {
 			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
-		if mongodb.Properties.Port == 0 {
+		if r.Properties.Port == 0 {
 			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
 		}
-		if mongodb.Properties.Database == "" {
+		if r.Properties.Database == "" {
 			msgs = append(msgs, "database must be specified when resourceProvisioning is set to manual")
 		}
 	}
@@ -124,12 +124,16 @@ func (r *MongoDatabase) Recipe() *portableresources.ResourceRecipe {
 	return &r.Properties.Recipe
 }
 
+func (r *MongoDatabase) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
+	r.Recipe().DeploymentStatus = status
+}
+
 // ResourceTypeName returns the resource type for Mongo database resource.
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 	return portableresources.MongoDatabasesResourceType
 }
 
 // ResourceTypeName returns the resource type for Mongo database resource.
-func (mongo *MongoDatabase) ResourceTypeName() string {
+func (r *MongoDatabase) ResourceTypeName() string {
 	return portableresources.MongoDatabasesResourceType
 }

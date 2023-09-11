@@ -20,6 +20,9 @@ const (
 	// Used for recipe deployment failures.
 	RecipeDeploymentFailed = "RecipeDeploymentFailed"
 
+	// Used for recipe validation failures.
+	RecipeValidationFailed = "RecipeValidationFailed"
+
 	// Used for recipe deletion failures.
 	RecipeDeletionFailed = "RecipeDeletionFailed"
 

@@ -50,7 +50,7 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns a string representing the resource type.
-func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
+func (r *DaprPubSubBroker) ResourceTypeName() string {
 	return portableresources.DaprPubSubBrokersResourceType
 }
 
@@ -60,6 +60,10 @@ func (r *DaprPubSubBroker) Recipe() *portableresources.ResourceRecipe {
 		return nil
 	}
 	return &r.Properties.Recipe
+}
+
+func (r *DaprPubSubBroker) SetDeploymentStatus(status portableresources.RecipeDeploymentStatus) {
+	r.Recipe().DeploymentStatus = status
 }
 
 // DaprPubSubBrokerProperties represents the properties of Dapr PubSubBroker resource.
