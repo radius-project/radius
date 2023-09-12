@@ -49,8 +49,6 @@ const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
 	recipeParameters = "parameters"
-
-	ErrNotFound = "NotFound"
 )
 
 var _ Driver = (*bicepDriver)(nil)
