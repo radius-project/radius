@@ -58,12 +58,12 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	}
 
 	cfg.ResourceClient = processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.K8sClients.RuntimeClient, cfg.K8sClients.DiscoveryClient)
-	clientOptions := sdk.NewClientOptions(options.UCPConnection)
+	clientOptions := sdk.NewClientOptions(options.UCPConnection, nil)
 
 	cfg.DeploymentEngineClient, err = clients.NewResourceDeploymentsClient(&clients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          options.UCPConnection.Endpoint(),
-		ARMClientOptions: sdk.NewClientOptions(options.UCPConnection),
+		ARMClientOptions: sdk.NewClientOptions(options.UCPConnection, nil),
 	})
 	if err != nil {
 		return nil, err
