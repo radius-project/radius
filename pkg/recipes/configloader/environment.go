@@ -125,20 +125,20 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 
 func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	if environment.Properties.Recipes == nil {
-		msg := &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
-		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, msg.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
-		msg := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
-		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
+		err := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	recipeName := recipe.Name
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
-		msg := &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
-		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, msg.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(msg))
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	definition := &recipes.EnvironmentDefinition{

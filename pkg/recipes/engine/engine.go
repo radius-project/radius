@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -77,7 +78,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
-		return nil, definition, err
+		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
@@ -178,7 +179,8 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
-		return nil, nil, fmt.Errorf("could not find driver %s", definition.Driver)
+		err := fmt.Errorf("could not find driver %s", definition.Driver)
+		return nil, nil, recipes.NewRecipeError(recipes.RecipeDriverNotFoundFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	return definition, driver, nil
 }

@@ -19,7 +19,6 @@ package recipes
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
@@ -86,16 +85,6 @@ const (
 var (
 	SupportedTemplateKind = []string{TemplateKindBicep, TemplateKindTerraform}
 )
-
-type ErrRecipeNotFound struct {
-	Name        string
-	Environment string
-}
-
-// ErrRecipeNotFoundError returns an error message with the recipe name and environment when a recipe is not found.
-func (e *ErrRecipeNotFound) Error() string {
-	return fmt.Sprintf("could not find recipe %q in environment %q", e.Name, e.Environment)
-}
 
 // RecipeOutput represents recipe deployment output.
 type RecipeOutput struct {

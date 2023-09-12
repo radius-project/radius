@@ -40,4 +40,10 @@ const (
 
 	// Used for errors when checking the existence of a recipe.
 	RecipeNotFoundFailure = "RecipeNotFoundFailure"
+
+	// Used for errors with recipe drivers
+	RecipeDriverNotFoundFailure = "DriverNotFoundFailure"
+
+	// Used for errors with recipe configuration
+	RecipeConfigurationFailure = "RecipeConfigurationFailure"
 )

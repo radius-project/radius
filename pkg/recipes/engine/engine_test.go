@@ -273,7 +273,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		Return(recipeDefinition, nil)
 	_, err := engine.Execute(ctx, recipeMetadata, prevState)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "could not find driver invalid")
+	require.Equal(t, "code DriverNotFoundFailure: err could not find driver invalid", err.Error())
 }
 
 func Test_Engine_Lookup_Error(t *testing.T) {
@@ -435,7 +435,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 		Return(&recipeDefinition, nil)
 	err := engine.Delete(ctx, recipeMetadata, outputResources)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "could not find driver invalid")
+	require.Equal(t, "code DriverNotFoundFailure: err could not find driver invalid", err.Error())
 }
 
 func Test_Delete_Lookup_Error(t *testing.T) {

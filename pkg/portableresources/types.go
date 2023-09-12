@@ -82,7 +82,7 @@ type ResourceRecipe struct {
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any `json:"parameters,omitempty"`
-	// Deployment status of the recipe
+	// DeploymentStatus is the deployment status of the recipe
 	DeploymentStatus util.RecipeDeploymentStatus `json:"recipeStatus,omitempty"`
 }
 

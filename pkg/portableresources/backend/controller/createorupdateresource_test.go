@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -41,10 +42,10 @@ import (
 )
 
 const (
-	TestResourceType  = "Applications.Core/extenders"
+	TestResourceType  = "Applications.Test/testResources"
 	TestEnvironmentID = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"
 	TestApplicationID = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"
-	TestResourceID    = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/tr"
+	TestResourceID    = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Test/testResources/tr"
 )
 
 type TestResource struct {
@@ -122,9 +123,9 @@ var errorProcessorReference = processors.ResourceProcessor[*TestResource, TestRe
 var errProcessor = errors.New("processor error")
 var errConfiguration = errors.New("configuration error")
 
-var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Applications.Core/extenders/test1"
+var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Applications.Test/testResources/test1"
 
-var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Applications.Core/extenders/test2"
+var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Applications.Test/testResourcess/test2"
 var newOutputResource = rpv1.OutputResource{ID: resources.MustParse(newOutputResourceResourceID)}
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
@@ -199,12 +200,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			},
 			nil,
 			false,
-			&recipes.ErrRecipeNotFound{Name: "test-recipe", Environment: TestEnvironmentID},
+			fmt.Errorf("could not find recipe %q in environment %q", "test-recipe", TestEnvironmentID),
 			nil,
 			nil,
 			nil,
 			nil,
-			&recipes.ErrRecipeNotFound{Name: "test-recipe", Environment: TestEnvironmentID},
+			fmt.Errorf("could not find recipe %q in environment %q", "test-recipe", TestEnvironmentID),
 		},
 		{
 			"runtime-configuration-err",
@@ -270,7 +271,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 			req := &ctrl.Request{
 				OperationID:      uuid.New(),
-				OperationType:    "APPLICATIONS.CORE/EXTENDERS|PUT", // Operation does not affect the behavior of the controller.
+				OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT", // Operation does not affect the behavior of the controller.
 				ResourceID:       TestResourceID,
 				CorrelationID:    uuid.NewString(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
@@ -278,7 +279,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 			data := map[string]any{
 				"name":     "tr",
-				"type":     "Applications.Core/Extenders",
+				"type":     "Applications.Test/testResources",
 				"id":       TestResourceID,
 				"location": v1.LocationGlobal,
 				"properties": map[string]any{
