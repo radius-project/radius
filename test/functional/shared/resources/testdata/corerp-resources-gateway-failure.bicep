@@ -3,6 +3,10 @@ import radius as radius
 @description('ID of the Radius environment. Passed in automatically via the rad CLI')
 param environment string
 
+@description('Specifies the image of the container resource.')
+param magpieimage string
+
+
 resource demoApplication 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-gateway-failure-app'
   properties: {
