@@ -40,7 +40,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
     } 
     routes: [
       {
-        destination: 'https://ssl-gtwy-front-ctnr:443'
+        destination: 'https://ssl-gtwy-front-ctnr:3000'
       }
     ]
   }
@@ -60,7 +60,6 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
       ports: {
         web: {
           containerPort: port
-          port: 443
         }
       }
       readinessProbe: {
