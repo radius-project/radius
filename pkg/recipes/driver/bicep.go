@@ -25,6 +25,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/radius-project/radius/pkg/to"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/go-logr/logr"
@@ -156,7 +157,8 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 			return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), nil)
 		}
 		outputResourcesToDelete[i] = rpv1.OutputResource{
-			ID: id,
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
 		}
 	}
 
@@ -171,6 +173,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	return recipeResponse, nil
 }
 
+// Delete deletes all of the output resources that are marked as managed by Radius.
+// It will create a goroutine for each resource to be deleted and wait for them to finish,
+// retrying if necessary.
 func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
