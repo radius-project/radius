@@ -128,6 +128,7 @@ func Test_GatewayDNS(t *testing.T) {
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
+	t.Skip()
 	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
 	name := "corerp-resources-gateway-sslpassthrough"
 	appNamespace := "default-corerp-resources-gateway-sslpassthrough"

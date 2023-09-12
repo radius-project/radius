@@ -56,12 +56,12 @@ resource demoContainer 'Applications.Core/containers@2022-03-15-privatepreview' 
 			image: magpieimage
 			ports: {
 				web: {
-					containerPort: port
+					containerPort: 3000
 				}
 			}
 			readinessProbe: {
 				kind: 'httpGet'
-				containerPort: port
+				containerPort: 3000
 				path: '/healthz'
 			}
 		}
