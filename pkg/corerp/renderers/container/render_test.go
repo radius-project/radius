@@ -17,6 +17,7 @@ limitations under the License.
 package container
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -34,6 +35,7 @@ import (
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -497,6 +499,10 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 }
 
 func Test_Render_Connections(t *testing.T) {
+	containerConnectionHostname := "containerB"
+	containerConnectionScheme := "http"
+	containerConnectionPort := "80"
+
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{
 			Application: applicationResourceID,
@@ -507,6 +513,9 @@ func Test_Render_Connections(t *testing.T) {
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
+			},
+			"containerB": {
+				Source: fmt.Sprintf("%s://%s:%s", containerConnectionScheme, containerConnectionHostname, containerConnectionPort),
 			},
 		},
 		Container: datamodel.Container{
@@ -570,6 +579,18 @@ func Test_Render_Connections(t *testing.T) {
 						Key: "CONNECTION_A_COMPUTEDKEY2",
 					},
 				},
+			},
+			{
+				Name:  "CONNECTION_CONTAINERB_HOSTNAME",
+				Value: containerConnectionHostname,
+			},
+			{
+				Name:  "CONNECTION_CONTAINERB_PORT",
+				Value: containerConnectionPort,
+			},
+			{
+				Name:  "CONNECTION_CONTAINERB_SCHEME",
+				Value: containerConnectionScheme,
 			},
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},
@@ -1519,7 +1540,8 @@ func Test_ParseURL(t *testing.T) {
 }
 
 func Test_DNS_Service_Generation(t *testing.T) {
-	var containerPortNumber int32 = 80
+	var containerPortNumber int32 = 3000
+	var servicePortNumber int32 = 80
 	t.Run("verify service generation", func(t *testing.T) {
 		properties := datamodel.ContainerProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
@@ -1530,6 +1552,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 				Ports: map[string]datamodel.ContainerPort{
 					"web": {
 						ContainerPort: int32(containerPortNumber),
+						Port:          int32(servicePortNumber),
 					},
 				},
 			},
@@ -1546,8 +1569,8 @@ func Test_DNS_Service_Generation(t *testing.T) {
 
 		expectedServicePort := corev1.ServicePort{
 			Name:       "web",
-			Port:       containerPortNumber,
-			TargetPort: intstr.FromInt(80),
+			Port:       80,
+			TargetPort: intstr.FromInt(int(containerPortNumber)),
 			Protocol:   "TCP",
 		}
 
@@ -1677,6 +1700,89 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 	}
 
 	require.ElementsMatch(t, expectedContainers, deployment.Spec.Template.Spec.Containers)
+}
+
+func Test_Render_BaseManifest(t *testing.T) {
+	manifestTests := []struct {
+		name      string
+		inFile    string
+		container datamodel.ContainerProperties
+		outFile   string
+	}{
+		{
+			name:   "merge container, envvars, and volumes",
+			inFile: "basemanifest-input-merge.yaml",
+			container: datamodel.ContainerProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Application: applicationResourceID,
+				},
+				Container: datamodel.Container{
+					Image: "someimage:latest",
+					Env: map[string]string{
+						envVarName1: envVarValue1,
+						envVarName2: envVarValue2,
+					},
+					Volumes: map[string]datamodel.VolumeProperties{
+						"ephemeralVolume": {
+							Kind: datamodel.Ephemeral,
+							Ephemeral: &datamodel.EphemeralVolume{
+								VolumeBase: datamodel.VolumeBase{
+									MountPath: "/mnt/ephemeral",
+								},
+								ManagedStore: datamodel.ManagedStoreMemory,
+							},
+						},
+					},
+				},
+			},
+			outFile: "basemanifest-output-merge.json",
+		},
+		{
+			name:   "inject new sidecar",
+			inFile: "basemanifest-input-addcontainer.yaml",
+			container: datamodel.ContainerProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Application: applicationResourceID,
+				},
+				Container: datamodel.Container{
+					Image: "someimage:latest",
+					Env: map[string]string{
+						envVarName1: envVarValue1,
+						envVarName2: envVarValue2,
+					},
+				},
+			},
+			outFile: "basemanifest-output-addcontainer.json",
+		},
+	}
+
+	for _, tc := range manifestTests {
+		t.Run(tc.name, func(t *testing.T) {
+			inYAML := testutil.ReadFixture(tc.inFile)
+			tc.container.Runtimes = &datamodel.RuntimeProperties{
+				Kubernetes: &datamodel.KubernetesRuntime{
+					Base: string(inYAML),
+				},
+			}
+
+			resource := makeResource(t, tc.container)
+			dependencies := map[string]renderers.RendererDependency{}
+
+			ctx := testcontext.New(t)
+			renderer := Renderer{}
+			output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+			require.NoError(t, err)
+
+			deployment, _ := kubernetes.FindDeployment(output.Resources)
+			require.NotNil(t, deployment)
+
+			actual, err := json.MarshalIndent(deployment, "", "  ")
+			require.NoError(t, err)
+
+			outputYaml := testutil.ReadFixture(tc.outFile)
+			require.Equal(t, string(outputYaml), string(actual), "actual output: %s", string(actual))
+		})
+	}
 }
 
 func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {

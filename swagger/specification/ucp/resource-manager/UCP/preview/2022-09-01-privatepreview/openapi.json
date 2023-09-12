@@ -46,6 +46,9 @@
       "name": "ResourceGroups"
     },
     {
+      "name": "Resources"
+    },
+    {
       "name": "AwsCredentials"
     },
     {
@@ -638,6 +641,61 @@
           "Delete a resource group": {
             "$ref": "./examples/ResourceGroups_Delete.json"
           }
+        }
+      }
+    },
+    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/resources": {
+      "get": {
+        "operationId": "Resources_List",
+        "tags": [
+          "Resources"
+        ],
+        "description": "List resources in a resource group",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "description": "The plane type.",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "description": "The name of resource group",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/GenericResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List resources in a resource group.": {
+            "$ref": "./examples/Resources_List.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -1399,6 +1457,63 @@
         "kind"
       ]
     },
+    "GenericResource": {
+      "type": "object",
+      "description": "Represents resource data.",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/ResourceNameString",
+          "description": "The name of resource",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "allOf": [
+        {
+          "type": "object",
+          "description": "Concrete proxy resource types can be created by aliasing this type using a specific property type.",
+          "properties": {
+            "properties": {
+              "$ref": "#/definitions/ResourceProperties",
+              "description": "The resource-specific properties for this resource.",
+              "x-ms-client-flatten": true,
+              "x-ms-mutability": [
+                "read",
+                "create"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
+            }
+          ]
+        }
+      ]
+    },
+    "GenericResourceListResult": {
+      "type": "object",
+      "description": "The response of a GenericResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The GenericResource items on this page",
+          "items": {
+            "$ref": "#/definitions/GenericResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
     "InternalCredentialStorageProperties": {
       "type": "object",
       "description": "Internal credential storage properties",
@@ -1651,6 +1766,17 @@
           }
         }
       }
+    },
+    "ResourceNameString": {
+      "type": "string",
+      "description": "The resource name",
+      "maxLength": 63,
+      "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+    },
+    "ResourceProperties": {
+      "type": "object",
+      "description": "The resource properties",
+      "properties": {}
     },
     "Versions": {
       "type": "string",

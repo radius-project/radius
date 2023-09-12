@@ -99,19 +99,28 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 				)
 			},
 		},
+		{
+			ParentRouter: resourceGroupResourceRouter,
+			ResourceType: v20220901privatepreview.ResourceType,
+			Path:         "/resources",
+			Method:       v1.OperationList,
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
+				return resourcegroups_ctrl.NewListResources(opt)
+			},
+		},
 		// Chi router uses radix tree so that it doesn't linear search the matched one. So, to catch all requests,
 		// we need to use CatchAllPath(/*) at the above matched routes path in chi router.
 		//
 		// Note that the API validation is not applied for CatchAllPath(/*).
 		{
-			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/azure/{planeName}/resourcegroups/{resourceGroupName}.
+			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/resourcegroups/{resourceGroupName}.
 			ParentRouter:      resourceGroupResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
 			ControllerFactory: planes_ctrl.NewProxyController,
 		},
 		{
-			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/azure/{planeName}/.
+			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/.
 			ParentRouter:      baseRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},

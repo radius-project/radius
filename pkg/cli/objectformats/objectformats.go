@@ -211,7 +211,7 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 			},
 			{
 				Heading:  "TYPE",
-				JSONPath: "{ .LinkType }",
+				JSONPath: "{ .ResourceType }",
 			},
 			{
 				Heading:  "TEMPLATE KIND",

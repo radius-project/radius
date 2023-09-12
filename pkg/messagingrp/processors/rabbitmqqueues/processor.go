@@ -61,6 +61,11 @@ func (p *Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue,
 	return nil
 }
 
+// Delete implements the processors.Processor interface for RabbitMQQueue resources.
+func (p *Processor) Delete(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
+	return nil
+}
+
 func (p *Processor) computeURI(resource *msg_dm.RabbitMQQueue) string {
 	rabbitMQProtocol := "amqp"
 	if resource.Properties.TLS {

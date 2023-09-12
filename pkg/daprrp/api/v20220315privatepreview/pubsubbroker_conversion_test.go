@@ -103,7 +103,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 						Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env",
 					},
 					ResourceProvisioning: portableresources.ResourceProvisioningRecipe,
-					Recipe: portableresources.LinkRecipe{
+					Recipe: portableresources.ResourceRecipe{
 						Name: "dpsb-recipe",
 					},
 				},

@@ -41,6 +41,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.SqlDatabase
 	return nil
 }
 
+// Delete implements the processors.Processor interface for SQLDatabase resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.SqlDatabase, options processors.Options) error {
+	return nil
+}
+
 func (p *Processor) computeConnectionString(resource *datamodel.SqlDatabase) string {
 	var username, password string
 	if resource.Properties.Username != "" {

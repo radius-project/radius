@@ -8,6 +8,7 @@ storageProvider:
     inmemory: true
 queueProvider:
   provider: inmemory
+  name: radiusportable
 profilerProvider:
   enabled: true
   port: 6060

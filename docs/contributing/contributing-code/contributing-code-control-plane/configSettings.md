@@ -197,6 +197,7 @@ storageProvider:
     namespace: "radius-system"
 queueProvider:
   provider: "apiserver"
+  name: "radius"
   apiserver:
     context: ""
     namespace: "radius-system"

@@ -48,6 +48,11 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.Extender, o
 	return nil
 }
 
+// Delete implements the processors.Processor interface for Extender resources.
+func (p *Processor) Delete(ctx context.Context, resource *datamodel.Extender, options processors.Options) error {
+	return nil
+}
+
 func mergeOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOutput, secret bool) map[string]any {
 	values := make(map[string]any)
 	for k, val := range properties {

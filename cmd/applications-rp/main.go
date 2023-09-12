@@ -18,21 +18,25 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/go-logr/logr"
+	"github.com/spf13/pflag"
+	etcdclient "go.etcd.io/etcd/client/v3"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/radius-project/radius/pkg/armrpc/builder"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	"github.com/radius-project/radius/pkg/corerp/backend"
-	"github.com/radius-project/radius/pkg/corerp/frontend"
 	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
 	profilerservice "github.com/radius-project/radius/pkg/profiler/service"
+	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
+	"github.com/radius-project/radius/pkg/server"
 	"github.com/radius-project/radius/pkg/trace"
 
-	"github.com/radius-project/radius/pkg/logging"
 	pr_backend "github.com/radius-project/radius/pkg/portableresources/backend"
 	pr_frontend "github.com/radius-project/radius/pkg/portableresources/frontend"
 	"github.com/radius-project/radius/pkg/ucp/data"
@@ -40,53 +44,31 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
-	"github.com/go-logr/logr"
-	etcdclient "go.etcd.io/etcd/client/v3"
-	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
 )
 
-const serviceName = "applications.core"
-
-func newPortableResourceHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions, error) {
-	hostings := []hosting.Service{}
-	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
-	if err != nil {
-		return nil, nil, err
-	}
-	hostings = append(hostings, pr_frontend.NewService(options))
-	if enableAsyncWorker {
-		hostings = append(hostings, pr_backend.NewService(options))
-	}
-
-	return hostings, &options, nil
-}
+const serviceName = "radius"
 
 func main() {
 	var configFile string
-	var enableAsyncWorker bool
-
-	var runPortableResource bool
-	var portableResourceConfigFile string
-
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
-	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
-
-	flag.BoolVar(&runPortableResource, "run-portableresource", true, "Flag to run portable resources RPs(for private preview and dev/test purpose).")
-	defaultPortableRsConfig := fmt.Sprintf("portableresource-%s.yaml", hostoptions.Environment())
-	flag.StringVar(&portableResourceConfigFile, "portableresource-config", defaultPortableRsConfig, "The service configuration file for portable resource providers.")
-
+	pflag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	if configFile == "" {
 		log.Fatal("config-file is empty.") //nolint:forbidigo // this is OK inside the main function.
 	}
 
-	flag.Parse()
+	var portableResourceConfigFile string
+	defaultPortableRsConfig := fmt.Sprintf("portableresource-%s.yaml", hostoptions.Environment())
+	pflag.StringVar(&portableResourceConfigFile, "portableresource-config", defaultPortableRsConfig, "The service configuration file for portable resource providers.")
+
+	pflag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
 		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
-	hostingSvc := []hosting.Service{frontend.NewService(options)}
+
+	hostingSvc := []hosting.Service{}
 
 	metricOptions := metricsservice.NewHostOptionsFromEnvironment(*options.Config)
 	metricOptions.Config.ServiceName = serviceName
@@ -99,7 +81,7 @@ func main() {
 		hostingSvc = append(hostingSvc, profilerservice.NewService(profilerOptions))
 	}
 
-	logger, flush, err := ucplog.NewLogger(logging.AppCoreLoggerName, &options.Config.Logging)
+	logger, flush, err := ucplog.NewLogger(serviceName, &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
@@ -108,22 +90,10 @@ func main() {
 	// Must set the logger before using controller-runtime.
 	runtimelog.SetLogger(logger)
 
-	if enableAsyncWorker {
-		logger.Info("Enable AsyncRequestProcessWorker.")
-		hostingSvc = append(hostingSvc, backend.NewService(options))
-	}
-
-	// Configure Portable Resources to run it with Applications.Core RP.
-	var portableResourceOpts *hostoptions.HostOptions
-	if runPortableResource && portableResourceConfigFile != "" {
-		logger.Info("Run Service for Portable Resource Providers.")
-		var portableResourceSvcs []hosting.Service
-		var err error
-		portableResourceSvcs, portableResourceOpts, err = newPortableResourceHosts(portableResourceConfigFile, enableAsyncWorker)
-		if err != nil {
-			log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
-		}
-		hostingSvc = append(hostingSvc, portableResourceSvcs...)
+	// Load portable resource config.
+	prOptions, err := hostoptions.NewHostOptionsFromEnvironment(portableResourceConfigFile)
+	if err != nil {
+		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
 	}
 
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
@@ -135,12 +105,30 @@ func main() {
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
 		options.Config.SecretProvider.ETCD.Client = client
-		if portableResourceOpts != nil {
-			portableResourceOpts.Config.StorageProvider.ETCD.Client = client
-			portableResourceOpts.Config.SecretProvider.ETCD.Client = client
-		}
+
+		// Portable resource options
+		prOptions.Config.StorageProvider.ETCD.Client = client
+		prOptions.Config.SecretProvider.ETCD.Client = client
+
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
+
+	builders, err := builders(options)
+	if err != nil {
+		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
+	}
+
+	hostingSvc = append(
+		hostingSvc,
+		server.NewAPIService(options, builders),
+		server.NewAsyncWorker(options, builders),
+
+		// Configure Portable Resources to run it with Applications.Core RP.
+		//
+		// This is temporary until we migrate these resources to use the new registration model.
+		pr_frontend.NewService(prOptions),
+		pr_backend.NewService(prOptions),
+	)
 
 	loggerValues := []any{}
 	host := &hosting.Host{
@@ -189,4 +177,16 @@ func main() {
 	} else {
 		panic(err)
 	}
+}
+
+func builders(options hostoptions.HostOptions) ([]builder.Builder, error) {
+	config, err := controllerconfig.New(options)
+	if err != nil {
+		return nil, err
+	}
+
+	return []builder.Builder{
+		corerp_setup.SetupNamespace(config).GenerateBuilder(),
+		// Add resource provider builders...
+	}, nil
 }

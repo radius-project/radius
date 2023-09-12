@@ -89,8 +89,8 @@ func TestRecipeConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
 		filename := "reciperesource.json"
 		expected := &datamodel.Recipe{
-			LinkType: portableresources.MongoDatabasesResourceType,
-			Name:     "mongo-azure",
+			ResourceType: portableresources.MongoDatabasesResourceType,
+			Name:         "mongo-azure",
 		}
 		rawPayload := testutil.ReadFixture(filename)
 		r := &RecipeGetMetadata{}

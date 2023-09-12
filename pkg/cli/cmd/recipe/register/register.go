@@ -52,13 +52,13 @@ You can specify parameters using the '--parameter' flag ('-p' for short). Parame
 		`,
 		Example: `
 # Add a recipe to an environment
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --resource-type Applications.Datastores/mongoDatabases
 		
 # Specify a parameter
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases --parameters throughput=400
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --resource-type Applications.Datastores/mongoDatabases --parameters throughput=400
 		
 # specify multiple parameters using a JSON parameter file
-rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --link-type Applications.Datastores/mongoDatabases --parameters @myfile.json
+rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --template-path template_path --resource-type Applications.Datastores/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -73,8 +73,8 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	cmd.Flags().String("template-version", "", "specify the version for the terraform module.")
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
 	_ = cmd.MarkFlagRequired("template-path")
-	cmd.Flags().String("link-type", "", "specify the type of the portable resource this recipe can be consumed by")
-	_ = cmd.MarkFlagRequired("link-type")
+	cmd.Flags().String("resource-type", "", "specify the type of the portable resource this recipe can be consumed by")
+	_ = cmd.MarkFlagRequired("resource-type")
 	commonflags.AddParameterFlag(cmd)
 
 	return cmd, runner
@@ -89,7 +89,7 @@ type Runner struct {
 	TemplateKind      string
 	TemplatePath      string
 	TemplateVersion   string
-	LinkType          string
+	ResourceType      string
 	RecipeName        string
 	Parameters        map[string]map[string]any
 }
@@ -106,7 +106,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate runs validation for the `rad recipe register` command.
 //
 
-// Validate validates the command line args, sets the workspace, environment, template kind, template path, link type,
+// Validate validates the command line args, sets the workspace, environment, template kind, template path, resource type,
 // recipe name, and parameters, and returns an error if any of these fail.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
@@ -130,11 +130,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.TemplatePath = templatePath
 	r.TemplateVersion = templateVersion
 
-	linkType, err := cli.RequireLinkType(cmd)
+	resourceType, err := cli.GetResourceType(cmd)
 	if err != nil {
 		return err
 	}
-	r.LinkType = linkType
+	r.ResourceType = resourceType
 
 	recipeName, err := cli.RequireRecipeNameArgs(cmd, args)
 	if err != nil {
@@ -192,10 +192,10 @@ func (r *Runner) Run(ctx context.Context) error {
 			Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 		}
 	}
-	if val, ok := envRecipes[r.LinkType]; ok {
+	if val, ok := envRecipes[r.ResourceType]; ok {
 		val[r.RecipeName] = properties
 	} else {
-		envRecipes[r.LinkType] = map[string]corerp.RecipePropertiesClassification{
+		envRecipes[r.ResourceType] = map[string]corerp.RecipePropertiesClassification{
 			r.RecipeName: properties,
 		}
 	}

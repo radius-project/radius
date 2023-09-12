@@ -30,18 +30,18 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type factoryFunc func(context.Context, string, QueueProviderOptions) (queue.Client, error)
+type factoryFunc func(context.Context, QueueProviderOptions) (queue.Client, error)
 
 var clientFactory = map[QueueProviderType]factoryFunc{
 	TypeInmemory:  initInMemory,
 	TypeAPIServer: initAPIServer,
 }
 
-func initInMemory(ctx context.Context, name string, opt QueueProviderOptions) (queue.Client, error) {
-	return qinmem.NewNamedQueue(name), nil
+func initInMemory(ctx context.Context, opt QueueProviderOptions) (queue.Client, error) {
+	return qinmem.NewNamedQueue(opt.Name), nil
 }
 
-func initAPIServer(ctx context.Context, name string, opt QueueProviderOptions) (queue.Client, error) {
+func initAPIServer(ctx context.Context, opt QueueProviderOptions) (queue.Client, error) {
 	if opt.APIServer.Namespace == "" {
 		return nil, errors.New("failed to initialize APIServer client: namespace is required")
 	}
@@ -76,7 +76,7 @@ func initAPIServer(ctx context.Context, name string, opt QueueProviderOptions) (
 	}
 
 	return apiserver.New(rc, apiserver.Options{
-		Name:      name,
+		Name:      opt.Name,
 		Namespace: opt.APIServer.Namespace,
 	})
 }

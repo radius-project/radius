@@ -30,7 +30,7 @@ var (
 	ErrParseFormat = "failed to parse %s: %q while building the recipe context parameter %w"
 )
 
-// New creates the context parameter for the recipe with the link, environment and application info
+// New creates the context parameter for the recipe with the portable resource, environment, and application info
 func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Context, error) {
 	parsedResource, err := resources.ParseResource(metadata.ResourceID)
 	if err != nil {

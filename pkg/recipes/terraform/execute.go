@@ -292,7 +292,7 @@ func downloadAndInspect(ctx context.Context, workingDir string, execPath string,
 	if err := downloadModule(ctx, workingDir, execPath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
-				options.EnvRecipe, metrics.FailedOperationState))
+				options.EnvRecipe, recipes.RecipeDownloadFailed))
 		return nil, recipes.NewRecipeError(recipes.RecipeDownloadFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,

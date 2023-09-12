@@ -17,6 +17,7 @@ limitations under the License.
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -29,6 +30,8 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/test/testcontext"
@@ -260,4 +263,29 @@ func Test_HandlerErrInternal(t *testing.T) {
 	require.NoError(t, e)
 	require.Equal(t, v1.CodeInternal, armerr.Error.Code)
 	require.Equal(t, armerr.Error.Message, "Internal error")
+}
+
+type testAPIController struct {
+	ctrl.Operation[*rpctest.TestResourceDataModel, rpctest.TestResourceDataModel]
+}
+
+func (e *testAPIController) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	return nil, nil
+}
+
+func Test_HandlerForController_OperationType(t *testing.T) {
+	expectedType := v1.OperationType{Type: "Applications.Compute/virtualMachines", Method: "GET"}
+
+	handler := HandlerForController(&testAPIController{}, expectedType)
+	w := httptest.NewRecorder()
+
+	req, err := http.NewRequest(http.MethodGet, "", bytes.NewBuffer([]byte{}))
+	require.NoError(t, err)
+
+	rCtx := &v1.ARMRequestContext{}
+	req = req.WithContext(v1.WithARMRequestContext(context.Background(), rCtx))
+
+	handler.ServeHTTP(w, req)
+
+	require.Equal(t, expectedType.String(), rCtx.OperationType.String())
 }

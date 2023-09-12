@@ -125,7 +125,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			case *corerp.TerraformRecipeProperties:
 				recipe = types.EnvironmentRecipe{
 					Name:            recipeName,
-					LinkType:        resourceType,
+					ResourceType:    resourceType,
 					TemplatePath:    *c.TemplatePath,
 					TemplateKind:    *c.TemplateKind,
 					TemplateVersion: *c.TemplateVersion,
@@ -133,7 +133,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			case *corerp.BicepRecipeProperties:
 				recipe = types.EnvironmentRecipe{
 					Name:         recipeName,
-					LinkType:     resourceType,
+					ResourceType: resourceType,
 					TemplatePath: *c.TemplatePath,
 					TemplateKind: *c.TemplateKind,
 				}

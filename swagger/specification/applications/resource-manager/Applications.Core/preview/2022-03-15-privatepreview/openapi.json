@@ -4460,9 +4460,9 @@
       "type": "object",
       "description": "Represents the request body of the getmetadata action.",
       "properties": {
-        "linkType": {
+        "resourceType": {
           "type": "string",
-          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'"
+          "description": "Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'"
         },
         "name": {
           "type": "string",
@@ -4470,7 +4470,7 @@
         }
       },
       "required": [
-        "linkType",
+        "resourceType",
         "name"
       ]
     },

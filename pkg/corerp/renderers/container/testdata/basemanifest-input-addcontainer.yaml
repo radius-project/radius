@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-container
+  labels:
+    app: test-container
+  annotations:
+    source: base-manifest-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: test-container
+      basemanifest: default
+  template:
+    spec:
+      containers:
+        - name: sidecar
+          image: "sidecar:latest"
+          ports:
+          - containerPort: 80
+            protocol: TCP
+          env:
+          - name: KEY
+            value: VALUE

@@ -47,7 +47,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Unregister Command",
-			Input:         []string{"test_recipe", "--link-type", "link-type"},
+			Input:         []string{"test_recipe", "--resource-type", "resource-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -56,7 +56,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "test_recipe", "--link-type", "link-type"},
+			Input:         []string{"-e", "my-env", "test_recipe", "--resource-type", "resource-type"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -74,7 +74,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Unregister Command with too many args",
-			Input:         []string{"foo", "bar", "foo1", "--link-type", "link-type"},
+			Input:         []string{"foo", "bar", "foo1", "--resource-type", "resource-type"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -82,7 +82,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Unregister Command without link type",
+			Name:          "Unregister Command without resource type",
 			Input:         []string{"foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Datastores/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{
@@ -202,7 +202,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Datastores/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -247,7 +247,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Datastores/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{
@@ -297,14 +297,14 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB1",
-				LinkType:          "Applications.Datastores/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
 		})
 
-		t.Run("Unregister recipe with linkType doesn't exist in the environment", func(t *testing.T) {
+		t.Run("Unregister recipe with resourceType doesn't exist in the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			envResource := v20220315privatepreview.EnvironmentResource{
 				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
@@ -335,7 +335,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "testResource",
-				LinkType:          "Applications.Datastores/redisCaches",
+				ResourceType:      "Applications.Datastores/redisCaches",
 			}
 
 			err := runner.Run(context.Background())
@@ -365,7 +365,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
-				LinkType:          "Applications.Datastores/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			err := runner.Run(context.Background())
@@ -418,7 +418,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "testResource",
-				LinkType:          "Applications.Datastores/mongoDatabases",
+				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
 			expectedOutput := []any{

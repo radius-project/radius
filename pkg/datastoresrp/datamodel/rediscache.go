@@ -17,15 +17,12 @@ limitations under the License.
 package datamodel
 
 import (
-	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -36,40 +33,13 @@ type RedisCache struct {
 	// Properties is the properties of the resource.
 	Properties RedisCacheProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	pr_dm.LinkMetadata
+	// PortableResourceMetadata represents internal DataModel properties common to all resource types.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput sets the Status, ComputedValues, SecretValues, Host, Port and Username properties of the
 // Redis cache instance based on the DeploymentOutput object.
 func (r *RedisCache) ApplyDeploymentOutput(do rpv1.DeploymentOutput) error {
-	r.Properties.Status.OutputResources = do.DeployedOutputResources
-	r.ComputedValues = do.ComputedValues
-	r.SecretValues = do.SecretValues
-	if host, ok := do.ComputedValues[renderers.Host].(string); ok {
-		r.Properties.Host = host
-	}
-	if port, ok := do.ComputedValues[renderers.Port]; ok {
-		if port != nil {
-			switch p := port.(type) {
-			case float64:
-				r.Properties.Port = int32(p)
-			case int32:
-				r.Properties.Port = p
-			case string:
-				converted, err := strconv.Atoi(p)
-				if err != nil {
-					return err
-				}
-				r.Properties.Port = int32(converted)
-			default:
-				return errors.New("unhandled type for the property port")
-			}
-		}
-	}
-	if username, ok := do.ComputedValues[renderers.UsernameStringValue].(string); ok {
-		r.Properties.Username = username
-	}
 	return nil
 }
 
@@ -88,9 +58,9 @@ func (redis *RedisCache) ResourceTypeName() string {
 	return portableresources.RedisCachesResourceType
 }
 
-// Recipe returns the LinkRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
+// Recipe returns the ResourceRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (redis *RedisCache) Recipe() *portableresources.LinkRecipe {
+func (redis *RedisCache) Recipe() *portableresources.ResourceRecipe {
 	if redis.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
@@ -145,7 +115,7 @@ type RedisCacheProperties struct {
 	TLS bool `json:"tls,omitempty"`
 
 	// The recipe used to automatically deploy underlying infrastructure for the Redis caches link
-	Recipe portableresources.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 
 	// Secrets provided by resource
 	Secrets RedisCacheSecrets `json:"secrets,omitempty"`

@@ -167,6 +167,25 @@ func (a *AzureServicePrincipalProperties) GetAzureCredentialProperties() *AzureC
 	}
 }
 
+// ComponentsKhmx01SchemasGenericresourceAllof0 - Concrete proxy resource types can be created by aliasing this type using
+// a specific property type.
+type ComponentsKhmx01SchemasGenericresourceAllof0 struct {
+	// The resource-specific properties for this resource.
+	Properties map[string]any
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
 // CredentialStorageProperties - The base credential storage properties
 type CredentialStorageProperties struct {
 	// REQUIRED; The kind of credential storage
@@ -208,6 +227,33 @@ type ErrorDetail struct {
 type ErrorResponse struct {
 	// The error object.
 	Error *ErrorDetail
+}
+
+// GenericResource - Represents resource data.
+type GenericResource struct {
+	// The resource-specific properties for this resource.
+	Properties map[string]any
+
+	// READ-ONLY; The name of resource
+	Name *string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// GenericResourceListResult - The response of a GenericResource list operation.
+type GenericResourceListResult struct {
+	// REQUIRED; The GenericResource items on this page
+	Value []*GenericResource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
 // InternalCredentialStorageProperties - Internal credential storage properties
@@ -278,6 +324,22 @@ type PlaneResourceProperties struct {
 type PlaneResourceTagsUpdate struct {
 	// Resource tags.
 	Tags map[string]*string
+}
+
+// ProxyResource - The resource model definition for a Azure Resource Manager proxy resource. It will not have tags and a
+// location
+type ProxyResource struct {
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources

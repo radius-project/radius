@@ -20,6 +20,7 @@ secretProvider:
 
 queueProvider:
   provider: "apiserver"
+  name: 'ucp'
   apiserver:
     context: ''
     namespace: 'radius-testing'

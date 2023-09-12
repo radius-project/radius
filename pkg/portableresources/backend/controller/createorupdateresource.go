@@ -47,8 +47,14 @@ type CreateOrUpdateResource[P interface {
 func NewCreateOrUpdateResource[P interface {
 	*T
 	rpv1.RadiusResourceModel
-}, T any](processor processors.ResourceProcessor[P, T], eng engine.Engine, client processors.ResourceClient, configurationLoader configloader.ConfigurationLoader, opts ctrl.Options) (ctrl.Controller, error) {
-	return &CreateOrUpdateResource[P, T]{ctrl.NewBaseAsyncController(opts), processor, eng, client, configurationLoader}, nil
+}, T any](opts ctrl.Options, processor processors.ResourceProcessor[P, T], eng engine.Engine, client processors.ResourceClient, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+	return &CreateOrUpdateResource[P, T]{
+		ctrl.NewBaseAsyncController(opts),
+		processor,
+		eng,
+		client,
+		configurationLoader,
+	}, nil
 }
 
 // Run retrieves an existing resource, executes a recipe if needed, loads runtime configuration,

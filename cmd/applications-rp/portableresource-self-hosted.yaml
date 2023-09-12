@@ -17,6 +17,7 @@ storageProvider:
     namespace: 'radius-testing'
 queueProvider:
   provider: "apiserver"
+  name: radiusportable
   apiserver:
     context: ''
     namespace: 'radius-testing'

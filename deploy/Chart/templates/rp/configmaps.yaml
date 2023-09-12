@@ -20,6 +20,7 @@ data:
         namespace: "radius-system"
     queueProvider:
       provider: "apiserver"
+      name: "radius"
       apiserver:
         context: ""
         namespace: "radius-system"
@@ -66,6 +67,7 @@ data:
         namespace: "radius-system"
     queueProvider:
       provider: "apiserver"
+      name: "radiusportable"
       apiserver:
         context: ""
         namespace: "radius-system"
