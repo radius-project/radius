@@ -48,7 +48,7 @@ resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
     }
     connections: {
       rabbitmq: {
-        source: 'http://rmq-ctnr:5672'
+        source: rabbitmq.id
       }
     }
   }

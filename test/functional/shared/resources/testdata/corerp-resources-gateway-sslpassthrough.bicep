@@ -40,7 +40,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
     } 
     routes: [
       {
-        destination: 'https://ssl-gtwy-front-ctnr:443'
+        destination: 'https://${frontendContainer.name}:${frontendContainer.properties.container.ports.web.port}'
       }
     ]
   }
@@ -70,3 +70,5 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
     }
   }
 }
+
+
