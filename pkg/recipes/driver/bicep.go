@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -61,6 +60,7 @@ func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.Res
 		ArmClientOptions: armOptions,
 		DeploymentClient: deploymentClient,
 		ResourceClient:   client,
+		RetryConfig:      NewDefaultRetryConfig(),
 	}
 }
 
@@ -68,6 +68,7 @@ type bicepDriver struct {
 	ArmClientOptions *arm.ClientOptions
 	DeploymentClient *clients.ResourceDeploymentsClient
 	ResourceClient   processors.ResourceClient
+	RetryConfig      RetryConfig
 }
 
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
@@ -170,8 +171,6 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	return recipeResponse, nil
 }
 
-// Delete deletes output resources in reverse dependency order, logging each resource deleted and skipping any
-// resources that are not managed by Radius. It returns an error if any of the resources fail to delete.
 func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -184,7 +183,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 		// Create a goroutine that handles the deletion of one resource
 		g.Go(func() error {
 			id := outputResource.ID.String()
-			logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
+			logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
 
 			// If the resource is not managed by Radius, skip the deletion
 			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
@@ -192,24 +191,27 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				return nil
 			}
 
-			err := d.ResourceClient.Delete(groupCtx, id)
-			if err != nil {
-				if resourceErr, isResourceErr := err.(*processors.ResourceError); isResourceErr {
-					if responseError, isResponseErr := resourceErr.Unwrap().(*azcore.ResponseError); isResponseErr && responseError.ErrorCode == ErrNotFound {
-						// If the resource is not found, then it is already deleted
-						logger.Info(fmt.Sprintf("Output resource: %q is already deleted", id))
-						return nil
-					}
+			for attempt := 1; attempt <= d.RetryConfig.RetryCount; attempt++ {
+				logger.WithValues("attempt", attempt)
+				ctx := logr.NewContext(groupCtx, logger)
+				logger.V(ucplog.LevelDebug).Info("beginning attempt")
+
+				err := d.ResourceClient.Delete(ctx, id)
+				if err != nil && attempt == d.RetryConfig.RetryCount {
+					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
+				} else if err != nil {
+					logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.RetryConfig.RetryDelay)
+					time.Sleep(d.RetryConfig.RetryDelay)
+					continue
 				}
 
-				deletionErr := fmt.Errorf("failed to delete output resource: %q with error: %v", id, err)
-				logger.Error(err, fmt.Sprintf("Failed to delete output resource %q", id))
-				return deletionErr
-			} else {
 				// If the err is nil, then the resource is deleted successfully
-				logger.Info(fmt.Sprintf("Deleted output resource: %q", id))
+				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
 				return nil
 			}
+
+			err := fmt.Errorf("failed to delete resource after %d attempts", d.RetryConfig.RetryCount)
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), recipes.GetRecipeErrorDetails(err))
 		})
 	}
 

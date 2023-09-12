@@ -17,14 +17,9 @@ limitations under the License.
 package processors
 
 import (
-	"bytes"
 	context "context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -181,45 +176,8 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 	// For AWS resources, the server does not yet validate the API version.
 	//
 	// In the future we should change this to look up API versions dynamically like we do for ARM.
-	fmt.Println("start")
-	clientOptions := &arm.ClientOptions{}
-	clientOptions.Retry.MaxRetries = 5
-	clientOptions.Retry.RetryDelay = 1 * time.Minute
-	clientOptions.Retry.MaxRetryDelay = 3 * time.Minute
-	clientOptions.Retry.ShouldRetry = func(response *http.Response, err error) bool {
-		if err != nil {
-			return false
-		}
 
-		responseBuffer := &bytes.Buffer{}
-		_, err = io.Copy(responseBuffer, response.Body)
-		defer response.Body.Close()
-		if err != nil {
-			return false
-		}
-
-		fmt.Println(responseBuffer.String())
-
-		var asyncOperationStatus armresourcesv1.AsyncOperationStatus = armresourcesv1.AsyncOperationStatus{}
-		err = json.Unmarshal(responseBuffer.Bytes(), &asyncOperationStatus)
-		if err != nil {
-			return false
-		}
-
-		fmt.Println(asyncOperationStatus.Error)
-
-		if asyncOperationStatus.Error != nil &&
-			isRetryableAWSError(asyncOperationStatus.Error) &&
-			strings.Contains(asyncOperationStatus.Error.Message, BadRequestStatusCode) {
-			fmt.Println("end: retrying")
-			return true
-		}
-
-		fmt.Println("end: not retrying")
-		return false
-	}
-
-	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection, clientOptions))
+	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection, nil))
 	if err != nil {
 		return err
 	}

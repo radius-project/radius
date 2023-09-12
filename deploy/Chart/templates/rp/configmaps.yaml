@@ -37,7 +37,7 @@ data:
       host: "0.0.0.0"
       port: 5443
     workerServer:
-      maxOperationConcurrency: 3
+      maxOperationConcurrency: 10
       maxOperationRetryCount: 2
     ucp:
       kind: kubernetes
@@ -83,7 +83,7 @@ data:
       host: "0.0.0.0"
       port: 5444
     workerServer:
-      maxOperationConcurrency: 3
+      maxOperationConcurrency: 10
       maxOperationRetryCount: 2
     ucp:
       kind: kubernetes

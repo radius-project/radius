@@ -19,6 +19,7 @@ package driver
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	gomock "github.com/golang/mock/gomock"
@@ -358,6 +359,10 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 
 	driver := bicepDriver{
 		ResourceClient: client,
+		RetryConfig: RetryConfig{
+			RetryCount: 1,
+			RetryDelay: 1 * time.Second,
+		},
 	}
 
 	return driver, client
@@ -389,7 +394,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 			RadiusManaged: to.Ptr(false),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
+	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
 	err := driver.Delete(ctx, DeleteOptions{
 		OutputResources: outputResources,
@@ -418,7 +423,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 		},
 	}
 	client.EXPECT().
-		Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+		Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
 		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
 		Times(1)
 
@@ -477,4 +482,38 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 
 	require.Error(t, err)
 	require.Equal(t, err, &expErr)
+}
+
+func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
+	ctx := testcontext.New(t)
+	driver, client := setupDeleteInputs(t)
+	driver.RetryConfig = RetryConfig{
+		RetryCount: 2,
+		RetryDelay: 1 * time.Second,
+	}
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: to.Ptr(true),
+		},
+	}
+
+	gomock.InOrder(
+		client.EXPECT().
+			Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+			Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)),
+		client.EXPECT().
+			Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+			Return(nil),
+	)
+
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
 }
