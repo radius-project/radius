@@ -179,7 +179,7 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
-		err := fmt.Errorf("could not find driver %s", definition.Driver)
+		err := fmt.Errorf("could not find driver `%s`", definition.Driver)
 		return nil, nil, recipes.NewRecipeError(recipes.RecipeDriverNotFoundFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	return definition, driver, nil
