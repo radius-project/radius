@@ -3,13 +3,6 @@ import radius as radius
 @description('ID of the Radius environment. Passed in automatically via the rad CLI')
 param environment string
 
-@description('Specifies the image of the container resource.') 
-param magpieimage string
-
-@description('Specifies the location for resources.')
-param location string = 'local'
-
-
 resource demoApplication 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-gateway-failure-app'
   properties: {
@@ -51,26 +44,4 @@ resource demoGateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
       minimumProtocolVersion: '1.2'
     }
   }
-}
-
-
-resource demoContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-	name: 'demo-container'
-	location: location
-	properties: {
-		application: demoApplication.id
-		container: {
-			image: magpieimage
-			ports: {
-				web: {
-					containerPort: 3000
-				}
-			}
-			readinessProbe: {
-				kind: 'httpGet'
-				containerPort: 3000
-				path: '/healthz'
-			}
-		}
-	}
 }
