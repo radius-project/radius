@@ -40,7 +40,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
     } 
     routes: [
       {
-        destination: 'https://ssl-gtwy-front-ctnr:443'
+        destination: 'https://ssl-gtwy-front-ctnr'
       }
     ]
   }

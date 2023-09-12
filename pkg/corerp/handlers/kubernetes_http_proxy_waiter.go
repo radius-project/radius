@@ -137,7 +137,7 @@ func (handler *httpProxyWaiter) checkHTTPProxyStatus(ctx context.Context, dynami
 
 		if len(p.Spec.Includes) == 0 && len(p.Spec.Routes) > 0 {
 			// This is a route HTTP proxy. We will not validate deployment completion for it and return success here
-			logger.Info("Not validating the deployment of route HTTP proxy for ", p.Name)
+			//	logger.Info("Not validating the deployment of route HTTP proxy for ", p.Name)
 			doneCh <- nil
 			return true
 		}
