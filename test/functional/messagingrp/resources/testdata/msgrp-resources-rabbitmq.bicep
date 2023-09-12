@@ -77,8 +77,8 @@ resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2022-03-15-privateprevi
     environment: environment
     resourceProvisioning: 'manual'
     queue: 'queue'
-    host: rabbitmqRoute.properties.hostname
-    port:rabbitmqRoute.properties.port
+    host: 'rmq-ctnr'
+    port: rabbitmqPort
     username:username
     secrets: {
       password: password
