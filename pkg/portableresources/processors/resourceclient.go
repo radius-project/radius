@@ -23,7 +23,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	armresourcesv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -40,13 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	CodeNotStabilized                = "NotStabilized"
-	CodeResourceConflict             = "ResourceConflict"
-	CodeConcurrentOperationException = "ConcurrentOperationException"
-	BadRequestStatusCode             = "Status Code: 400"
 )
 
 type resourceClient struct {
@@ -265,8 +257,4 @@ func (c *resourceClient) lookupKubernetesAPIVersion(ctx context.Context, id reso
 	}
 
 	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
-}
-
-func isRetryableAWSError(errorDetails *armresourcesv1.ErrorDetails) bool {
-	return errorDetails.Code == CodeNotStabilized || errorDetails.Code == CodeConcurrentOperationException || errorDetails.Code == CodeResourceConflict
 }

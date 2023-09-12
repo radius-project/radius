@@ -161,7 +161,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	}
 
 	// Deleting obsolete output resources.
-	d.Delete(ctx, DeleteOptions{
+	err = d.Delete(ctx, DeleteOptions{
 		OutputResources: outputResourcesToDelete,
 	})
 	if err != nil {
