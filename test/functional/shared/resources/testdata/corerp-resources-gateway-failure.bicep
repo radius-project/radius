@@ -36,7 +36,7 @@ resource demoGateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
     routes: [
       {
         path: '/'
-        destination: demoRoute.id
+        destination: 'http://demo-container:3000'
       }
     ]
     tls: {
@@ -46,9 +46,24 @@ resource demoGateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   }
 }
 
-resource demoRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-gateway-failure-route'
-  properties: {
-    application: demoApplication.id
-  }
+
+resource demoContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+	name: 'demo-container'
+	location: location
+	properties: {
+		application: demoApplication.id
+		container: {
+			image: magpieimage
+			ports: {
+				web: {
+					containerPort: port
+				}
+			}
+			readinessProbe: {
+				kind: 'httpGet'
+				containerPort: port
+				path: '/healthz'
+			}
+		}
+	}
 }
