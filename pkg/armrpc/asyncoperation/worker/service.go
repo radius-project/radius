@@ -29,9 +29,6 @@ import (
 
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
-
-	"k8s.io/client-go/dynamic"
-
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -55,8 +52,6 @@ type Service struct {
 	KubeClientSet kubernetes.Interface
 	// KubeDiscoveryClient is the Kubernetes discovery client.
 	KubeDiscoveryClient discovery.ServerResourcesInterface
-	// KubeDynamicClientSet is the Kubernetes dynamic client.
-	KubeDynamicClientSet dynamic.Interface
 }
 
 // Init initializes worker service - it initializes the StorageProvider, RequestQueue, OperationStatusManager, Controllers, KubeClient and
@@ -95,11 +90,6 @@ func (s *Service) Init(ctx context.Context) error {
 		// TODO: Disable UseLegacyDiscovery once https://github.com/radius-project/radius/issues/5974 is resolved.
 		discoveryClient.UseLegacyDiscovery = true
 		s.KubeDiscoveryClient = discoveryClient
-
-		s.KubeDynamicClientSet, err = dynamic.NewForConfig(s.Options.K8sConfig)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
