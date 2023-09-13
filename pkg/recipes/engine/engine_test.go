@@ -112,7 +112,12 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		Times(1).
 		Return(recipeResult, nil)
 
-	result, err := engine.Execute(ctx, recipeMetadata, prevState)
+	result, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
@@ -170,7 +175,12 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		Times(1).
 		Return(nil, errors.New("failed to execute recipe"))
 
-	result, err := engine.Execute(ctx, recipeMetadata, prevState)
+	result, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
 	require.Nil(t, result)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "failed to execute recipe")
@@ -240,7 +250,12 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		Times(1).
 		Return(recipeResult, nil)
 
-	result, err := engine.Execute(ctx, recipeMetadata, prevState)
+	result, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
 	require.NoError(t, err)
 	require.Equal(t, result, recipeResult)
 }
@@ -271,7 +286,12 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(recipeDefinition, nil)
-	_, err := engine.Execute(ctx, recipeMetadata, prevState)
+	_, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
 	require.Error(t, err)
 	require.Equal(t, "code DriverNotFoundFailure: err could not find driver `invalid`", err.Error())
 }
@@ -295,7 +315,13 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
-	_, err := engine.Execute(ctx, recipeMetadata, prevState)
+
+	_, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
 	require.Error(t, err)
 }
 
@@ -327,7 +353,13 @@ func Test_Engine_Load_Error(t *testing.T) {
 		LoadConfiguration(ctx, recipeMetadata).
 		Times(1).
 		Return(nil, errors.New("unable to fetch namespace information"))
-	_, err := engine.Execute(ctx, recipeMetadata, prevState)
+
+	_, err := engine.Execute(ctx, ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		PreviousState: prevState,
+	})
 	require.Error(t, err)
 }
 
@@ -372,7 +404,12 @@ func Test_Engine_Delete_Success(t *testing.T) {
 		Times(1).
 		Return(nil)
 
-	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
 	require.NoError(t, err)
 }
 
@@ -418,7 +455,12 @@ func Test_Engine_Delete_Error(t *testing.T) {
 		Return(fmt.Errorf("could not find API version for type %q, no supported API versions",
 			outputResources[0].ID))
 
-	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
 	require.Error(t, err)
 }
 
@@ -433,7 +475,12 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(&recipeDefinition, nil)
-	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
 	require.Error(t, err)
 	require.Equal(t, "code DriverNotFoundFailure: err could not find driver `invalid`", err.Error())
 }
@@ -447,7 +494,12 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 		LoadRecipe(ctx, &recipeMetadata).
 		Times(1).
 		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
-	err := engine.Delete(ctx, recipeMetadata, outputResources)
+	err := engine.Delete(ctx, DeleteOptions{
+		BaseOptions: BaseOptions{
+			Recipe: recipeMetadata,
+		},
+		OutputResources: outputResources,
+	})
 	require.Error(t, err)
 }
 

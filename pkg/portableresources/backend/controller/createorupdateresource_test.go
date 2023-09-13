@@ -344,12 +344,22 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			if stillPassing && tt.recipeErr != nil {
 				stillPassing = false
 				eng.EXPECT().
-					Execute(gomock.Any(), recipeMetadata, prevState).
+					Execute(gomock.Any(), engine.ExecuteOptions{
+						BaseOptions: engine.BaseOptions{
+							Recipe: recipeMetadata,
+						},
+						PreviousState: prevState,
+					}).
 					Return(&recipes.RecipeOutput{}, tt.recipeErr).
 					Times(1)
 			} else if stillPassing {
 				eng.EXPECT().
-					Execute(gomock.Any(), recipeMetadata, prevState).
+					Execute(gomock.Any(), engine.ExecuteOptions{
+						BaseOptions: engine.BaseOptions{
+							Recipe: recipeMetadata,
+						},
+						PreviousState: prevState,
+					}).
 					Return(&recipes.RecipeOutput{}, nil).
 					Times(1)
 			}

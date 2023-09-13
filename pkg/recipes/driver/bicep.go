@@ -144,14 +144,18 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	// in the currently deployed resources compared to the list of resources from the previous deployment needs to be deleted
 	// as bicep does not take care of automatically deleting the unused resources.
 	// Identify the output resources that are no longer relevant to the recipe.
+	garbageCollectionStartTime := time.Now()
 	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
 
 	// Deleting obsolete output resources.
 	err = d.deleteGCOutputResources(ctx, diff)
 	if err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
+			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.FailedOperationState))
 		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
 	}
-
+	metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
 	return recipeResponse, nil
 }
 
