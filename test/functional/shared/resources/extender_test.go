@@ -109,14 +109,16 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 	template := "testdata/corerp-resources-extender-aws-s3-recipe.bicep"
 	name := "corerp-resources-extenders-aws-s3-recipe"
 	appName := "corerp-resources-extenders-aws-s3-recipe-app"
-	bucketName := generateS3BucketName()
+	bucketName := functional.GenerateS3BucketName()
 	bucketID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.S3/Bucket/%s", awsAccountID, awsRegion, bucketName)
+	creationTimestamp := functional.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
 			Executor: step.NewDeployExecutor(
 				template,
-				fmt.Sprintf("bucketName=%s", bucketName),
+				"bucketName="+bucketName,
+				"creationTimestamp="+creationTimestamp,
 				functional.GetAWSAccountId(),
 				functional.GetAWSRegion(),
 				functional.GetBicepRecipeRegistry(),

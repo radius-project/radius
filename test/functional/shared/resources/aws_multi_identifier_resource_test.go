@@ -17,7 +17,9 @@ limitations under the License.
 package resource_test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/functional/shared"
@@ -30,10 +32,11 @@ func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
 	filterName := "ms" + uuid.New().String()
 	logGroupName := "ms" + uuid.New().String()
 	testName := "ms" + uuid.New().String()
+	creationTimestamp := fmt.Sprintf("%d", time.Now().Unix())
 
 	test := shared.NewRPTest(t, testName, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, "filterName="+filterName, "logGroupName="+logGroupName),
+			Executor:                               step.NewDeployExecutor(template, "filterName="+filterName, "logGroupName="+logGroupName, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{

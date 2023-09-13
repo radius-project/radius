@@ -19,7 +19,7 @@ package resource_test
 import (
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
@@ -27,11 +27,12 @@ import (
 
 func Test_AWS_S3Bucket(t *testing.T) {
 	template := "testdata/aws-s3-bucket.bicep"
-	name := generateS3BucketName()
+	name := functional.GenerateS3BucketName()
+	creationTimestamp := functional.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
@@ -61,11 +62,12 @@ func Test_AWS_S3Bucket(t *testing.T) {
 func Test_AWS_S3Bucket_Existing(t *testing.T) {
 	template := "testdata/aws-s3-bucket.bicep"
 	templateExisting := "testdata/aws-s3-bucket-existing.bicep"
-	name := generateS3BucketName()
+	name := functional.GenerateS3BucketName()
+	creationTimestamp := functional.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(template, "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -116,8 +118,4 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 	})
 
 	test.Test(t)
-}
-
-func generateS3BucketName() string {
-	return "radiusfunctionaltestbucket-" + uuid.New().String()
 }

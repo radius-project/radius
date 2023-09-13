@@ -23,10 +23,11 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  AWS_RESOURCE_TYPES: 'AWS::Kinesis::Stream,AWS::S3::Bucket,AWS::RDS::DBInstance,AWS::RDS::DBSubnetGroup,AWS::MemoryDB::Cluster,AWS::MemoryDB::SubnetGroup'
+  AWS_RESOURCE_TYPES: 'AWS::RDS::DBSubnetGroup,AWS::RDS::DBInstance,AWS::S3::Bucket,AWS::Logs::MetricFilter,AWS::Logs::LogGroup'
+  
 jobs:
   purge_aws_resources:
-    name: Delete all AWS resources created by tests
+    name: Delete old AWS resources created by tests
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -35,15 +36,6 @@ jobs:
           aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Filter and delete resources
+      - name: Delete old AWS resources
         run: |
-          RESOURCE_TYPES=${{env.AWS_RESOURCE_TYPES}}
-          for resource_type in ${RESOURCE_TYPES//,/ }
-          do
-            echo "Deleting resources of type $resource_type"
-            aws cloudcontrol list-resources --type-name "$resource_type" --query "ResourceDescriptions[].Identifier" --output text | tr '\t' '\n' | while read identifier
-            do
-              echo "Deleting resource $identifier of type $resource_type"
-              aws cloudcontrol delete-resource --type-name "$resource_type" --identifier "$identifier"
-            done
-          done
+          ./.github/scripts/delete_aws_resources.sh ${{ env.AWS_RESOURCE_TYPES }}
