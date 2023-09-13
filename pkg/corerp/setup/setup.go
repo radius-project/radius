@@ -221,7 +221,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.Extender],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource(options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ext_ctrl.AsyncCreateOrUpdateExtenderTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -231,14 +231,14 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.Extender],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.Extender, datamodel.Extender](options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource(options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ext_ctrl.AsyncCreateOrUpdateExtenderTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.Extender]{
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewDeleteResource[*datamodel.Extender, datamodel.Extender](options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewDeleteResource(options, &ext_processor.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ext_ctrl.AsyncDeleteExtenderTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
