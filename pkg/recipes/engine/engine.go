@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -48,11 +49,11 @@ type engine struct {
 // Execute loads the recipe definition from the environment, finds the driver associated with the recipe, loads the
 // configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
 // an error if one occurs.
-func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, error) {
+func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
 	executionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	recipeOutput, definition, err := e.executeCore(ctx, recipe, prevState)
+	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
 		result = metrics.FailedOperationState
 		if recipes.GetRecipeErrorDetails(err) != nil {
@@ -61,7 +62,7 @@ func (e *engine) Execute(ctx context.Context, recipe recipes.ResourceMetadata, p
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, executionStart,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationExecute, recipe.Name,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationExecute, opts.Recipe.Name,
 			definition, result))
 
 	return recipeOutput, err
@@ -77,7 +78,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
-		return nil, definition, err
+		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
@@ -96,11 +97,11 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 }
 
 // Delete calls the Delete method of the driver specified in the recipe definition to delete the output resources.
-func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) error {
+func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	deletionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	definition, err := e.deleteCore(ctx, recipe, outputResources)
+	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources)
 	if err != nil {
 		result = metrics.FailedOperationState
 		if recipes.GetRecipeErrorDetails(err) != nil {
@@ -109,7 +110,7 @@ func (e *engine) Delete(ctx context.Context, recipe recipes.ResourceMetadata, ou
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, deletionStart,
-		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDelete, recipe.Name,
+		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDelete, opts.Recipe.Name,
 			definition, result))
 
 	return err
@@ -178,7 +179,8 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	// Determine Recipe driver type
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
-		return nil, nil, fmt.Errorf("could not find driver %s", definition.Driver)
+		err := fmt.Errorf("could not find driver `%s`", definition.Driver)
+		return nil, nil, recipes.NewRecipeError(recipes.RecipeDriverNotFoundFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	return definition, driver, nil
 }
