@@ -151,6 +151,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 			Code:    recipes.RecipeDeploymentFailed,
 			Message: "Failed to deploy terraform module",
 		},
+		DeploymentStatus: "executionError",
 	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
@@ -205,6 +206,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 			Code:    recipes.InvalidRecipeOutputs,
 			Message: "failed to read the recipe output \"result\": json: unknown field \"invalid\"",
 		},
+		DeploymentStatus: "executionError",
 	}
 	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
 
@@ -231,6 +233,7 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 			Code:    recipes.RecipeDeploymentFailed,
 			Message: "path is a required option for Terraform driver",
 		},
+		DeploymentStatus: "setupError",
 	}
 	_, err := driver.Execute(testcontext.New(t), ExecuteOptions{
 		BaseOptions: BaseOptions{
@@ -379,15 +382,20 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 		EnvRecipe:      &envRecipe,
 	}
 
-	expErr := errors.New("Failed to download module")
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, expErr)
+	expErr := recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeGetMetadataFailed,
+			Message: "Failed to download module",
+		},
+	}
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, errors.New("Failed to download module"))
 
 	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
 	require.Error(t, err)
-	require.Equal(t, expErr, err)
+	require.Equal(t, &expErr, err)
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {

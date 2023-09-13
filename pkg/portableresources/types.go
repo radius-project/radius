@@ -18,6 +18,8 @@ package portableresources
 
 import (
 	"strings"
+
+	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
 const (
@@ -80,6 +82,8 @@ type ResourceRecipe struct {
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any `json:"parameters,omitempty"`
+	// DeploymentStatus is the deployment status of the recipe
+	DeploymentStatus util.RecipeDeploymentStatus `json:"recipeStatus,omitempty"`
 }
 
 // ResourceReference represents a reference to a resource that was deployed by the user
