@@ -19,7 +19,6 @@ package sdk
 import (
 	"net/http"
 
-	"dario.cat/mergo"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -39,13 +38,13 @@ const (
 // NewPipeline builds a runtime.Pipeline from a Radius SDK connection. This is used to construct
 // autorest Track2 Go clients.
 func NewPipeline(connection Connection, clientOptions *arm.ClientOptions) runtime.Pipeline {
-	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection, clientOptions).ClientOptions)
+	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection).ClientOptions)
 }
 
 // NewClientOptions creates a new ARM client options object with the given connection's endpoint, audience, transport and
 // removes the authorization header policy.
-func NewClientOptions(connection Connection, clientOptions *arm.ClientOptions) *arm.ClientOptions {
-	defaultClientOptions := &arm.ClientOptions{
+func NewClientOptions(connection Connection) *arm.ClientOptions {
+	return &arm.ClientOptions{
 		ClientOptions: policy.ClientOptions{
 			Cloud: cloud.Configuration{
 				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
@@ -67,17 +66,6 @@ func NewClientOptions(connection Connection, clientOptions *arm.ClientOptions) *
 		},
 		DisableRPRegistration: true,
 	}
-
-	if clientOptions == nil {
-		return defaultClientOptions
-	}
-
-	err := mergo.Merge(clientOptions, defaultClientOptions)
-	if err != nil {
-		return defaultClientOptions
-	}
-
-	return clientOptions
 }
 
 var _ policy.Policy = (*removeAuthorizationHeaderPolicy)(nil)

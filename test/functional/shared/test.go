@@ -72,7 +72,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	customAction, err := clientv2.NewCustomActionClient("", &clientv2.Options{
 		BaseURI: strings.TrimRight(connection.Endpoint(), "/"),
 		Cred:    &aztoken.AnonymousCredential{},
-	}, sdk.NewClientOptions(connection, nil))
+	}, sdk.NewClientOptions(connection))
 	require.NoError(t, err, "failed to create CustomActionClient")
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)

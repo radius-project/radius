@@ -169,7 +169,7 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 	//
 	// In the future we should change this to look up API versions dynamically like we do for ARM.
 
-	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection, nil))
+	client, err := generated.NewGenericResourcesClient(id.RootScope(), id.Type(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		return err
 	}

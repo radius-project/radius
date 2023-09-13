@@ -34,7 +34,7 @@ server:
   enableArmAuth: true
   armMetadataEndpoint: "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
 workerServer:
-  maxOperationConcurrency: 10
+  maxOperationConcurrency: 3
   maxOperationRetryCount: 2
 metricsProvider:
   prometheus:

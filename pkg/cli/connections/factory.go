@@ -68,7 +68,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 		return nil, err
 	}
 
-	armClientOptions := sdk.NewClientOptions(connection, nil)
+	armClientOptions := sdk.NewClientOptions(connection)
 	dc, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          connection.Endpoint(),
@@ -131,7 +131,7 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 			return nil, err
 		}
 
-		clientOpts := sdk.NewClientOptions(connection, nil)
+		clientOpts := sdk.NewClientOptions(connection)
 		appClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/applications", &aztoken.AnonymousCredential{}, clientOpts)
 		if err != nil {
 			return nil, err
@@ -184,7 +184,7 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 	return &clients.UCPApplicationsManagementClient{
 		// The client expects root scope without a leading /
 		RootScope:     strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
-		ClientOptions: sdk.NewClientOptions(connection, nil),
+		ClientOptions: sdk.NewClientOptions(connection),
 	}, nil
 }
 
@@ -206,7 +206,7 @@ func (*impl) CreateCredentialManagementClient(ctx context.Context, workspace wor
 		return nil, err
 	}
 
-	clientOptions := sdk.NewClientOptions(connection, nil)
+	clientOptions := sdk.NewClientOptions(connection)
 
 	azureCredentialClient, err := v20220901privatepreview.NewAzureCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {

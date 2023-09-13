@@ -40,7 +40,7 @@ type AWSCredentialProvider struct {
 // NewAWSCredentialProvider creates a new AWSCredentialProvider struct using the given SecretProvider, UCP connection and
 // TokenCredential, and returns it or an error if one occurs.
 func NewAWSCredentialProvider(provider *provider.SecretProvider, ucpConn sdk.Connection, credential azcore.TokenCredential) (*AWSCredentialProvider, error) {
-	cli, err := ucpapi.NewAwsCredentialsClient(credential, sdk.NewClientOptions(ucpConn, nil))
+	cli, err := ucpapi.NewAwsCredentialsClient(credential, sdk.NewClientOptions(ucpConn))
 	if err != nil {
 		return nil, err
 	}
