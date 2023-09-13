@@ -36,7 +36,6 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,7 +48,7 @@ const (
 
 // NewApplicationModel configures RBAC support on connections based on connection kind, configures the providers supported by the appmodel,
 // registers the renderers and handlers for various resources, and checks for duplicate registrations.
-func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sClientSet kubernetes.Interface, discoveryClient discovery.ServerResourcesInterface, k8sDynamicClientSet dynamic.Interface) (ApplicationModel, error) {
+func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sClientSet kubernetes.Interface, discoveryClient discovery.ServerResourcesInterface) (ApplicationModel, error) {
 	// Configure RBAC support on connections based connection kind.
 	// Role names can be user input or default roles assigned by Radius.
 	// Leave RoleNames field empty if no default roles are supported for a connection kind.
@@ -117,7 +116,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Type:     AnyResourceType,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient, k8sDynamicClientSet),
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
@@ -125,7 +124,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceTransformer: azcontainer.TransformSecretProviderClass,
-			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient, k8sDynamicClientSet),
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
@@ -133,7 +132,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceTransformer: azcontainer.TransformFederatedIdentitySA,
-			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient, k8sDynamicClientSet),
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet, discoveryClient),
 		},
 	}
 
