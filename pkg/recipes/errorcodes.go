@@ -20,6 +20,9 @@ const (
 	// Used for recipe deployment failures.
 	RecipeDeploymentFailed = "RecipeDeploymentFailed"
 
+	// Used for recipe validation failures.
+	RecipeValidationFailed = "RecipeValidationFailed"
+
 	// Used for recipe deletion failures.
 	RecipeDeletionFailed = "RecipeDeletionFailed"
 
@@ -34,4 +37,13 @@ const (
 
 	// Used for errors encountered when getting recipe parameters.
 	RecipeGetMetadataFailed = "RecipeGetMetadataFailed"
+
+	// Used for errors when checking the existence of a recipe.
+	RecipeNotFoundFailure = "RecipeNotFoundFailure"
+
+	// Used for errors with recipe drivers
+	RecipeDriverNotFoundFailure = "DriverNotFoundFailure"
+
+	// Used for errors with recipe configuration
+	RecipeConfigurationFailure = "RecipeConfigurationFailure"
 )

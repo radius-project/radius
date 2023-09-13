@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
@@ -34,8 +34,6 @@ import (
 // behaviors. Some functionality needs to be tested for each driver.
 
 func Test_Recipe_NotFound(t *testing.T) {
-	t.Skip("Blocked by https://github.com/radius-project/radius/issues/6040")
-
 	template := "testdata/corerp-resources-recipe-notfound.bicep"
 	name := "corerp-resources-recipe-notfound"
 
@@ -43,7 +41,7 @@ func Test_Recipe_NotFound(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code:            v1.CodeInternal,
+				Code:            recipes.RecipeNotFoundFailure,
 				MessageContains: "could not find recipe \"not found!\" in environment",
 			},
 		},

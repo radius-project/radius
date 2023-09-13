@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -122,9 +123,9 @@ var errorProcessorReference = processors.ResourceProcessor[*TestResource, TestRe
 var errProcessor = errors.New("processor error")
 var errConfiguration = errors.New("configuration error")
 
-var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1"
+var oldOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Systems.Test/testResources/test1"
 
-var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test2"
+var newOutputResourceResourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Systems.Test/testResources/test2"
 var newOutputResource = rpv1.OutputResource{ID: resources.MustParse(newOutputResourceResourceID)}
 
 func TestCreateOrUpdateResource_Run(t *testing.T) {
@@ -199,12 +200,12 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			},
 			nil,
 			false,
-			&recipes.ErrRecipeNotFound{},
+			fmt.Errorf("could not find recipe %q in environment %q", "test-recipe", TestEnvironmentID),
 			nil,
 			nil,
 			nil,
 			nil,
-			&recipes.ErrRecipeNotFound{},
+			fmt.Errorf("could not find recipe %q in environment %q", "test-recipe", TestEnvironmentID),
 		},
 		{
 			"runtime-configuration-err",
