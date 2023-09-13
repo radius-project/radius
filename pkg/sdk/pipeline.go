@@ -37,7 +37,7 @@ const (
 
 // NewPipeline builds a runtime.Pipeline from a Radius SDK connection. This is used to construct
 // autorest Track2 Go clients.
-func NewPipeline(connection Connection, clientOptions *arm.ClientOptions) runtime.Pipeline {
+func NewPipeline(connection Connection) runtime.Pipeline {
 	return runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &NewClientOptions(connection).ClientOptions)
 }
 
