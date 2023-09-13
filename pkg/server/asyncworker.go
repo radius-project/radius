@@ -63,7 +63,7 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize kubernetes clients: %w", err)
 	}
 
-	appModel, err := model.NewApplicationModel(w.Options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient, k8s.DynamicClient)
+	appModel, err := model.NewApplicationModel(w.Options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
