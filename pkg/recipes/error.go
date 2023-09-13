@@ -17,10 +17,12 @@ import (
 	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
 type RecipeError struct {
-	ErrorDetails v1.ErrorDetails
+	ErrorDetails     v1.ErrorDetails
+	DeploymentStatus util.RecipeDeploymentStatus
 }
 
 // Error returns an error string describing the error code and message.
@@ -34,10 +36,11 @@ func (e *RecipeError) Is(target error) bool {
 }
 
 // NewRecipeError creates a new RecipeError error with a given code, message and error details.
-func NewRecipeError(code string, message string, details ...*v1.ErrorDetails) *RecipeError {
+func NewRecipeError(code string, message string, deploymentStatus util.RecipeDeploymentStatus, details ...*v1.ErrorDetails) *RecipeError {
 	err := new(RecipeError)
 	err.ErrorDetails.Message = message
 	err.ErrorDetails.Code = code
+	err.DeploymentStatus = deploymentStatus
 	for _, val := range details {
 		if val != nil {
 			err.ErrorDetails.Details = append(err.ErrorDetails.Details, *val)

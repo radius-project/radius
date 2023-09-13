@@ -50,7 +50,7 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns a string representing the resource type.
-func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
+func (r *DaprPubSubBroker) ResourceTypeName() string {
 	return portableresources.DaprPubSubBrokersResourceType
 }
 

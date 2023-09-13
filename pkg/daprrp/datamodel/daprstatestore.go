@@ -50,7 +50,7 @@ func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type of the DaprStateStore resource.
-func (daprStateStore *DaprStateStore) ResourceTypeName() string {
+func (r *DaprStateStore) ResourceTypeName() string {
 	return portableresources.DaprStateStoresResourceType
 }
 

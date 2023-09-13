@@ -63,7 +63,7 @@ func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type of the SQL database resource.
-func (sql *SqlDatabase) ResourceTypeName() string {
+func (r *SqlDatabase) ResourceTypeName() string {
 	return portableresources.SqlDatabasesResourceType
 }
 
