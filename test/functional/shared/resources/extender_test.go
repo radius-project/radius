@@ -154,6 +154,12 @@ func Test_Extender_RecipeAWS(t *testing.T) {
 						Identifier: bucketName,
 						Properties: map[string]any{
 							"BucketName": bucketName,
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
+							},
 						},
 						SkipDeletion: true, // will be deleted by the recipe
 					},

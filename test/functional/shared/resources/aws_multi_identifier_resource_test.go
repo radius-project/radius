@@ -45,11 +45,27 @@ func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
 						Name:       logGroupName,
 						Type:       validation.AWSLogsLogGroupResourceType,
 						Identifier: logGroupName,
+						Properties: map[string]any{
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
+							},
+						},
 					},
 					{
 						Name:       filterName,
 						Type:       validation.AWSLogsMetricFilterResourceType,
 						Identifier: logGroupName + "|" + filterName,
+						Properties: map[string]any{
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
+							},
+						},
 					},
 				},
 			},

@@ -191,37 +191,7 @@ func assertFieldsArePresent(t *testing.T, actual any, expected any) {
 		} else {
 			require.Fail(t, "types of actual and expected do not match")
 		}
-	case []any:
-		// Check if the actual slice contains all elements of the expected slice
-		// This is necessary because there may be a creation timestamp in the actual slice that
-		// is not present in the expected slice
-		require.True(t, subslice(actual, expected.([]any)))
 	default:
 		require.Equal(t, expected, actual)
 	}
-}
-
-// contains checks if the given slice contains the given element
-func contains[T comparable](s []T, e T) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-
-	return false
-}
-
-// subslice checks if s1 is a subslice of s2
-func subslice[T comparable](s1, s2 []T) bool {
-	if len(s1) > len(s2) {
-		return false
-	}
-	for _, e := range s1 {
-		if !contains(s2, e) {
-			return false
-		}
-	}
-
-	return true
 }

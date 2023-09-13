@@ -48,6 +48,10 @@ func Test_AWS_S3Bucket(t *testing.T) {
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},
@@ -84,6 +88,10 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},
@@ -108,6 +116,10 @@ func Test_AWS_S3Bucket_Existing(t *testing.T) {
 								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue",
+								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
 								},
 							},
 						},

@@ -51,6 +51,10 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},
@@ -73,6 +77,10 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 								map[string]any{
 									"Key":   "testKey",
 									"Value": "testValue2",
+								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
 								},
 							},
 						},
@@ -106,6 +114,12 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 							"Endpoint": map[string]any{
 								"Port": 1444,
 							},
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
+							},
 						},
 					},
 				},
@@ -124,6 +138,12 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 						Properties: map[string]any{
 							"Endpoint": map[string]any{
 								"Port": 1444,
+							},
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},
