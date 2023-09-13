@@ -213,7 +213,7 @@ func contains[T comparable](s []T, e T) bool {
 }
 
 // subslice checks if s1 is a subslice of s2
-func subslice[T comparable](s1 []T, s2 []T) bool {
+func subslice[T comparable](s1, s2 []T) bool {
 	if len(s1) > len(s2) {
 		return false
 	}
