@@ -1295,11 +1295,11 @@ type Recipe struct {
 
 // RecipeGetMetadata - Represents the request body of the getmetadata action.
 type RecipeGetMetadata struct {
-	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'
-	LinkType *string
-
 	// REQUIRED; The name of the recipe registered to the environment
 	Name *string
+
+	// REQUIRED; Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'
+	ResourceType *string
 }
 
 // RecipeGetMetadataResponse - The properties of a Recipe linked to an Environment.

@@ -84,8 +84,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			// URLs for standard UCP resource async status result.
 			ParentRouter:  server.NewSubrouter(baseRouter, operationResultsPath),
-			Method:        v1.OperationGetOperationResult,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationResult},
+			Method:        v1.OperationGet,
+			OperationType: &v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewGetAWSOperationResults(opt, m.AWSClients)
 			},
@@ -93,8 +93,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			// URLs for standard UCP resource async status.
 			ParentRouter:  server.NewSubrouter(baseRouter, operationStatusesPath),
-			Method:        v1.OperationGetOperationStatuses,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetOperationStatuses},
+			Method:        v1.OperationGet,
+			OperationType: &v1.OperationType{Type: OperationStatusResourceType, Method: v1.OperationGet},
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
 				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts, m.AWSClients)
 			},

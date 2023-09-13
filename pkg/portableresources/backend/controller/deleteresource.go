@@ -18,39 +18,45 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
-	ext_dm "github.com/radius-project/radius/pkg/corerp/datamodel"
-	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
-	ds_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
-	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-var _ ctrl.Controller = (*DeleteResource)(nil)
-
 // DeleteResource is the async operation controller to delete a portable resource.
-type DeleteResource struct {
+type DeleteResource[P interface {
+	*T
+	rpv1.RadiusResourceModel
+}, T any] struct {
 	ctrl.BaseController
-	engine engine.Engine
+	processor           processors.ResourceProcessor[P, T]
+	engine              engine.Engine
+	configurationLoader configloader.ConfigurationLoader
 }
 
 // NewDeleteResource creates a new DeleteResource controller which is used to delete resources asynchronously.
-func NewDeleteResource(opts ctrl.Options, engine engine.Engine) (ctrl.Controller, error) {
-	return &DeleteResource{ctrl.NewBaseAsyncController(opts), engine}, nil
+func NewDeleteResource[P interface {
+	*T
+	rpv1.RadiusResourceModel
+}, T any](opts ctrl.Options, processor processors.ResourceProcessor[P, T], eng engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+	return &DeleteResource[P, T]{
+		ctrl.NewBaseAsyncController(opts),
+		processor,
+		eng,
+		configurationLoader,
+	}, nil
 }
 
 // Run retrieves a resource from storage, parses the resource ID, gets the data model, deletes the output
 // resources, and deletes the resource from storage. It returns an error if any of these steps fail.
-func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
@@ -62,26 +68,17 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	dataModel, err := getDataModel(id)
-	if err != nil {
+	data := P(new(T))
+	if err = obj.As(data); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if err = obj.As(dataModel); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	resourceDataModel, ok := dataModel.(rpv1.RadiusResourceModel)
-	if !ok {
-		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
-	}
-
-	recipeDataModel, supportsRecipes := dataModel.(datamodel.RecipeDataModel)
+	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
 	if supportsRecipes && recipeDataModel.Recipe() != nil {
 		recipeData := recipes.ResourceMetadata{
 			Name:          recipeDataModel.Recipe().Name,
-			EnvironmentID: resourceDataModel.ResourceMetadata().Environment,
-			ApplicationID: resourceDataModel.ResourceMetadata().Application,
+			EnvironmentID: data.ResourceMetadata().Environment,
+			ApplicationID: data.ResourceMetadata().Application,
 			Parameters:    recipeDataModel.Recipe().Parameters,
 			ResourceID:    id.String(),
 		}
@@ -90,7 +87,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 			BaseOptions: engine.BaseOptions{
 				Recipe: recipeData,
 			},
-			OutputResources: resourceDataModel.OutputResources(),
+			OutputResources: data.OutputResources(),
 		})
 		if err != nil {
 			if recipeError, ok := err.(*recipes.RecipeError); ok {
@@ -98,6 +95,19 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 			}
 			return ctrl.Result{}, err
 		}
+	}
+
+	// Load details about the runtime for the processor to access.
+	runtimeConfiguration, err := c.loadRuntimeConfiguration(ctx, data.ResourceMetadata().Environment, data.ResourceMetadata().Application, data.GetBaseResource().ID)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = c.processor.Delete(ctx, data, processors.Options{
+		RuntimeConfiguration: *runtimeConfiguration,
+	})
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	err = c.StorageClient().Delete(ctx, request.ResourceID)
@@ -108,26 +118,12 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	return ctrl.Result{}, err
 }
 
-func getDataModel(id resources.ID) (v1.ResourceDataModel, error) {
-	resourceType := strings.ToLower(id.Type())
-	switch resourceType {
-	case strings.ToLower(portableresources.MongoDatabasesResourceType):
-		return &ds_dm.MongoDatabase{}, nil
-	case strings.ToLower(portableresources.RedisCachesResourceType):
-		return &ds_dm.RedisCache{}, nil
-	case strings.ToLower(portableresources.SqlDatabasesResourceType):
-		return &ds_dm.SqlDatabase{}, nil
-	case strings.ToLower(portableresources.DaprStateStoresResourceType):
-		return &dapr_dm.DaprStateStore{}, nil
-	case strings.ToLower(portableresources.RabbitMQQueuesResourceType):
-		return &msg_dm.RabbitMQQueue{}, nil
-	case strings.ToLower(portableresources.DaprSecretStoresResourceType):
-		return &dapr_dm.DaprSecretStore{}, nil
-	case strings.ToLower(portableresources.DaprPubSubBrokersResourceType):
-		return &dapr_dm.DaprPubSubBroker{}, nil
-	case strings.ToLower(portableresources.ExtendersResourceType):
-		return &ext_dm.Extender{}, nil
-	default:
-		return nil, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
+func (c *DeleteResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
+	metadata := recipes.ResourceMetadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
+	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
+	if err != nil {
+		return nil, err
 	}
+
+	return &config.Runtime, nil
 }

@@ -18,7 +18,6 @@ package server
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -151,9 +150,6 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 // NewServer creates a new hosting.Host instance with services for API, EmbeddedETCD, Metrics, Profiler and Backend (if
 // enabled) based on the given Options.
 func NewServer(options *Options) (*hosting.Host, error) {
-	var enableAsyncWorker bool
-	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
-
 	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
 			ProviderName:           UCPProviderName,
@@ -191,19 +187,17 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, profilerservice.NewService(profilerOptions))
 	}
 
-	if enableAsyncWorker {
-		backendServiceOptions := hostOpts.HostOptions{
-			Config: &hostOpts.ProviderConfig{
-				StorageProvider:  options.StorageProviderOptions,
-				SecretProvider:   options.SecretProviderOptions,
-				QueueProvider:    options.QueueProviderOptions,
-				MetricsProvider:  options.MetricsProviderOptions,
-				TracerProvider:   options.TracerProviderOptions,
-				ProfilerProvider: options.ProfilerProviderOptions,
-			},
-		}
-		hostingServices = append(hostingServices, backend.NewService(backendServiceOptions))
+	backendServiceOptions := hostOpts.HostOptions{
+		Config: &hostOpts.ProviderConfig{
+			StorageProvider:  options.StorageProviderOptions,
+			SecretProvider:   options.SecretProviderOptions,
+			QueueProvider:    options.QueueProviderOptions,
+			MetricsProvider:  options.MetricsProviderOptions,
+			TracerProvider:   options.TracerProviderOptions,
+			ProfilerProvider: options.ProfilerProviderOptions,
+		},
 	}
+	hostingServices = append(hostingServices, backend.NewService(backendServiceOptions))
 
 	return &hosting.Host{
 		Services: hostingServices,

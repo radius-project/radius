@@ -55,6 +55,9 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
 		result = metrics.FailedOperationState
+		if recipes.GetRecipeErrorDetails(err) != nil {
+			result = recipes.GetRecipeErrorDetails(err).Code
+		}
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, executionStart,
@@ -100,6 +103,9 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources)
 	if err != nil {
 		result = metrics.FailedOperationState
+		if recipes.GetRecipeErrorDetails(err) != nil {
+			result = recipes.GetRecipeErrorDetails(err).Code
+		}
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeOperationDuration(ctx, deletionStart,

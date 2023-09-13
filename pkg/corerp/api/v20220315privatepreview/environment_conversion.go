@@ -66,7 +66,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipes := range src.Properties.Recipes {
 			if !portableresources.IsValidPortableResourceType(resourceType) {
-				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid link type: %q", resourceType))
+				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid resource type: %q", resourceType))
 			}
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
 			for recipeName, recipeDetails := range recipes {

@@ -1,0 +1,49 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#    
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+name: Purge AWS test resources
+on:
+  workflow_dispatch:
+  schedule:
+    # Run at 12:00AM PST every day.
+    - cron: "0 7 * * 0-6"
+
+env:
+  AWS_REGION: us-west-2
+  AWS_RESOURCE_TYPES: 'AWS::Kinesis::Stream,AWS::S3::Bucket,AWS::RDS::DBInstance,AWS::RDS::DBSubnetGroup,AWS::MemoryDB::Cluster,AWS::MemoryDB::SubnetGroup'
+jobs:
+  purge_aws_resources:
+    name: Delete all AWS resources created by tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Filter and delete resources
+        run: |
+          RESOURCE_TYPES=${{env.AWS_RESOURCE_TYPES}}
+          for resource_type in ${RESOURCE_TYPES//,/ }
+          do
+            echo "Deleting resources of type $resource_type"
+            aws cloudcontrol list-resources --type-name "$resource_type" --query "ResourceDescriptions[].Identifier" --output text | tr '\t' '\n' | while read identifier
+            do
+              echo "Deleting resource $identifier of type $resource_type"
+              aws cloudcontrol delete-resource --type-name "$resource_type" --identifier "$identifier"
+            done
+          done

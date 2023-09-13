@@ -26,9 +26,9 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-// Recipe returns the LinkRecipe associated with the SQL database instance if the ResourceProvisioning is not
+// Recipe returns the ResourceRecipe associated with the SQL database instance if the ResourceProvisioning is not
 // set to Manual, otherwise it returns nil.
-func (sql *SqlDatabase) Recipe() *portableresources.LinkRecipe {
+func (sql *SqlDatabase) Recipe() *portableresources.ResourceRecipe {
 	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
@@ -42,8 +42,8 @@ type SqlDatabase struct {
 	// Properties is the properties of the resource.
 	Properties SqlDatabaseProperties `json:"properties"`
 
-	// LinkMetadata represents internal DataModel properties common to all portable resources.
-	pr_dm.LinkMetadata
+	// ResourceMetadata represents internal DataModel properties common to all portable resources.
+	pr_dm.PortableResourceMetadata
 }
 
 // ApplyDeploymentOutput updates the output resources of a SQL database resource with the output resources of a DeploymentOutput
@@ -71,7 +71,7 @@ func (sql *SqlDatabase) ResourceTypeName() string {
 type SqlDatabaseProperties struct {
 	rpv1.BasicResourceProperties
 	// The recipe used to automatically deploy underlying infrastructure for the SQL database resource
-	Recipe portableresources.LinkRecipe `json:"recipe,omitempty"`
+	Recipe portableresources.ResourceRecipe `json:"recipe,omitempty"`
 	// Database name of the target SQL database resource
 	Database string `json:"database,omitempty"`
 	// The fully qualified domain name of the SQL database resource

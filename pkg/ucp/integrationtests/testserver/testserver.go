@@ -149,7 +149,7 @@ func StartWithMocks(t *testing.T, configureModules func(options modules.Options)
 		AnyTimes()
 
 	queueClient := queue.NewMockClient(ctrl)
-	queueProvider := queueprovider.New("System.Resources", queueprovider.QueueProviderOptions{})
+	queueProvider := queueprovider.New(queueprovider.QueueProviderOptions{Name: "System.Resources"})
 	queueProvider.SetClient(queueClient)
 
 	secretClient := secret.NewMockClient(ctrl)
@@ -254,6 +254,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 		ETCD:     storageOptions.ETCD,
 	}
 	queueOptions := queueprovider.QueueProviderOptions{
+		Name:     "System.Resources",
 		Provider: queueprovider.TypeInmemory,
 		InMemory: &queueprovider.InMemoryQueueOptions{},
 	}
@@ -262,7 +263,7 @@ func StartWithETCD(t *testing.T, configureModules func(options modules.Options) 
 	pathBase := "/" + uuid.New().String()
 	dataProvider := dataprovider.NewStorageProvider(storageOptions)
 	secretProvider := secretprovider.NewSecretProvider(secretOptions)
-	queueProvider := queueprovider.New("System.Resources", queueOptions)
+	queueProvider := queueprovider.New(queueOptions)
 
 	router := chi.NewRouter()
 	router.Use(servicecontext.ARMRequestCtx(pathBase, "global"))

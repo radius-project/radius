@@ -20,7 +20,11 @@ data:
       provider: kubernetes
 
     queueProvider:
-      provider: inmemory
+      provider: "apiserver"
+      name: "ucp"
+      apiserver:
+        context: ""
+        namespace: "radius-system"
 
     profilerProvider:
       enabled: true

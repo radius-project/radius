@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// rp package includes common packages which are shared by corerp and linkrp.
+// rp package includes common packages which are shared by corerp and portable resources rps (datastoresrp, messagingrp, daprrp).
 package rp

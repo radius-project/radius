@@ -61,7 +61,7 @@ type Options struct {
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
 
-	// ResourceType is the string that represents the resource type. May be empty of the controller
+	// ResourceType is the string that represents the resource type. May be empty if the controller
 	// does not represent a single type of resource.
 	ResourceType string
 

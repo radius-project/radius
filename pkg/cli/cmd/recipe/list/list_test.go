@@ -103,13 +103,13 @@ func Test_Run(t *testing.T) {
 		recipes := []types.EnvironmentRecipe{
 			{
 				Name:         "cosmosDB",
-				LinkType:     portableresources.MongoDatabasesResourceType,
+				ResourceType: portableresources.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			},
 			{
 				Name:            "cosmosDB-terraform",
-				LinkType:        portableresources.MongoDatabasesResourceType,
+				ResourceType:    portableresources.MongoDatabasesResourceType,
 				TemplateKind:    recipes.TemplateKindTerraform,
 				TemplatePath:    "Azure/cosmosdb/azurerm",
 				TemplateVersion: "1.1.0",

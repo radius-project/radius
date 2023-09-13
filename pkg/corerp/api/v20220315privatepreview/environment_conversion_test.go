@@ -248,8 +248,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},
 		{
-			filename: "environmentresource-invalid-linktype.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid link type: \"Applications.Dapr/pubsub\""},
+			filename: "environmentresource-invalid-resourcetype.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: "invalid resource type: \"Applications.Dapr/pubsub\""},
 		},
 		{
 			filename: "environmentresource-invalid-templatekind.json",

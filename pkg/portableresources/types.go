@@ -58,7 +58,7 @@ const (
 type RecipeData struct {
 	RecipeProperties
 
-	// APIVersion is the API version to use to perform operations on resources supported by the link.
+	// APIVersion is the API version to use to perform operations on resources.
 	// For example for Azure resources, every service has different REST API version that must be specified in the request.
 	APIVersion string
 
@@ -68,14 +68,14 @@ type RecipeData struct {
 
 // RecipeProperties represents the information needed to deploy a recipe
 type RecipeProperties struct {
-	LinkRecipe                   // LinkRecipe is the recipe of the resource to be deployed
-	LinkType      string         // LinkType represent the type of the link
-	TemplatePath  string         // TemplatePath represent the recipe location
-	EnvParameters map[string]any // EnvParameters represents the parameters set by the operator while linking the recipe to an environment
+	ResourceRecipe                // ResourceRecipe is the recipe of the resource to be deployed
+	ResourceType   string         // ResourceType represent the type of the resource
+	TemplatePath   string         // TemplatePath represent the recipe location
+	EnvParameters  map[string]any // EnvParameters represents the parameters set by the operator while linking the recipe to an environment
 }
 
-// LinkRecipe is the recipe details used to automatically deploy underlying infrastructure for a link
-type LinkRecipe struct {
+// ResourceRecipe is the recipe details used to automatically deploy underlying infrastructure for a resource.
+type ResourceRecipe struct {
 	// Name of the recipe within the environment to use
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
@@ -100,7 +100,7 @@ type RecipeContext struct {
 }
 
 // Resource contains the information needed to deploy a recipe.
-// In the case the resource is a Link, it represents the Link's id, name and type.
+// In the case the resource is a portable resource, it represents the resource's id, name and type.
 type Resource struct {
 	ResourceInfo
 	Type string `json:"type"`

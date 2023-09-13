@@ -20,8 +20,8 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
-// LinkMetadata represents internal DataModel properties common to all portable resource types.
-type LinkMetadata struct {
+// PortableResourceMetadata represents internal DataModel properties common to all portable resource types.
+type PortableResourceMetadata struct {
 	// TODO: stop using this type in CoreRP models.
 
 	// ComputedValues map is any resource values that will be needed for more operations.

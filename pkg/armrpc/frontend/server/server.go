@@ -38,13 +38,13 @@ const (
 )
 
 type Options struct {
-	ProviderNamespace string
-	Location          string
-	Address           string
-	PathBase          string
-	EnableArmAuth     bool
-	Configure         func(chi.Router) error
-	ArmCertMgr        *authentication.ArmCertManager
+	ServiceName   string
+	Location      string
+	Address       string
+	PathBase      string
+	EnableArmAuth bool
+	Configure     func(chi.Router) error
+	ArmCertMgr    *authentication.ArmCertManager
 }
 
 // New creates a frontend server that can listen on the provided address and serve requests - it creates an HTTP server with a router,
@@ -54,7 +54,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.WithLogger(options.ProviderNamespace))
+	r.Use(middleware.WithLogger)
 
 	r.NotFound(validator.APINotFoundHandler())
 	r.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
@@ -77,7 +77,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 
 	handlerFunc := otelhttp.NewHandler(
 		middleware.LowercaseURLPath(r),
-		options.ProviderNamespace,
+		options.ServiceName,
 		otelhttp.WithMeterProvider(otel.GetMeterProvider()),
 		otelhttp.WithTracerProvider(otel.GetTracerProvider()))
 
