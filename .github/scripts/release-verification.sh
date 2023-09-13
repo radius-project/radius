@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+set -ex
+
 # RELEASE_VERSION_NUMBER is the Radius release version number
 # (e.g. 0.24.0, 0.24.0-rc1)
 RELEASE_VERSION_NUMBER=$1
@@ -64,7 +66,6 @@ EXPECTED_DE_IMAGE="radius.azurecr.io/deployment-engine:${EXPECTED_TAG_VERSION}"
 APPCORE_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=applications-rp | awk '/^.*Image:/ {print $2}')
 UCP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=ucp | awk '/^.*Image:/ {print $2}')
 DE_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=bicep-de | awk '/^.*Image:/ {print $2}')
-
 
 if [[ "${APPCORE_RP_IMAGE}" != "${EXPECTED_APPCORE_RP_IMAGE}" ]]; then
     echo "Error: Applications RP image: ${APPCORE_RP_IMAGE} does not match the desired image: ${EXPECTED_APPCORE_RP_IMAGE}."
