@@ -1,6 +1,7 @@
 import radius as rad
 
 param bucketName string
+param creationTimestamp string
 param awsAccountId string
 param awsRegion string
 param registry string 
@@ -56,6 +57,7 @@ resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
     recipe: {
       name: 's3'
       parameters: {
+        creationTimestamp: creationTimestamp
         bucketName: bucketName
       }
     }
