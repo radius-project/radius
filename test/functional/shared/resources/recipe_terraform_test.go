@@ -387,12 +387,6 @@ func getSecretSuffix(resourceID, envName, appName string) (string, error) {
 		return "", err
 	}
 
-	prefix := fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.Name())
-	maxResourceNameLen := 22
-	if len(prefix) >= maxResourceNameLen {
-		prefix = prefix[:maxResourceNameLen]
-	}
-
 	hasher := sha1.New()
 	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.String()))))
 	if err != nil {
@@ -400,6 +394,5 @@ func getSecretSuffix(resourceID, envName, appName string) (string, error) {
 	}
 	hash := hasher.Sum(nil)
 
-	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%x", prefix, hash), nil
+	return fmt.Sprintf("%x", hash), nil
 }
