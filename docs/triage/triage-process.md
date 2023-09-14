@@ -12,7 +12,7 @@ The goals for triage are:
 
 ## Radius Team Responsibilities
 
-The Radius triage team is responsible for keeping the issue repository up to date with only actionable items. 
+The Radius triage team is responsible for keeping the issue repository up to date with only actionable items.
 This involves:
 
 * Labeling and adding tags to issues
