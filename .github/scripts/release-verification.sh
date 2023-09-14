@@ -17,7 +17,7 @@
 set -ex
 
 # RELEASE_VERSION_NUMBER is the Radius release version number
-# (e.g. 0.24.0, 0.24.0-rc1)
+# (e.g. 0.24, 0.24.0, 0.24.0-rc1)
 RELEASE_VERSION_NUMBER=$1
 
 if [[ -z "${RELEASE_VERSION_NUMBER}" ]]; then
@@ -25,20 +25,7 @@ if [[ -z "${RELEASE_VERSION_NUMBER}" ]]; then
     exit 1
 fi
 
-# EXPECTED_CLI_VERSION is the same as the RELEASE_VERSION_NUMBER
-EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
-
-EXPECTED_TAG_VERSION=$RELEASE_VERSION_NUMBER
-# if RELEASE_VERSION_NUMBER doesn't contain -rc, then it is a prerelease.
-# In that case, we need to set expected tag version to the major.minor of the 
-# release version number
-if [[ $RELEASE_VERSION_NUMBER != *"rc"* ]]; then
-    EXPECTED_TAG_VERSION=$(echo $RELEASE_VERSION_NUMBER | cut -d '.' -f 1,2)
-fi
-
 echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
-echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
-echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
 curl https://get.radapp.dev/tools/rad/$RELEASE_VERSION_NUMBER/linux-x64/rad --output rad
 chmod +x ./rad
@@ -46,22 +33,22 @@ chmod +x ./rad
 RELEASE_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.release')
 VERSION_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.version')
 
-if [[ "${RELEASE_FROM_RAD_VERSION}" != "${EXPECTED_CLI_VERSION}" ]]; then
-    echo "Error: Release: ${RELEASE_FROM_RAD_VERSION} from rad version does not match the desired release: ${EXPECTED_CLI_VERSION}."
+if [[ "${RELEASE_FROM_RAD_VERSION}" != "${RELEASE_VERSION_NUMBER}" ]]; then
+    echo "Error: Release: ${RELEASE_FROM_RAD_VERSION} from rad version does not match the desired release: ${RELEASE_VERSION_NUMBER}."
     exit 1
 fi
 
-if [[ "${VERSION_FROM_RAD_VERSION}" != "v${EXPECTED_CLI_VERSION}" ]]; then
-    echo "Error: Version: ${VERSION_FROM_RAD_VERSION} from rad version does not match the desired version: v${EXPECTED_CLI_VERSION}."
+if [[ "${VERSION_FROM_RAD_VERSION}" != "v${RELEASE_VERSION_NUMBER}" ]]; then
+    echo "Error: Version: ${VERSION_FROM_RAD_VERSION} from rad version does not match the desired version: v${RELEASE_VERSION_NUMBER}."
     exit 1
 fi
 
 kind create cluster
 ./rad install kubernetes
 
-EXPECTED_APPCORE_RP_IMAGE="radius.azurecr.io/applications-rp:${EXPECTED_TAG_VERSION}"
-EXPECTED_UCP_IMAGE="radius.azurecr.io/ucpd:${EXPECTED_TAG_VERSION}"
-EXPECTED_DE_IMAGE="radius.azurecr.io/deployment-engine:${EXPECTED_TAG_VERSION}"
+EXPECTED_APPCORE_RP_IMAGE="radius.azurecr.io/applications-rp:${RELEASE_VERSION_NUMBER}"
+EXPECTED_UCP_IMAGE="radius.azurecr.io/ucpd:${RELEASE_VERSION_NUMBER}"
+EXPECTED_DE_IMAGE="radius.azurecr.io/deployment-engine:${RELEASE_VERSION_NUMBER}"
 
 APPCORE_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=applications-rp | awk '/^.*Image:/ {print $2}')
 UCP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=ucp | awk '/^.*Image:/ {print $2}')
