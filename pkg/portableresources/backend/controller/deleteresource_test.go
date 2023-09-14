@@ -122,7 +122,12 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			if tt.getErr == nil {
 				eng.EXPECT().
-					Delete(gomock.Any(), recipeData, status.OutputResources).
+					Delete(gomock.Any(), engine.DeleteOptions{
+						BaseOptions: engine.BaseOptions{
+							Recipe: recipeData,
+						},
+						OutputResources: status.OutputResources,
+					}).
 					Return(tt.engDelErr).
 					Times(1)
 				if tt.engDelErr == nil {

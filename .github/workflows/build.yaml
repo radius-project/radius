@@ -351,7 +351,7 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} | helm registry login -u ${{ github.actor }} --password-stdin ${{ env.OCI_REGISTRY }}
           helm push ${{ env.ARTIFACT_DIR }}/${{ env.HELM_PACKAGE_DIR }}/radius-${{ env.CHART_VERSION }}.tgz oci://${{ env.OCI_REGISTRY }}/${{ env.OCI_REPOSITORY }}
   publish_release:
-    name: Publish rad CLI binaries
+    name: Publish GitHub Release
     needs: [ 'build' ]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')

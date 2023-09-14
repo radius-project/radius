@@ -50,7 +50,7 @@ func (r *DaprSecretStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type of the DaprSecretStore resource.
-func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
+func (r *DaprSecretStore) ResourceTypeName() string {
 	return portableresources.DaprSecretStoresResourceType
 }
 
@@ -67,9 +67,9 @@ type DaprSecretStoreProperties struct {
 
 // Recipe returns the Recipe from the DaprSecretStore Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (daprSecretStore *DaprSecretStore) Recipe() *portableresources.ResourceRecipe {
-	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
+func (r *DaprSecretStore) Recipe() *portableresources.ResourceRecipe {
+	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
-	return &daprSecretStore.Properties.Recipe
+	return &r.Properties.Recipe
 }

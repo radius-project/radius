@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/to"
@@ -124,17 +125,20 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 
 func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	if environment.Properties.Recipes == nil {
-		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+		err := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	recipeName := recipe.Name
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
-		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	definition := &recipes.EnvironmentDefinition{

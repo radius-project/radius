@@ -54,7 +54,7 @@ func (r *RabbitMQQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
-func (rabbitmq *RabbitMQQueue) ResourceTypeName() string {
+func (r *RabbitMQQueue) ResourceTypeName() string {
 	return portableresources.RabbitMQQueuesResourceType
 }
 
@@ -94,8 +94,8 @@ func (r *RabbitMQQueue) Recipe() *portableresources.ResourceRecipe {
 }
 
 // VerifyInputs checks if the queue is provided when resourceProvisioning is set to manual and returns an error if not.
-func (rabbitmq *RabbitMQQueue) VerifyInputs() error {
-	properties := rabbitmq.Properties
+func (r *RabbitMQQueue) VerifyInputs() error {
+	properties := r.Properties
 	msgs := []string{}
 	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if properties.Queue == "" {
