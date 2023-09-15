@@ -84,7 +84,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
 			logger := ucplog.FromContextOrDiscard(ctx)
-			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encounted error while processing %s ", recipeError.ErrorDetails.Target))
+			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
 			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &store.Object{
