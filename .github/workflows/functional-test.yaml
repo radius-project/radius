@@ -417,7 +417,6 @@ jobs:
           EOF
       - name: Install dapr into cluster
         run: |
-          # retry
           for attempt in 1 2 3 4 5; do
             wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
             dapr init -k --wait --timeout 600
