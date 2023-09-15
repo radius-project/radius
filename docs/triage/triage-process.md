@@ -43,7 +43,7 @@ As a member of the triage team you are responsible for keeping the issue reposit
 
 ### Responsibilities of user
 
-As an issue creator, you are responsible for creating an issue using the [appropriate template](https://github.com/radius-project/radius/issues/new/choose) and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue should be included so we can verify the product behavior. You will also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
+As an issue creator, you are responsible for creating an issue using the [appropriate template](https://github.com/radius-project/radius/issues/new/choose) and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue must be included so we can verify the product behavior. You will also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
 
 ## When Do We Triage?
 
@@ -66,7 +66,7 @@ Issues are closed for the following reasons:
 | It's a duplicate of another issue| `duplicate` |
 | Behavior is as designed| `by-design` |
 | Issue is a question &#185; | `question` |
-| Issue is not related to the goals of the project so is unactionable | `off-topic` |
+| Issue is not related to the goals of the project so is unactionable | `off-topic` ||
 | Issue cannot be reproduced based on information given | `not-reproducible` |
 | Feature request is out of scope | `out-of-scope` |
 
@@ -108,13 +108,13 @@ We assign the `important` label to issues that:
 
 ## Managing Feature Requests
 
-Feature requests are used as a means of communication between the members of the community. Thus, in principle, they could be kept open no matter what will happen to the feature they describe. Unfortunately, this makes it hard to understand what has realistic chances to ever make it into the repository. Therefore, feature requests that cannot be addressed are closed with the `out-of-scope` label. If the feature request meets the goals of the project and could be implemented by the community, the `help wanted` label is assigned.
+Feature requests are used as a means of communication between the members of the community. Thus, in principle, they could be kept open no matter what will happen to the feature they describe. Unfortunately, this makes it hard to understand what has realistic chances to ever make it into the repository. Therefore, feature requests that cannot be addressed are closed with the `out-of-scope` label. If the feature request meets the goals of the project and could be implemented by the community, the `community` label is assigned.
 
 If you are the author of a feature request you might not like that we close or don't plan to address your request. It might even feel like a slap in your face. We understand that. All of us have been there—in this project or others we have contributed to. So, be assured, we love all of your input. Don't take personal offense when we close it. If you feel your feature request deserves to stay open, improve your use case and ping us or gather more support within the community.
 
 This is our decision making tree.
 
-![Radius Issue Review Flow](./images/triage_review.jpg "Radius Issue Review Flow")
+![Radius Issue Review Flow](./images/radius_review_new.jpg "Radius Issue Review Flow")
 
 ## Won't Fix Bugs
 
