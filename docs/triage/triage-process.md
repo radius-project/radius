@@ -27,7 +27,7 @@ During a triage session, all issues older than 6 months will be reviewed and clo
 
 ## User Responsibility
 
-As an issue creator, you are responsible for creating an issue using the appropriate template and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue must be included so we can verify the product behavior. You will also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
+As an issue creator, you are responsible for creating an issue using the appropriate template and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue must be included so we can verify the product behavior. You should also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
 
 ## Triaging Flow
 
