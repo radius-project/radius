@@ -12,6 +12,9 @@ We welcome and encourage users to contribute to the Radius open-source project i
 
 * Submit pull requests: Once you've made changes or improvements to your forked repository, [submit a pull request](./contributing-pull-requests/) to the main project. Provide clear descriptions of the purpose and benefits of your changes.
 
+* Help with code reviews: Give feedback and help with changes made by others 
+* through [code reviews](./contributing-code/contributing-code-reviewing/).
+
 * Engage with the community: Participate in discussions, forums, and chat channels related to Radius. Seek guidance, offer help to others, and build connections within the community.
 
 * Test and report bugs: Assist in testing Radius by [identifying and reporting bugs](./contributing-issues/). Detailed bug reports help us address issues promptly and enhance the software's quality.
