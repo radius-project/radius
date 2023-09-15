@@ -26,7 +26,6 @@ package resource_test
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -39,6 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test/functional"
@@ -382,17 +382,22 @@ func testSecretDeletion(t *testing.T, ctx context.Context, test shared.RPTest, a
 }
 
 func getSecretSuffix(resourceID, envName, appName string) (string, error) {
-	parsedResourceID, err := resources.Parse(resourceID)
+	envID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/" + envName
+	appID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/" + appName
+
+	resourceRecipe := recipes.ResourceMetadata{
+		EnvironmentID: envID,
+		ApplicationID: appID,
+		ResourceID:    resourceID,
+		Parameters:    nil,
+	}
+
+	backend := backends.NewKubernetesBackend()
+	secretMap, err := backend.BuildBackend(&resourceRecipe)
 	if err != nil {
 		return "", err
 	}
+	kubernetes := secretMap["kubernetes"].(map[string]any)
 
-	hasher := sha1.New()
-	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.String()))))
-	if err != nil {
-		return "", err
-	}
-	hash := hasher.Sum(nil)
-
-	return fmt.Sprintf("%x", hash), nil
+	return kubernetes["secret_suffix"].(string), nil
 }

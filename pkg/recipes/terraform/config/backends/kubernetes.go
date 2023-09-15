@@ -46,16 +46,16 @@ func NewKubernetesBackend() Backend {
 // in-cluster config is not present.
 // https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
 func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error) {
-	secretSuffix, err := generateSecretSuffix(resourceRecipe)
+	secretSuffix, err := generateSecret(resourceRecipe)
 	if err != nil {
 		return nil, err
 	}
 	return generateKubernetesBackendConfig(secretSuffix)
 }
 
-// generateSecretSuffix returns a unique string from the resourceID, environmentID, and applicationID
+// generateSecret returns a unique string from the resourceID, environmentID, and applicationID
 // which is used as key for kubernetes secret in defining terraform backend.
-func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
+func generateSecret(resourceRecipe *recipes.ResourceMetadata) (string, error) {
 	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
 	if err != nil {
 		return "", err

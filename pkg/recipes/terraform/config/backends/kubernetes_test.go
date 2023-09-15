@@ -100,7 +100,7 @@ func Test_GenerateSecretSuffix(t *testing.T) {
 	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, resourceRecipe.ResourceID))))
 	require.NoError(t, err)
 	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
-	secret, err := generateSecretSuffix(&resourceRecipe)
+	secret, err := generateSecret(&resourceRecipe)
 	require.NoError(t, err)
 	require.Equal(t, expSecret, secret)
 }
@@ -108,20 +108,20 @@ func Test_GenerateSecretSuffix(t *testing.T) {
 func Test_GenerateSecretSuffix_invalid_resourceid(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	resourceRecipe.ResourceID = "invalid"
-	_, err := generateSecretSuffix(&resourceRecipe)
+	_, err := generateSecret(&resourceRecipe)
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
 
 func Test_GenerateSecretSuffix_invalid_envid(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	resourceRecipe.EnvironmentID = "invalid"
-	_, err := generateSecretSuffix(&resourceRecipe)
+	_, err := generateSecret(&resourceRecipe)
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
 
 func Test_GenerateSecretSuffix_invalid_appid(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	resourceRecipe.ApplicationID = "invalid"
-	_, err := generateSecretSuffix(&resourceRecipe)
+	_, err := generateSecret(&resourceRecipe)
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
