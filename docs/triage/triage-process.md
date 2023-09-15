@@ -46,7 +46,7 @@ Issues are closed for the following reasons:
 | It's a duplicate of another issue| `duplicate` |
 | Behavior is as designed| `by-design` |
 | Issue ia a question <sup>1</sup> | `question` |
-| Issue is not related to the goals of the project so is unactionable | `off-topic` ||
+| Issue is not related to the goals of the project so is unactionable | `off-topic` |
 | Issue cannot be reproduced based on information given | `not-reproducible` |
 | Feature request is out of scope | `out-of-scope` |
 
