@@ -10,6 +10,7 @@ You will save us (the maintainers) time if you want to use the right template.
 
 - Choose 'Bug Report' if some functionality in Radius is broken, crashing, or not working as advertised.
 - Choose 'Feature Request' if you have new ideas for us, or think some existing functionality should work differently.
+- Choose 'Engineering' if you have suggestions for improving the engineering system, build, ci/cd pipelines or processes.
 - Choose 'Open a blank issue' (at the bottom) if neither of those is a good fit.
 
 ### Focus on the repro steps

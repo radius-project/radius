@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -29,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update portable resources.
@@ -81,6 +83,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
+			logger := ucplog.FromContextOrDiscard(ctx)
+			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
 			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
 			update := &store.Object{
