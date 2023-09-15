@@ -27,6 +27,7 @@ import (
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // NewEngine creates a new Engine to deploy recipe.
@@ -50,11 +51,13 @@ type engine struct {
 // configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
 // an error if one occurs.
 func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	executionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
 	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
+		logger.Error(err, fmt.Sprintf("failed to execute recipe %s ", opts.Recipe.Name))
 		result = metrics.FailedOperationState
 		if recipes.GetRecipeErrorDetails(err) != nil {
 			result = recipes.GetRecipeErrorDetails(err).Code
