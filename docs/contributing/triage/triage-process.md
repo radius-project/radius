@@ -114,7 +114,7 @@ If you are the author of a feature request you might not like that we close or d
 
 This is our decision making tree.
 
-![Radius Issue Review Flow](./images/radius_review_new.jpg "Radius Issue Review Flow")
+![Radius Issue Review Flow](./images/triage_review.jpg "Radius Issue Review Flow")
 
 ## Won't Fix Bugs
 
