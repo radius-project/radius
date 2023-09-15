@@ -98,10 +98,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-
 			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
 		}
-
 		return ctrl.Result{}, err
 	}
 
