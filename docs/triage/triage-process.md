@@ -31,7 +31,7 @@ As a member of the triage team you are responsible for keeping the issue reposit
   At least once a month, a deep triage session will occur where you will review all issues older than 6 months to determine if they are still relevant, have the needed information to make progress and/or should be reprioritized based on new information. You will review existing labels and update them where appropriate. Any issue without a clear justification for being kept in the queue will be closed with notes in the issue as to why the decision was made. During a normal triage session, you will review all issues that are not assigned to a feature team and/or in the backlog.
 
 * **Issue Verification**: reproducing reported bugs to determine if the issue is valid and how soon it must be fixed  
- 
+
    If a bug cannot be reproduced, we will either close it with an explanation of the steps attempted to reproduce or tag it with `needs more info` to get more detail on repro steps and kept in the triage queue. If a bug can be reproduced but we decide the fix is too risky, we will update the description to include details that impacted the decision and the issue will be closed.
 
 * **Issue Management**: assigning labels and tags to issues, verifying issue priority, determining feature team assignment and appropriate target milestone or backlog  
@@ -65,12 +65,12 @@ Issues are closed for the following reasons:
 | Needed information not received within 7 days| `needs more info` |
 | It's a duplicate of another issue| `duplicate` |
 | Behavior is as designed| `by-design` |
-| Issue ia a question <sup>1</sup> | `question` |
+| Issue is a question &#185; | `question` |
 | Issue is not related to the goals of the project so is unactionable | `off-topic` ||
 | Issue cannot be reproduced based on information given | `not-reproducible` |
 | Feature request is out of scope | `out-of-scope` |
 
-<sup>1</sup> All questions will be redirected to our [Discord server](https://discord.gg/SRG3ePMKNy)
+&#185; All questions will be redirected to our [Discord server](https://discord.gg/SRG3ePMKNy)
 
 ## Requesting Information
 
@@ -119,10 +119,6 @@ This is our decision making tree.
 ## Won't Fix Bugs
 
 Bugs will be closed as `wont-fix` if there is a negative cost-benefit to the fix. For example, if the fix is so complex that despite all the tests there is a risk of regression for many users, fixing is not a reasonable choice. When the bug is closed as `wont-fix` there will be a clear explanation as to why the decision was made.
-
-
-
-
 
 ## Getting Started as a Triage Team Member
 
