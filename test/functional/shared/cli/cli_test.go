@@ -441,8 +441,10 @@ func Test_CLI(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default-kubernetes-cli": {
-						validation.NewK8sPodForResource(name, "containera"),
-						validation.NewK8sPodForResource(name, "containerb"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containera",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerb",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -481,8 +483,10 @@ func Test_CLI_JSON(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default-kubernetes-cli-json": {
-						validation.NewK8sPodForResource(name, "containera-json"),
-						validation.NewK8sPodForResource(name, "containerb-json"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containera-json",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerb-json",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -521,8 +525,10 @@ func Test_CLI_Delete(t *testing.T) {
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
 				"default-kubernetes-cli-with-resources": {
-					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
-					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
+					validation.NewK8sPodForResource(validation.SourceRadius, "containera-app-with-resources",
+						"Applications.Core/containers", appName),
+					validation.NewK8sPodForResource(validation.SourceRadius, "containerb-app-with-resources",
+						"Applications.Core/containers", appName),
 				},
 			},
 		})
@@ -555,8 +561,10 @@ func Test_CLI_Delete(t *testing.T) {
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
 				"default-kubernetes-cli-with-resources": {
-					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
-					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
+					validation.NewK8sPodForResource(validation.SourceRadius, "containera-app-with-resources",
+						"Applications.Core/containers", appName),
+					validation.NewK8sPodForResource(validation.SourceRadius, "containerb-app-with-resources",
+						"Applications.Core/containers", appName),
 				},
 			},
 		})
@@ -615,8 +623,10 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default-kubernetes-cli-params": {
-						validation.NewK8sPodForResource(name, "containerc"),
-						validation.NewK8sPodForResource(name, "containerd"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerc",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerd",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

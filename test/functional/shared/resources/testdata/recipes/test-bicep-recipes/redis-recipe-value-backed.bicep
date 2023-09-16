@@ -43,6 +43,11 @@ resource redis 'apps/Deployment@v1' = {
 resource svc 'core/Service@v1' = {
   metadata: {
     name: 'redis-${uniqueString(context.resource.id)}'
+    labels: {
+      'radius.dev/application': context.application.name
+      'radius.dev/resource': context.resource.name
+      'radius.dev/resource-type': 'applications.datastores-rediscaches'
+    }
   }
   spec: {
     type: 'ClusterIP'

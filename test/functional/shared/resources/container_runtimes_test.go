@@ -60,7 +60,8 @@ func Test_Container_YAMLManifest(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-manifest"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-manifest",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -126,7 +127,8 @@ func Test_Container_YAMLManifest_SideCar(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-sidecar"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-sidecar",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -172,7 +174,8 @@ func Test_Container_pod_patching(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-podpatch"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-podpatch",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

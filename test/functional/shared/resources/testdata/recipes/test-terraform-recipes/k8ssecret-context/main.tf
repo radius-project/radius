@@ -16,6 +16,7 @@ resource "kubernetes_secret" "recipe-context" {
     labels = {
       "radius.dev/application" = var.context.application.name
       "radius.dev/resource" =  var.context.resource.name
+      "radius.dev/resource-type" = "applications.core-extenders"
     }
   }
 

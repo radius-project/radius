@@ -92,13 +92,18 @@ func Test_Gateway(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "http-gtwy-front-ctnr"),
-						validation.NewK8sPodForResource(name, "http-gtwy-back-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-front-rte"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-back-rte"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-back-rte"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "http-gtwy-front-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-front-rte",
+							"Applications.Core/httpRoutes", name),
+
+						validation.NewK8sPodForResource(validation.SourceRadius, "http-gtwy-back-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-back-rte",
+							"Applications.Core/httpRoutes", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-gtwy",
+							"Applications.Core/gateways", name),
 					},
 				},
 			},
@@ -179,13 +184,26 @@ func Test_GatewayDNS(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "frontendcontainerdns"),
-						validation.NewK8sPodForResource(name, "backendcontainerdns"),
-						validation.NewK8sServiceForResource(name, "frontendcontainerdns"),
-						validation.NewK8sServiceForResource(name, "backendcontainerdns"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy-dns"),
-						validation.NewK8sHTTPProxyForResource(name, "frontendcontainerdns"),
-						validation.NewK8sHTTPProxyForResource(name, "backendcontainerdns"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "frontendcontainerdns",
+							"Applications.Core/containers", name),
+						// In bicep file there is only the container. How would HTTPProxy be created?
+						validation.NewK8sServiceForResource(validation.SourceRadius, "frontendcontainerdns",
+							"Applications.Core/httpRoutes", name),
+						// How would gateway be created? If the container has a specific property, then the gateway is created?
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "frontendcontainerdns",
+							"Applications.Core/gateways", name),
+
+						validation.NewK8sPodForResource(validation.SourceRadius, "backendcontainerdns",
+							"Applications.Core/containers", name),
+						// In bicep file there is only the container. How would HTTPProxy be created?
+						validation.NewK8sServiceForResource(validation.SourceRadius, "backendcontainerdns",
+							"Applications.Core/httpRoutes", name),
+						// How would gateway be created? If the container has a specific property, then the gateway is created?
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "backendcontainerdns",
+							"Applications.Core/gateways", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-gtwy-dns",
+							"Applications.Core/gateways", name),
 					},
 				},
 			},
@@ -258,10 +276,16 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ssl-gtwy-front-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "ssl-gtwy-front-rte"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ssl-gtwy-front-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "ssl-gtwy-front-rte",
+							"Applications.Core/httpRoutes", name),
+						// Would an HTTPRoute also create a gateway?
+						validation.NewK8sServiceForResource(validation.SourceRadius, "ssl-gtwy-front-rte",
+							"Applications.Core/gateways", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "ssl-gtwy-gtwy",
+							"Applications.Core/gateways", name),
 					},
 				},
 			},
@@ -334,11 +358,18 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "tls-gtwy-front-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "tls-gtwy-front-rte"),
-						validation.NewK8sSecretForResource(name, "tls-gtwy-cert"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "tls-gtwy-front-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "tls-gtwy-gtwy",
+							"Applications.Core/gateways", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "tls-gtwy-front-rte",
+							"Applications.Core/httpRoutes", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "tls-gtwy-front-rte",
+							"Applications.Core/gateways", name),
+
+						validation.NewK8sSecretForResource(validation.SourceRadius, "tls-gtwy-cert",
+							"Applications.Core/secretStores", name),
 					},
 				},
 			},

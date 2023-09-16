@@ -21,6 +21,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,79 +56,110 @@ type K8sObjectSet struct {
 	Namespaces map[string][]K8sObject
 }
 
+type Source string
+
+const (
+	SourceRadius           Source = "radius"
+	SourceRecipeEngine     Source = "recipe-engine"
+	SourceK8sExtensibility Source = "k8s-extensibility"
+)
+
 type K8sObject struct {
 	GroupVersionResource schema.GroupVersionResource
 	Labels               map[string]string
 	Kind                 string
-	SkipLabelValidation  bool
 	ResourceName         string
+
+	// Source is used to indicate using what the resource was created by.
+	// A resource can be created using Radius RP, Recipe Engine or K8s Extensibility.
+	Source Source
 }
 
-// NewK8sPodForResource creates a new K8sObject with Kind set to "Pod" and the selector labels for the pod
-// set to the given application and name.
-func NewK8sPodForResource(application string, name string) K8sObject {
-	return K8sObject{
-		// NOTE: we use the selector labels here because the selector labels are intended
-		// to be determininistic. We might add things to the descriptive labels that are NON deterministic.
+// NewK8sPodForResource creates a new K8sObject with Kind set to "Pod" and the ResourceName set to the name provided.
+// If the resource is created by Radius or Recipe Engine, the object will be labeled with the Radius specific labels.
+func NewK8sPodForResource(source Source, resourceName, resourceType, appName string) K8sObject {
+	k8sObject := K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
 			Version:  "v1",
 			Resource: "pods",
 		},
-		Kind:   "Pod",
-		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+		Kind:         "Pod",
+		ResourceName: resourceName,
 	}
+
+	if source == SourceRadius || source == SourceRecipeEngine {
+		// NOTE: We use the selector labels here because the selector labels are intended to be determininistic.
+		// We might add things to the descriptive labels that are NON deterministic.
+		k8sObject.Labels = map[string]string{
+			kuberneteskeys.LabelRadiusApplication:  kuberneteskeys.NormalizeResourceName(appName),
+			kuberneteskeys.LabelRadiusResource:     kuberneteskeys.NormalizeResourceName(resourceName),
+			kuberneteskeys.LabelRadiusResourceType: strings.ToLower(kuberneteskeys.ConvertResourceTypeToLabelValue(resourceType)),
+		}
+	}
+
+	return k8sObject
 }
 
-// ValidateLabels creates a copy of the K8sObject and sets the SkipLabelValidation field based on the validate parameter.
-func (k K8sObject) ValidateLabels(validate bool) K8sObject {
-	copy := k
-	copy.SkipLabelValidation = !validate
-	return copy
-}
-
-// NewK8sHTTPProxyForResource creates a K8sObject for a HttpProxy with the Labels set to the application and name provided.
-func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
-	return K8sObject{
+// NewK8sHTTPProxyForResource creates a new K8sObject with Kind set to "HTTPProxy" and the ResourceName set to the name provided.
+// If the resource is created by Radius or Recipe Engine, the object will be labeled with the Radius specific labels.
+// If the resource is of type "Applications.Core/gateways" then an object with Kind HTTPProxy will be created.
+func NewK8sHTTPProxyForResource(source Source, resourceName, resourceType, appName string) K8sObject {
+	k8sObject := K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "projectcontour.io",
 			Version:  "v1",
 			Resource: "httpproxies",
 		},
-		Kind:   "HTTPProxy",
-		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+		Kind:         "HTTPProxy",
+		ResourceName: resourceName,
 	}
+
+	if source == SourceRadius || source == SourceRecipeEngine {
+		// NOTE: We use the selector labels here because the selector labels are intended to be determininistic.
+		// We might add things to the descriptive labels that are NON deterministic.
+		k8sObject.Labels = map[string]string{
+			kuberneteskeys.LabelRadiusApplication:  kuberneteskeys.NormalizeResourceName(appName),
+			kuberneteskeys.LabelRadiusResource:     kuberneteskeys.NormalizeResourceName(resourceName),
+			kuberneteskeys.LabelRadiusResourceType: strings.ToLower(kuberneteskeys.ConvertResourceTypeToLabelValue(resourceType)),
+		}
+	}
+
+	return k8sObject
 }
 
-// NewK8sServiceForResource creates a new K8sObject for a service with the Labels set to the application and name.
-func NewK8sServiceForResource(application string, name string) K8sObject {
-	return K8sObject{
+// NewK8sServiceForResource creates a new K8sObject with Kind set to "Service" and the ResourceName set to the name provided.
+// If the resource is created by Radius or Recipe Engine, the object will be labeled with the Radius specific labels.
+// If the resource is of type "Applications.Core/httpRoutes" then an object with Kind Service will be created.
+// If the resource is of type "Applications.Core/containers" then an object with Kind Service may be created along with an object with Kind Pod.
+func NewK8sServiceForResource(source Source, resourceName, resourceType, appName string) K8sObject {
+	k8sObject := K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
 			Version:  "v1",
 			Resource: "services",
 		},
-		Kind:   "Service",
-		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+		Kind:         "Service",
+		ResourceName: resourceName,
 	}
+
+	if source == SourceRadius || source == SourceRecipeEngine {
+		// NOTE: We use the selector labels here because the selector labels are intended to be determininistic.
+		// We might add things to the descriptive labels that are NON deterministic.
+		k8sObject.Labels = map[string]string{
+			kuberneteskeys.LabelRadiusApplication:  kuberneteskeys.NormalizeResourceName(appName),
+			kuberneteskeys.LabelRadiusResource:     kuberneteskeys.NormalizeResourceName(resourceName),
+			kuberneteskeys.LabelRadiusResourceType: strings.ToLower(kuberneteskeys.ConvertResourceTypeToLabelValue(resourceType)),
+		}
+	}
+
+	return k8sObject
 }
 
-// NewK8sSecretForResource creates a K8sObject for a secret with the Labels set to the application and name.
-func NewK8sSecretForResource(application string, name string) K8sObject {
-	return K8sObject{
-		GroupVersionResource: schema.GroupVersionResource{
-			Group:    "",
-			Version:  "v1",
-			Resource: "secrets",
-		},
-		Kind:   "Secret",
-		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
-	}
-}
-
-// NewK8sSecretForResourceWithResourceName creates a K8sObject for a secret with the Labels set to the application and name.
-func NewK8sSecretForResourceWithResourceName(resourceName string) K8sObject {
-	return K8sObject{
+// NewK8sSecretForResource creates a new K8sObject with Kind set to "Secret" and the ResourceName set to the name provided.
+// If the resource is created by Radius or Recipe Engine, the object will be labeled with the Radius specific labels.
+func NewK8sSecretForResource(source Source, resourceName, resourceType, appName string) K8sObject {
+	k8sObject := K8sObject{
 		GroupVersionResource: schema.GroupVersionResource{
 			Group:    "",
 			Version:  "v1",
@@ -136,6 +168,44 @@ func NewK8sSecretForResourceWithResourceName(resourceName string) K8sObject {
 		Kind:         "Secret",
 		ResourceName: resourceName,
 	}
+
+	if source == SourceRadius || source == SourceRecipeEngine {
+		// NOTE: We use the selector labels here because the selector labels are intended to be determininistic.
+		// We might add things to the descriptive labels that are NON deterministic.
+		k8sObject.Labels = map[string]string{
+			kuberneteskeys.LabelRadiusApplication:  kuberneteskeys.NormalizeResourceName(appName),
+			kuberneteskeys.LabelRadiusResource:     kuberneteskeys.NormalizeResourceName(resourceName),
+			kuberneteskeys.LabelRadiusResourceType: strings.ToLower(kuberneteskeys.ConvertResourceTypeToLabelValue(resourceType)),
+		}
+	}
+
+	return k8sObject
+}
+
+// NewK8sDaprComponent creates a new K8sObject with Kind set to "Component" and the ResourceName set to the name provided.
+// If the resource is created by Radius or Recipe Engine, the object will be labeled with the Radius specific labels.
+func NewK8sDaprComponent(source Source, resourceName, resourceType, appName string) K8sObject {
+	k8sObject := K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "dapr.io",
+			Version:  "v1alpha1",
+			Resource: "components",
+		},
+		Kind:         "Component",
+		ResourceName: resourceName,
+	}
+
+	if source == SourceRadius || source == SourceRecipeEngine {
+		// NOTE: We use the selector labels here because the selector labels are intended to be determininistic.
+		// We might add things to the descriptive labels that are NON deterministic.
+		k8sObject.Labels = map[string]string{
+			kuberneteskeys.LabelRadiusApplication:  kuberneteskeys.NormalizeResourceName(appName),
+			kuberneteskeys.LabelRadiusResource:     kuberneteskeys.NormalizeResourceName(resourceName),
+			kuberneteskeys.LabelRadiusResourceType: strings.ToLower(kuberneteskeys.ConvertResourceTypeToLabelValue(resourceType)),
+		}
+	}
+
+	return k8sObject
 }
 
 // ValidateDeploymentsRunning checks if the expected deployments have been created in the given namespace and logs any
@@ -341,7 +411,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
 
-					validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
+					validated = validated && compareActualAndExpectedResources(expectedInNamespace, deployedResources.Items)
 
 				}
 			case <-ctx.Done():
@@ -532,22 +602,24 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 	}
 }
 
-func matchesActualLabels(expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
+func compareActualAndExpectedResources(expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {
-		if expectedResource.SkipLabelValidation && expectedResource.Kind != "Secret" {
-			continue
-		}
 		resourceExists := false
 		for idx, actualResource := range actualResources {
-			if expectedResource.SkipLabelValidation {
+			if expectedResource.Source == SourceK8sExtensibility {
+				// If the resource is created by K8s Extensibility, we don't need to check the labels.
+				// We just need to check the Resource Name.
 				if actualResource.GetName() == expectedResource.ResourceName {
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 					break
 				}
-			} else {
+			}
+
+			if expectedResource.Source == SourceRadius || expectedResource.Source == SourceRecipeEngine {
+				// If the resource is created by Radius or Recipe Engine, we need to check the labels.
 				if labelsEqual(expectedResource.Labels, actualResource.GetLabels()) {
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
@@ -555,6 +627,7 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 				}
 			}
 		}
+
 		if !resourceExists {
 			remaining = append(remaining, expectedResource)
 		}
@@ -563,6 +636,7 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 	for _, remainingResource := range remaining {
 		log.Printf("Failed to validate resource of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
 	}
+
 	return len(remaining) == 0
 }
 
@@ -584,25 +658,15 @@ func matchesExpectedLabels(expectedPods []K8sObject, labels map[string]string) *
 	return nil
 }
 
+// We are looking for the equality of three labels here:
+// "radius.dev/application"
+// "radius.dev/resource"
+// "radius.dev/resource-type"
 func labelsEqual(expectedLabels map[string]string, actualLabels map[string]string) bool {
 	for key, value := range expectedLabels {
-
 		if actualLabels[key] != value {
 			return false
 		}
 	}
 	return true
-}
-
-// NewDaprComponent creates a K8sObject for a Dapr component with the Labels set to the application and name.
-func NewDaprComponent(application string, name string) K8sObject {
-	return K8sObject{
-		GroupVersionResource: schema.GroupVersionResource{
-			Group:    "dapr.io",
-			Version:  "v1alpha1",
-			Resource: "components",
-		},
-		Kind:   "Component",
-		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
-	}
 }

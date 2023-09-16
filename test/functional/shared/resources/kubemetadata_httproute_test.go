@@ -73,8 +73,10 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-rte-kme-ctnr"),
-						validation.NewK8sServiceForResource(name, "ctnr-rte-kme"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-rte-kme-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "ctnr-rte-kme",
+							"Applications.Core/httpRoutes", name),
 					},
 				},
 			},

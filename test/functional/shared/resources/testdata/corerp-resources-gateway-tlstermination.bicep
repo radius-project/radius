@@ -22,6 +22,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
+// This is not being referenced by any other resource. Should it be deleted?
 resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   name: 'tls-gtwy-gtwy'
   properties: {

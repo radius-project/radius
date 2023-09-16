@@ -55,11 +55,10 @@ func Test_DaprSecretStore_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
-
-						// Not sure why we skip validating the labels
-						validation.NewDaprComponent(name, "gnrc-scs-manual").
-							ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRadius, "gnrc-scs-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sDaprComponent(validation.SourceRadius, "gnrc-scs-manual",
+							"Applications.Dapr/secretStores", name),
 					},
 				},
 			},
@@ -104,11 +103,10 @@ func Test_DaprSecretStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr-recipe").
-							ValidateLabels(false),
-
-						validation.NewDaprComponent(name, "gnrc-scs-recipe").
-							ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRadius, "gnrc-scs-ctnr-recipe",
+							"Applications.Core/containers", name),
+						validation.NewK8sDaprComponent(validation.SourceRecipeEngine, "gnrc-scs-recipe",
+							"Applications.Dapr/secretStores", name),
 					},
 				},
 			},

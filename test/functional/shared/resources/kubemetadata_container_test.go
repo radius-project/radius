@@ -67,7 +67,8 @@ func Test_KubeMetadataContainer(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "corerp-kmd-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "corerp-kmd-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

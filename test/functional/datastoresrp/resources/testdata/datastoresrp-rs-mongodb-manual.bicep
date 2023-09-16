@@ -60,7 +60,7 @@ resource mongoContainer 'Applications.Core/containers@2023-10-01-preview' = {
   }
 }
 
-resource mongoRoute 'Applications.Core/httproutes@2023-10-01-preview' = {
+resource mongoRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'mdb-us-rte'
   location: 'global'
   properties: {

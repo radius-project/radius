@@ -56,14 +56,14 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-manual-app-ctnr"),
-						validation.NewK8sPodForResource(name, "dpsb-manual-redis").
-							ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dpsb-manual-redis").
-							ValidateLabels(false),
-
-						validation.NewDaprComponent(name, "dpsb-manual").
-							ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRadius, "dpsb-manual-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "dpsb-manual-redis",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceK8sExtensibility, "dpsb-manual-redis",
+							"Applications.Datastores/redisCaches", name),
+						validation.NewK8sDaprComponent(validation.SourceRadius, "dpsb-manual",
+							"Applications.Dapr/pubSubBrokers", name),
 					},
 				},
 			},
@@ -113,11 +113,10 @@ func Test_DaprPubSubBroker_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dpsb-recipe-ctnr").
-							ValidateLabels(false),
-
-						validation.NewDaprComponent(name, "dpsb-recipe").
-							ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRadius, "dpsb-recipe-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sDaprComponent(validation.SourceRecipeEngine, "dpsb-recipe",
+							"Applications.Dapr/pubSubBrokers", name),
 					},
 				},
 			},

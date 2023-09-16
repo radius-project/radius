@@ -66,9 +66,12 @@ func Test_MongoDB_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "mdb-us-ctnr").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "mdb-us-rte").ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mdb-us-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mdb-us-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "mdb-us-rte",
+							"Applications.Core/httpRoutes", name),
 					},
 				},
 			},
@@ -114,7 +117,8 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mongodb-app-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "mongodb-app-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -170,7 +174,8 @@ func Test_MongoDB_RecipeParameters(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-param-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "mdb-param-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -225,7 +230,8 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mdb-ctx-ctnr").ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "mdb-ctx-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

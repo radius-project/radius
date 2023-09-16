@@ -59,7 +59,12 @@ resource rabbitmq 'apps/Deployment@v1' = {
 
 resource svc 'core/Service@v1' = {
   metadata: {
-    name: 'rabbitmq-${uniqueString(context.resource.id)}'
+    name: context.resource.name
+    labels: {
+      'radius.dev/application': context.application.name
+      'radius.dev/resource': context.resource.name
+      'radius.dev/resource-type': 'applications.messaging-rabbitmqqueues'
+    }
   }
   spec: {
     type: 'ClusterIP'

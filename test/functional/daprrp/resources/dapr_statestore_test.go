@@ -56,16 +56,17 @@ func Test_DaprStateStore_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-sts-manual-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "dapr-sts-manual-ctnr",
+							"Applications.Core/containers", name),
 
 						// Deployed as supporting resources using Kubernetes Bicep extensibility.
-						validation.NewK8sPodForResource(name, "dapr-sts-manual-redis").
-							ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "dapr-sts-manual-redis").
-							ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceK8sExtensibility, "dapr-sts-manual-redis",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceK8sExtensibility, "dapr-sts-manual-redis",
+							"Applications.Datastores/redisCaches", name),
 
-						validation.NewDaprComponent(name, "dapr-sts-manual").
-							ValidateLabels(false),
+						validation.NewK8sDaprComponent(validation.SourceRadius, "dapr-sts-manual",
+							"Applications.Dapr/stateStores", name),
 					},
 				},
 			},
@@ -115,11 +116,10 @@ func Test_DaprStateStore_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-sts-recipe-ctnr").
-							ValidateLabels(false),
-
-						validation.NewDaprComponent(name, "dapr-sts-recipe").
-							ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "dapr-sts-recipe-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sDaprComponent(validation.SourceRecipeEngine, "dapr-sts-recipe",
+							"Applications.Dapr/stateStores", name),
 					},
 				},
 			},

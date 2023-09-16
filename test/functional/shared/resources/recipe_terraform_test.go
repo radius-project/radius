@@ -90,12 +90,12 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appName: {
-						validation.NewK8sServiceForResource(appName, redisCacheName).
-							ValidateLabels(false),
+						validation.NewK8sServiceForResource(validation.SourceRecipeEngine, redisCacheName,
+							"Applications.Core/extenders", appName),
 					},
 					secretNamespace: {
-						validation.NewK8sSecretForResourceWithResourceName(secretPrefix + secretSuffix).
-							ValidateLabels(false),
+						validation.NewK8sSecretForResource(validation.SourceK8sExtensibility, secretPrefix+secretSuffix,
+							"", appName),
 					},
 				},
 			},
@@ -143,11 +143,12 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sSecretForResource(name, name),
+						validation.NewK8sSecretForResource(validation.SourceRecipeEngine, name,
+							"Applications.Core/extenders", name),
 					},
 					secretNamespace: {
-						validation.NewK8sSecretForResourceWithResourceName(secretPrefix + secretSuffix).
-							ValidateLabels(false),
+						validation.NewK8sSecretForResource(validation.SourceK8sExtensibility, secretPrefix+secretSuffix,
+							"", name),
 					},
 				},
 			},

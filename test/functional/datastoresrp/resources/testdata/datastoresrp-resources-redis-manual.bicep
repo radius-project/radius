@@ -53,7 +53,7 @@ resource redisContainer 'Applications.Core/containers@2023-10-01-preview' = {
   }
 }
 
-resource redisRoute 'Applications.Core/httproutes@2023-10-01-preview' = {
+resource redisRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'rds-rte'
   location: 'global'
   properties: {

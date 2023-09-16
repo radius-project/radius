@@ -91,7 +91,8 @@ func Test_KubeMetadataCascade(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "corerp-kmd-cascade-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "corerp-kmd-cascade-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

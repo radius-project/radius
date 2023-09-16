@@ -56,7 +56,8 @@ func Test_Extender_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "extr-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "extr-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

@@ -68,7 +68,8 @@ func Test_MicrosoftSQL_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mssql-app-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mssql-app-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

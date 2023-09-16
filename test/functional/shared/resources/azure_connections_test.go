@@ -56,7 +56,8 @@ func Test_AzureConnections(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, containerResourceName),
+						validation.NewK8sPodForResource(validation.SourceRadius, containerResourceName,
+							"Applications.Core/containers", name),
 					},
 				},
 			},

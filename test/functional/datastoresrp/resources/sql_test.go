@@ -69,9 +69,12 @@ func Test_SQLDatabase_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "sql-app-ctnr"),
-						validation.NewK8sPodForResource(name, "sql-ctnr"),
-						validation.NewK8sServiceForResource(name, "sql-rte"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "sql-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "sql-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "sql-rte",
+							"Applications.Core/httpRoutes", name),
 					},
 				},
 			},
@@ -112,8 +115,10 @@ func Test_SQLDatabase_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "sql-recipe-app-ctnr").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "sql-recipe-resource").ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "sql-recipe-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "sql-recipe-resource",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

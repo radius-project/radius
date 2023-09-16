@@ -56,7 +56,8 @@ func Test_ContainerVersioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "friendly-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "friendly-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -88,7 +89,8 @@ func Test_ContainerVersioning(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "friendly-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "friendly-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

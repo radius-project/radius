@@ -75,13 +75,24 @@ func Test_Gateway_KubernetesMetadata(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "http-gtwy-front-ctnr-kme"),
-						validation.NewK8sPodForResource(name, "http-gtwy-back-ctnr-kme"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-kme"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-front-rte-kme"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-front-rte-kme"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-back-rte-kme"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-back-rte-kme"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "http-gtwy-front-ctnr-kme",
+							"Applications.Core/containers", name),
+
+						validation.NewK8sPodForResource(validation.SourceRadius, "http-gtwy-back-ctnr-kme",
+							"Applications.Core/containers", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-kme",
+							"Applications.Core/httpRoutes", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-front-rte-kme",
+							"Applications.Core/httpRoutes", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "http-gtwy-front-rte-kme",
+							"Applications.Core/gateways", name),
+
+						validation.NewK8sHTTPProxyForResource(validation.SourceRadius, "http-gtwy-back-rte-kme",
+							"Applications.Core/httpRoutes", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "http-gtwy-back-rte-kme",
+							"Applications.Core/gateways", name),
 					},
 				},
 			},

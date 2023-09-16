@@ -44,6 +44,11 @@ resource extender 'apps/Deployment@v1' = {
 resource svc 'core/Service@v1' = {
   metadata: {
     name: 'extender-${uniqueString(context.resource.id)}'
+    labels: {
+      'radius.dev/application': context.application.name
+      'radius.dev/resource': context.resource.name
+      'radius.dev/resource-type': 'applications.core-extenders'
+    }
   }
   spec: {
     type: 'ClusterIP'

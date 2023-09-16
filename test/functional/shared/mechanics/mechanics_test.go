@@ -82,7 +82,8 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicsa"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsa",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -110,8 +111,10 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicsb"),
-						validation.NewK8sPodForResource(name, "mechanicsc"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsb",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsc",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -145,7 +148,8 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicsd"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsd",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -168,7 +172,8 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicsd"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsd",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -215,7 +220,8 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicse"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicse",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -243,8 +249,10 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicse"),
-						validation.NewK8sPodForResource(name, "mechanicsf"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicse",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsf",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -293,8 +301,10 @@ func Test_CommunicationCycle(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "mechanicsg"),
-						validation.NewK8sPodForResource(name, "cyclea"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "mechanicsg",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "cyclea",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

@@ -110,7 +110,8 @@ func Test_FirstApplicationSample(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(appName, "demo"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "demo",
+							"Applications.Core/containers", appName),
 					},
 				},
 			},

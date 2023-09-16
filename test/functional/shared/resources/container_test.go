@@ -53,7 +53,8 @@ func Test_Container(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -92,8 +93,10 @@ func Test_ContainerHttpRoute(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
-						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-rte-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "ctnr-rte-rte",
+							"Applications.Core/httpRoutes", name),
 					},
 				},
 			},
@@ -132,9 +135,10 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "containerad"),
-						validation.NewK8sPodForResource(name, "containeraf"),
-						validation.NewK8sServiceForResource(name, "containeraf"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerad",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containeraf",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -178,12 +182,12 @@ func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "containerqy"),
-						validation.NewK8sPodForResource(name, "containerqu"),
-						validation.NewK8sPodForResource(name, "containerqi"),
-						validation.NewK8sServiceForResource(name, "containerqy"),
-						validation.NewK8sServiceForResource(name, "containerqu"),
-						validation.NewK8sServiceForResource(name, "containerqi"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerqy",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerqu",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "containerqi",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -217,7 +221,8 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-live-ready"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-live-ready",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -251,7 +256,8 @@ func Test_ContainerManualScale(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-manualscale"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-manualscale",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -285,7 +291,8 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-cmd-args"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-cmd-args",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -350,7 +357,8 @@ func Test_Container_FailDueToNonExistentImage(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-cntr-badimage"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-cntr-badimage",
+							"Applications.Core/containers", name),
 					},
 				},
 			},
@@ -385,7 +393,8 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-cntr-bad-healthprobe"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "ctnr-cntr-bad-healthprobe",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

@@ -64,9 +64,12 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
-						validation.NewK8sPodForResource(name, "rmq-ctnr"),
-						validation.NewK8sServiceForResource(name, "rmq-rte"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "rmq-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "rmq-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "rmq-rte",
+							"Applications.Core/httpRoutes", name),
 					},
 				},
 			},
@@ -104,8 +107,10 @@ func Test_RabbitMQ_Recipe(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rmq-recipe-app-ctnr").ValidateLabels(false),
-						validation.NewK8sPodForResource(name, "rmq-recipe-resource").ValidateLabels(false),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "rmq-recipe-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRecipeEngine, "rmq-recipe-resource",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

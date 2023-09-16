@@ -78,6 +78,7 @@ func (cfg *TerraformConfig) Save(ctx context.Context, workingDir string) error {
 	if err = os.WriteFile(getMainConfigFilePath(workingDir), jsonData, modeConfigFile); err != nil {
 		return fmt.Errorf("error creating file: %w", err)
 	}
+
 	return nil
 }
 

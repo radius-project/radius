@@ -1,7 +1,3 @@
-import kubernetes as kubernetes {
-  kubeConfig: ''
-  namespace: 'default'
-}
 import radius as radius
 
 @description('Specifies the location for resources.')

@@ -49,6 +49,11 @@ resource "kubernetes_service" "redis" {
   metadata {
     name = var.redis_cache_name
     namespace = var.context.runtime.kubernetes.namespace
+    labels = {
+      "radius.dev/application" = var.context.application.name
+      "radius.dev/resource" = var.redis_cache_name
+      "radius.dev/resource-type" = "applications.core-extenders"
+    }
   }
 
   spec {

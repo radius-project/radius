@@ -64,9 +64,12 @@ func Test_Redis_Manual(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "rds-app-ctnr"),
-						validation.NewK8sPodForResource(name, "rds-ctnr"),
-						validation.NewK8sServiceForResource(name, "rds-rte"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "rds-app-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "rds-ctnr",
+							"Applications.Core/containers", name),
+						validation.NewK8sServiceForResource(validation.SourceRadius, "rds-rte",
+							"Applications.Core/httpRoutes", name),
 					},
 				},
 			},

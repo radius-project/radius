@@ -58,7 +58,8 @@ func Test_PersistentVolume(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "volume-azkv-ctnr"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "volume-azkv-ctnr",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

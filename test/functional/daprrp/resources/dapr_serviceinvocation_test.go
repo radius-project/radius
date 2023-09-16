@@ -54,8 +54,10 @@ func Test_DaprServiceInvocation(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(name, "dapr-frontend"),
-						validation.NewK8sPodForResource(name, "dapr-backend"),
+						validation.NewK8sPodForResource(validation.SourceRadius, "dapr-frontend",
+							"Applications.Core/containers", name),
+						validation.NewK8sPodForResource(validation.SourceRadius, "dapr-backend",
+							"Applications.Core/containers", name),
 					},
 				},
 			},

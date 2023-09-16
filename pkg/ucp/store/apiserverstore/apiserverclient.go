@@ -413,15 +413,15 @@ func resourceName(id resources.ID) string {
 		prefix = store.UCPScopePrefix
 	}
 
-	noramlizedName := normalizeName(id.Name())
+	normalizedName := normalizeName(id.Name())
 	// 211 = 253 (max length of Kubernetes Object name) - 40 (hex hash length) - 2 (dot separators)
 	maxResourceNameLen := 211 - len(prefix)
-	if len(noramlizedName) >= maxResourceNameLen {
-		noramlizedName = noramlizedName[:maxResourceNameLen]
+	if len(normalizedName) >= maxResourceNameLen {
+		normalizedName = normalizedName[:maxResourceNameLen]
 	}
 
 	// example: resource.resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%s.%x", prefix, noramlizedName, hash)
+	return fmt.Sprintf("%s.%s.%x", prefix, normalizedName, hash)
 }
 
 func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {

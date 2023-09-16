@@ -25,7 +25,6 @@ import (
 const (
 	LabelRadiusApplication  = "radius.dev/application"
 	LabelRadiusResource     = "radius.dev/resource"
-	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusResourceType = "radius.dev/resource-type"
 	LabelPartOf             = "app.kubernetes.io/part-of"
@@ -105,8 +104,9 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 			LabelRadiusResource:    NormalizeResourceName(resource),
 		}
 	}
+
 	return map[string]string{
-		LabelRadiusApplication: application,
+		LabelRadiusApplication: NormalizeResourceName(application),
 	}
 }
 

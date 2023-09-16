@@ -25,7 +25,7 @@ resource redis 'apps/Deployment@v1' = {
           resource: name
 
           // Label pods with the application name so `rad run` can find the logs.
-          'radius.dev/application': application == '' ? '' : application
+          'radius.dev/application': application
         }
       }
       spec: {
@@ -66,6 +66,11 @@ resource svc 'core/Service@v1' = {
     selector: {
       app: 'redis'
       resource: name
+
+      // Label pods with the application name so `rad run` can find the logs.
+      'radius.dev/application': application
+      'radius.dev/resource': name
+      'radius.dev/resource-type': 'applications.datastores-rediscaches'
     }
     ports: [
       {
