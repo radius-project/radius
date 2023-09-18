@@ -26,10 +26,13 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
@@ -141,7 +144,12 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 			}
 		}
 	}
-
+	resources := []string{}
+	res, err := getOutputResourcesFromTerraformRecipe(resources)
+	if err != nil {
+		return &recipes.RecipeOutput{}, err
+	}
+	recipeResponse.OutputResources = res
 	return recipeResponse, nil
 }
 
@@ -199,4 +207,21 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	}
 
 	return recipeData, nil
+}
+
+// GetOutputResourcesFromRecipe parses the output resources from a recipe and returns a slice of OutputResource objects,
+// returning an error if any of the resources are invalid.
+func getOutputResourcesFromTerraformRecipe(resourceIds []string) ([]rpv1.OutputResource, error) {
+	results := []rpv1.OutputResource{}
+	for _, resource := range resourceIds {
+		id := resources.ParseTerrafornResource(resource)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
 }

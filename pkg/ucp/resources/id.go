@@ -610,6 +610,12 @@ func ParseResource(id string) (ID, error) {
 	return parsed, err
 }
 
+func ParseTerrafornResource(id string) ID {
+	return ID{
+		id: id,
+	}
+}
+
 // Parse parses a resource ID. Parse will parse ALL valid resource IDs in the most permissive way.
 // Most code should use a more specific function like ParseResource to parse the specific kind of ID
 // they want to handle.

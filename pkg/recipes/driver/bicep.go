@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -145,7 +146,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	// as bicep does not take care of automatically deleting the unused resources.
 	// Identify the output resources that are no longer relevant to the recipe.
 	garbageCollectionStartTime := time.Now()
-	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+	diff := d.getGCOutputResources(getResourceIdsFromOutputresource(recipeResponse.OutputResources), opts.PrevState)
 
 	// Deleting obsolete output resources.
 	err = d.deleteGCOutputResources(ctx, diff)
@@ -315,9 +316,15 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 	}
 
 	// process the 'resources' created by the template
+	resourceIds := []string{}
 	for _, id := range resources {
-		recipeResponse.Resources = append(recipeResponse.Resources, *id.ID)
+		resourceIds = append(resourceIds, *id.ID)
 	}
+	res, err := getOutputResourcesFromBicepRecipe(resourceIds)
+	if err != nil {
+		return &recipes.RecipeOutput{}, err
+	}
+	recipeResponse.OutputResources = res
 
 	return recipeResponse, nil
 }
@@ -357,4 +364,33 @@ func (d *bicepDriver) deleteGCOutputResources(ctx context.Context, diff []string
 	}
 
 	return nil
+}
+
+// GetOutputResourcesFromRecipe parses the output resources from a recipe and returns a slice of OutputResource objects,
+// returning an error if any of the resources are invalid.
+func getOutputResourcesFromBicepRecipe(resourceIds []string) ([]rpv1.OutputResource, error) {
+	results := []rpv1.OutputResource{}
+	for _, resource := range resourceIds {
+		id, err := resources.ParseResource(resource)
+		if err != nil {
+			return nil, fmt.Errorf("resource id %q returned by recipe is invalid", resource)
+		}
+
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
+}
+
+func getResourceIdsFromOutputresource(outputResources []rpv1.OutputResource) []string {
+	resourceIds := []string{}
+	for _, or := range outputResources {
+		resourceIds = append(resourceIds, or.ID.String())
+	}
+	return resourceIds
 }

@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -49,21 +48,21 @@ func GetOutputResourcesFromResourcesField(field []*portableresources.ResourceRef
 
 // GetOutputResourcesFromRecipe parses the output resources from a recipe and returns a slice of OutputResource objects,
 // returning an error if any of the resources are invalid.
-func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputResource, error) {
-	results := []rpv1.OutputResource{}
-	for _, resource := range output.Resources {
-		id, err := resources.ParseResource(resource)
-		if err != nil {
-			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q returned by recipe is invalid", resource)}
-		}
+// func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputResource, error) {
+// 	results := []rpv1.OutputResource{}
+// 	for _, resource := range output.Resources {
+// 		id, err := resources.ParseResource(resource)
+// 		if err != nil {
+// 			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q returned by recipe is invalid", resource)}
+// 		}
 
-		result := rpv1.OutputResource{
-			ID:            id,
-			RadiusManaged: to.Ptr(true),
-		}
+// 		result := rpv1.OutputResource{
+// 			ID:            id,
+// 			RadiusManaged: to.Ptr(true),
+// 		}
 
-		results = append(results, result)
-	}
+// 		results = append(results, result)
+// 	}
 
-	return results, nil
-}
+// 	return results, nil
+// }

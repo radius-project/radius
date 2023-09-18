@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,6 +68,16 @@ func Test_Process(t *testing.T) {
 				},
 			},
 		}
+		outputResources := []rpv1.OutputResource{}
+		for _, resource := range []string{externalResourceID1, kubernetesResource} {
+			id, err := resources.ParseResource(resource)
+			require.NoError(t, err)
+			result := rpv1.OutputResource{
+				ID:            id,
+				RadiusManaged: to.Ptr(true),
+			}
+			outputResources = append(outputResources, result)
+		}
 		options := processors.Options{
 			RuntimeConfiguration: recipes.RuntimeConfiguration{
 				Kubernetes: &recipes.KubernetesRuntime{
@@ -74,12 +85,9 @@ func Test_Process(t *testing.T) {
 				},
 			},
 			RecipeOutput: &recipes.RecipeOutput{
-				Resources: []string{
-					externalResourceID1,
-					kubernetesResource,
-				},
-				Values:  map[string]any{}, // Component name will be computed for resource name.
-				Secrets: map[string]any{},
+				OutputResources: outputResources,
+				Values:          map[string]any{}, // Component name will be computed for resource name.
+				Secrets:         map[string]any{},
 			},
 		}
 
@@ -93,7 +101,7 @@ func Test_Process(t *testing.T) {
 		}
 		expectedSecrets := map[string]rpv1.SecretValueReference{}
 
-		expectedOutputResources, err := processors.GetOutputResourcesFromRecipe(options.RecipeOutput)
+		expectedOutputResources := options.RecipeOutput.OutputResources
 		require.NoError(t, err)
 
 		require.Equal(t, expectedValues, resource.ComputedValues)
@@ -214,6 +222,16 @@ func Test_Process(t *testing.T) {
 				},
 			},
 		}
+		outputResources := []rpv1.OutputResource{}
+		for _, resource := range []string{externalResourceID1, kubernetesResource} {
+			id, err := resources.ParseResource(resource)
+			require.NoError(t, err)
+			result := rpv1.OutputResource{
+				ID:            id,
+				RadiusManaged: to.Ptr(true),
+			}
+			outputResources = append(outputResources, result)
+		}
 		options := processors.Options{
 			RuntimeConfiguration: recipes.RuntimeConfiguration{
 				Kubernetes: &recipes.KubernetesRuntime{
@@ -221,10 +239,7 @@ func Test_Process(t *testing.T) {
 				},
 			},
 			RecipeOutput: &recipes.RecipeOutput{
-				Resources: []string{
-					externalResourceID2,
-					kubernetesResource,
-				},
+				OutputResources: outputResources,
 
 				// Values and secrets will be overridden by the resource.
 				Values: map[string]any{
@@ -246,7 +261,7 @@ func Test_Process(t *testing.T) {
 
 		expectedOutputResources := []rpv1.OutputResource{}
 
-		recipeOutputResources, err := processors.GetOutputResourcesFromRecipe(options.RecipeOutput)
+		recipeOutputResources := options.RecipeOutput.OutputResources
 		require.NoError(t, err)
 		expectedOutputResources = append(expectedOutputResources, recipeOutputResources...)
 

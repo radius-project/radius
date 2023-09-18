@@ -30,6 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
+	ucp_resources "github.com/radius-project/radius/pkg/ucp/resources"
 
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	"github.com/radius-project/radius/test/testcontext"
@@ -95,8 +97,8 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
 		},
-		Secrets:   map[string]any{},
-		Resources: []string{},
+		Secrets:         map[string]any{},
+		OutputResources: []rpv1.OutputResource{},
 	}
 
 	expectedTFState := &tfjson.State{
@@ -258,8 +260,8 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
 		},
-		Secrets:   map[string]any{},
-		Resources: []string{},
+		Secrets:         map[string]any{},
+		OutputResources: []rpv1.OutputResource{},
 	}
 
 	expectedTFState := &tfjson.State{
@@ -478,6 +480,16 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 
 func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	d := &terraformDriver{}
+	outputResources := []rpv1.OutputResource{}
+	for _, resource := range []string{"outputResourceId1"} {
+		id, err := ucp_resources.ParseResource(resource)
+		require.NoError(t, err)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, result)
+	}
 	tests := []struct {
 		desc             string
 		state            *tfjson.State
@@ -525,7 +537,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				Secrets: map[string]any{
 					"connectionString": "testConnectionString",
 				},
-				Resources: []string{"outputResourceId1"},
+				OutputResources: outputResources,
 			},
 		},
 		{

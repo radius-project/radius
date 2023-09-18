@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // Configuration represents kubernetes runtime and cloud provider configuration, which is used by the driver while deploying recipes.
@@ -89,7 +90,9 @@ var (
 // RecipeOutput represents recipe deployment output.
 type RecipeOutput struct {
 	// Resources represents the list of output resources deployed recipe.
-	Resources []string
+	//Resources []string
+
+	OutputResources []rpv1.OutputResource
 
 	// Secrets represents the key/value pairs of secret values of the deployed resource.
 	Secrets map[string]any
@@ -121,8 +124,8 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	if ro.Values == nil {
 		ro.Values = map[string]any{}
 	}
-	if ro.Resources == nil {
-		ro.Resources = []string{}
+	if ro.OutputResources == nil {
+		ro.OutputResources = []rpv1.OutputResource{}
 	}
 
 	return nil

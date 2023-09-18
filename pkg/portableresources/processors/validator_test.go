@@ -145,23 +145,6 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 	})
 
-	t.Run("recipe invalid id", func(t *testing.T) {
-		outputResources := []rpv1.OutputResource{}
-		values := map[string]any{}
-		secrets := map[string]rpv1.SecretValueReference{}
-
-		output := recipes.RecipeOutput{
-			Resources: []string{"////invalid//////"},
-		}
-
-		v := NewValidator(&values, &secrets, &outputResources)
-
-		err := v.SetAndValidate(&output)
-		require.Error(t, err)
-		require.IsType(t, &ValidationError{}, err)
-		require.Equal(t, "resource id \"////invalid//////\" returned by recipe is invalid", err.Error())
-	})
-
 	t.Run("resources success", func(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
@@ -172,9 +155,18 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 				ID: "/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream1",
 			},
 		}
-
+		or := []rpv1.OutputResource{}
+		for _, resource := range []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream2"} {
+			id, err := resources.ParseResource(resource)
+			require.NoError(t, err)
+			result := rpv1.OutputResource{
+				ID:            id,
+				RadiusManaged: to.Ptr(true),
+			}
+			or = append(or, result)
+		}
 		output := recipes.RecipeOutput{
-			Resources: []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream2"},
+			OutputResources: or,
 		}
 
 		v := NewValidator(&values, &secrets, &outputResources)
@@ -185,11 +177,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		expected := []rpv1.OutputResource{
 			{
-				ID:            resources.MustParse(output.Resources[0]),
+				ID:            or[0].ID,
 				RadiusManaged: to.Ptr(true),
 			},
 			{
-				ID:            resources.MustParse(resourcesField[0].ID),
+				ID:            or[0].ID,
 				RadiusManaged: to.Ptr(false),
 			},
 		}

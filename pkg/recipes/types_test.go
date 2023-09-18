@@ -64,11 +64,11 @@ func TestRecipeOutput_PrepareRecipeResponse(t *testing.T) {
 				if tt.result["values"] != nil {
 					require.Equal(t, tt.result["values"], ro.Values)
 					require.Equal(t, tt.result["secrets"], ro.Secrets)
-					require.Equal(t, tt.result["resources"], ro.Resources)
+					require.Equal(t, tt.result["resources"], ro.OutputResources)
 				} else {
 					require.Equal(t, map[string]any{}, ro.Values)
 					require.Equal(t, map[string]any{}, ro.Secrets)
-					require.Equal(t, []string{}, ro.Resources)
+					require.Equal(t, []string{}, ro.OutputResources)
 				}
 			} else {
 				err := ro.PrepareRecipeResponse(tt.result)

@@ -32,6 +32,7 @@ import (
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	ucp_resources "github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -271,7 +272,8 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 
 	response := map[string]any{}
 	value := map[string]any{}
-	value["resources"] = []any{"testId1", "testId2"}
+
+	value["outputResources"] = []any{"testId1", "testId2"}
 	value["secrets"] = map[string]any{
 		"username":         "testUser",
 		"password":         "testPassword",
@@ -284,8 +286,20 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
+	outputResources := []rpv1.OutputResource{}
+	for _, resource := range []string{"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/testId1",
+		"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/testId2",
+		"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/outputResourceId"} {
+		id, err := ucp_resources.ParseResource(resource)
+		require.NoError(t, err)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, result)
+	}
 	expectedResponse := &recipes.RecipeOutput{
-		Resources: []string{"testId1", "testId2", "outputResourceId"},
+		OutputResources: outputResources,
 		Secrets: map[string]any{
 			"username":         "testUser",
 			"password":         "testPassword",
@@ -321,9 +335,19 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 	response["result"] = map[string]any{
 		"value": value,
 	}
+	outputResources := []rpv1.OutputResource{}
+	for _, resource := range []string{"testId1", "testId2", "outputResourceId"} {
+		id, err := ucp_resources.ParseResource(resource)
+		require.NoError(t, err)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, result)
+	}
 	expectedResponse := &recipes.RecipeOutput{
-		Resources: []string{"testId1", "testId2", "outputResourceId"},
-		Secrets:   map[string]any{},
+		OutputResources: outputResources,
+		Secrets:         map[string]any{},
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
@@ -344,8 +368,18 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 		},
 	}
 	response := map[string]any{}
+	outputResources := []rpv1.OutputResource{}
+	for _, resource := range []string{"outputResourceId"} {
+		id, err := ucp_resources.ParseResource(resource)
+		require.NoError(t, err)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, result)
+	}
 	expectedResponse := &recipes.RecipeOutput{
-		Resources: []string{"outputResourceId"},
+		OutputResources: outputResources,
 	}
 
 	actualResponse, err := d.prepareRecipeResponse(response, resources)

@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
@@ -74,8 +75,18 @@ func Test_Engine_Execute_Success(t *testing.T) {
 			},
 		},
 	}
+	outputResources := []rpv1.OutputResource{}
+	for _, resource := range []string{"mongoStorageAccount", "mongoDatabase"} {
+		id, err := resources.ParseResource(resource)
+		require.NoError(t, err)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, result)
+	}
 	recipeResult := &recipes.RecipeOutput{
-		Resources: []string{"mongoStorageAccount", "mongoDatabase"},
+		OutputResources: outputResources,
 		Secrets: map[string]any{
 			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
 		},
@@ -211,8 +222,18 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 			},
 		},
 	}
+	outputResources := []rpv1.OutputResource{}
+	for _, resource := range []string{"mongoStorageAccount", "mongoDatabase"} {
+		id, err := resources.ParseResource(resource)
+		require.NoError(t, err)
+		result := rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		}
+		outputResources = append(outputResources, result)
+	}
 	recipeResult := &recipes.RecipeOutput{
-		Resources: []string{"mongoStorageAccount", "mongoDatabase"},
+		OutputResources: outputResources,
 		Secrets: map[string]any{
 			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
 		},
