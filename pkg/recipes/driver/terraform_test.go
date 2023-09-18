@@ -481,7 +481,7 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	d := &terraformDriver{}
 	outputResources := []rpv1.OutputResource{}
-	for _, resource := range []string{"outputResourceId1"} {
+	for _, resource := range []string{"outputResourceId1", "outputResourceId2"} {
 		id := ucp_resources.ParseTerraformResource(resource)
 		result := rpv1.OutputResource{
 			ID:            id,

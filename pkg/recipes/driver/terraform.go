@@ -146,6 +146,8 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 	}
 	resources := []string{}
 	resources = append(resources, recipeResponse.Resources...)
+	deployedResources := d.getDeployedOutputResources(tfState.Values.RootModule)
+	resources = append(resources, deployedResources...)
 	res, err := getOutputResourcesFromTerraformRecipe(resources)
 	if err != nil {
 		return &recipes.RecipeOutputResponse{}, err
@@ -155,6 +157,25 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 	result.Secrets = recipeResponse.Secrets
 	result.Values = recipeResponse.Values
 	return result, nil
+}
+
+func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) []string {
+	recipeResources := []string{}
+	if module == nil {
+		return recipeResources
+	}
+	for _, resource := range module.Resources {
+		if resource.AttributeValues != nil {
+			if id, ok := resource.AttributeValues["id"].(string); ok {
+				recipeResources = append(recipeResources, id)
+			}
+		}
+	}
+	for _, childModule := range module.ChildModules {
+		modResources := d.getDeployedOutputResources(childModule)
+		recipeResources = append(recipeResources, modResources...)
+	}
+	return recipeResources
 }
 
 // createExecutionDirectory creates a unique directory for each execution of terraform.
