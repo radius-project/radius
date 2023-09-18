@@ -50,10 +50,10 @@ func (mr *MockEngineMockRecorder) Delete(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // Execute mocks base method.
-func (m *MockEngine) Execute(arg0 context.Context, arg1 ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (m *MockEngine) Execute(arg0 context.Context, arg1 ExecuteOptions) (*recipes.RecipeOutputResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", arg0, arg1)
-	ret0, _ := ret[0].(*recipes.RecipeOutput)
+	ret0, _ := ret[0].(*recipes.RecipeOutputResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

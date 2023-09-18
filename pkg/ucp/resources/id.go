@@ -610,7 +610,7 @@ func ParseResource(id string) (ID, error) {
 	return parsed, err
 }
 
-func ParseTerrafornResource(id string) ID {
+func ParseTerraformResource(id string) ID {
 	return ID{
 		id: id,
 	}

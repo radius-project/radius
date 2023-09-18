@@ -45,7 +45,7 @@ type Options struct {
 	RuntimeConfiguration recipes.RuntimeConfiguration
 
 	// RecipeOutput represents the output of executing a recipe (may be nil).
-	RecipeOutput *recipes.RecipeOutput
+	RecipeOutput *recipes.RecipeOutputResponse
 }
 
 // ValidationError represents a user-facing validation message reported by the processor.

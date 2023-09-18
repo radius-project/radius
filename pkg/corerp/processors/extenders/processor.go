@@ -53,7 +53,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.Extender, op
 	return nil
 }
 
-func mergeOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOutput, secret bool) map[string]any {
+func mergeOutputValues(properties map[string]any, recipeOutput *recipes.RecipeOutputResponse, secret bool) map[string]any {
 	values := make(map[string]any)
 	for k, val := range properties {
 		values[k] = val

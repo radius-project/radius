@@ -92,6 +92,20 @@ type RecipeOutput struct {
 	// Resources represents the list of output resources deployed recipe.
 	//Resources []string
 
+	Resources []string
+
+	// Secrets represents the key/value pairs of secret values of the deployed resource.
+	Secrets map[string]any
+
+	// Values represents the key/value pairs of properties of the deployed resource.
+	Values map[string]any
+}
+
+// RecipeOutput represents recipe deployment output.
+type RecipeOutputResponse struct {
+	// Resources represents the list of output resources deployed recipe.
+	//Resources []string
+
 	OutputResources []rpv1.OutputResource
 
 	// Secrets represents the key/value pairs of secret values of the deployed resource.
@@ -124,8 +138,8 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	if ro.Values == nil {
 		ro.Values = map[string]any{}
 	}
-	if ro.OutputResources == nil {
-		ro.OutputResources = []rpv1.OutputResource{}
+	if ro.Resources == nil {
+		ro.Resources = []string{}
 	}
 
 	return nil

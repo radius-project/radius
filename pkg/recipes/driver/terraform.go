@@ -68,7 +68,7 @@ type terraformDriver struct {
 
 // Execute creates a unique directory for each execution of terraform and deploys the recipe using the
 // the Terraform CLI through terraform-exec. It returns a RecipeOutput or an error if the deployment fails.
-func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutputResponse, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
@@ -128,9 +128,9 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
-func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutputResponse, error) {
 	if tfState == nil || (*tfState == tfjson.State{}) {
-		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
+		return &recipes.RecipeOutputResponse{}, errors.New("terraform state is empty")
 	}
 
 	recipeResponse := &recipes.RecipeOutput{}
@@ -140,17 +140,21 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
 			err := recipeResponse.PrepareRecipeResponse(result)
 			if err != nil {
-				return &recipes.RecipeOutput{}, err
+				return &recipes.RecipeOutputResponse{}, err
 			}
 		}
 	}
 	resources := []string{}
+	resources = append(resources, recipeResponse.Resources...)
 	res, err := getOutputResourcesFromTerraformRecipe(resources)
 	if err != nil {
-		return &recipes.RecipeOutput{}, err
+		return &recipes.RecipeOutputResponse{}, err
 	}
-	recipeResponse.OutputResources = res
-	return recipeResponse, nil
+	result := &recipes.RecipeOutputResponse{}
+	result.OutputResources = res
+	result.Secrets = recipeResponse.Secrets
+	result.Values = recipeResponse.Values
+	return result, nil
 }
 
 // createExecutionDirectory creates a unique directory for each execution of terraform.
@@ -214,7 +218,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 func getOutputResourcesFromTerraformRecipe(resourceIds []string) ([]rpv1.OutputResource, error) {
 	results := []rpv1.OutputResource{}
 	for _, resource := range resourceIds {
-		id := resources.ParseTerrafornResource(resource)
+		id := resources.ParseTerraformResource(resource)
 		result := rpv1.OutputResource{
 			ID:            id,
 			RadiusManaged: to.Ptr(true),

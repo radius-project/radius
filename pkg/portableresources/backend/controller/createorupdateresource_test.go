@@ -350,7 +350,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 						},
 						PreviousState: prevState,
 					}).
-					Return(&recipes.RecipeOutput{}, tt.recipeErr).
+					Return(&recipes.RecipeOutputResponse{}, tt.recipeErr).
 					Times(1)
 			} else if stillPassing {
 				eng.EXPECT().
@@ -360,7 +360,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 						},
 						PreviousState: prevState,
 					}).
-					Return(&recipes.RecipeOutput{}, nil).
+					Return(&recipes.RecipeOutputResponse{}, nil).
 					Times(1)
 			}
 

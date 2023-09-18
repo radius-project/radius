@@ -41,8 +41,8 @@ const (
 // - Apply values and secrets from the recipe output to the resource data model.
 type Validator struct {
 	resourcesField *[]*portableresources.ResourceReference
-	fields         []func(output *recipes.RecipeOutput) string
-	computedFields []func(output *recipes.RecipeOutput) string
+	fields         []func(output *recipes.RecipeOutputResponse) string
+	computedFields []func(output *recipes.RecipeOutputResponse) string
 
 	// ConnectionValues stores the connection values extracted from the data model and recipe output.
 	ConnectionValues map[string]any
@@ -150,7 +150,7 @@ func (v *Validator) AddComputedSecretField(name string, ref *string, compute fun
 // This function returns *ValidationError for validation failures.
 //
 // After calling SetAndValidate, the connection values/secrets and output resources will be populated.
-func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
+func (v *Validator) SetAndValidate(output *recipes.RecipeOutputResponse) error {
 	msgs := []string{}
 
 	if output != nil {
@@ -201,8 +201,8 @@ func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
 	return nil
 }
 
-func bind[T any](v *Validator, name string, ref *T, required bool, secret bool, typeName string, convert func(value any) (T, bool), compute func() (T, *ValidationError)) func(output *recipes.RecipeOutput) string {
-	return func(output *recipes.RecipeOutput) string {
+func bind[T any](v *Validator, name string, ref *T, required bool, secret bool, typeName string, convert func(value any) (T, bool), compute func() (T, *ValidationError)) func(output *recipes.RecipeOutputResponse) string {
+	return func(output *recipes.RecipeOutputResponse) string {
 		valueKind := kindConnectionValue
 		propertyPath := fmt.Sprintf(".properties.%v", name)
 		if secret {

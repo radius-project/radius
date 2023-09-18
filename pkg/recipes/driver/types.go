@@ -26,7 +26,7 @@ import (
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
-	Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error)
+	Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutputResponse, error)
 
 	// Delete handles deletion of output resources for the recipe deployment.
 	Delete(ctx context.Context, opts DeleteOptions) error

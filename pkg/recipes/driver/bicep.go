@@ -71,7 +71,7 @@ type bicepDriver struct {
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
 // a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
 // is done and prepares the recipe response.
-func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutputResponse, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", opts.Definition.Name, opts.Definition.TemplatePath))
 
@@ -292,7 +292,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployments.ResourceReference) (*recipes.RecipeOutputResponse, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -309,7 +309,7 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 			if resultValue, ok := result["value"].(map[string]any); ok {
 				err := recipeResponse.PrepareRecipeResponse(resultValue)
 				if err != nil {
-					return &recipes.RecipeOutput{}, err
+					return &recipes.RecipeOutputResponse{}, err
 				}
 			}
 		}
@@ -317,16 +317,19 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*deployment
 
 	// process the 'resources' created by the template
 	resourceIds := []string{}
+	resourceIds = append(resourceIds, recipeResponse.Resources...)
 	for _, id := range resources {
 		resourceIds = append(resourceIds, *id.ID)
 	}
 	res, err := getOutputResourcesFromBicepRecipe(resourceIds)
 	if err != nil {
-		return &recipes.RecipeOutput{}, err
+		return &recipes.RecipeOutputResponse{}, err
 	}
-	recipeResponse.OutputResources = res
-
-	return recipeResponse, nil
+	result := &recipes.RecipeOutputResponse{}
+	result.OutputResources = res
+	result.Secrets = recipeResponse.Secrets
+	result.Values = recipeResponse.Values
+	return result, nil
 }
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and

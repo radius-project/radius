@@ -76,7 +76,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		},
 	}
 	outputResources := []rpv1.OutputResource{}
-	for _, resource := range []string{"mongoStorageAccount", "mongoDatabase"} {
+	for _, resource := range []string{"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongoStorageAccount", "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongoDatabase"} {
 		id, err := resources.ParseResource(resource)
 		require.NoError(t, err)
 		result := rpv1.OutputResource{
@@ -85,7 +85,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		}
 		outputResources = append(outputResources, result)
 	}
-	recipeResult := &recipes.RecipeOutput{
+	recipeResult := &recipes.RecipeOutputResponse{
 		OutputResources: outputResources,
 		Secrets: map[string]any{
 			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
@@ -224,15 +224,14 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 	}
 	outputResources := []rpv1.OutputResource{}
 	for _, resource := range []string{"mongoStorageAccount", "mongoDatabase"} {
-		id, err := resources.ParseResource(resource)
-		require.NoError(t, err)
+		id := resources.ParseTerraformResource(resource)
 		result := rpv1.OutputResource{
 			ID:            id,
 			RadiusManaged: to.Ptr(true),
 		}
 		outputResources = append(outputResources, result)
 	}
-	recipeResult := &recipes.RecipeOutput{
+	recipeResult := &recipes.RecipeOutputResponse{
 		OutputResources: outputResources,
 		Secrets: map[string]any{
 			"connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",

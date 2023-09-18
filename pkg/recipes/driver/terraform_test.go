@@ -92,7 +92,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 		ResourceRecipe: &recipeMetadata,
 		EnvRecipe:      &envRecipe,
 	}
-	expectedOutput := &recipes.RecipeOutput{
+	expectedOutput := &recipes.RecipeOutputResponse{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
@@ -255,7 +255,7 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	expectedOutput := &recipes.RecipeOutput{
+	expectedOutput := &recipes.RecipeOutputResponse{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
@@ -482,8 +482,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	d := &terraformDriver{}
 	outputResources := []rpv1.OutputResource{}
 	for _, resource := range []string{"outputResourceId1"} {
-		id, err := ucp_resources.ParseResource(resource)
-		require.NoError(t, err)
+		id := ucp_resources.ParseTerraformResource(resource)
 		result := rpv1.OutputResource{
 			ID:            id,
 			RadiusManaged: to.Ptr(true),
@@ -493,7 +492,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	tests := []struct {
 		desc             string
 		state            *tfjson.State
-		expectedResponse *recipes.RecipeOutput
+		expectedResponse *recipes.RecipeOutputResponse
 		expectedErr      error
 	}{
 		{
@@ -529,7 +528,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					},
 				},
 			},
-			expectedResponse: &recipes.RecipeOutput{
+			expectedResponse: &recipes.RecipeOutputResponse{
 				Values: map[string]any{
 					"host": "testhost",
 					"port": float64(6379),
@@ -574,19 +573,19 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					},
 				},
 			},
-			expectedResponse: &recipes.RecipeOutput{},
+			expectedResponse: &recipes.RecipeOutputResponse{},
 			expectedErr:      errors.New("json: unknown field \"outputs\""),
 		},
 		{
 			desc:             "nil state",
 			state:            nil,
-			expectedResponse: &recipes.RecipeOutput{},
+			expectedResponse: &recipes.RecipeOutputResponse{},
 			expectedErr:      errors.New("terraform state is empty"),
 		},
 		{
 			desc:             "empty state",
 			state:            &tfjson.State{},
-			expectedResponse: &recipes.RecipeOutput{},
+			expectedResponse: &recipes.RecipeOutputResponse{},
 			expectedErr:      errors.New("terraform state is empty"),
 		},
 	}

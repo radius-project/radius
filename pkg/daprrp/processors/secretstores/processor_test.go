@@ -81,7 +81,7 @@ func Test_Process(t *testing.T) {
 					Namespace: "test-namespace",
 				},
 			},
-			RecipeOutput: &recipes.RecipeOutput{
+			RecipeOutput: &recipes.RecipeOutputResponse{
 				OutputResources: outputResources,
 				Values:          map[string]any{}, // Component name will be computed for resource name.
 				Secrets:         map[string]any{},
@@ -231,7 +231,7 @@ func Test_Process(t *testing.T) {
 					Namespace: "test-namespace",
 				},
 			},
-			RecipeOutput: &recipes.RecipeOutput{
+			RecipeOutput: &recipes.RecipeOutputResponse{
 				OutputResources: outputResources,
 
 				// Values and secrets will be overridden by the resource.

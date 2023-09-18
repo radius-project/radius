@@ -136,7 +136,7 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []string {
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P, prevState []string) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P, prevState []string) (*recipes.RecipeOutputResponse, error) {
 	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
 	if !supportsRecipes {

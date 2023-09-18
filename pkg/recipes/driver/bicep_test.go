@@ -266,14 +266,17 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 
 	resources := []*armresources.ResourceReference{
 		{
-			ID: to.Ptr("outputResourceId"),
+			ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/outputResourceId"),
 		},
 	}
 
 	response := map[string]any{}
 	value := map[string]any{}
 
-	value["outputResources"] = []any{"testId1", "testId2"}
+	value["resources"] = []any{
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId1",
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId2",
+	}
 	value["secrets"] = map[string]any{
 		"username":         "testUser",
 		"password":         "testPassword",
@@ -287,9 +290,11 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		"value": value,
 	}
 	outputResources := []rpv1.OutputResource{}
-	for _, resource := range []string{"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/testId1",
-		"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/testId2",
-		"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/outputResourceId"} {
+	for _, resource := range []string{
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId1",
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId2",
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/outputResourceId",
+	} {
 		id, err := ucp_resources.ParseResource(resource)
 		require.NoError(t, err)
 		result := rpv1.OutputResource{
@@ -298,7 +303,7 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		}
 		outputResources = append(outputResources, result)
 	}
-	expectedResponse := &recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutputResponse{
 		OutputResources: outputResources,
 		Secrets: map[string]any{
 			"username":         "testUser",
@@ -321,13 +326,13 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 
 	resources := []*armresources.ResourceReference{
 		{
-			ID: to.Ptr("outputResourceId"),
+			ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/outputResourceId"),
 		},
 	}
 
 	response := map[string]any{}
 	value := map[string]any{}
-	value["resources"] = []any{"testId1", "testId2"}
+	value["resources"] = []any{"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId1", "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId2"}
 	value["values"] = map[string]any{
 		"host": "myrediscache.redis.cache.windows.net",
 		"port": float64(6379), // This will be a float64 not an int in real scenarios, it's read from JSON.
@@ -336,7 +341,10 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 		"value": value,
 	}
 	outputResources := []rpv1.OutputResource{}
-	for _, resource := range []string{"testId1", "testId2", "outputResourceId"} {
+	for _, resource := range []string{
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId1",
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/testId2",
+		"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/outputResourceId"} {
 		id, err := ucp_resources.ParseResource(resource)
 		require.NoError(t, err)
 		result := rpv1.OutputResource{
@@ -345,7 +353,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 		}
 		outputResources = append(outputResources, result)
 	}
-	expectedResponse := &recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutputResponse{
 		OutputResources: outputResources,
 		Secrets:         map[string]any{},
 		Values: map[string]any{
@@ -364,12 +372,12 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 
 	resources := []*armresources.ResourceReference{
 		{
-			ID: to.Ptr("outputResourceId"),
+			ID: to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/outputResourceId"),
 		},
 	}
 	response := map[string]any{}
 	outputResources := []rpv1.OutputResource{}
-	for _, resource := range []string{"outputResourceId"} {
+	for _, resource := range []string{"/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/outputResourceId"} {
 		id, err := ucp_resources.ParseResource(resource)
 		require.NoError(t, err)
 		result := rpv1.OutputResource{
@@ -378,7 +386,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 		}
 		outputResources = append(outputResources, result)
 	}
-	expectedResponse := &recipes.RecipeOutput{
+	expectedResponse := &recipes.RecipeOutputResponse{
 		OutputResources: outputResources,
 	}
 

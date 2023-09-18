@@ -50,7 +50,7 @@ func Test_Process(t *testing.T) {
 			outputResources = append(outputResources, result)
 		}
 		options := processors.Options{
-			RecipeOutput: &recipes.RecipeOutput{
+			RecipeOutput: &recipes.RecipeOutputResponse{
 				OutputResources: outputResources,
 				Values: map[string]any{
 					"bucketName": "myBucket",
@@ -144,7 +144,7 @@ func Test_Process(t *testing.T) {
 			outputResources = append(outputResources, result)
 		}
 		options := processors.Options{
-			RecipeOutput: &recipes.RecipeOutput{
+			RecipeOutput: &recipes.RecipeOutputResponse{
 				OutputResources: outputResources,
 				// Values and secrets will be overridden by the resource.
 				Values: map[string]any{
@@ -190,7 +190,7 @@ func Test_Process(t *testing.T) {
 				},
 			},
 		}
-		options := processors.Options{RecipeOutput: &recipes.RecipeOutput{}}
+		options := processors.Options{RecipeOutput: &recipes.RecipeOutputResponse{}}
 
 		err := processor.Process(context.Background(), resource, options)
 		require.Error(t, err)
@@ -225,7 +225,7 @@ func Test_MergeOutputValues(t *testing.T) {
 		outputResources = append(outputResources, result)
 	}
 	options := processors.Options{
-		RecipeOutput: &recipes.RecipeOutput{
+		RecipeOutput: &recipes.RecipeOutputResponse{
 			OutputResources: outputResources,
 			Values: map[string]any{
 				"region": "westus",

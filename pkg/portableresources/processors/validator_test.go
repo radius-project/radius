@@ -123,7 +123,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		v := NewValidator(&values, &secrets, &outputResources)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.NoError(t, err)
 
 		require.Empty(t, outputResources)
@@ -156,7 +156,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 			},
 		}
 		or := []rpv1.OutputResource{}
-		for _, resource := range []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream2"} {
+		for _, resource := range []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream1"} {
 			id, err := resources.ParseResource(resource)
 			require.NoError(t, err)
 			result := rpv1.OutputResource{
@@ -165,7 +165,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 			}
 			or = append(or, result)
 		}
-		output := recipes.RecipeOutput{
+		output := recipes.RecipeOutputResponse{
 			OutputResources: or,
 		}
 
@@ -200,7 +200,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": "ignored"}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, "existing", v.ConnectionValues["test"])
@@ -216,7 +216,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 
 		v.AddRequiredSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Secrets: map[string]any{"test": "ignored"}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "existing"}, v.ConnectionSecrets["test"])
@@ -231,7 +231,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 		}
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": "new"}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, "new", v.ConnectionValues["test"])
@@ -246,7 +246,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 		}
 		v.AddRequiredSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Secrets: map[string]any{"test": "new"}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "new"}, v.ConnectionSecrets["test"])
@@ -261,7 +261,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 		}
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" should be provided by the recipe, set '.properties.test' to provide a value manually", err.Error())
@@ -289,7 +289,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 		}
 		v.AddRequiredSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection secret \"test\" should be provided by the recipe, set '.properties.secrets.test' to provide a value manually", err.Error())
@@ -320,7 +320,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 
 		v.AddOptionalStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": "ignored"}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, "existing", v.ConnectionValues["test"])
@@ -336,7 +336,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 
 		v.AddOptionalSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Secrets: map[string]any{"test": "ignored"}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "existing"}, v.ConnectionSecrets["test"])
@@ -351,7 +351,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 		}
 		v.AddOptionalStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": "new"}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, "new", v.ConnectionValues["test"])
@@ -366,7 +366,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 		}
 		v.AddOptionalSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Secrets: map[string]any{"test": "new"}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "new"}, v.ConnectionSecrets["test"])
@@ -381,7 +381,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 		}
 		v.AddOptionalStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.NoError(t, err)
 		require.Equal(t, "", model.StringField)
 		require.Empty(t, v.ConnectionValues)
@@ -411,7 +411,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 		}
 		v.AddOptionalSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.NoError(t, err)
 		require.Equal(t, "", model.StringField)
 		require.Empty(t, v.ConnectionValues)
@@ -449,7 +449,7 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 		})
 		v.AddOptionalStringField("regular", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": "YO"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"regular": "YO"}})
 		require.NoError(t, err)
 		require.Equal(t, "YO", model.StringField)
 		require.Equal(t, "YO-computed", model.AnotherCoolStringField)
@@ -490,7 +490,7 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 		})
 		v.AddOptionalStringField("regular", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": "YO"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"regular": "YO"}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "OH NO!", err.Error())
@@ -531,7 +531,7 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 		})
 		v.AddOptionalInt32Field("regular", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"regular": 6380}})
 		require.NoError(t, err)
 		require.Equal(t, true, model.BooleanField)
 		require.Equal(t, map[string]any{"regular": int32(6380), "computed": true}, v.ConnectionValues)
@@ -550,7 +550,7 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 		})
 		v.AddOptionalInt32Field("regular", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"regular": 6380}})
 		require.NoError(t, err)
 		require.Equal(t, false, model.BooleanField)
 		require.Equal(t, map[string]any{"regular": int32(6379), "computed": false}, v.ConnectionValues)
@@ -569,7 +569,7 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 		})
 		v.AddOptionalInt32Field("regular", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"regular": 6380}})
 		require.NoError(t, err)
 		require.Equal(t, true, model.BooleanField)
 		require.Equal(t, map[string]any{"regular": int32(6380), "computed": true}, v.ConnectionValues)
@@ -587,7 +587,7 @@ func Test_Validator_SetAndValidate_TypeMismatch_Strings(t *testing.T) {
 
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": 3}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": 3}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" provided by the recipe is expected to be a string, got int", err.Error())
@@ -604,7 +604,7 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 
 		v.AddRequiredInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": int32(43)}})
 		require.NoError(t, err)
 		require.Equal(t, int32(47), model.Int32Field)
 		require.Equal(t, int32(47), v.ConnectionValues["test"])
@@ -619,7 +619,7 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 		}
 		v.AddRequiredInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": int32(43)}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -634,7 +634,7 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 		}
 		v.AddRequiredInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" should be provided by the recipe, set '.properties.test' to provide a value manually", err.Error())
@@ -665,7 +665,7 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": int32(43)}})
 		require.NoError(t, err)
 		require.Equal(t, int32(47), model.Int32Field)
 		require.Equal(t, int32(47), v.ConnectionValues["test"])
@@ -680,7 +680,7 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": int32(43)}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -695,7 +695,7 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{})
 		require.NoError(t, err)
 		require.Equal(t, int32(0), model.Int32Field)
 		require.Empty(t, v.ConnectionValues)
@@ -727,7 +727,7 @@ func Test_Validator_TypeConversions_Int32(t *testing.T) {
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": int(43)}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -742,7 +742,7 @@ func Test_Validator_TypeConversions_Int32(t *testing.T) {
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": float64(43.1)}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": float64(43.1)}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -757,7 +757,7 @@ func Test_Validator_TypeConversions_Int32(t *testing.T) {
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "heyyyyy"}})
+		err := v.SetAndValidate(&recipes.RecipeOutputResponse{Values: map[string]any{"test": "heyyyyy"}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" provided by the recipe is expected to be a int32, got string", err.Error())

@@ -49,7 +49,7 @@ type engine struct {
 // Execute loads the recipe definition from the environment, finds the driver associated with the recipe, loads the
 // configuration associated with the recipe, and then executes the recipe using the driver. It returns a RecipeOutput and
 // an error if one occurs.
-func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutputResponse, error) {
 	executionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
@@ -70,7 +70,7 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 
 // executeCore function is the core logic of the Execute function.
 // Any changes to the core logic of the Execute function should be made here.
-func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
+func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutputResponse, *recipes.EnvironmentDefinition, error) {
 	definition, driver, err := e.getDriver(ctx, recipe)
 	if err != nil {
 		return nil, nil, err
