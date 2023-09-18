@@ -60,7 +60,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 	// Let's do this now.
 
 	applicationID, err := resources.ParseResource(resource.Properties.Application)
-	if err != nil {
+	if err != nil && resource.Properties.Application != "" {
 		return err // This should already be validated by this point.
 	}
 
@@ -111,7 +111,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprSecretSt
 	}
 
 	applicationID, err := resources.ParseResource(resource.Properties.Application)
-	if err != nil {
+	if err != nil && resource.Properties.Application != "" {
 		return err // This should already be validated by this point.
 	}
 
