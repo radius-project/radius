@@ -42,7 +42,6 @@ import (
 
 func Test_Process(t *testing.T) {
 	const externalResourceID1 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis1"
-	const externalResourceID2 = "/subscriptions/0000/resourceGroups/test-group/providers/Microsoft.Cache/redis/myredis2"
 	const kubernetesResource = "/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-component"
 	const appID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
 	const envID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
