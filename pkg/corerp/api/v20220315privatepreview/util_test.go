@@ -66,14 +66,14 @@ func TestFromProvisioningStateDataModel(t *testing.T) {
 }
 
 func TestUnmarshalTimeString(t *testing.T) {
-	parsedTime := unmarshalTimeString("2021-09-24T19:09:00.000000Z")
+	parsedTime := v1.UnmarshalTimeString("2021-09-24T19:09:00.000000Z")
 	require.NotNil(t, parsedTime)
 
 	require.Equal(t, 2021, parsedTime.Year())
 	require.Equal(t, time.Month(9), parsedTime.Month())
 	require.Equal(t, 24, parsedTime.Day())
 
-	parsedTime = unmarshalTimeString("")
+	parsedTime = v1.UnmarshalTimeString("")
 	require.NotNil(t, parsedTime)
 	require.Equal(t, 1, parsedTime.Year())
 }
