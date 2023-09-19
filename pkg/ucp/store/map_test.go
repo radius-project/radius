@@ -124,13 +124,14 @@ func TestDecodeMap_WithResourceIDs(t *testing.T) {
 		require.Equal(t, data["ID"], out.ID.String())
 	})
 
-	t.Run("invalid", func(t *testing.T) {
+	t.Run("terraform id", func(t *testing.T) {
 		data := map[string]any{
-			"ID": "asdf",
+			"ID": "terraform-id",
 		}
 
 		out := datatype{}
 		err := DecodeMap(data, &out)
-		require.Error(t, err)
+		require.NoError(t, err)
+		require.Equal(t, data["ID"], out.ID.String())
 	})
 }
