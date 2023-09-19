@@ -529,7 +529,7 @@ func (id ID) MarshalText() ([]byte, error) {
 func (id *ID) UnmarshalText(data []byte) error {
 	parsed, err := Parse(string(data))
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal text, value was not a valid resource ID: %w", err)
+		parsed = ParseTerraformResource(string(data))
 	}
 
 	// Assign fields into self.
