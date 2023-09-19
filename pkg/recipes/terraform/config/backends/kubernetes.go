@@ -77,6 +77,7 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 		return "", err
 	}
 	hash := hasher.Sum(nil)
+
 	return fmt.Sprintf("%x", hash), nil
 }
 
