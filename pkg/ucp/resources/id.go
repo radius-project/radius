@@ -46,6 +46,8 @@ type ID struct {
 	extensionSegments []TypeSegment
 }
 
+// Handle Terraform IDs
+
 // ScopeSegment represents one of the root-scope pairs of a resource ID.
 type ScopeSegment struct {
 	// Type is the type of the scope.
