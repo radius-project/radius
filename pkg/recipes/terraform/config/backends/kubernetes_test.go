@@ -31,6 +31,9 @@ const (
 	testTemplatePath    = "Azure/redis/azurerm"
 	testRecipeName      = "redis-azure"
 	testTemplateVersion = "1.1.0"
+	envName             = "env"
+	appName             = "app"
+	resourceName        = "redis"
 )
 
 var (
@@ -82,23 +85,6 @@ func Test_GenerateKubernetesBackendConfig(t *testing.T) {
 	require.Equal(t, expectedConfig, actualConfig)
 }
 
-func Test_GenerateSecretSuffix_invalid_resourceid(t *testing.T) {
-	_, resourceRecipe := getTestInputs()
-	resourceRecipe.ResourceID = "invalid"
-	_, err := generateSecretSuffix(&resourceRecipe)
-	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
-}
-
-func Test_GenerateSecretSuffix_with_lengthy_resource_name(t *testing.T) {
-	_, resourceRecipe := getTestInputs()
-	act, err := generateSecretSuffix(&resourceRecipe)
-	require.NoError(t, err)
-	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(strings.ToLower("env-app-" + resourceRecipe.ResourceID)))
-	hash := hasher.Sum(nil)
-	require.Equal(t, act, "env-app-redis."+fmt.Sprintf("%x", hash))
-}
-
 func Test_GenerateKubernetesBackendConfig_Error(t *testing.T) {
 	t.Setenv("KUBERNETES_SERVICE_HOST", "testvalue")
 	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
@@ -106,4 +92,36 @@ func Test_GenerateKubernetesBackendConfig_Error(t *testing.T) {
 	backend, err := generateKubernetesBackendConfig("test-suffix")
 	require.Error(t, err)
 	require.Nil(t, backend)
+}
+
+func Test_GenerateSecretSuffix(t *testing.T) {
+	_, resourceRecipe := getTestInputs()
+	hasher := sha1.New()
+	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, resourceRecipe.ResourceID))))
+	require.NoError(t, err)
+	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
+	secret, err := generateSecretSuffix(&resourceRecipe)
+	require.NoError(t, err)
+	require.Equal(t, expSecret, secret)
+}
+
+func Test_GenerateSecretSuffix_invalid_resourceid(t *testing.T) {
+	_, resourceRecipe := getTestInputs()
+	resourceRecipe.ResourceID = "invalid"
+	_, err := generateSecretSuffix(&resourceRecipe)
+	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
+}
+
+func Test_GenerateSecretSuffix_invalid_envid(t *testing.T) {
+	_, resourceRecipe := getTestInputs()
+	resourceRecipe.EnvironmentID = "invalid"
+	_, err := generateSecretSuffix(&resourceRecipe)
+	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
+}
+
+func Test_GenerateSecretSuffix_invalid_appid(t *testing.T) {
+	_, resourceRecipe := getTestInputs()
+	resourceRecipe.ApplicationID = "invalid"
+	_, err := generateSecretSuffix(&resourceRecipe)
+	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
 }
