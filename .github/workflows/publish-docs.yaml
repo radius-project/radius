@@ -45,11 +45,13 @@ jobs:
       - name: Copy resource reference docs into docs repo
         run: |
           mkdir -p docs/docs/snippets/resource-docs/
-          export RESOURCE_DOCS=$(find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -print0 | xargs -0)
+          # Copy all markdown files from radius/hack/bicep-types-radius/generated/ to docs/docs/snippets/resource-docs/
+          export RESOURCE_DOCS=$(find radius/hack/bicep-types-radius/generated/ -type f -name '*.md')
           for file in $RESOURCE_DOCS; do
             fileTarget=${file#radius/hack/bicep-types-radius/generated/}
-            echo Copying $file to docs/docs/snippets/resource-docs/$fileTarget
-            cp -p $file docs/docs/snippets/resource-docs/$fileTarget
+            dirTarget=$(dirname $fileTarget)
+            echo "Copying $file to docs/docs/snippets/resource-docs/$dirTarget"
+            cp -p $file docs/docs/snippets/resource-docs/$dirTarget
           done
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v3
