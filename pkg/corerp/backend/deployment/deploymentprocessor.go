@@ -32,7 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/model"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
-
+	dapr_types "github.com/radius-project/radius/pkg/daprrp"
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
 	datastores_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
@@ -519,19 +519,19 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.DaprStateStoresResourceType):
+	case strings.ToLower(dapr_types.DaprStateStoresResourceType):
 		obj := &dapr_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.DaprSecretStoresResourceType):
+	case strings.ToLower(dapr_types.DaprSecretStoresResourceType):
 		obj := &dapr_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.DaprPubSubBrokersResourceType):
+	case strings.ToLower(dapr_types.DaprPubSubBrokersResourceType):
 		obj := &dapr_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)

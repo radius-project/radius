@@ -18,6 +18,7 @@ package datamodel
 
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	daprrp "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -51,7 +52,7 @@ func (r *DaprPubSubBroker) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns a string representing the resource type.
 func (r *DaprPubSubBroker) ResourceTypeName() string {
-	return portableresources.DaprPubSubBrokersResourceType
+	return daprrp.DaprPubSubBrokersResourceType
 }
 
 // Recipe returns the recipe information of the resource. Returns nil if recipe execution is disabled.

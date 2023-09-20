@@ -29,6 +29,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/portableresources"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -48,9 +49,9 @@ var (
 		portableresources.RabbitMQQueuesResourceType,
 		portableresources.RedisCachesResourceType,
 		portableresources.SqlDatabasesResourceType,
-		portableresources.DaprStateStoresResourceType,
-		portableresources.DaprSecretStoresResourceType,
-		portableresources.DaprPubSubBrokersResourceType,
+		daprrp_types.DaprStateStoresResourceType,
+		daprrp_types.DaprSecretStoresResourceType,
+		daprrp_types.DaprPubSubBrokersResourceType,
 		portableresources.ExtendersResourceType,
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",

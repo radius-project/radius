@@ -23,6 +23,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	dapr_types "github.com/radius-project/radius/pkg/daprrp"
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/daprrp/processors/pubsubbrokers"
 	"github.com/radius-project/radius/pkg/daprrp/processors/secretstores"
@@ -36,7 +37,6 @@ import (
 	"github.com/radius-project/radius/pkg/messagingrp/processors/rabbitmqqueues"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/frontend/handler"
-
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -101,7 +101,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			portableresources.DaprStateStoresResourceType,
+			dapr_types.DaprStateStoresResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &statestores.Processor{Client: k8s.RuntimeClient}
 				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](options, processor, engine, client, configLoader)
@@ -112,7 +112,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			portableresources.DaprSecretStoresResourceType,
+			dapr_types.DaprSecretStoresResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &secretstores.Processor{Client: k8s.RuntimeClient}
 				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](options, processor, engine, client, configLoader)
@@ -123,7 +123,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			portableresources.DaprPubSubBrokersResourceType,
+			dapr_types.DaprPubSubBrokersResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &pubsubbrokers.Processor{Client: k8s.RuntimeClient}
 				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](options, processor, engine, client, configLoader)

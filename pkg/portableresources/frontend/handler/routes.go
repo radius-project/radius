@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
 
+	daprrp "github.com/radius-project/radius/pkg/daprrp"
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
 	dapr_conv "github.com/radius-project/radius/pkg/daprrp/datamodel/converter"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
@@ -267,7 +268,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: pubsubPlaneRouter,
-			ResourceType: portableresources.DaprPubSubBrokersResourceType,
+			ResourceType: daprrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -280,7 +281,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceGroupRouter,
-			ResourceType: portableresources.DaprPubSubBrokersResourceType,
+			ResourceType: daprrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -292,7 +293,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: portableresources.DaprPubSubBrokersResourceType,
+			ResourceType: daprrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -304,7 +305,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: portableresources.DaprPubSubBrokersResourceType,
+			ResourceType: daprrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -323,7 +324,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: portableresources.DaprPubSubBrokersResourceType,
+			ResourceType: daprrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -342,7 +343,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: portableresources.DaprPubSubBrokersResourceType,
+			ResourceType: daprrp.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -364,7 +365,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: secretStorePlaneRouter,
-			ResourceType: portableresources.DaprSecretStoresResourceType,
+			ResourceType: daprrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -377,7 +378,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceGroupRouter,
-			ResourceType: portableresources.DaprSecretStoresResourceType,
+			ResourceType: daprrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -389,7 +390,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: portableresources.DaprSecretStoresResourceType,
+			ResourceType: daprrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -401,7 +402,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: portableresources.DaprSecretStoresResourceType,
+			ResourceType: daprrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -420,7 +421,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: portableresources.DaprSecretStoresResourceType,
+			ResourceType: daprrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -439,7 +440,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: portableresources.DaprSecretStoresResourceType,
+			ResourceType: daprrp.DaprSecretStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -461,7 +462,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: stateStorePlaneRouter,
-			ResourceType: portableresources.DaprStateStoresResourceType,
+			ResourceType: daprrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -474,7 +475,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceGroupRouter,
-			ResourceType: portableresources.DaprStateStoresResourceType,
+			ResourceType: daprrp.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -486,7 +487,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: portableresources.DaprStateStoresResourceType,
+			ResourceType: daprrp.DaprStateStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -498,7 +499,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: portableresources.DaprStateStoresResourceType,
+			ResourceType: daprrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -517,7 +518,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: portableresources.DaprStateStoresResourceType,
+			ResourceType: daprrp.DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -536,7 +537,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: portableresources.DaprStateStoresResourceType,
+			ResourceType: daprrp.DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,

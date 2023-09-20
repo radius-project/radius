@@ -19,19 +19,11 @@ package portableresources
 import (
 	"strings"
 
+	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
 const (
-	// DaprPubSubBrokersResourceType represents the resource type for Dapr PubSub brokers.
-	DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
-
-	// DaprSecretStoresResourceType represents the resource type for Dapr Secret stores.
-	DaprSecretStoresResourceType = "Applications.Dapr/secretStores"
-
-	// DaprStateStoresResourceType represents the resource type for Dapr State stores.
-	DaprStateStoresResourceType = "Applications.Dapr/stateStores"
-
 	// RabbitMQQueuesResourceType represents the resource type for RabbitMQ queue.
 	RabbitMQQueuesResourceType = "Applications.Messaging/rabbitMQQueues"
 
@@ -134,9 +126,9 @@ type Kubernetes struct {
 // Returns true if the resource type is valid, false otherwise.
 func IsValidPortableResourceType(resourceType string) bool {
 	portableResourceTypes := []string{
-		DaprPubSubBrokersResourceType,
-		DaprSecretStoresResourceType,
-		DaprStateStoresResourceType,
+		daprrp_types.DaprPubSubBrokersResourceType,
+		daprrp_types.DaprSecretStoresResourceType,
+		daprrp_types.DaprStateStoresResourceType,
 		RabbitMQQueuesResourceType,
 		MongoDatabasesResourceType,
 		RedisCachesResourceType,

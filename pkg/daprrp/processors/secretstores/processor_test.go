@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -156,7 +157,7 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", portableresources.DaprSecretStoresResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", daprrp_types.DaprSecretStoresResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -348,7 +349,7 @@ func Test_Process(t *testing.T) {
 			"test-component",
 			"test-app",
 			"some-other-other-name",
-			portableresources.DaprSecretStoresResourceType)
+			daprrp_types.DaprSecretStoresResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{

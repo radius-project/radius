@@ -19,6 +19,7 @@ package pubsubbrokers
 import (
 	"context"
 
+	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -84,7 +85,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprPubSubB
 		resource.Properties.ComponentName,
 		applicationID.Name(),
 		resource.Name,
-		portableresources.DaprPubSubBrokersResourceType)
+		daprrp_types.DaprPubSubBrokersResourceType)
 	if err != nil {
 		return err
 	}
@@ -94,7 +95,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprPubSubB
 		return &processors.ResourceError{Inner: err}
 	}
 
-	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, portableresources.DaprPubSubBrokersResourceType)
+	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, daprrp_types.DaprPubSubBrokersResourceType)
 	if err != nil {
 		return &processors.ValidationError{Message: err.Error()}
 	}
@@ -140,7 +141,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprPubSubBr
 			"metadata": map[string]any{
 				"namespace": options.RuntimeConfiguration.Kubernetes.Namespace,
 				"name":      kubernetes.NormalizeDaprResourceName(resource.Properties.ComponentName),
-				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, portableresources.DaprPubSubBrokersResourceType),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, daprrp_types.DaprPubSubBrokersResourceType),
 			},
 		},
 	}

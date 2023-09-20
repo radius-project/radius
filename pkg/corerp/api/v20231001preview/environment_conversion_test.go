@@ -23,13 +23,13 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,7 +142,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/rediscaches",
 							},
 						},
-						portableresources.DaprStateStoresResourceType: {
+						daprrp_types.DaprStateStoresResourceType: {
 							"statestore-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplateKind:    recipes.TemplateKindTerraform,
 								TemplatePath:    "Azure/storage/azurerm",

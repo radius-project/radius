@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	dapr_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/portableresources"
 	recipe_types "github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
@@ -163,11 +164,11 @@ func getPortableResourceType(resourceType string) string {
 	case "rabbitmqqueues":
 		return portableresources.RabbitMQQueuesResourceType
 	case "pubsubbrokers":
-		return portableresources.DaprPubSubBrokersResourceType
+		return dapr_types.DaprPubSubBrokersResourceType
 	case "secretstores":
-		return portableresources.DaprSecretStoresResourceType
+		return dapr_types.DaprSecretStoresResourceType
 	case "statestores":
-		return portableresources.DaprStateStoresResourceType
+		return dapr_types.DaprStateStoresResourceType
 	case "extenders":
 		return portableresources.ExtendersResourceType
 	default:
