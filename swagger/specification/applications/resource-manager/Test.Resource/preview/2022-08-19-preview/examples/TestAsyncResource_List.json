@@ -1,0 +1,35 @@
+{
+  "operationId": "TestAsyncResources_ListByScope",
+  "title": "List TestAsyncResource resources by resourcegroup",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Test.Resource/testAsyncResources/resource0",
+            "name": "resource0",
+            "type": "Test.Resource/testAsyncResources",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Test.Resource/testAsyncResources/resource1",
+            "name": "resource1",
+            "type": "Test.Resource/testAsyncResources",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Test.Resource/testAsyncResources?api-version=2022-08-19-preview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}
