@@ -14,7 +14,7 @@ on:
 
 jobs:
   reference-docs:
-    name: Generate CLI reference docs
+    name: Generate and PR reference documentation
     runs-on: ubuntu-latest
     env:
       GOVER: '^1.21'
@@ -57,11 +57,7 @@ jobs:
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli
-      # Generate and upload resource reference docs
-      - name: Generate resource reference docs
-        run: |
-          cd radius
-          make generate-bicep-types
+      # Copy and upload resource reference docs
       - name: Copy resource reference docs into docs repo
         run: |
           # Copy all .md files under radius/hack/bicep-types-radius/generated/ that are in a "docs" directory into docs/docs/snippets/resource-docs
