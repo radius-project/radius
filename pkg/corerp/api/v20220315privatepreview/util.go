@@ -17,8 +17,6 @@ limitations under the License.
 package v20220315privatepreview
 
 import (
-	"time"
-
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -71,20 +69,14 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 	return &converted
 }
 
-func unmarshalTimeString(ts string) *time.Time {
-	var tt timeRFC3339
-	_ = tt.UnmarshalText([]byte(ts))
-	return (*time.Time)(&tt)
-}
-
 func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
 		CreatedBy:          to.Ptr(s.CreatedBy),
 		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
-		CreatedAt:          unmarshalTimeString(s.CreatedAt),
+		CreatedAt:          v1.UnmarshalTimeString(s.CreatedAt),
 		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
-		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+		LastModifiedAt:     v1.UnmarshalTimeString(s.LastModifiedAt),
 	}
 }
 
