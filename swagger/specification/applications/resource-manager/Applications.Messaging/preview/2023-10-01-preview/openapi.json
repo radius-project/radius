@@ -76,14 +76,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "List RabbitMQQueue resources by resource group": {
-            "$ref": "./examples/RabbitMQQueues_List.json"
-          },
-          "List RabbitMQQueue resources by rootScope": {
-            "$ref": "./examples/RabbitMQQueues_ListByRootScope.json"
-          }
-        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -125,11 +117,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_Get.json"
           }
         }
       },
@@ -190,11 +177,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Create Or Update a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -262,11 +244,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Update a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_Update.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -323,11 +300,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Delete a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_Delete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -380,11 +352,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List the secrets of a RabbitMQQueue resource": {
-            "$ref": "./examples/RabbitMQQueues_ListSecrets.json"
           }
         }
       }

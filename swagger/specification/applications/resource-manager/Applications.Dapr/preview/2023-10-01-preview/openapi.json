@@ -82,14 +82,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "List a PubSubBroker resource by resource group": {
-            "$ref": "./examples/PubSubBrokers_List.json"
-          },
-          "List a PubSubBroker resource by rootScope": {
-            "$ref": "./examples/PubSubBrokers_ListByRootScope.json"
-          }
-        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -131,11 +123,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a PubSubBroker resource": {
-            "$ref": "./examples/PubSubBrokers_Get.json"
           }
         }
       },
@@ -196,14 +183,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Create or update a PubSubBroker resource": {
-            "$ref": "./examples/PubSubBrokers_CreateOrUpdate.json"
-          },
-          "Create or update a PubSubBroker resource with recipe": {
-            "$ref": "./examples/PubSubBrokers_CreateOrUpdateWithRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -271,11 +250,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Update a PubSubBroker resource": {
-            "$ref": "./examples/PubSubBrokers_Update.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -332,11 +306,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Delete a PubSubBroker resource": {
-            "$ref": "./examples/PubSubBrokers_Delete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -370,14 +339,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List SecretStore resources by resource group": {
-            "$ref": "./examples/SecretStores_List.json"
-          },
-          "List SecretStore resources by rootScope": {
-            "$ref": "./examples/SecretStores_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -421,11 +382,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a SecretStore resource": {
-            "$ref": "./examples/SecretStores_Get.json"
           }
         }
       },
@@ -486,11 +442,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Create or update an SecretStore resource": {
-            "$ref": "./examples/SecretStores_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -558,11 +509,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Update an SecretStore resource": {
-            "$ref": "./examples/SecretStores_Update.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -619,11 +565,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Delete a SecretStore resource": {
-            "$ref": "./examples/SecretStores_Delete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -657,14 +598,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List StateStore resources by resource group": {
-            "$ref": "./examples/StateStores_List.json"
-          },
-          "List StateStore resources by rootScope": {
-            "$ref": "./examples/StateStores_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -708,11 +641,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a StateStore resource": {
-            "$ref": "./examples/StateStores_Get.json"
           }
         }
       },
@@ -773,14 +701,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Create or update a StateStore resource": {
-            "$ref": "./examples/StateStores_CreateOrUpdate.json"
-          },
-          "Create or update a StateStore resource with recipe": {
-            "$ref": "./examples/StateStores_CreateOrUpdateWithRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -848,11 +768,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Update a StateStore resource": {
-            "$ref": "./examples/StateStores_Update.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -907,11 +822,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Delete a StateStore resource": {
-            "$ref": "./examples/StateStores_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {

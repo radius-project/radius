@@ -140,14 +140,14 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 type Versions string
 
 const (
-	// VersionsV20220315Privatepreview - 2023-10-01-preview
-	VersionsV20220315Privatepreview Versions = "2023-10-01-preview"
+	// VersionsV20231001Preview - 2023-10-01-preview
+	VersionsV20231001Preview Versions = "2023-10-01-preview"
 )
 
 // PossibleVersionsValues returns the possible values for the Versions const type.
 func PossibleVersionsValues() []Versions {
 	return []Versions{	
-		VersionsV20220315Privatepreview,
+		VersionsV20231001Preview,
 	}
 }
 

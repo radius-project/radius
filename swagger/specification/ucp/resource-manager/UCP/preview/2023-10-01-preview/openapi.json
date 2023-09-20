@@ -82,11 +82,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "List planes": {
-            "$ref": "./examples/Planes_List.json"
-          }
-        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -123,11 +118,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List planes by planeType": {
-            "$ref": "./examples/Planes_ListPlanesByType.json"
           }
         },
         "x-ms-pageable": {
@@ -169,11 +159,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a plane": {
-            "$ref": "./examples/Planes_GetPlaneLocal.json"
           }
         }
       },
@@ -232,11 +217,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Create or update a plane": {
-            "$ref": "./examples/Planes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -302,11 +282,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Update a plane": {
-            "$ref": "./examples/Planes_Update.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -361,11 +336,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "Delete a plane": {
-            "$ref": "./examples/Planes_Delete.json"
-          }
-        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -406,11 +376,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List resource groups": {
-            "$ref": "./examples/ResourceGroups_List.json"
           }
         },
         "x-ms-pageable": {
@@ -461,11 +426,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a resource group": {
-            "$ref": "./examples/ResourceGroups_Get.json"
           }
         }
       },
@@ -527,11 +487,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Create or update a resource group": {
-            "$ref": "./examples/ResourceGroups_CreateOrUpdate.json"
-          }
         }
       },
       "patch": {
@@ -586,11 +541,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Update a resource group": {
-            "$ref": "./examples/ResourceGroups_Update.json"
-          }
         }
       },
       "delete": {
@@ -635,11 +585,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Delete a resource group": {
-            "$ref": "./examples/ResourceGroups_Delete.json"
           }
         }
       }
@@ -689,11 +634,6 @@
             }
           }
         },
-        "x-ms-examples": {
-          "List resources in a resource group.": {
-            "$ref": "./examples/Resources_List.json"
-          }
-        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -726,11 +666,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List AWS credentials": {
-            "$ref": "./examples/AWSCredential_List.json"
           }
         },
         "x-ms-pageable": {
@@ -774,11 +709,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a AWS credential": {
-            "$ref": "./examples/AWSCredential_Get.json"
           }
         }
       },
@@ -833,11 +763,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Create or update a AWS credential": {
-            "$ref": "./examples/AWSCredential_CreateOrUpdate.json"
-          }
         }
       },
       "patch": {
@@ -885,11 +810,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Update a AWS credential": {
-            "$ref": "./examples/AWSCredential_Update.json"
-          }
         }
       },
       "delete": {
@@ -928,11 +848,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Delete a AWS credential": {
-            "$ref": "./examples/AWSCredential_Delete.json"
-          }
         }
       }
     },
@@ -963,11 +878,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "List Azure credentials": {
-            "$ref": "./examples/AzureCredential_List.json"
           }
         },
         "x-ms-pageable": {
@@ -1011,11 +921,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Get a Azure credential": {
-            "$ref": "./examples/AzureCredential_Get.json"
           }
         }
       },
@@ -1070,11 +975,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Create or update a Azure credential": {
-            "$ref": "./examples/AzureCredential_CreateOrUpdate.json"
-          }
         }
       },
       "patch": {
@@ -1122,11 +1022,6 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        },
-        "x-ms-examples": {
-          "Update a Azure credential": {
-            "$ref": "./examples/AzureCredential_Update.json"
-          }
         }
       },
       "delete": {
@@ -1164,11 +1059,6 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
-          }
-        },
-        "x-ms-examples": {
-          "Delete a Azure credential": {
-            "$ref": "./examples/AzureCredential_Delete.json"
           }
         }
       }
