@@ -46,6 +46,20 @@ jobs:
         with:
           go-version: ${{ env.GOVER }}
           cache-dependency-path: radius/go.sum
+      # Copy and upload resource reference docs
+      - name: Copy resource reference docs into docs repo
+        run: |
+          mkdir -p docs/docs/snippets/resource-docs/
+          export RESOURCE_DOCS=$(find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -print0 | xargs -0)
+          export RESOURCE_DOCS=$(echo $RESOURCE_DOCS | sed 's/radius\/hack\/bicep-types-radius\/generated\///g')
+          for file in $RESOURCE_DOCS; do
+            cp radius/hack/bicep-types-radius/generated/$file docs/docs/snippets/resource-docs/$file
+          done
+      - name: Upload resource reference docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: resource-docs
+          path: docs/docs/snippets/resource-docs
       # Generate and upload CLI docs
       - name: Generate CLI docs
         run: |
@@ -57,16 +71,6 @@ jobs:
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli
-      # Copy and upload resource reference docs
-      - name: Copy resource reference docs into docs repo
-        run: |
-          mkdir -p docs/docs/snippets/resource-docs/
-          find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -exec sh -c 'cp --parents "$0" docs/docs/snippets/resource-docs/"${0#radius/hack/bicep-types-radius/generated/}"' {} \;
-      - name: Upload resource reference docs
-        uses: actions/upload-artifact@v3
-        with:
-          name: resource-docs
-          path: docs/docs/snippets/resource-docs
       # Open PR against docs repository
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5
