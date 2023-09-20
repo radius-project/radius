@@ -46,10 +46,10 @@ jobs:
         run: |
           mkdir -p docs/docs/snippets/resource-docs/
           export RESOURCE_DOCS=$(find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -print0 | xargs -0)
-          export RESOURCE_DOCS=$(echo $RESOURCE_DOCS | sed 's/radius\/hack\/bicep-types-radius\/generated\///g')
-          echo Copying files $RESOURCE_DOCS
           for file in $RESOURCE_DOCS; do
-            cp radius/hack/bicep-types-radius/generated/$file docs/docs/snippets/resource-docs/$file
+            fileTarget=${file#radius/hack/bicep-types-radius/generated/}
+            echo Copying $file to docs/docs/snippets/resource-docs/$fileTarget
+            cp $file docs/docs/snippets/resource-docs/$fileTarget
           done
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v3
