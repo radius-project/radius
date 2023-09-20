@@ -49,7 +49,7 @@ jobs:
           for file in $RESOURCE_DOCS; do
             fileTarget=${file#radius/hack/bicep-types-radius/generated/}
             echo Copying $file to docs/docs/snippets/resource-docs/$fileTarget
-            cp $file docs/docs/snippets/resource-docs/$fileTarget
+            cp -p $file docs/docs/snippets/resource-docs/$fileTarget
           done
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v3
