@@ -3,7 +3,7 @@ import radius as radius
 param location string
 param environment string
 
-resource outerApp 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource outerApp 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-mechanics-nestedmodules-outerapp-app'
   location: location
   properties: {

@@ -1,9 +1,9 @@
-# Applications.Messaging @ 2022-03-15-privatepreview
+# Applications.Messaging @ 2023-10-01-preview
 
-## Resource Applications.Messaging/rabbitMQQueues@2022-03-15-privatepreview
+## Resource Applications.Messaging/rabbitMQQueues@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -12,9 +12,9 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Messaging/rabbitMQQueues' (ReadOnly, DeployTimeConstant): The resource type
 
-## Function listSecrets (Applications.Messaging/rabbitMQQueues@2022-03-15-privatepreview)
+## Function listSecrets (Applications.Messaging/rabbitMQQueues@2023-10-01-preview)
 * **Resource**: Applications.Messaging/rabbitMQQueues
-* **ApiVersion**: 2022-03-15-privatepreview
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
 * **Output**: [RabbitMQListSecretsResult](#rabbitmqlistsecretsresult)
 

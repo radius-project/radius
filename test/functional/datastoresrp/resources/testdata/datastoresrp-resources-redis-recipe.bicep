@@ -6,7 +6,7 @@ param registry string
 
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'dsrp-resources-env-recipe-env'
   location: 'global'
   properties: {
@@ -31,7 +31,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dsrp-resources-redis-recipe'
   location: 'global'
   properties: {
@@ -45,7 +45,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Datastores/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
   name: 'rds-recipe'
   location: 'global'
   properties: {

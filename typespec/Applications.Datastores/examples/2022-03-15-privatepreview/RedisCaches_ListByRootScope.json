@@ -3,7 +3,7 @@
   "title": "List RedisCache resources by rootScope",
   "parameters": {
     "rootScope": "planes/radius/local",
-    "api-version": "2022-03-15-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {
@@ -61,7 +61,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Datastores/redisCaches?api-version=2022-03-15-privatepreview&$skipToken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Datastores/redisCaches?api-version=2023-10-01-preview&$skipToken=X'12345'"
       }
     }
   }

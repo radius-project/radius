@@ -25,7 +25,7 @@ param username string = 'sa'
 @secure()
 param password string = newGuid()
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dsrp-resources-sql'
   location: location
   properties: {
@@ -33,7 +33,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'sql-app-ctnr'
   location: location
   properties: {
@@ -57,7 +57,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Datastores/sqlDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
   name: 'sql-db'
   location: location
   properties: {
@@ -74,7 +74,7 @@ resource db 'Applications.Datastores/sqlDatabases@2022-03-15-privatepreview' = {
   }
 }
 
-resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource sqlRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'sql-rte'
   location: location
   properties: {
@@ -83,7 +83,7 @@ resource sqlRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource sqlContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource sqlContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'sql-ctnr'
   location: location
   properties: {

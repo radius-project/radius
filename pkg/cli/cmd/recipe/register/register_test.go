@@ -31,7 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
@@ -134,23 +134,23 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testRecipes := map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+		testRecipes := map[string]map[string]v20231001preview.RecipePropertiesClassification{
 			portableresources.MongoDatabasesResourceType: {
-				"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
+				"cosmosDB": &v20231001preview.BicepRecipeProperties{
 					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				},
 			},
 		}
 
-		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+		testEnvProperties := &v20231001preview.EnvironmentProperties{
 			Recipes: testRecipes,
-			Compute: &v20220315privatepreview.KubernetesCompute{
+			Compute: &v20231001preview.KubernetesCompute{
 				Namespace: to.Ptr("default"),
 			},
 		}
 
-		envResource := v20220315privatepreview.EnvironmentResource{
+		envResource := v20231001preview.EnvironmentResource{
 			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 			Name:       to.Ptr("kind-kind"),
 			Type:       to.Ptr("applications.core/environments"),
@@ -197,22 +197,22 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe Failure", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testRecipes := map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+		testRecipes := map[string]map[string]v20231001preview.RecipePropertiesClassification{
 			portableresources.MongoDatabasesResourceType: {
-				"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
+				"cosmosDB": &v20231001preview.BicepRecipeProperties{
 					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 				},
 			},
 		}
 
-		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
+		testEnvProperties := &v20231001preview.EnvironmentProperties{
 			Recipes: testRecipes,
-			Compute: &v20220315privatepreview.KubernetesCompute{
+			Compute: &v20231001preview.KubernetesCompute{
 				Namespace: to.Ptr("default"),
 			},
 		}
 
-		envResource := v20220315privatepreview.EnvironmentResource{
+		envResource := v20231001preview.EnvironmentResource{
 			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 			Name:       to.Ptr("kind-kind"),
 			Type:       to.Ptr("applications.core/environments"),
@@ -261,7 +261,7 @@ func Test_Run(t *testing.T) {
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
 			GetEnvDetails(gomock.Any(), gomock.Any()).
-			Return(v20220315privatepreview.EnvironmentResource{}, expectedError).
+			Return(v20231001preview.EnvironmentResource{}, expectedError).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -283,24 +283,24 @@ func Test_Run(t *testing.T) {
 	t.Run("Register recipe with parameters", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+		testEnvProperties := &v20231001preview.EnvironmentProperties{
+			Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
 				portableresources.MongoDatabasesResourceType: {
-					"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
+					"cosmosDB": &v20231001preview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						Parameters:   map[string]any{"throughput": 400},
 					},
 				},
 			},
-			Compute: &v20220315privatepreview.KubernetesCompute{
+			Compute: &v20231001preview.KubernetesCompute{
 				Kind:       to.Ptr("kubernetes"),
 				Namespace:  to.Ptr("default"),
 				ResourceID: to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
 			},
 		}
 
-		envResource := v20220315privatepreview.EnvironmentResource{
+		envResource := v20231001preview.EnvironmentResource{
 			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 			Name:       to.Ptr("kind-kind"),
 			Type:       to.Ptr("applications.core/environments"),
@@ -346,10 +346,10 @@ func Test_Run(t *testing.T) {
 
 	t.Run("Register recipe with no namespace", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Recipes: map[string]map[string]v20220315privatepreview.RecipePropertiesClassification{
+		testEnvProperties := &v20231001preview.EnvironmentProperties{
+			Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
 				portableresources.MongoDatabasesResourceType: {
-					"cosmosDB": &v20220315privatepreview.BicepRecipeProperties{
+					"cosmosDB": &v20231001preview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 					},
@@ -357,7 +357,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		envResource := v20220315privatepreview.EnvironmentResource{
+		envResource := v20231001preview.EnvironmentResource{
 			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 			Name:       to.Ptr("kind-kind"),
 			Type:       to.Ptr("applications.core/environments"),
@@ -402,13 +402,13 @@ func Test_Run(t *testing.T) {
 	t.Run("Register the first recipe", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		testEnvProperties := &v20220315privatepreview.EnvironmentProperties{
-			Compute: &v20220315privatepreview.KubernetesCompute{
+		testEnvProperties := &v20231001preview.EnvironmentProperties{
+			Compute: &v20231001preview.KubernetesCompute{
 				Namespace: to.Ptr("default"),
 			},
 		}
 
-		envResource := v20220315privatepreview.EnvironmentResource{
+		envResource := v20231001preview.EnvironmentResource{
 			ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 			Name:       to.Ptr("kind-kind"),
 			Type:       to.Ptr("applications.core/environments"),

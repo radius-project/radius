@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 // Version represents the api version in this package.
-const Version = "2022-03-15-privatepreview"
+const Version = "2023-10-01-preview"

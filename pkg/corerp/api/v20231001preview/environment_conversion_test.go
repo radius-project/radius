@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"encoding/json"
@@ -50,8 +50,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2022-03-15-privatepreview",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
 						AsyncProvisioningState: v1.ProvisioningStateAccepted,
 					},
 				},
@@ -96,8 +96,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2022-03-15-privatepreview",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
 						AsyncProvisioningState: v1.ProvisioningStateAccepted,
 					},
 				},
@@ -166,8 +166,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2022-03-15-privatepreview",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
 						AsyncProvisioningState: v1.ProvisioningStateAccepted,
 					},
 				},
@@ -208,8 +208,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2022-03-15-privatepreview",
-						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
 						AsyncProvisioningState: v1.ProvisioningStateAccepted,
 					},
 				},

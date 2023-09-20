@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // ApplicationDataModelToVersioned converts version agnostic application datamodel to versioned model.
 func ApplicationDataModelToVersioned(model *datamodel.Application, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.ApplicationResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.ApplicationResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -40,8 +40,8 @@ func ApplicationDataModelToVersioned(model *datamodel.Application, version strin
 // ApplicationDataModelFromVersioned converts versioned application model to datamodel.
 func ApplicationDataModelFromVersioned(content []byte, version string) (*datamodel.Application, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.ApplicationResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.ApplicationResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

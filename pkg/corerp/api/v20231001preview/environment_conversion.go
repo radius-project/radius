@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"fmt"
@@ -249,7 +249,7 @@ func fromEnvironmentComputeKind(kind rpv1.EnvironmentComputeKind) *string {
 	case rpv1.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
 	default:
-		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatepreview supports only kubernetes.
+		k = EnvironmentComputeKindKubernetes // 2023-10-01-preview supports only kubernetes.
 	}
 
 	return &k

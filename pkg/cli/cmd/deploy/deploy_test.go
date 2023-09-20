@@ -30,7 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -54,7 +54,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -69,7 +69,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 
 			},
@@ -85,10 +85,10 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{
-						Properties: &v20220315privatepreview.EnvironmentProperties{
-							Providers: &v20220315privatepreview.Providers{
-								Azure: &v20220315privatepreview.ProvidersAzure{
+					Return(v20231001preview.EnvironmentResource{
+						Properties: &v20231001preview.EnvironmentProperties{
+							Providers: &v20231001preview.Providers{
+								Azure: &v20231001preview.ProvidersAzure{
 									Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
 								},
 							},
@@ -109,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, radcli.Create404Error()).
+					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 					Times(1)
 
 			},
@@ -125,7 +125,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 			ValidateCallback: func(t *testing.T, obj framework.Runner) {
@@ -154,7 +154,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -169,7 +169,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},

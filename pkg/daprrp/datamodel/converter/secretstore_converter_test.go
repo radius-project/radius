@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,13 +37,13 @@ func TestDaprSecretStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore_manual_resourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprSecretStoreResource{},
+			"../../api/v20231001preview/testdata/secretstore_manual_resourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.DaprSecretStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore_manual_resourcedatamodel.json",
+			"../../api/v20231001preview/testdata/secretstore_manual_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -74,22 +74,22 @@ func TestDaprSecretStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore_manual_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/secretstore_manual_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore_invalidrecipe_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/secretstore_invalidrecipe_resource.json",
+			"2023-10-01-preview",
 			errors.New("json: cannot unmarshal number into Go struct field DaprSecretStoreProperties.properties.version of type string"),
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore_invalidvalues_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/secretstore_invalidvalues_resource.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{Code: "BadRequest", Message: "error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore_invalidvalues_resource.json",
+			"../../api/v20231001preview/testdata/secretstore_invalidvalues_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},

@@ -4,7 +4,7 @@ param location string = resourceGroup().location
 param environment string
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dapr-serviceinvocation'
   location: location
   properties: {
@@ -12,7 +12,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'dapr-frontend'
   location: location
   properties: {
@@ -38,7 +38,7 @@ resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource backend 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'dapr-backend'
   location: location
   properties: {

@@ -3,7 +3,7 @@
   "title": "List SqlDatabases resources by resource group",
   "parameters": {
     "rootScope": "planes/radius/local/resourceGroups/testGroup",
-    "api-version": "2022-03-15-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {
@@ -60,7 +60,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/sqlDatabases?api-version=2022-01-25-privatepreview&$skipToken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/sqlDatabases?api-version=2023-10-01-preview&$skipToken=X'12345'"
       }
     }
   }

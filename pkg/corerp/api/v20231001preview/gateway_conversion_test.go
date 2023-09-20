@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"encoding/json"
@@ -53,7 +53,7 @@ func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "myreplaceprefix", gw.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", gw.Properties.URL)
 	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", gw.InternalMetadata.UpdatedAPIVersion)
 }
 
 func TestGatewayConvertDataModelToVersioned(t *testing.T) {
@@ -105,7 +105,7 @@ func TestGatewaySSLPassthroughConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "myreplaceprefix", gw.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", gw.Properties.URL)
 	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", gw.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, true, gw.Properties.TLS.SSLPassthrough)
 }
 
@@ -160,7 +160,7 @@ func TestGatewayTLSTerminationConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "myreplaceprefix", gw.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", gw.Properties.URL)
 	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", gw.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, "secretname", gw.Properties.TLS.CertificateFrom)
 	require.Equal(t, datamodel.TLSMinVersion13, gw.Properties.TLS.MinimumProtocolVersion)
 }
@@ -217,7 +217,7 @@ func TestGatewayTLSTerminationConvertVersionedToDataModel_NoMinProtocolVersion(t
 	require.Equal(t, "myreplaceprefix", gw.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", gw.Properties.URL)
 	require.Equal(t, []rpv1.OutputResource(nil), gw.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", gw.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", gw.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, "secretname", gw.Properties.TLS.CertificateFrom)
 	require.Equal(t, datamodel.DefaultTLSMinVersion, gw.Properties.TLS.MinimumProtocolVersion)
 }

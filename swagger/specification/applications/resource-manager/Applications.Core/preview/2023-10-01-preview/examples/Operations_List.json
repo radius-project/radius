@@ -2,7 +2,7 @@
   "operationId": "Operations_List",
   "title": "Get the operations for the Applications.Core resource provider",
   "parameters": {
-    "api-version": "2022-03-15-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {

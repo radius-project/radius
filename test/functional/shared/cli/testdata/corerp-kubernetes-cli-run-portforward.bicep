@@ -5,7 +5,7 @@ param application string
 @description('Specifies the image to be deployed.')
 param magpieimage string
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource container 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'k8s-cli-run-portforward'
   location: 'global'
   properties: {

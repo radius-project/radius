@@ -3,7 +3,7 @@
   "title": "List containers at resource group",
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",
-    "api-version": "2022-03-15-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {
@@ -96,7 +96,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers?api-version=2023-10-01-preview&$skiptoken=X'12345'"
       }
     }
   }

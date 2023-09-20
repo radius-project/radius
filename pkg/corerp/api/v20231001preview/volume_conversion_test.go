@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"encoding/json"
@@ -50,7 +50,7 @@ func TestVolumeConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "Applications.Core/volumes", ct.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", ct.Properties.Application)
 	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, expected.Properties.AzureKeyVault, ct.Properties.AzureKeyVault)
 }
 

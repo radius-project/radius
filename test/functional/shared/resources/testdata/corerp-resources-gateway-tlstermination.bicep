@@ -15,14 +15,14 @@ param tlscrt string
 @secure()
 param tlskey string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-gateway-tlstermination'
   properties: {
     environment: environment
   }
 }
 
-resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
+resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   name: 'tls-gtwy-gtwy'
   properties: {
     application: app.id
@@ -38,7 +38,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   }
 }
 
-resource certificate 'Applications.Core/secretStores@2022-03-15-privatepreview' = {
+resource certificate 'Applications.Core/secretStores@2023-10-01-preview' = {
   name: 'tls-gtwy-cert'
   properties: {
     application: app.id
@@ -54,7 +54,7 @@ resource certificate 'Applications.Core/secretStores@2022-03-15-privatepreview' 
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'tls-gtwy-front-rte'
   properties: {
     application: app.id
@@ -62,7 +62,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'tls-gtwy-front-ctnr'
   properties: {
     application: app.id

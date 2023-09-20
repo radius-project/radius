@@ -4,7 +4,7 @@
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "containerName": "app0",
-    "api-version": "2022-03-15-privatepreview",
+    "api-version": "2023-10-01-preview",
     "ContainerResource": {
       "properties": {
         "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",

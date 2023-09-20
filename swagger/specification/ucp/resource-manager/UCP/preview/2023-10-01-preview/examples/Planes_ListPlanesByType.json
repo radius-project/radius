@@ -3,7 +3,7 @@
   "title": "List planes by planeType",
   "parameters": {
     "planeType": "radius",
-    "api-version": "2022-09-01-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {

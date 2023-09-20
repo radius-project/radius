@@ -1,9 +1,9 @@
-# Applications.Core @ 2022-03-15-privatepreview
+# Applications.Core @ 2023-10-01-preview
 
-## Resource Applications.Core/applications@2022-03-15-privatepreview
+## Resource Applications.Core/applications@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -12,10 +12,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/applications' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/containers@2022-03-15-privatepreview
+## Resource Applications.Core/containers@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -24,10 +24,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/containers' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/environments@2022-03-15-privatepreview
+## Resource Applications.Core/environments@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -36,10 +36,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/environments' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/extenders@2022-03-15-privatepreview
+## Resource Applications.Core/extenders@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -48,10 +48,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/extenders' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/gateways@2022-03-15-privatepreview
+## Resource Applications.Core/gateways@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -60,10 +60,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/gateways' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/httpRoutes@2022-03-15-privatepreview
+## Resource Applications.Core/httpRoutes@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -72,10 +72,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/httpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/secretStores@2022-03-15-privatepreview
+## Resource Applications.Core/secretStores@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -84,10 +84,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/secretStores' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Core/volumes@2022-03-15-privatepreview
+## Resource Applications.Core/volumes@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -96,15 +96,15 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/volumes' (ReadOnly, DeployTimeConstant): The resource type
 
-## Function listSecrets (Applications.Core/extenders@2022-03-15-privatepreview)
+## Function listSecrets (Applications.Core/extenders@2023-10-01-preview)
 * **Resource**: Applications.Core/extenders
-* **ApiVersion**: 2022-03-15-privatepreview
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
 * **Output**: any
 
-## Function listSecrets (Applications.Core/secretStores@2022-03-15-privatepreview)
+## Function listSecrets (Applications.Core/secretStores@2023-10-01-preview)
 * **Resource**: Applications.Core/secretStores
-* **ApiVersion**: 2022-03-15-privatepreview
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
 * **Output**: [SecretStoreListSecretsResult](#secretstorelistsecretsresult)
 

@@ -39,7 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -284,9 +284,9 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 }
 
 // // CreateResourceGroup creates a ResourceGroupResource object with the given name and a generated ID.
-func CreateResourceGroup(resourceGroupName string) v20220901privatepreview.ResourceGroupResource {
+func CreateResourceGroup(resourceGroupName string) v20231001preview.ResourceGroupResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
-	return v20220901privatepreview.ResourceGroupResource{
+	return v20231001preview.ResourceGroupResource{
 		Name: &resourceGroupName,
 		ID:   &id,
 	}

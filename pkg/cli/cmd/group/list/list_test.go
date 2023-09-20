@@ -26,7 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -86,7 +86,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		resourceGroups := []v20220901privatepreview.ResourceGroupResource{
+		resourceGroups := []v20231001preview.ResourceGroupResource{
 			radcli.CreateResourceGroup("rg1"),
 			radcli.CreateResourceGroup("rg2"),
 		}

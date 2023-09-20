@@ -19,28 +19,28 @@ package extenders
 import (
 	"encoding/json"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 )
 
-const testHeaderfile = "20220315privatepreview_requestheaders.json"
+const testHeaderfile = "20231001preview_requestheaders.json"
 
-func getTestModels20220315privatepreview() (input *v20220315privatepreview.ExtenderResource, dataModel *datamodel.Extender, output *v20220315privatepreview.ExtenderResource) {
-	rawInput := testutil.ReadFixture("20220315privatepreview_input.json")
-	input = &v20220315privatepreview.ExtenderResource{}
+func getTestModels20231001preview() (input *v20231001preview.ExtenderResource, dataModel *datamodel.Extender, output *v20231001preview.ExtenderResource) {
+	rawInput := testutil.ReadFixture("20231001preview_input.json")
+	input = &v20231001preview.ExtenderResource{}
 	err := json.Unmarshal(rawInput, input)
 	if err != nil {
 		return nil, nil, nil
 	}
-	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
+	rawDataModel := testutil.ReadFixture("20231001preview_datamodel.json")
 	dataModel = &datamodel.Extender{}
 	err = json.Unmarshal(rawDataModel, dataModel)
 	if err != nil {
 		return nil, nil, nil
 	}
-	rawExpectedOutput := testutil.ReadFixture("20220315privatepreview_output.json")
-	output = &v20220315privatepreview.ExtenderResource{}
+	rawExpectedOutput := testutil.ReadFixture("20231001preview_output.json")
+	output = &v20231001preview.ExtenderResource{}
 	err = json.Unmarshal(rawExpectedOutput, output)
 	if err != nil {
 		return nil, nil, nil

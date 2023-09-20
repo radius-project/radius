@@ -3,7 +3,7 @@
   "title": "List extender resources by rootScope",
   "parameters": {
     "rootScope": "/planes/radius/local",
-    "api-version": "2022-03-15-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {
@@ -27,7 +27,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Core/extenders?api-version=2022-03-15-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Core/extenders?api-version=2023-10-01-preview&$skiptoken=X'12345'"
       }
     }
   }

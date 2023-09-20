@@ -1,9 +1,9 @@
-# Applications.Dapr @ 2022-03-15-privatepreview
+# Applications.Dapr @ 2023-10-01-preview
 
-## Resource Applications.Dapr/pubSubBrokers@2022-03-15-privatepreview
+## Resource Applications.Dapr/pubSubBrokers@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -12,10 +12,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Dapr/pubSubBrokers' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Dapr/secretStores@2022-03-15-privatepreview
+## Resource Applications.Dapr/secretStores@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -24,10 +24,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Dapr/secretStores' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Dapr/stateStores@2022-03-15-privatepreview
+## Resource Applications.Dapr/stateStores@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name

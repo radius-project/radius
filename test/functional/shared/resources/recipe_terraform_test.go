@@ -316,7 +316,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 				require.Equal(t, 42.0, resource.Properties["c"])
 				require.Equal(t, "resource", resource.Properties["d"])
 
-				response, err := test.Options.CustomAction.InvokeCustomAction(ctx, *resource.ID, "2022-03-15-privatepreview", "listSecrets")
+				response, err := test.Options.CustomAction.InvokeCustomAction(ctx, *resource.ID, "2023-10-01-preview", "listSecrets")
 				require.NoError(t, err)
 
 				expected := map[string]any{"e": "secret value"}

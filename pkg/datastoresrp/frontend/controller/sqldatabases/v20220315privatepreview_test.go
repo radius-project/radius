@@ -19,24 +19,24 @@ package sqldatabases
 import (
 	"encoding/json"
 
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 )
 
-const testHeaderfile = "20220315privatepreview_requestheaders.json"
+const testHeaderfile = "20231001preview_requestheaders.json"
 
-func getTestModels20220315privatepreview() (input *v20220315privatepreview.SQLDatabaseResource, dataModel *datamodel.SqlDatabase, output *v20220315privatepreview.SQLDatabaseResource) {
-	rawInput := testutil.ReadFixture("20220315privatepreview_input.json")
-	input = &v20220315privatepreview.SQLDatabaseResource{}
+func getTestModels20231001preview() (input *v20231001preview.SQLDatabaseResource, dataModel *datamodel.SqlDatabase, output *v20231001preview.SQLDatabaseResource) {
+	rawInput := testutil.ReadFixture("20231001preview_input.json")
+	input = &v20231001preview.SQLDatabaseResource{}
 	_ = json.Unmarshal(rawInput, input)
 
-	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
+	rawDataModel := testutil.ReadFixture("20231001preview_datamodel.json")
 	dataModel = &datamodel.SqlDatabase{}
 	_ = json.Unmarshal(rawDataModel, dataModel)
 
-	rawExpectedOutput := testutil.ReadFixture("20220315privatepreview_output.json")
-	output = &v20220315privatepreview.SQLDatabaseResource{}
+	rawExpectedOutput := testutil.ReadFixture("20231001preview_output.json")
+	output = &v20231001preview.SQLDatabaseResource{}
 	_ = json.Unmarshal(rawExpectedOutput, output)
 
 	return input, dataModel, output

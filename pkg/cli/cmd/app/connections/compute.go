@@ -22,7 +22,7 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -326,7 +326,7 @@ func connectionsFromAPIData(resource generated.GenericResource) []connectionEntr
 	entries := []connectionEntry{}
 	for name, connection := range connections {
 
-		data := v20220315privatepreview.ConnectionProperties{}
+		data := v20231001preview.ConnectionProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err != nil {
 			entries = append(entries, connectionEntry{

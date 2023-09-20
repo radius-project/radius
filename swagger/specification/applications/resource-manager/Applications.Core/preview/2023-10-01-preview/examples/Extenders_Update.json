@@ -4,7 +4,7 @@
   "parameters": {
     "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
     "extenderName": "extender0",
-    "api-version": "2022-03-15-privatepreview",
+    "api-version": "2023-10-01-preview",
     "ExtenderParameters": {
       "location": "West US",
       "properties": {

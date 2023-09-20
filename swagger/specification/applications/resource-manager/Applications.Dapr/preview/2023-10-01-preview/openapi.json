@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Applications.Dapr Resource Management APIs",
-    "version": "2022-03-15-privatepreview",
+    "version": "2023-10-01-preview",
     "description": "REST API for Applications.Dapr",
     "x-typespec-generated": [
       {
@@ -1670,16 +1670,16 @@
       "type": "string",
       "description": "Supported API versions for the Applications.Dapr resource provider.",
       "enum": [
-        "2022-03-15-privatepreview"
+        "2023-10-01-preview"
       ],
       "x-ms-enum": {
         "name": "Versions",
         "modelAsString": true,
         "values": [
           {
-            "name": "v2022_03_15_privatepreview",
-            "value": "2022-03-15-privatepreview",
-            "description": "2022-03-15-privatepreview"
+            "name": "v2023_10_01_preview",
+            "value": "2023-10-01-preview",
+            "description": "2023-10-01-preview"
           }
         ]
       }

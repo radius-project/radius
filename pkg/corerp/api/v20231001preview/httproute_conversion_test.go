@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"encoding/json"
@@ -51,7 +51,7 @@ func TestHTTPRouteConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "http", ct.Properties.Scheme)
 	require.Equal(t, "http://testapplications.com/httproute/", ct.Properties.URL)
 	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 }
 
 func TestHTTPRouteConvertDataModelToVersioned(t *testing.T) {

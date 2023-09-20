@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // version, returning an error if the version is unsupported.
 func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.SQLDatabaseResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.SQLDatabaseResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -42,8 +42,8 @@ func SqlDatabaseDataModelToVersioned(model *datamodel.SqlDatabase, version strin
 // error if one occurs.
 func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.SqlDatabase, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.SQLDatabaseResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.SQLDatabaseResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}
@@ -62,8 +62,8 @@ func SqlDatabaseDataModelFromVersioned(content []byte, version string) (*datamod
 // returns an error if the version is unsupported.
 func SqlDatabaseSecretsDataModelToVersioned(model *datamodel.SqlDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.SQLDatabaseSecrets{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.SQLDatabaseSecrets{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 

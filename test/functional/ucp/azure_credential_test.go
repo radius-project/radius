@@ -25,7 +25,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/to"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 )
 

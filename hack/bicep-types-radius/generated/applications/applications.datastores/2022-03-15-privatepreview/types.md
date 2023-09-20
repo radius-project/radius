@@ -1,9 +1,9 @@
-# Applications.Datastores @ 2022-03-15-privatepreview
+# Applications.Datastores @ 2023-10-01-preview
 
-## Resource Applications.Datastores/mongoDatabases@2022-03-15-privatepreview
+## Resource Applications.Datastores/mongoDatabases@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -12,10 +12,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Datastores/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Datastores/redisCaches@2022-03-15-privatepreview
+## Resource Applications.Datastores/redisCaches@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -24,10 +24,10 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Datastores/redisCaches' (ReadOnly, DeployTimeConstant): The resource type
 
-## Resource Applications.Datastores/sqlDatabases@2022-03-15-privatepreview
+## Resource Applications.Datastores/sqlDatabases@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
@@ -36,21 +36,21 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Datastores/sqlDatabases' (ReadOnly, DeployTimeConstant): The resource type
 
-## Function listSecrets (Applications.Datastores/mongoDatabases@2022-03-15-privatepreview)
+## Function listSecrets (Applications.Datastores/mongoDatabases@2023-10-01-preview)
 * **Resource**: Applications.Datastores/mongoDatabases
-* **ApiVersion**: 2022-03-15-privatepreview
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
 * **Output**: [MongoDatabaseListSecretsResult](#mongodatabaselistsecretsresult)
 
-## Function listSecrets (Applications.Datastores/redisCaches@2022-03-15-privatepreview)
+## Function listSecrets (Applications.Datastores/redisCaches@2023-10-01-preview)
 * **Resource**: Applications.Datastores/redisCaches
-* **ApiVersion**: 2022-03-15-privatepreview
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
 * **Output**: [RedisCacheListSecretsResult](#rediscachelistsecretsresult)
 
-## Function listSecrets (Applications.Datastores/sqlDatabases@2022-03-15-privatepreview)
+## Function listSecrets (Applications.Datastores/sqlDatabases@2023-10-01-preview)
 * **Resource**: Applications.Datastores/sqlDatabases
-* **ApiVersion**: 2022-03-15-privatepreview
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
 * **Output**: [SqlDatabaseListSecretsResult](#sqldatabaselistsecretsresult)
 

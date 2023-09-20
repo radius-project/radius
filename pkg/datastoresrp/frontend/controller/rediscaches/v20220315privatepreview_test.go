@@ -19,15 +19,15 @@ package rediscaches
 import (
 	"encoding/json"
 
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 )
 
-const testHeaderfile = "20220315privatepreview_requestheaders.json"
+const testHeaderfile = "20231001preview_requestheaders.json"
 
-func getTestModels20220315privatepreview() (input *v20220315privatepreview.RedisCacheResource, dataModel *datamodel.RedisCache, output *v20220315privatepreview.RedisCacheResource) {
-	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
+func getTestModels20231001preview() (input *v20231001preview.RedisCacheResource, dataModel *datamodel.RedisCache, output *v20231001preview.RedisCacheResource) {
+	rawDataModel := testutil.ReadFixture("20231001preview_datamodel.json")
 	dataModel = &datamodel.RedisCache{}
 	_ = json.Unmarshal(rawDataModel, dataModel)
 

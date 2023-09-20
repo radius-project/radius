@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Universal Control Plane Resource Management APIs",
-    "version": "2022-09-01-privatepreview",
+    "version": "2023-10-01-preview",
     "description": "REST APIs for Universal Control Plane",
     "x-typespec-generated": [
       {
@@ -1782,7 +1782,7 @@
       "type": "string",
       "description": "Supported API versions for Universal Control Plane resource provider.",
       "enum": [
-        "2022-09-01-privatepreview"
+        "2023-10-01-preview"
       ],
       "x-ms-enum": {
         "name": "Versions",
@@ -1790,8 +1790,8 @@
         "values": [
           {
             "name": "v2022_09_01_privatepreview",
-            "value": "2022-09-01-privatepreview",
-            "description": "2022-09-01-privatepreview"
+            "value": "2023-10-01-preview",
+            "description": "2023-10-01-preview"
           }
         ]
       }

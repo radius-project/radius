@@ -3,7 +3,7 @@
   "title": "List RabbitMQQueue resources by resource group",
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",
-    "api-version": "2022-03-15-privatepreview"
+    "api-version": "2023-10-01-preview"
   },
   "responses": {
     "200": {
@@ -40,7 +40,7 @@
             }
           }
         ],
-        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Messaging/rabbitMQQueues?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
+        "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Messaging/rabbitMQQueues?api-version=2023-10-01-preview&$skiptoken=X'12345'"
       }
     }
   }

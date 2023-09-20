@@ -4,7 +4,7 @@
   "parameters": {
     "rootScope": "/planes/radius/local/resourceGroups/testGroup",
     "stateStoreName": "daprstatestore0",
-    "api-version": "2022-03-15-privatepreview",
+    "api-version": "2023-10-01-preview",
     "StateStoreParameters": {
       "location": "West US",
       "properties": {

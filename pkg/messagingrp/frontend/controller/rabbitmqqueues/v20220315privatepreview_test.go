@@ -19,15 +19,15 @@ package rabbitmqqueues
 import (
 	"encoding/json"
 
-	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20231001preview"
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 )
 
-const testHeaderfile = "20220315privatepreview_requestheaders.json"
+const testHeaderfile = "20231001preview_requestheaders.json"
 
-func getTest_Model20220315privatepreview() (input *v20220315privatepreview.RabbitMQQueueResource, dataModel *msg_dm.RabbitMQQueue, output *v20220315privatepreview.RabbitMQQueueResource) {
-	rawDataModel := testutil.ReadFixture("20220315privatepreview_datamodel.json")
+func getTest_Model20231001preview() (input *v20231001preview.RabbitMQQueueResource, dataModel *msg_dm.RabbitMQQueue, output *v20231001preview.RabbitMQQueueResource) {
+	rawDataModel := testutil.ReadFixture("20231001preview_datamodel.json")
 	dataModel = &msg_dm.RabbitMQQueue{}
 	_ = json.Unmarshal(rawDataModel, dataModel)
 

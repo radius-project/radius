@@ -4,7 +4,7 @@
   "parameters": {
     "rootScope": "planes/radius/local/resourceGroups/testGroup",
     "mongoDatabaseName": "mongo0",
-    "api-version": "2022-03-15-privatepreview",
+    "api-version": "2023-10-01-preview",
     "MongoDatabaseParameters": {
       "location": "global",
       "properties": {

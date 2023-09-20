@@ -22,7 +22,7 @@ param tlscrt string
 @secure()
 param tlskey string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-gateway-sslpassthrough'
   location: location
   properties: {
@@ -30,7 +30,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
+resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   name: 'ssl-gtwy-gtwy'
   location: location
   properties: {
@@ -46,7 +46,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'ssl-gtwy-front-rte'
   location: location
   properties: {
@@ -55,7 +55,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'ssl-gtwy-front-ctnr'
   location: location
   properties: {

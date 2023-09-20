@@ -9,7 +9,7 @@ param redisCacheName string
 @description('Name of the Radius Application.')
 param appName string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-terraform-redis-env'
   properties: {
     compute: {
@@ -28,7 +28,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: appName
   properties: {
     environment: env.id
@@ -41,7 +41,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
   name: 'corerp-resources-terraform-redis'
   properties: {
     application: app.id

@@ -21,19 +21,19 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // FetchApplication fetches an application resource from the Azure Resource Manager using the given application ID and
 // client options, and returns the application resource or an error if one occurs.
-func FetchApplication(ctx context.Context, application string, ucpOptions *arm.ClientOptions) (*v20220315privatepreview.ApplicationResource, error) {
+func FetchApplication(ctx context.Context, application string, ucpOptions *arm.ClientOptions) (*v20231001preview.ApplicationResource, error) {
 	applicationID, err := resources.ParseResource(application)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := v20220315privatepreview.NewApplicationsClient(applicationID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20231001preview.NewApplicationsClient(applicationID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}

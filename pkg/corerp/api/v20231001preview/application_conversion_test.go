@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"encoding/json"
@@ -70,7 +70,7 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "app0", ct.Name)
 				require.Equal(t, "Applications.Core/applications", ct.Type)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", ct.Properties.Environment)
-				require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+				require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 				if tt.emptyExt {
 					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(t), ct.Properties.Extensions)
 				} else {

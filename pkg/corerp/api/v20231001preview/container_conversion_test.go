@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v20220315privatepreview
+package v20231001preview
 
 import (
 	"encoding/json"
@@ -91,7 +91,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, to.Ptr[float32](5), tcpProbe.TCP.InitialDelaySeconds)
 				require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 				require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
-				require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+				require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 				require.Equal(t, 3, len(ct.Properties.Extensions))
 
 				require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
@@ -214,7 +214,7 @@ func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	require.Equal(t, "read", val.IAM.Roles[0])
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
 	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
-	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 
 	var commands []string
 	var args []string
