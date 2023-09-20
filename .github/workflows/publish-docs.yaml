@@ -50,6 +50,7 @@ jobs:
           for file in $RESOURCE_DOCS; do
             fileTarget=${file#radius/hack/bicep-types-radius/generated/}
             dirTarget=$(dirname $fileTarget)
+            mkdir -p docs/docs/snippets/resource-docs/$dirTarget
             echo "Copying $file to docs/docs/snippets/resource-docs/$dirTarget"
             cp $file -t docs/docs/snippets/resource-docs/$dirTarget
           done
