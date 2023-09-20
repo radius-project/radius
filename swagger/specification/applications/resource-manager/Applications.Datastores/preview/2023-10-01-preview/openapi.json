@@ -82,6 +82,14 @@
             }
           }
         },
+        "x-ms-examples": {
+          "List MongoDatabase resources by resource group": {
+            "$ref": "./examples/MongoDatabases_List.json"
+          },
+          "List MongoDatabase resources by rootScope": {
+            "$ref": "./examples/MongoDatabases_ListByRootScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -123,6 +131,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get a MongoDatabase resource": {
+            "$ref": "./examples/MongoDatabases_Get.json"
           }
         }
       },
@@ -183,6 +196,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a MongoDatabase resource with recipe": {
+            "$ref": "./examples/MongoDatabases_CreateOrUpdateRecipe.json"
+          },
+          "Create or update a MongoDatabase resource": {
+            "$ref": "./examples/MongoDatabases_CreateOrUpdateValues.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -306,6 +327,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete a MongoDatabase resource": {
+            "$ref": "./examples/MongoDatabases_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -359,6 +385,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "List the secrets of a MongoDatabase resource": {
+            "$ref": "./examples/MongoDatabases_ListSecrets.json"
+          }
         }
       }
     },
@@ -389,6 +420,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List RedisCache resources by resource group": {
+            "$ref": "./examples/RedisCaches_List.json"
+          },
+          "List RedisCache resources by rootScope": {
+            "$ref": "./examples/RedisCaches_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -432,6 +471,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get a RedisCache resource": {
+            "$ref": "./examples/RedisCaches_Get.json"
           }
         }
       },
@@ -492,6 +536,17 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a RedisCache resource": {
+            "$ref": "./examples/RedisCaches_CreateOrUpdate.json"
+          },
+          "Create or update a RedisCache resource with recipe": {
+            "$ref": "./examples/RedisCaches_CreateOrUpdateRecipe.json"
+          },
+          "Create or update a RedisCache resource with values": {
+            "$ref": "./examples/RedisCaches_CreateOrUpdateValues.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -559,6 +614,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Update a RedisCache resource": {
+            "$ref": "./examples/RedisCaches_Update.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -615,6 +675,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete a RedisCache resource": {
+            "$ref": "./examples/RedisCaches_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -668,6 +733,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "List the secrets of a RedisCaches resource": {
+            "$ref": "./examples/RedisCaches_ListSecrets.json"
+          }
         }
       }
     },
@@ -698,6 +768,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List SqlDatabases resources by resource group": {
+            "$ref": "./examples/SQLDatabases_List.json"
+          },
+          "List SqlDatabases resources by rootScope": {
+            "$ref": "./examples/SQLDatabases_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -741,6 +819,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get a SqlDatabase resource": {
+            "$ref": "./examples/SQLDatabases_Get.json"
           }
         }
       },
@@ -801,6 +884,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a SqlDatabase resource": {
+            "$ref": "./examples/SQLDatabases_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -868,6 +956,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Update a SqlDatabase resource": {
+            "$ref": "./examples/SQLDatabases_Update.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -922,6 +1015,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a SqlDatabase resource": {
+            "$ref": "./examples/SQLDatabases_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {

@@ -97,6 +97,14 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Get applications by resource group": {
+            "$ref": "./examples/Applications_List.json"
+          },
+          "Get applications by rootScope": {
+            "$ref": "./examples/Applications_ListByScope.json"
+          }
+        },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
         }
@@ -138,6 +146,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get an application resource": {
+            "$ref": "./examples/Applications_Get.json"
           }
         }
       },
@@ -192,6 +205,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Create or update an application resource": {
+            "$ref": "./examples/Applications_CreateOrUpdate.json"
+          }
         }
       },
       "patch": {
@@ -239,6 +257,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Update (Patch) an application resource": {
+            "$ref": "./examples/Applications_Update.json"
+          }
         }
       },
       "delete": {
@@ -277,6 +300,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Delete an application resource": {
+            "$ref": "./examples/Applications_Delete.json"
+          }
         }
       }
     },
@@ -307,6 +335,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List containers at resource group": {
+            "$ref": "./examples/Containers_List.json"
+          },
+          "List containers at root scope": {
+            "$ref": "./examples/Containers_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -350,6 +386,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get an container resource": {
+            "$ref": "./examples/Containers_Get.json"
           }
         }
       },
@@ -410,6 +451,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an container resource": {
+            "$ref": "./examples/Containers_CreateOrUpdate.json"
+          },
+          "Create or update an container resource with base manifest": {
+            "$ref": "./examples/Containers_CreateOrUpdate_BaseManifest.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -533,6 +582,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete an container resource": {
+            "$ref": "./examples/Containers_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -566,6 +620,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get environments by resource group": {
+            "$ref": "./examples/Environments_List.json"
+          },
+          "Get environments by rootScope": {
+            "$ref": "./examples/Environments_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -609,6 +671,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get an environment resource": {
+            "$ref": "./examples/Environments_GetEnv0.json"
           }
         }
       },
@@ -663,6 +730,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Create or Update an environment resource": {
+            "$ref": "./examples/Environments_CreateOrUpdate.json"
+          }
         }
       },
       "patch": {
@@ -710,6 +782,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Update an environment resource": {
+            "$ref": "./examples/Environments_PatchEnv0.json"
+          }
         }
       },
       "delete": {
@@ -747,6 +824,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Delete an environment resource": {
+            "$ref": "./examples/Environments_DeleteEnv0.json"
           }
         }
       }
@@ -797,6 +879,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "Get recipe metadata from environment": {
+            "$ref": "./examples/Environments_GetRecipeMetadata.json"
+          }
         }
       }
     },
@@ -827,6 +914,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List extender resources by resource group": {
+            "$ref": "./examples/Extenders_List.json"
+          },
+          "List extender resources by rootScope": {
+            "$ref": "./examples/Extenders_ListByRootScope.json"
           }
         },
         "x-ms-pageable": {
@@ -870,6 +965,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get an extender resource": {
+            "$ref": "./examples/Extenders_Get.json"
           }
         }
       },
@@ -930,6 +1030,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update an extender resource": {
+            "$ref": "./examples/Extenders_CreateOrUpdate.json"
+          },
+          "Create or Update an extender resource with recipe": {
+            "$ref": "./examples/Extenders_CreateOrUpdateWithRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -997,6 +1105,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Update an extender resource": {
+            "$ref": "./examples/Extenders_Update.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1053,6 +1166,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete an extender resource": {
+            "$ref": "./examples/Extenders_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1106,6 +1224,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "List the secrets from extender resources": {
+            "$ref": "./examples/Extenders_ListSecrets.json"
+          }
         }
       }
     },
@@ -1136,6 +1259,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List gateway resources": {
+            "$ref": "./examples/Gateways_List.json"
+          },
+          "List gateway resources by rootScope": {
+            "$ref": "./examples/Gateways_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1179,6 +1310,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get an gateway resource": {
+            "$ref": "./examples/Gateways_Get.json"
           }
         }
       },
@@ -1306,6 +1442,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Create or update a gateway resource": {
+            "$ref": "./examples/Gateways_CreateOrUpdate.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1362,6 +1503,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete an gateway resource": {
+            "$ref": "./examples/Gateways_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1395,6 +1541,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List httpRoutes resources by resource group": {
+            "$ref": "./examples/HttpRoutes_List.json"
+          },
+          "List httpRoutes resources by rootScope": {
+            "$ref": "./examples/HttpRoutes_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -1438,6 +1592,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Get.json"
           }
         }
       },
@@ -1498,6 +1657,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update httpRoutes resources": {
+            "$ref": "./examples/HttpRoutes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1565,6 +1729,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Update a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Update.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1621,6 +1790,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete a httpRoutes resource": {
+            "$ref": "./examples/HttpRoutes_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -1654,6 +1828,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_List.json"
           }
         },
         "x-ms-pageable": {
@@ -1697,6 +1876,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get a secret store": {
+            "$ref": "./examples/SecretStores_Get.json"
+          },
+          "Get a secret store for Azure Keyvault": {
+            "$ref": "./examples/SecretStores_Get_AzureKeyVault.json"
           }
         }
       },
@@ -1757,6 +1944,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update a secret store resource with azure keyvault": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate.json"
+          },
+          "Create or Update a secret store resource with valueFrom": {
+            "$ref": "./examples/SecretStores_CreateOrUpdateValueFrom.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1822,6 +2017,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Update a secret store resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
+          },
+          "Update a secret store": {
+            "$ref": "./examples/SecretStores_Update.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -1933,6 +2136,11 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
+        },
+        "x-ms-examples": {
+          "List secret stores": {
+            "$ref": "./examples/SecretStores_ListSecrets.json"
+          }
         }
       }
     },
@@ -1963,6 +2171,14 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "List volumes by resource group": {
+            "$ref": "./examples/Volumes_List.json"
+          },
+          "List volumes by rootScope": {
+            "$ref": "./examples/Volumes_ListByScope.json"
           }
         },
         "x-ms-pageable": {
@@ -2006,6 +2222,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get a volume": {
+            "$ref": "./examples/Volumes_Get.json"
           }
         }
       },
@@ -2066,6 +2287,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a volume": {
+            "$ref": "./examples/Volumes_CreateOrUpdate.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2133,6 +2359,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Update a volume": {
+            "$ref": "./examples/Volumes_Update.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -2189,6 +2420,11 @@
             }
           }
         },
+        "x-ms-examples": {
+          "Delete a volume": {
+            "$ref": "./examples/Volumes_Delete.json"
+          }
+        },
         "x-ms-long-running-operation-options": {
           "final-state-via": "location"
         },
@@ -2219,6 +2455,11 @@
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
+          }
+        },
+        "x-ms-examples": {
+          "Get the operations for the Applications.Core resource provider": {
+            "$ref": "./examples/Operations_List.json"
           }
         },
         "x-ms-pageable": {
