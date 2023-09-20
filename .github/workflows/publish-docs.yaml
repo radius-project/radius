@@ -41,17 +41,13 @@ jobs:
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GOVER }}
-          cache-dependency-path: radius/go.sum
       # Copy and upload resource reference docs
       - name: Copy resource reference docs into docs repo
         run: |
           mkdir -p docs/docs/snippets/resource-docs/
           export RESOURCE_DOCS=$(find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -print0 | xargs -0)
           export RESOURCE_DOCS=$(echo $RESOURCE_DOCS | sed 's/radius\/hack\/bicep-types-radius\/generated\///g')
+          echo Copying files $RESOURCE_DOCS
           for file in $RESOURCE_DOCS; do
             cp radius/hack/bicep-types-radius/generated/$file docs/docs/snippets/resource-docs/$file
           done
@@ -61,6 +57,11 @@ jobs:
           name: resource-docs
           path: docs/docs/snippets/resource-docs
       # Generate and upload CLI docs
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GOVER }}
+          cache-dependency-path: radius/go.sum
       - name: Generate CLI docs
         run: |
             find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
