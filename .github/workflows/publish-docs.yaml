@@ -60,10 +60,8 @@ jobs:
       # Copy and upload resource reference docs
       - name: Copy resource reference docs into docs repo
         run: |
-          # Create /docs/docs/snippets/resource-docs/ if it doesn't exist
           mkdir -p docs/docs/snippets/resource-docs/
-          # I have a directory, radius/hack/bicep-types-radius/generated/, that contains multiple markdown files under various subdirectories. I want to copy the directory structure to /docs/docs/snippets/resource-docs/, but only copy the markdown files
-          find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -exec cp --parents {} docs/docs/snippets/resource-docs/ \;
+          find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -exec sh -c 'cp --parents "$0" docs/docs/snippets/resource-docs/"${0#radius/hack/bicep-types-radius/generated/}"' {} \;
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v3
         with:
