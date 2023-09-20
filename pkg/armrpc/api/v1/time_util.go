@@ -17,13 +17,9 @@ limitations under the License.
 package v1
 
 import (
-	"context"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -74,12 +70,8 @@ func (t *timeRFC3339) UnmarshalText(data []byte) (err error) {
 
 // UnmarshalTimeString unmarshals a string representation of a time in RFC3339 format into a time.Time object.
 func UnmarshalTimeString(ts string) *time.Time {
-	logger := ucplog.FromContextOrDiscard(context.Background())
 	var tt timeRFC3339
-	err := tt.UnmarshalText([]byte(ts))
-	if err != nil {
-		logger.Info(fmt.Sprintf("Invalid time string: '%s'. Using default value", ts))
-	}
+	_ = tt.UnmarshalText([]byte(ts))
 	return (*time.Time)(&tt)
 }
 
