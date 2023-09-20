@@ -51,7 +51,7 @@ jobs:
             fileTarget=${file#radius/hack/bicep-types-radius/generated/}
             dirTarget=$(dirname $fileTarget)
             echo "Copying $file to docs/docs/snippets/resource-docs/$dirTarget"
-            cp -p $file docs/docs/snippets/resource-docs/$dirTarget
+            cp $file -t docs/docs/snippets/resource-docs/$dirTarget
           done
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v3
