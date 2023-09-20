@@ -60,8 +60,8 @@ jobs:
       # Copy and upload resource reference docs
       - name: Copy resource reference docs into docs repo
         run: |
-          # Copy all .md files under radius/hack/bicep-types-radius/generated/ that are in a "docs" directory into docs/docs/snippets/resource-docs
-          find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -path '*/docs/*' -exec cp --parents {} docs/docs/snippets/resource-docs \;
+          # I have a directory, radius/hack/bicep-types-radius/generated/, that contains multiple markdown files under various subdirectories. I want to copy the directory structure to /docs/docs/snippets/resource-docs/, but only copy the markdown files
+          find radius/hack/bicep-types-radius/generated/ -type f -name '*.md' -exec cp --parents {} docs/docs/snippets/resource-docs/ \;
       - name: Upload resource reference docs
         uses: actions/upload-artifact@v3
         with:
