@@ -28,7 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/spf13/cobra"
 )

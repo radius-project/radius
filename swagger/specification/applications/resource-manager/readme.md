@@ -30,44 +30,44 @@ openapi-type: arm
 ```
 
 ``` yaml $(package-core)
-tag: package-core-2022-03-15-privatepreview
+tag: package-core-2023-10-01-preview
 ```
 
 ``` yaml $(package-link)
-tag: package-link-2022-03-15-privatepreview
+tag: package-link-2023-10-01-preview
 ```
 
-### Tag: package-core-2022-03-15-privatepreview
+### Tag: package-core-2023-10-01-preview
 
-These settings apply only when `--tag=package-core-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-core-2023-10-01-preview` is specified on the command line.
 
-``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-core-2023-10-01-preview'
 input-file:
-  - Applications.Core/preview/2022-03-15-privatepreview/openapi.json
+  - Applications.Core/preview/2023-10-01-preview/openapi.json
 ```
-### Tag: package-dapr-2022-03-15-privatepreview
+### Tag: package-dapr-2023-10-01-preview
 
-These settings apply only when `--tag=package-dapr-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-dapr-2023-10-01-preview` is specified on the command line.
 
-``` yaml $(tag) == 'package-dapr-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-dapr-2023-10-01-preview'
 input-file:
-  - Applications.Dapr/preview/2022-03-15-privatepreview/openapi.json
+  - Applications.Dapr/preview/2023-10-01-preview/openapi.json
 ```
-### Tag: package-datastores-2022-03-15-privatepreview
+### Tag: package-datastores-2023-10-01-preview
 
-These settings apply only when `--tag=package-datastores-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-datastores-2023-10-01-preview` is specified on the command line.
 
-``` yaml $(tag) == 'package-datastores-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-datastores-2023-10-01-preview'
 input-file:
-  - Applications.Datastores/preview/2022-03-15-privatepreview/openapi.json
+  - Applications.Datastores/preview/2023-10-01-preview/openapi.json
 ```
-### Tag: package-messaging-2022-03-15-privatepreview
+### Tag: package-messaging-2023-10-01-preview
 
-These settings apply only when `--tag=package-messaging-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-messaging-2023-10-01-preview` is specified on the command line.
 
-``` yaml $(tag) == 'package-messaging-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-messaging-2023-10-01-preview'
 input-file:
-  - Applications.Messaging/preview/2022-03-15-privatepreview/openapi.json
+  - Applications.Messaging/preview/2023-10-01-preview/openapi.json
 ```
 
 # Code Generation

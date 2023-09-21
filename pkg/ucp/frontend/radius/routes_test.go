@@ -25,7 +25,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
@@ -48,19 +48,19 @@ func Test_Routes(t *testing.T) {
 			Path:                        "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/applications/test-app",
 			SkipOperationTypeValidation: true,
 		}, {
-			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationList},
+			OperationType: v1.OperationType{Type: v20231001preview.ResourceGroupType, Method: v1.OperationList},
 			Method:        http.MethodGet,
 			Path:          "/planes/radius/local/resourcegroups",
 		}, {
-			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationGet},
+			OperationType: v1.OperationType{Type: v20231001preview.ResourceGroupType, Method: v1.OperationGet},
 			Method:        http.MethodGet,
 			Path:          "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationPut},
+			OperationType: v1.OperationType{Type: v20231001preview.ResourceGroupType, Method: v1.OperationPut},
 			Method:        http.MethodPut,
 			Path:          "/planes/radius/local/resourcegroups/test-rg",
 		}, {
-			OperationType: v1.OperationType{Type: v20220901privatepreview.ResourceGroupType, Method: v1.OperationDelete},
+			OperationType: v1.OperationType{Type: v20231001preview.ResourceGroupType, Method: v1.OperationDelete},
 			Method:        http.MethodDelete,
 			Path:          "/planes/radius/local/resourcegroups/test-rg",
 		}, {

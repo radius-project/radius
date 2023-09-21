@@ -34,7 +34,7 @@
     "resources": {
         "env": {
             "import": "radius",
-            "type": "Applications.Core/environments@2022-03-15-privatepreview",
+            "type": "Applications.Core/environments@2023-10-01-preview",
             "properties": {
                 "name": "corerp-resources-application-env",
                 "location": "[parameters('location')]",
@@ -48,7 +48,7 @@
         },
         "app": {
             "import": "radius",
-            "type": "Applications.Core/applications@2022-03-15-privatepreview",
+            "type": "Applications.Core/applications@2023-10-01-preview",
             "properties": {
                 "name": "corerp-resources-application-app",
                 "location": "[parameters('location')]",

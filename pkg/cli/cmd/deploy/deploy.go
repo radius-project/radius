@@ -31,7 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 )
@@ -243,9 +243,9 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20220315privatepreview.ApplicationResource{
+		err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20231001preview.ApplicationResource{
 			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20220315privatepreview.ApplicationProperties{
+			Properties: &v20231001preview.ApplicationProperties{
 				Environment: &r.Workspace.Environment,
 			},
 		})

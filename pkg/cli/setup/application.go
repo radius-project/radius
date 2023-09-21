@@ -26,7 +26,7 @@ const (
 	appBicepTemplate = `import radius as radius
 param application string
 
-resource demo 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource demo 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'demo'
   properties: {
     application: application

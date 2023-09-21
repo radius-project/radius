@@ -126,7 +126,7 @@ async function generateAutorestConfig(logger: ILogger, readmePath: string, bicep
   // We expect a path format convention of <provider>/(preview|stable)/<yyyy>-<mm>-<dd>(|-preview)/<filename>.json
   // This information is used to generate individual tags in the generated autorest configuration
   // eslint-disable-next-line no-useless-escape
-  const pathRegex = /^(\$\(this-folder\)\/|)([^\/]+)\/[^\/]+\/(\d{4}-\d{2}-\d{2}(|-privatepreview))\/.*\.json$/i;
+  const pathRegex = /^(\$\(this-folder\)\/|)([^\/]+)\/[^\/]+\/(\d{4}-\d{2}-\d{2}(|-preview|-privatepreview))\/.*\.json$/i;
 
   const readmeContents = await readFile(readmePath, { encoding: 'utf8' });
   const readmeMarkdown = markdown.parse(readmeContents);

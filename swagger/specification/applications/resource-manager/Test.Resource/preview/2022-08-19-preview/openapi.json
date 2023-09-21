@@ -1,0 +1,744 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Test.Resource Resource Management APIs",
+    "version": "2022-08-19-preview",
+    "description": "REST APIs for Test.Resource",
+    "x-typespec-generated": [
+      {
+        "emitter": "@azure-tools/typespec-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "management.azure.com",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "TestAsyncResources"
+    }
+  ],
+  "paths": {
+    "/{rootScope}/providers/Test.Resource/testAsyncResources": {
+      "get": {
+        "operationId": "TestAsyncResources_ListByScope",
+        "tags": [
+          "TestAsyncResources"
+        ],
+        "description": "List TestAsyncResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List TestAsyncResource resources by resourcegroup": {
+            "$ref": "./examples/TestAsyncResource_List.json"
+          },
+          "List TestAsyncResource resources at root scope": {
+            "$ref": "./examples/TestAsyncResource_ListByScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Test.Resource/testAsyncResources/{testAsyncResourceName}": {
+      "get": {
+        "operationId": "TestAsyncResources_Get",
+        "tags": [
+          "TestAsyncResources"
+        ],
+        "description": "Get a TestAsyncResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "testAsyncResourceName",
+            "in": "path",
+            "description": "The name of TestSyncResource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a TestAsyncResource resource": {
+            "$ref": "./examples/TestAsyncResource_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "TestAsyncResources_CreateOrUpdate",
+        "tags": [
+          "TestAsyncResources"
+        ],
+        "description": "Create a TestAsyncResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "testAsyncResourceName",
+            "in": "path",
+            "description": "The name of TestSyncResource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'TestAsyncResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'TestAsyncResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or Update TestAsyncResource resources": {
+            "$ref": "./examples/TestAsyncResource_CreateOrUpdate.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "TestAsyncResources_Update",
+        "tags": [
+          "TestAsyncResources"
+        ],
+        "description": "Update a TestAsyncResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "testAsyncResourceName",
+            "in": "path",
+            "description": "The name of TestSyncResource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/TestAsyncResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update TestAsyncResource resources": {
+            "$ref": "./examples/TestAsyncResource_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "TestAsyncResources_Delete",
+        "tags": [
+          "TestAsyncResources"
+        ],
+        "description": "Delete a TestAsyncResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "testAsyncResourceName",
+            "in": "path",
+            "description": "The name of TestSyncResource",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a TestAsyncResource resource": {
+            "$ref": "./examples/TestAsyncResource_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/providers/Test.Resource/operations": {
+      "get": {
+        "operationId": "Operations_List",
+        "tags": [
+          "Operations"
+        ],
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "EnvironmentCompute": {
+      "type": "object",
+      "description": "Represents backing compute resource",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "IdentitySettingKind": {
+      "type": "string",
+      "description": "IdentitySettingKind is the kind of supported external identity setting",
+      "enum": [
+        "undefined",
+        "azure.com.workload"
+      ],
+      "x-ms-enum": {
+        "name": "IdentitySettingKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "undefined",
+            "value": "undefined",
+            "description": "undefined identity"
+          },
+          {
+            "name": "azure.com.workload",
+            "value": "azure.com.workload",
+            "description": "azure ad workload identity"
+          }
+        ]
+      }
+    },
+    "IdentitySettings": {
+      "type": "object",
+      "description": "IdentitySettings is the external identity setting.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IdentitySettingKind",
+          "description": "kind of identity setting"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "description": "The URI for your compute platform's OIDC issuer"
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource ID of the provisioned identity"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "KubernetesCompute": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
+    "OutputResource": {
+      "type": "object",
+      "description": "Properties of an output resource.",
+      "properties": {
+        "localId": {
+          "type": "string",
+          "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+        },
+        "id": {
+          "type": "string",
+          "description": "The UCP resource ID of the underlying resource."
+        },
+        "radiusManaged": {
+          "type": "boolean",
+          "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        }
+      }
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "description": "Status of a resource.",
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource associated with the resource."
+        },
+        "outputResources": {
+          "type": "array",
+          "description": "Properties of an output resource",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "TestAsyncResource": {
+      "type": "object",
+      "description": "The TestAsyncResource which implements asynchornous API.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TestAsyncResourceProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "TestAsyncResourceListResult": {
+      "type": "object",
+      "description": "The response of a TestAsyncResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The TestAsyncResource items on this page",
+          "items": {
+            "$ref": "#/definitions/TestAsyncResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "TestAsyncResourceProperties": {
+      "type": "object",
+      "description": "TestAsyncResource properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "property1": {
+          "type": "string",
+          "description": "The property1 of TestASyncResource"
+        }
+      },
+      "required": [
+        "application",
+        "property1"
+      ]
+    },
+    "TestAsyncResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the TestAsyncResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/TestAsyncResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "TestAsyncResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the TestAsyncResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "property1": {
+          "type": "string",
+          "description": "The property1 of TestASyncResource"
+        }
+      }
+    },
+    "TestSyncResource": {
+      "type": "object",
+      "description": "The TestSyncResource type.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TestSyncResourceProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "TestSyncResourceProperties": {
+      "type": "object",
+      "description": "TestSyncResource properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "property1": {
+          "type": "string",
+          "description": "The property1 of TestSyncResource"
+        }
+      },
+      "required": [
+        "application",
+        "property1"
+      ]
+    },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for the Test.Resource resource provider.",
+      "enum": [
+        "2022-08-19-preview",
+        "2023-08-19"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2022_08_19_preview",
+            "value": "2022-08-19-preview",
+            "description": "2022-08-19-preview"
+          },
+          {
+            "name": "v2023_08_19",
+            "value": "2023-08-19",
+            "description": "2023-08-19"
+          }
+        ]
+      }
+    }
+  },
+  "parameters": {
+    "RootScopeParameter": {
+      "name": "rootScope",
+      "in": "path",
+      "description": "The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "required": true,
+      "type": "string",
+      "minLength": 1,
+      "x-ms-parameter-location": "client",
+      "x-ms-skip-url-encoding": true
+    }
+  }
+}

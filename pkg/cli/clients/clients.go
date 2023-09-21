@@ -22,8 +22,8 @@ import (
 	"os"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
-	ucp_v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	ucp_v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -163,10 +163,10 @@ type ApplicationsManagementClient interface {
 	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
-	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220901privatepreview.ResourceGroupResource) error
+	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20231001preview.ResourceGroupResource) error
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
-	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220901privatepreview.ResourceGroupResource, error)
-	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220901privatepreview.ResourceGroupResource, error)
+	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20231001preview.ResourceGroupResource, error)
+	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20231001preview.ResourceGroupResource, error)
 
 	// ShowRecipe shows recipe details including list of all parameters for a given recipe registered to an environment
 	ShowRecipe(ctx context.Context, environmentName string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)

@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // string, returning an error if the version is not supported.
 func PubSubBrokerDataModelToVersioned(model *datamodel.DaprPubSubBroker, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.DaprPubSubBrokerResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.DaprPubSubBrokerResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -42,8 +42,8 @@ func PubSubBrokerDataModelToVersioned(model *datamodel.DaprPubSubBroker, version
 // to a version-agnostic datamodel PubSubBroker, returning an error if either operation fails.
 func PubSubBrokerDataModelFromVersioned(content []byte, version string) (*datamodel.DaprPubSubBroker, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.DaprPubSubBrokerResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.DaprPubSubBrokerResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

@@ -31,9 +31,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	testResourceGroup := v20220901privatepreview.ResourceGroupResource{
+	testResourceGroup := v20231001preview.ResourceGroupResource{
 		Name: to.Ptr("test-resource-group"),
 	}
 
@@ -259,12 +259,12 @@ func Test_Run(t *testing.T) {
 	})
 }
 
-func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220901privatepreview.ResourceGroupResource) {
+func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	createShowUCPSuccess(appManagementClient, testResourceGroup)
 	createValidateNamespaceSuccess(namespaceClient)
 }
 
-func createMocksWithInvalidResourceGroup(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220901privatepreview.ResourceGroupResource) {
+func createMocksWithInvalidResourceGroup(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	createShowUCPSuccess(appManagementClient, testResourceGroup)
 	createValidateNamespaceError(namespaceClient)
 }
@@ -281,13 +281,13 @@ func createValidateNamespaceError(namespaceClient *namespace.MockInterface) {
 		Return(fmt.Errorf("failed to create namespace")).Times(1)
 }
 
-func createShowUCPSuccess(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220901privatepreview.ResourceGroupResource) {
+func createShowUCPSuccess(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	appManagementClient.EXPECT().
 		ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "test-resource-group").
 		Return(testResourceGroup, nil).Times(1)
 }
 
-func createShowUCPError(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220901privatepreview.ResourceGroupResource) {
+func createShowUCPError(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20231001preview.ResourceGroupResource) {
 	appManagementClient.EXPECT().
 		ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "invalidresourcegroup").
 		Return(testResourceGroup, clierrors.Message("The resource group %q could not be found.", "invalidresourcegroup")).Times(1)

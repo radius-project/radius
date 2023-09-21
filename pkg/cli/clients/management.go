@@ -28,9 +28,9 @@ import (
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	corerpv20220315 "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	corerpv20220315 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources"
-	ucpv20220901 "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpv20220901 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )

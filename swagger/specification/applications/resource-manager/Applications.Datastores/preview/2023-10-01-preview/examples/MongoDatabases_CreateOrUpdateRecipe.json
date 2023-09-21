@@ -1,0 +1,62 @@
+{
+  "operationId": "MongoDatabases_CreateOrUpdate",
+  "title": "Create or update a MongoDatabase resource with recipe",
+  "parameters": {
+    "rootScope": "planes/radius/local/resourceGroups/testGroup",
+    "mongoDatabaseName": "mongo0",
+    "api-version": "2023-10-01-preview",
+    "MongoDatabaseParameters": {
+      "location": "global",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "recipe": {
+          "name": "cosmosdb",
+          "parameters": {
+            "foo": "bar"
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+        "name": "mongo0",
+        "type": "Applications.Datastores/mongoDatabases",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "recipe": {
+            "name": "cosmosdb",
+            "parameters": {
+              "foo": "bar"
+            }
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+        "name": "mongo0",
+        "type": "Applications.Datastores/mongoDatabases",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "recipe": {
+            "name": "cosmosdb",
+            "parameters": {
+              "foo": "bar"
+            }
+          }
+        }
+      }
+    }
+  }
+}

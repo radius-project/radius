@@ -26,7 +26,7 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"
@@ -34,7 +34,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -57,7 +57,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range createNewResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
+			envInput, envDataModel, expectedOutput := getTestModels20231001preview()
 			w := httptest.NewRecorder()
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, envInput)
 			require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.EnvironmentResource{}
+				actualOutput := &v20231001preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -135,7 +135,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range updateExistingResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
+			envInput, envDataModel, expectedOutput := getTestModels20231001preview()
 			w := httptest.NewRecorder()
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodGet, testHeaderfile, envInput)
 			require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.EnvironmentResource{}
+				actualOutput := &v20231001preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -212,7 +212,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range patchNonExistingResourceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			envInput, _, _ := getTestModels20220315privatepreview()
+			envInput, _, _ := getTestModels20231001preview()
 			w := httptest.NewRecorder()
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
@@ -266,7 +266,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range patchExistingResourceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			envInput, envDataModel, expectedOutput := getTestModels20220315privatepreview()
+			envInput, envDataModel, expectedOutput := getTestModels20231001preview()
 			w := httptest.NewRecorder()
 			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPatch, testHeaderfile, envInput)
 			require.NoError(t, err)
@@ -319,7 +319,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
-				actualOutput := &v20220315privatepreview.EnvironmentResource{}
+				actualOutput := &v20231001preview.EnvironmentResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 			}
@@ -341,8 +341,8 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 	for _, tt := range existingResourceNamespaceCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
-			envInput, envDataModel, _ := getTestModels20220315privatepreview()
-			_, conflictDataModel, _ := getTestModels20220315privatepreview()
+			envInput, envDataModel, _ := getTestModels20231001preview()
+			_, conflictDataModel, _ := getTestModels20231001preview()
 
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/" + tt.existingResourceName

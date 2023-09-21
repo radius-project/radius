@@ -25,7 +25,7 @@ import (
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,7 @@ func Test_ListPlanesByType(t *testing.T) {
 	planesCtrl, err := NewListPlanesByType(armrpc_controller.Options{StorageClient: mockStorageClient})
 	require.NoError(t, err)
 
-	url := "/planes/radius?api-version=2022-09-01-privatepreview"
+	url := "/planes/radius?api-version=2023-10-01-preview"
 
 	query := store.Query{
 		RootScope:    "/planes",
@@ -79,13 +79,13 @@ func Test_ListPlanesByType(t *testing.T) {
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedPlane := v20220901privatepreview.PlaneResource{
+	expectedPlane := v20231001preview.PlaneResource{
 		ID:   &testPlaneId,
 		Name: &testPlaneName,
 		Type: &testPlaneType,
 		Tags: nil,
-		Properties: &v20220901privatepreview.PlaneResourceProperties{
-			Kind:              to.Ptr(v20220901privatepreview.PlaneKindAWS),
+		Properties: &v20231001preview.PlaneResourceProperties{
+			Kind:              to.Ptr(v20231001preview.PlaneKindAWS),
 			ResourceProviders: nil,
 			URL:               nil,
 			ProvisioningState: nil,

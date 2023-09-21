@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	TestAPIVersion = "2022-03-15-privatepreview"
+	TestAPIVersion = "2023-10-01-preview"
 )
 
 // TestResourceDataModel represents test resource.

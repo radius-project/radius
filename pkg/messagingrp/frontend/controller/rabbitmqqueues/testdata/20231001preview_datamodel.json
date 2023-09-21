@@ -1,0 +1,48 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.messaging/rabbitmqqueues/rabbitmq0",
+  "name": "rabbitmq0",
+  "type": "applications.messaging/rabbitmqqueues",
+  "location": "West US",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "provisioningState": "Succeeded",
+    "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+    "resourceProvisioning": "manual",
+    "queue": "testQueue",
+    "secrets": {
+      "uri": "connection://string",
+      "password": "password"
+    }
+  },
+  "computedValues": {
+    "queue": "testQueue"
+  },
+  "secretValues": {
+    "uri": {
+      "value": "connection://string"
+    },
+    "password": {
+      "value": "password"
+    }
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "radius-test-rg",
+  "createdApiVersion": "2023-10-01-preview",
+  "updatedApiVersion": "2023-10-01-preview"
+}

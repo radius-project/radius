@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 // AzureCredentialDataModelToVersioned converts version agnostic Azure credential datamodel to versioned model.
 func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.AzureCredentialResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.AzureCredentialResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -42,8 +42,8 @@ func AzureCredentialDataModelToVersioned(model *datamodel.AzureCredential, versi
 // AzureCredentialDataModelFromVersioned converts versioned Azure credential model to datamodel.
 func AzureCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AzureCredential, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.AzureCredentialResource{}
+	case v20231001preview.Version:
+		vm := &v20231001preview.AzureCredentialResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}

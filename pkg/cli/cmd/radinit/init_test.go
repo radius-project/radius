@@ -44,12 +44,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 func Test_CommandValidation(t *testing.T) {

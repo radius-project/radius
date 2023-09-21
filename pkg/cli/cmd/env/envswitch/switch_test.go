@@ -24,7 +24,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 )
 

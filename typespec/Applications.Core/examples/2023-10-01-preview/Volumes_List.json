@@ -1,0 +1,100 @@
+{
+  "operationId": "Volumes_ListByScope",
+  "title": "List volumes by resource group",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [{
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault0",
+            "name": "keyvault0",
+            "type": "Applications.Core/volumes",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "kind": "azure.com.keyvault",
+              "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
+              "secrets": {
+                "mysecret-1": {
+                  "name": "mysecret-1",
+                  "version": "1"
+                },
+                "mysecret-2": {
+                  "name": "mysecret-2",
+                  "encoding": "base64"
+                }
+              },
+              "keys": {
+                "mykey-1": {
+                  "name": "key1",
+                  "version": "1"
+                },
+                "mykey-2": {
+                  "name": "key2"
+                }
+              },
+              "certificates": {
+                "mycert-1": {
+                  "name": "cert1",
+                  "certType": "certificate"
+                },
+                "mycert-2": {
+                  "name": "cert2",
+                  "certType": "privatekey",
+                  "format": "pfx",
+                  "encoding": "hex"
+                }
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault1",
+            "name": "keyvault1",
+            "type": "Applications.Core/volumes",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "kind": "azure.com.keyvault",
+              "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
+              "secrets": {
+                "mysecret-1": {
+                  "name": "mysecret-1",
+                  "version": "1"
+                },
+                "mysecret-2": {
+                  "name": "mysecret-2",
+                  "encoding": "base64"
+                }
+              },
+              "keys": {
+                "mykey-1": {
+                  "name": "key1",
+                  "version": "1"
+                },
+                "mykey-2": {
+                  "name": "key2"
+                }
+              },
+              "certificates": {
+                "mycert-1": {
+                  "name": "cert1",
+                  "certType": "certificate"
+                },
+                "mycert-2": {
+                  "name": "cert2",
+                  "certType": "privatekey",
+                  "format": "pfx",
+                  "encoding": "hex"
+                }
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/volumes?api-version=2023-10-01-preview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -37,9 +37,9 @@ func TestContainerDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/containerresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.ContainerResource{},
+			"../../api/v20231001preview/testdata/containerresourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.ContainerResource{},
 			nil,
 		},
 		{
@@ -73,8 +73,8 @@ func TestContainerDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/containerresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/containerresource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{

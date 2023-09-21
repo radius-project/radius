@@ -51,7 +51,7 @@ kubectl logs {ucp pod name} -n radius-system -f
 * You can directly send requests to UCP instead of going via the CLI to isolate issues while testing. For this, you could use any REST client like Postman with the URL such as:-
     ```
     URL:-
-    PUT http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/{rg}/providers/Applications.Core/environments/{name}?api-version=2022-03-15-privatepreview
+    PUT http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/{rg}/providers/Applications.Core/environments/{name}?api-version=2023-10-01-preview
 
     Body:-
     {
