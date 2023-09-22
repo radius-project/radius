@@ -22,14 +22,14 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	invalidAPIVersionErrorMessage = "API version 'unsupported-version' for type 'ucp/openapi' is not supported. The supported api-versions are '2022-09-01-privatepreview'."
+	invalidAPIVersionErrorMessage = "API version 'unsupported-version' for type 'ucp/openapi' is not supported. The supported api-versions are '2023-10-01-preview'."
 )
 
 func Test_Planes_GET_BadAPIVersion(t *testing.T) {
@@ -43,9 +43,9 @@ func Test_Planes_GET_BadAPIVersion(t *testing.T) {
 func Test_Planes_PUT_BadAPIVersion(t *testing.T) {
 	ucp := testserver.StartWithMocks(t, api.DefaultModules)
 
-	requestBody := v20220901privatepreview.PlaneResource{
+	requestBody := v20231001preview.PlaneResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &v20220901privatepreview.PlaneResourceProperties{},
+		Properties: &v20231001preview.PlaneResourceProperties{},
 	}
 
 	response := ucp.MakeTypedRequest(http.MethodPut, "/planes/radius/local?api-version=unsupported-version", requestBody)

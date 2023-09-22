@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // and returns an error if the version is unsupported.
 func RabbitMQQueueDataModelToVersioned(model *datamodel.RabbitMQQueue, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RabbitMQQueueResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.RabbitMQQueueResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 	default:
@@ -41,8 +41,8 @@ func RabbitMQQueueDataModelToVersioned(model *datamodel.RabbitMQQueue, version s
 // RabbitMQQueue datamodel and an error if the version is unsupported.
 func RabbitMQQueueDataModelFromVersioned(content []byte, version string) (*datamodel.RabbitMQQueue, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RabbitMQQueueResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.RabbitMQQueueResource{}
 		if err := json.Unmarshal(content, versioned); err != nil {
 			return nil, err
 		}
@@ -58,8 +58,8 @@ func RabbitMQQueueDataModelFromVersioned(content []byte, version string) (*datam
 // based on the given version string, or returns an error if the version is not supported.
 func RabbitMQSecretsDataModelToVersioned(model *datamodel.RabbitMQSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RabbitMQSecrets{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.RabbitMQSecrets{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 

@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // VolumeResourceModelToVersioned converts version agnostic Volume datamodel to versioned model.
 func VolumeResourceModelToVersioned(model *datamodel.VolumeResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.VolumeResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.VolumeResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -40,8 +40,8 @@ func VolumeResourceModelToVersioned(model *datamodel.VolumeResource, version str
 // VolumeResourceModelFromVersioned converts versioned Volume model to datamodel.
 func VolumeResourceModelFromVersioned(content []byte, version string) (*datamodel.VolumeResource, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.VolumeResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.VolumeResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

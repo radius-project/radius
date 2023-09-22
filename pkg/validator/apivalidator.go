@@ -30,12 +30,12 @@ import (
 )
 
 const (
-	// This comes from the path: /Users/vinayada/radius/radius/swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/openapi.json
+	// This comes from the path: /Users/vinayada/radius/radius/swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 	// This spec path is parsed and this string needs to be provider/resourceType.
 	// For UCP, the provider is UCP and since all UCP resource types are in a single json, the file is named openapi.json.
 	// Therefore, resourceType = ucp
 	UCPEndpointType = "ucp/openapi"
-	UCPApiVersion   = "2022-09-01-privatepreview"
+	UCPApiVersion   = "2023-10-01-preview"
 )
 
 // Options represents the options for APIValidator.

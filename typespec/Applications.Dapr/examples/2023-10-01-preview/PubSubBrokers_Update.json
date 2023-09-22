@@ -1,0 +1,77 @@
+{
+  "operationId": "PubSubBrokers_Update",
+  "title": "Update a PubSubBroker resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "pubSubBrokerName": "daprpubsub0",
+    "api-version": "2023-10-01-preview",
+    "PubSubBrokerParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "resourceProvisioning": "manual",
+        "resources": [
+          {
+            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
+          }
+        ],
+        "type": "pubsub.azure.servicebus",
+        "version": "v1",
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprpubsub0",
+        "name": "daprpubsub0",
+        "type": "Applications.Dapr/pubSubBrokers",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
+            }
+          ],
+          "type": "pubsub.azure.servicebus",
+          "version": "v1",
+          "metadata": {
+            "foo": "bar"
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprpubsub0",
+        "name": "daprpubsub0",
+        "type": "Applications.Dapr/pubSubBrokers",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
+            }
+          ],
+          "type": "pubsub.azure.servicebus",
+          "version": "v1",
+          "metadata": {
+            "foo": "bar"
+          }
+        }
+      }
+    }
+  }
+}

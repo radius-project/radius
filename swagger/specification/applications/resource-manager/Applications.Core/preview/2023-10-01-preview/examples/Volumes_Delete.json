@@ -1,0 +1,14 @@
+{
+  "operationId": "Volumes_Delete",
+  "title": "Delete a volume",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "volumeName": "keyvault0",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}

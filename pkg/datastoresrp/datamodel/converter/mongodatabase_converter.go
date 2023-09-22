@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // specified version, and returns an error if the version is not supported.
 func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.MongoDatabaseResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 	default:
@@ -41,8 +41,8 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 // an error if the version is unsupported.
 func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datamodel.MongoDatabase, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.MongoDatabaseResource{}
 		if err := json.Unmarshal(content, versioned); err != nil {
 			return nil, err
 		}
@@ -64,8 +64,8 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 // returns an error if the version is not supported.
 func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.MongoDatabaseSecrets{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.MongoDatabaseSecrets{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 

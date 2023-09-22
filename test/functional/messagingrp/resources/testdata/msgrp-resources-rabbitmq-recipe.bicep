@@ -17,7 +17,7 @@ param registry string
 
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'msgrp-resources-environment-rabbitmq-recipe-env'
   location: 'global'
   properties: {
@@ -40,7 +40,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'msgrp-resources-rabbitmq-recipe'
   location: 'global'
   properties: {
@@ -54,7 +54,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'rmq-recipe-app-ctnr'
   location: location
   properties: {
@@ -75,7 +75,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2022-03-15-privatepreview' = {
+resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2023-10-01-preview' = {
   name: 'rmq-recipe-resource'
   location: location
   properties: {

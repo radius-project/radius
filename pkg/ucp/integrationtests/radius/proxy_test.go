@@ -27,7 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	backend_ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testrp"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	apiVersionParameter      = "api-version=2022-09-01-privatepreview"
+	apiVersionParameter      = "api-version=2023-10-01-preview"
 	testRadiusPlaneID        = "/planes/radius/test"
 	testResourceNamespace    = "System.Test"
 	testResourceGroupID      = testRadiusPlaneID + "/resourceGroups/test-rg"
@@ -270,10 +270,10 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 }
 
 func createRadiusPlane(ucp *testserver.TestServer, resourceProviders map[string]*string) {
-	body := v20220901privatepreview.PlaneResource{
+	body := v20231001preview.PlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
-		Properties: &v20220901privatepreview.PlaneResourceProperties{
-			Kind:              to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
+		Properties: &v20231001preview.PlaneResourceProperties{
+			Kind:              to.Ptr(v20231001preview.PlaneKindUCPNative),
 			ResourceProviders: resourceProviders,
 		},
 	}
@@ -282,9 +282,9 @@ func createRadiusPlane(ucp *testserver.TestServer, resourceProviders map[string]
 }
 
 func createResourceGroup(ucp *testserver.TestServer, id string) {
-	body := v20220901privatepreview.ResourceGroupResource{
+	body := v20231001preview.ResourceGroupResource{
 		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: &v20220901privatepreview.ResourceGroupProperties{},
+		Properties: &v20231001preview.ResourceGroupProperties{},
 	}
 	response := ucp.MakeTypedRequest(http.MethodPut, id+"?"+apiVersionParameter, body)
 	response.EqualsStatusCode(http.StatusOK)

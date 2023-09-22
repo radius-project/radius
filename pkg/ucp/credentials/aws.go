@@ -24,7 +24,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
-	ucpapi "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpapi "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/secret"
 	"github.com/radius-project/radius/pkg/ucp/secret/provider"
 )

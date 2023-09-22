@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // It returns an error if the conversion fails.
 func ResourceGroupDataModelToVersioned(model *datamodel.ResourceGroup, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.ResourceGroupResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.ResourceGroupResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -44,8 +44,8 @@ func ResourceGroupDataModelToVersioned(model *datamodel.ResourceGroup, version s
 // It returns an error if the conversion fails.
 func ResourceGroupDataModelFromVersioned(content []byte, version string) (*datamodel.ResourceGroup, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.ResourceGroupResource{}
+	case v20231001preview.Version:
+		vm := &v20231001preview.ResourceGroupResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}

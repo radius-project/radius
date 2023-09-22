@@ -1,0 +1,14 @@
+{
+  "operationId": "TestAsyncResources_Delete",
+  "title": "Delete a TestAsyncResource resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "testAsyncResourceName": "resource0",
+    "api-version": "2023-08-19"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}

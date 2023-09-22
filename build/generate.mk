@@ -67,32 +67,32 @@ generate-ucp-crd: generate-controller-gen-installed
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-node-installed generate-autorest-installed
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
+	autorest pkg/cli/clients_new/README.md --tag=2023-10-01-preview
 
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
+	autorest pkg/corerp/api/README.md --tag=core-2023-10-01-preview
 
 .PHONY: generate-rad-datastoresrp-client
 generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/datastoresrp/api/README.md --tag=datastores-2022-03-15-privatepreview
+	autorest pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview
 
 .PHONY: generate-rad-messagingrp-client
 generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/messagingrp/api/README.md --tag=messaging-2022-03-15-privatepreview
+	autorest pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview
 
 .PHONY: generate-rad-daprrp-client
 generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/daprrp/api/README.md --tag=dapr-2022-03-15-privatepreview
+	autorest pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview
 
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/ucp/api/README.md --tag=ucp-2022-09-01-privatepreview
+	autorest pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

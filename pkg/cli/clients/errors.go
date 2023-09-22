@@ -22,7 +22,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 )
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
@@ -44,7 +44,7 @@ func Is404Error(err error) bool {
 	}
 
 	// OK so it's not an ResponseError, can we turn it into an ErrorResponse?
-	errorResponse := v20220315privatepreview.ErrorResponse{}
+	errorResponse := v20231001preview.ErrorResponse{}
 	marshallErr := json.Unmarshal([]byte(err.Error()), &errorResponse)
 	if marshallErr != nil {
 		return false

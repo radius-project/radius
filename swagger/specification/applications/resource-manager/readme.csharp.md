@@ -32,62 +32,62 @@ namespace: Applications.$(ApiVersionName)
 output-folder: $(csharp-sdks-folder)/$(ApiVersionName)/Generated
 
 batch:
-  - core-2022-03-15-privatepreview: true
-    ApiVersionName: Api2022_03_15_privatepreview
-  - link-2022-03-15-privatepreview: true
-    ApiVersionName: Api2022_03_15_privatepreview
-  - dapr-2022-03-15-privatepreview: true
-    ApiVersionName: Api2022_03_15_privatepreview
-  - datastores-2022-03-15-privatepreview: true
-    ApiVersionName: Api2022_03_15_privatepreview
-  - messaging-2022-03-15-privatepreview: true
-    ApiVersionName: Api2022_03_15_privatepreview
+  - core-2023-10-01-preview: true
+    ApiVersionName: Api2023_10_01_preview
+  - link-2023-10-01-preview: true
+    ApiVersionName: Api2023_10_01_preview
+  - dapr-2023-10-01-preview: true
+    ApiVersionName: Api2023_10_01_preview
+  - datastores-2023-10-01-preview: true
+    ApiVersionName: Api2023_10_01_preview
+  - messaging-2023-10-01-preview: true
+    ApiVersionName: Api2023_10_01_preview
 ```
 
-``` yaml $(core-2022-03-15-privatepreview)
-tag: package-core-2022-03-15-privatepreview
+``` yaml $(core-2023-10-01-preview)
+tag: package-core-2023-10-01-preview
 ```
 
-``` yaml $(link-2022-03-15-privatepreview)
-tag: package-link-2022-03-15-privatepreview
+``` yaml $(link-2023-10-01-preview)
+tag: package-link-2023-10-01-preview
 ```
 
-``` yaml $(dapr-2022-03-15-privatepreview)
-tag: package-dapr-2022-03-15-privatepreview
+``` yaml $(dapr-2023-10-01-preview)
+tag: package-dapr-2023-10-01-preview
 ```
 
-``` yaml $(datastores-2022-03-15-privatepreview)
-tag: package-datastores-2022-03-15-privatepreview
+``` yaml $(datastores-2023-10-01-preview)
+tag: package-datastores-2023-10-01-preview
 ```
 
-``` yaml $(messaging-2022-03-15-privatepreview)
-tag: package-messaging-2022-03-15-privatepreview
+``` yaml $(messaging-2023-10-01-preview)
+tag: package-messaging-2023-10-01-preview
 ```
 
-### Tag: package-core-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/core/src/Generated
+### Tag: package-core-2023-10-01-preview
+``` yaml $(tag) == 'package-core-2023-10-01-preview'
+output-folder: $(csharp-sdks-folder)/applications/management/2023-10-01-preview/core/src/Generated
 input-file:
-- Applications.Core/preview/2022-03-15-privatepreview/openapi.json
+- Applications.Core/preview/2023-10-01-preview/openapi.json
 ```
 
-### Tag: package-dapr-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-dapr-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/dapr/src/Generated
+### Tag: package-dapr-2023-10-01-preview
+``` yaml $(tag) == 'package-dapr-2023-10-01-preview'
+output-folder: $(csharp-sdks-folder)/applications/management/2023-10-01-preview/dapr/src/Generated
 input-file:
-- Applications.Dapr/preview/2022-03-15-privatepreview/openapi.json
+- Applications.Dapr/preview/2023-10-01-preview/openapi.json
 ```
 
-### Tag: package-datastores-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-datastores-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/datastores/src/Generated
+### Tag: package-datastores-2023-10-01-preview
+``` yaml $(tag) == 'package-datastores-2023-10-01-preview'
+output-folder: $(csharp-sdks-folder)/applications/management/2023-10-01-preview/datastores/src/Generated
 input-file:
-- Applications.Datastores/preview/2022-03-15-privatepreview/openapi.json
+- Applications.Datastores/preview/2023-10-01-preview/openapi.json
 ```
 
-### Tag: package-messaging-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-messaging-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/messaging/src/Generated
+### Tag: package-messaging-2023-10-01-preview
+``` yaml $(tag) == 'package-messaging-2023-10-01-preview'
+output-folder: $(csharp-sdks-folder)/applications/management/2023-10-01-preview/messaging/src/Generated
 input-file:
-- Applications.Messaging/preview/2022-03-15-privatepreview/openapi.json
+- Applications.Messaging/preview/2023-10-01-preview/openapi.json
 ```

@@ -24,7 +24,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testrp"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testserver"
@@ -33,7 +33,7 @@ import (
 
 const (
 	testProxyRequestAzurePath = "/subscriptions/sid/resourceGroups/rg1/providers/Microsoft.Network/virtualNetworks/vnet1"
-	apiVersionParameter       = "api-version=2022-09-01-privatepreview"
+	apiVersionParameter       = "api-version=2023-10-01-preview"
 	testAzurePlaneID          = "/planes/azure/test"
 )
 
@@ -64,10 +64,10 @@ func Test_AzurePlane_ProxyRequest(t *testing.T) {
 }
 
 func createAzurePlane(ucp *testserver.TestServer, rp *testrp.Server) {
-	body := v20220901privatepreview.PlaneResource{
+	body := v20231001preview.PlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
-		Properties: &v20220901privatepreview.PlaneResourceProperties{
-			Kind: to.Ptr(v20220901privatepreview.PlaneKindAzure),
+		Properties: &v20231001preview.PlaneResourceProperties{
+			Kind: to.Ptr(v20231001preview.PlaneKindAzure),
 			URL:  to.Ptr("http://" + rp.Address()),
 		},
 	}

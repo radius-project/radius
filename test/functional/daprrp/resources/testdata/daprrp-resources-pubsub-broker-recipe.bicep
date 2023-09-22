@@ -4,7 +4,7 @@ param magpieimage string
 param registry string
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'dpsb-recipe-env'
   properties: {
     compute: {
@@ -23,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dpsb-recipe-app'
   properties: {
     environment: env.id
@@ -36,7 +36,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'dpsb-recipe-app-ctnr'
   properties: {
     application: app.id
@@ -63,7 +63,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
   name: 'dpsb-recipe'
   properties: {
     application: app.id
