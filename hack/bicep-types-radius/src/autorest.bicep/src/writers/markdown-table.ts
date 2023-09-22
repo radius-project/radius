@@ -52,18 +52,19 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
   }
 
   function writeTypeProperty(types: TypeBase[], name: string, property: ObjectProperty) {
-    const flagsString = property.Flags ? ` ${getObjectPropertyFlagsLabels(property.Flags).join(', ')}` : '';
+    const flagsString = property.Flags ? `${getObjectPropertyFlagsLabels(property.Flags).join(', ')}` : '';
     const descriptionString = property.Description ? property.Description : '';
     writeTableEntry(name, getTypeName(types, property.Type), flagsString, descriptionString);
   }
 
   function writeTableHeading(){
-    output += `| Property | Type | Flags | Description |\n`;
-    output += `|----------|------|-------|-------------|\n`;
+    output += `| Property | Type | Description |\n`;
+    output += `|----------|------|-------------|\n`;
   }
 
   function writeTableEntry(name: string, type: string, flags: string, description: string){
-    output += `| **${name}** | ${type} | ${flags} | ${description} |\n`;
+    const flagString = flags ? ` (_${flags}_) ` : '';
+    output += `| **${name}** | ${type} | ${description} ${flagString}|\n`;
   }
 
   function writeHeading(nesting: number, message: string) {
@@ -142,7 +143,7 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
     switch (type.Type) {
       case TypeBaseKind.ResourceType: {
         const resourceType = type as ResourceType;
-        writeHeading(nesting, `Resource ${resourceType.Name}`);
+        writeHeading(nesting, `Top-Level Resource`);
         // temporarily removing scope as it's not applicable
         // writeBullet("Valid Scope(s)", `${getScopeTypeLabels(resourceType.ScopeType).join(', ') || 'Unknown'}`);
         writeComplexType(types, types[resourceType.Body.Index], nesting, false);
@@ -249,7 +250,7 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
     }
 
     for (const type of typesToWrite) {
-      writeComplexType(types, type, 2, true);
+      writeComplexType(types, type, 3, true);
     }
 
     return output;
