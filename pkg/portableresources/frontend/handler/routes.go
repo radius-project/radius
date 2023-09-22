@@ -26,12 +26,10 @@ import (
 	frontend_ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
-	"github.com/radius-project/radius/pkg/portableresources"
 	rp_frontend "github.com/radius-project/radius/pkg/rp/frontend"
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
 
-	daprrp "github.com/radius-project/radius/pkg/daprrp"
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
 	dapr_conv "github.com/radius-project/radius/pkg/daprrp/datamodel/converter"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
@@ -131,7 +129,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: rmqPlaneRouter,
-			ResourceType: portableresources.RabbitMQQueuesResourceType,
+			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -144,7 +142,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		},
 		{
 			ParentRouter: rmqResourceGroupRouter,
-			ResourceType: portableresources.RabbitMQQueuesResourceType,
+			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -156,7 +154,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		},
 		{
 			ParentRouter: rmqResourceRouter,
-			ResourceType: portableresources.RabbitMQQueuesResourceType,
+			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -168,7 +166,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		},
 		{
 			ParentRouter: rmqResourceRouter,
-			ResourceType: portableresources.RabbitMQQueuesResourceType,
+			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -186,7 +184,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		},
 		{
 			ParentRouter: rmqResourceRouter,
-			ResourceType: portableresources.RabbitMQQueuesResourceType,
+			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -204,7 +202,7 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		},
 		{
 			ParentRouter: rmqResourceRouter,
-			ResourceType: portableresources.RabbitMQQueuesResourceType,
+			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -220,8 +218,8 @@ func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string,
 		{
 			ParentRouter:      rmqResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      portableresources.RabbitMQQueuesResourceType,
-			Method:            rmq_ctrl.OperationListSecret,
+			ResourceType:      msg_ctrl.RabbitMQQueuesResourceType,
+			Method:            msg_ctrl.OperationListSecret,
 			ControllerFactory: rmq_ctrl.NewListSecretsRabbitMQQueue,
 		},
 	}
@@ -268,7 +266,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: pubsubPlaneRouter,
-			ResourceType: daprrp.DaprPubSubBrokersResourceType,
+			ResourceType: dapr_ctrl.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -281,7 +279,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceGroupRouter,
-			ResourceType: daprrp.DaprPubSubBrokersResourceType,
+			ResourceType: dapr_ctrl.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -293,7 +291,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: daprrp.DaprPubSubBrokersResourceType,
+			ResourceType: dapr_ctrl.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -305,7 +303,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: daprrp.DaprPubSubBrokersResourceType,
+			ResourceType: dapr_ctrl.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -324,7 +322,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: daprrp.DaprPubSubBrokersResourceType,
+			ResourceType: dapr_ctrl.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -343,7 +341,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: pubsubResourceRouter,
-			ResourceType: daprrp.DaprPubSubBrokersResourceType,
+			ResourceType: dapr_ctrl.DaprPubSubBrokersResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -365,7 +363,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: secretStorePlaneRouter,
-			ResourceType: daprrp.DaprSecretStoresResourceType,
+			ResourceType: dapr_ctrl.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -378,7 +376,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceGroupRouter,
-			ResourceType: daprrp.DaprSecretStoresResourceType,
+			ResourceType: dapr_ctrl.DaprSecretStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -390,7 +388,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: daprrp.DaprSecretStoresResourceType,
+			ResourceType: dapr_ctrl.DaprSecretStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -402,7 +400,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: daprrp.DaprSecretStoresResourceType,
+			ResourceType: dapr_ctrl.DaprSecretStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -421,7 +419,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: daprrp.DaprSecretStoresResourceType,
+			ResourceType: dapr_ctrl.DaprSecretStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -440,7 +438,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: secretStoreResourceRouter,
-			ResourceType: daprrp.DaprSecretStoresResourceType,
+			ResourceType: dapr_ctrl.DaprSecretStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -462,7 +460,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: stateStorePlaneRouter,
-			ResourceType: daprrp.DaprStateStoresResourceType,
+			ResourceType: dapr_ctrl.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -475,7 +473,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceGroupRouter,
-			ResourceType: daprrp.DaprStateStoresResourceType,
+			ResourceType: dapr_ctrl.DaprStateStoresResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -487,7 +485,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: daprrp.DaprStateStoresResourceType,
+			ResourceType: dapr_ctrl.DaprStateStoresResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -499,7 +497,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: daprrp.DaprStateStoresResourceType,
+			ResourceType: dapr_ctrl.DaprStateStoresResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -518,7 +516,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: daprrp.DaprStateStoresResourceType,
+			ResourceType: dapr_ctrl.DaprStateStoresResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -537,7 +535,7 @@ func AddDaprRoutes(ctx context.Context, r chi.Router, rootScopePath string, pref
 		},
 		{
 			ParentRouter: stateStoreResourceRouter,
-			ResourceType: daprrp.DaprStateStoresResourceType,
+			ResourceType: dapr_ctrl.DaprStateStoresResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -594,7 +592,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter: mongoPlaneRouter,
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -607,7 +605,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: mongoResourceGroupRouter,
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -619,7 +617,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: mongoResourceRouter,
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -631,7 +629,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: mongoResourceRouter,
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -649,7 +647,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: mongoResourceRouter,
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -667,7 +665,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: mongoResourceRouter,
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -683,7 +681,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      mongoResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      portableresources.MongoDatabasesResourceType,
+			ResourceType:      ds_ctrl.MongoDatabasesResourceType,
 			Method:            ds_ctrl.OperationListSecret,
 			ControllerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
@@ -696,7 +694,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: redisPlaneRouter,
-			ResourceType: portableresources.RedisCachesResourceType,
+			ResourceType: ds_ctrl.RedisCachesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -709,7 +707,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: redisResourceGroupRouter,
-			ResourceType: portableresources.RedisCachesResourceType,
+			ResourceType: ds_ctrl.RedisCachesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -721,7 +719,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: redisResourceRouter,
-			ResourceType: portableresources.RedisCachesResourceType,
+			ResourceType: ds_ctrl.RedisCachesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -733,7 +731,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: redisResourceRouter,
-			ResourceType: portableresources.RedisCachesResourceType,
+			ResourceType: ds_ctrl.RedisCachesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -751,7 +749,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: redisResourceRouter,
-			ResourceType: portableresources.RedisCachesResourceType,
+			ResourceType: ds_ctrl.RedisCachesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -769,7 +767,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: redisResourceRouter,
-			ResourceType: portableresources.RedisCachesResourceType,
+			ResourceType: ds_ctrl.RedisCachesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -785,7 +783,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      redisResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      portableresources.RedisCachesResourceType,
+			ResourceType:      ds_ctrl.RedisCachesResourceType,
 			Method:            ds_ctrl.OperationListSecret,
 			ControllerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
@@ -798,7 +796,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: sqlPlaneRouter,
-			ResourceType: portableresources.SqlDatabasesResourceType,
+			ResourceType: ds_ctrl.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -811,7 +809,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: sqlResourceGroupRouter,
-			ResourceType: portableresources.SqlDatabasesResourceType,
+			ResourceType: ds_ctrl.SqlDatabasesResourceType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -823,7 +821,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: sqlResourceRouter,
-			ResourceType: portableresources.SqlDatabasesResourceType,
+			ResourceType: ds_ctrl.SqlDatabasesResourceType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -835,7 +833,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: sqlResourceRouter,
-			ResourceType: portableresources.SqlDatabasesResourceType,
+			ResourceType: ds_ctrl.SqlDatabasesResourceType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -853,7 +851,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: sqlResourceRouter,
-			ResourceType: portableresources.SqlDatabasesResourceType,
+			ResourceType: ds_ctrl.SqlDatabasesResourceType,
 			Method:       v1.OperationPatch,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncPut(opt,
@@ -871,7 +869,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		},
 		{
 			ParentRouter: sqlResourceRouter,
-			ResourceType: portableresources.SqlDatabasesResourceType,
+			ResourceType: ds_ctrl.SqlDatabasesResourceType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewDefaultAsyncDelete(opt,
@@ -887,7 +885,7 @@ func AddDatastoresRoutes(ctx context.Context, r chi.Router, rootScopePath string
 		{
 			ParentRouter:      sqlResourceRouter,
 			Path:              "/listsecrets",
-			ResourceType:      portableresources.SqlDatabasesResourceType,
+			ResourceType:      ds_ctrl.SqlDatabasesResourceType,
 			Method:            ds_ctrl.OperationListSecret,
 			ControllerFactory: sql_ctrl.NewListSecretsSqlDatabase,
 		},

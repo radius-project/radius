@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -172,7 +172,7 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-dapr-pubsub-broker",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", daprrp_types.DaprPubSubBrokersResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -261,7 +261,7 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-dapr-pubsub-broker",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", portableresources.DaprPubSubBrokersResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -380,7 +380,7 @@ func Test_Process(t *testing.T) {
 			"test-dapr-pubsub-broker",
 			"test-app",
 			"some-other-other-name",
-			daprrp_types.DaprPubSubBrokersResourceType)
+			dapr_ctrl.DaprPubSubBrokersResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{

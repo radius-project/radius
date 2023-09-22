@@ -18,7 +18,7 @@ package datamodel
 
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	daprrp "github.com/radius-project/radius/pkg/daprrp"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -52,7 +52,7 @@ func (r *DaprStateStore) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of the DaprStateStore resource.
 func (r *DaprStateStore) ResourceTypeName() string {
-	return daprrp.DaprStateStoresResourceType
+	return dapr_ctrl.DaprStateStoresResourceType
 }
 
 // Recipe returns the recipe information of the resource. It returns nil if the ResourceProvisioning is set to manual.

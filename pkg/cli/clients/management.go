@@ -29,8 +29,14 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
-	"github.com/radius-project/radius/pkg/portableresources"
+	cntr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
+	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
+	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
+	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
+	sstr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
@@ -45,18 +51,18 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 var (
 	ResourceTypesList = []string{
-		portableresources.MongoDatabasesResourceType,
-		portableresources.RabbitMQQueuesResourceType,
-		portableresources.RedisCachesResourceType,
-		portableresources.SqlDatabasesResourceType,
-		daprrp_types.DaprStateStoresResourceType,
-		daprrp_types.DaprSecretStoresResourceType,
-		daprrp_types.DaprPubSubBrokersResourceType,
-		portableresources.ExtendersResourceType,
-		"Applications.Core/gateways",
-		"Applications.Core/httpRoutes",
-		"Applications.Core/containers",
-		"Applications.Core/secretStores",
+		ds_ctrl.MongoDatabasesResourceType,
+		msg_ctrl.RabbitMQQueuesResourceType,
+		ds_ctrl.RedisCachesResourceType,
+		ds_ctrl.SqlDatabasesResourceType,
+		dapr_ctrl.DaprStateStoresResourceType,
+		dapr_ctrl.DaprSecretStoresResourceType,
+		dapr_ctrl.DaprPubSubBrokersResourceType,
+		ext_ctrl.ResourceTypeName,
+		gtwy_ctrl.ResourceTypeName,
+		hrt_ctrl.ResourceTypeName,
+		cntr_ctrl.ResourceTypeName,
+		sstr_ctrl.ResourceTypeName,
 	}
 )
 

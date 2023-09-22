@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rp_pr "github.com/radius-project/radius/pkg/rp/portableresources"
 	rp_util "github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
@@ -32,10 +33,12 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/model"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
-	dapr_types "github.com/radius-project/radius/pkg/daprrp"
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
-	datastores_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	dsrp_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -489,25 +492,25 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.MongoDatabasesResourceType):
-		obj := &datastores_dm.MongoDatabase{}
+	case strings.ToLower(ds_ctrl.MongoDatabasesResourceType):
+		obj := &dsrp_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.SqlDatabasesResourceType):
-		obj := &datastores_dm.SqlDatabase{}
+	case strings.ToLower(ds_ctrl.SqlDatabasesResourceType):
+		obj := &dsrp_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.RedisCachesResourceType):
-		obj := &datastores_dm.RedisCache{}
+	case strings.ToLower(ds_ctrl.RedisCachesResourceType):
+		obj := &dsrp_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.RabbitMQQueuesResourceType):
+	case strings.ToLower(msg_ctrl.RabbitMQQueuesResourceType):
 		obj := &msg_dm.RabbitMQQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
@@ -519,19 +522,19 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(dapr_types.DaprStateStoresResourceType):
+	case strings.ToLower(dapr_ctrl.DaprStateStoresResourceType):
 		obj := &dapr_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(dapr_types.DaprSecretStoresResourceType):
+	case strings.ToLower(dapr_ctrl.DaprSecretStoresResourceType):
 		obj := &dapr_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(dapr_types.DaprPubSubBrokersResourceType):
+	case strings.ToLower(dapr_ctrl.DaprPubSubBrokersResourceType):
 		obj := &dapr_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
@@ -550,7 +553,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = &parsedID
-	} else if portableresources.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
+	} else if rp_pr.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
 		// Application id is optional for portable resource types
 		appID = nil
 	} else {

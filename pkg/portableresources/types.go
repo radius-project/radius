@@ -17,28 +17,10 @@ limitations under the License.
 package portableresources
 
 import (
-	"strings"
-
-	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
 const (
-	// RabbitMQQueuesResourceType represents the resource type for RabbitMQ queue.
-	RabbitMQQueuesResourceType = "Applications.Messaging/rabbitMQQueues"
-
-	// MongoDatabasesResourceType represents the resource type for Mongo database.
-	MongoDatabasesResourceType = "Applications.Datastores/mongoDatabases"
-
-	// RedisCachesResourceType represents the resource type for Redis caches.
-	RedisCachesResourceType = "Applications.Datastores/redisCaches"
-
-	// SqlDatabasesResourceType represents the resource type for SQL databases.
-	SqlDatabasesResourceType = "Applications.Datastores/sqlDatabases"
-
-	// ExtendersResourceType represents the resource type for Extenders resource.
-	ExtendersResourceType = "Applications.Core/extenders"
-
 	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe.
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
 
@@ -120,26 +102,4 @@ type Kubernetes struct {
 	Namespace string `json:"namespace"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
-}
-
-// IsValidPortableResourceType checks if the provided resource type is a valid portable resource type.
-// Returns true if the resource type is valid, false otherwise.
-func IsValidPortableResourceType(resourceType string) bool {
-	portableResourceTypes := []string{
-		daprrp_types.DaprPubSubBrokersResourceType,
-		daprrp_types.DaprSecretStoresResourceType,
-		daprrp_types.DaprStateStoresResourceType,
-		RabbitMQQueuesResourceType,
-		MongoDatabasesResourceType,
-		RedisCachesResourceType,
-		SqlDatabasesResourceType,
-		ExtendersResourceType,
-	}
-	for _, s := range portableResourceTypes {
-		if strings.EqualFold(s, resourceType) {
-			return true
-		}
-	}
-
-	return false
 }

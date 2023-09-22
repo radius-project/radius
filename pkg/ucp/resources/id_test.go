@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/azure/azresources"
-	"github.com/radius-project/radius/pkg/portableresources"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1007,7 +1007,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPost,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-get",
@@ -1015,7 +1015,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-list",
@@ -1023,7 +1023,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-put",
@@ -1031,7 +1031,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPut,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-patch",
@@ -1039,7 +1039,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPatch,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "ucp-delete",
@@ -1047,14 +1047,14 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodDelete,
 			err:    false,
 			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		}, {
 			desc:   "arm-post-with-custom-action",
 			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0/listSecrets",
 			method: http.MethodPost,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-get",
@@ -1062,7 +1062,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-list",
@@ -1070,7 +1070,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodGet,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-put",
@@ -1078,7 +1078,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPut,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-patch",
@@ -1086,7 +1086,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodPatch,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 		{
 			desc:   "arm-delete",
@@ -1094,7 +1094,7 @@ func Test_ParseByMethod(t *testing.T) {
 			method: http.MethodDelete,
 			err:    false,
 			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo-database-0",
-			eRType: portableresources.MongoDatabasesResourceType,
+			eRType: ds_ctrl.MongoDatabasesResourceType,
 		},
 	}
 

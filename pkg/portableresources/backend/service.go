@@ -23,19 +23,20 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
-	dapr_types "github.com/radius-project/radius/pkg/daprrp"
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/daprrp/processors/pubsubbrokers"
 	"github.com/radius-project/radius/pkg/daprrp/processors/secretstores"
 	"github.com/radius-project/radius/pkg/daprrp/processors/statestores"
 	ds_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	mongo_prc "github.com/radius-project/radius/pkg/datastoresrp/processors/mongodatabases"
 	redis_prc "github.com/radius-project/radius/pkg/datastoresrp/processors/rediscaches"
 	sql_prc "github.com/radius-project/radius/pkg/datastoresrp/processors/sqldatabases"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/messagingrp/processors/rabbitmqqueues"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/frontend/handler"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 
@@ -90,7 +91,7 @@ func (s *Service) Run(ctx context.Context) error {
 		CreateDeleteController func(options ctrl.Options) (ctrl.Controller, error)
 	}{
 		{
-			portableresources.RabbitMQQueuesResourceType,
+			msg_ctrl.RabbitMQQueuesResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &rabbitmqqueues.Processor{}
 				return backend_ctrl.NewCreateOrUpdateResource[*msg_dm.RabbitMQQueue, msg_dm.RabbitMQQueue](options, processor, engine, client, configLoader)
@@ -101,7 +102,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			dapr_types.DaprStateStoresResourceType,
+			dapr_ctrl.DaprStateStoresResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &statestores.Processor{Client: k8s.RuntimeClient}
 				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprStateStore, dapr_dm.DaprStateStore](options, processor, engine, client, configLoader)
@@ -112,7 +113,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			dapr_types.DaprSecretStoresResourceType,
+			dapr_ctrl.DaprSecretStoresResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &secretstores.Processor{Client: k8s.RuntimeClient}
 				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprSecretStore, dapr_dm.DaprSecretStore](options, processor, engine, client, configLoader)
@@ -123,7 +124,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			dapr_types.DaprPubSubBrokersResourceType,
+			dapr_ctrl.DaprPubSubBrokersResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &pubsubbrokers.Processor{Client: k8s.RuntimeClient}
 				return backend_ctrl.NewCreateOrUpdateResource[*dapr_dm.DaprPubSubBroker, dapr_dm.DaprPubSubBroker](options, processor, engine, client, configLoader)
@@ -134,7 +135,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			portableresources.MongoDatabasesResourceType,
+			ds_ctrl.MongoDatabasesResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &mongo_prc.Processor{}
 				return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.MongoDatabase, ds_dm.MongoDatabase](options, processor, engine, client, configLoader)
@@ -145,7 +146,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			portableresources.RedisCachesResourceType,
+			ds_ctrl.RedisCachesResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &redis_prc.Processor{}
 				return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.RedisCache, ds_dm.RedisCache](options, processor, engine, client, configLoader)
@@ -156,7 +157,7 @@ func (s *Service) Run(ctx context.Context) error {
 			},
 		},
 		{
-			portableresources.SqlDatabasesResourceType,
+			ds_ctrl.SqlDatabasesResourceType,
 			func(options ctrl.Options) (ctrl.Controller, error) {
 				processor := &sql_prc.Processor{}
 				return backend_ctrl.NewCreateOrUpdateResource[*ds_dm.SqlDatabase, ds_dm.SqlDatabase](options, processor, engine, client, configLoader)

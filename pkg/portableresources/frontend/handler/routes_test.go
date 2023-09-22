@@ -26,197 +26,196 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	dapr_types "github.com/radius-project/radius/pkg/daprrp"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
-	rabbitmq_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller/rabbitmqqueues"
-	"github.com/radius-project/radius/pkg/portableresources"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{
 	{
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.messaging/rabbitmqqueues",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RabbitMQQueuesResourceType, Method: rabbitmq_ctrl.OperationListSecret},
+		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: msg_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq/listsecrets",
 		Method:        http.MethodPost,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.dapr/pubsubbrokers",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprPubSubBrokersResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprPubSubBrokersResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprPubSubBrokersResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprPubSubBrokersResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/daprpubsub",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprSecretStoresResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.dapr/secretstores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprSecretStoresResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprSecretStoresResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprSecretStoresResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprSecretStoresResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprSecretStoresResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/daprsecretstore",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprStateStoresResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.dapr/statestores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprStateStoresResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprStateStoresResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprStateStoresResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprStateStoresResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: dapr_types.DaprStateStoresResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.datastores/mongodatabases",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
+		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/mongodatabases/mongo/listsecrets",
 		Method:        http.MethodPost,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.datastores/rediscaches",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.RedisCachesResourceType, Method: ds_ctrl.OperationListSecret},
+		OperationType: v1.OperationType{Type: ds_ctrl.RedisCachesResourceType, Method: ds_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/rediscaches/redis/listsecrets",
 		Method:        http.MethodPost,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.datastores/sqldatabases",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
+		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql/listsecrets",
 		Method:        http.MethodPost,
 	}, {

@@ -23,8 +23,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/pkg/portableresources"
 	types "github.com/radius-project/radius/pkg/recipes"
+
+	rp_util "github.com/radius-project/radius/pkg/rp/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
@@ -65,7 +66,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipes := range src.Properties.Recipes {
-			if !portableresources.IsValidPortableResourceType(resourceType) {
+			if !rp_util.IsValidPortableResourceType(resourceType) {
 				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid resource type: %q", resourceType))
 			}
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}

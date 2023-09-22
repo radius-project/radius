@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -126,10 +127,10 @@ func (r *MongoDatabase) Recipe() *portableresources.ResourceRecipe {
 
 // ResourceTypeName returns the resource type for Mongo database resource.
 func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
-	return portableresources.MongoDatabasesResourceType
+	return ds_ctrl.MongoDatabasesResourceType
 }
 
 // ResourceTypeName returns the resource type for Mongo database resource.
 func (r *MongoDatabase) ResourceTypeName() string {
-	return portableresources.MongoDatabasesResourceType
+	return ds_ctrl.MongoDatabasesResourceType
 }

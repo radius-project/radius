@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	daprrp_types "github.com/radius-project/radius/pkg/daprrp"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -45,7 +45,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
 						Name:     "test-dss",
-						Type:     daprrp_types.DaprSecretStoresResourceType,
+						Type:     dapr_ctrl.DaprSecretStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -80,7 +80,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
 						Name:     "test-dss",
-						Type:     daprrp_types.DaprSecretStoresResourceType,
+						Type:     dapr_ctrl.DaprSecretStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -158,7 +158,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss"),
 				Name: to.Ptr("test-dss"),
-				Type: to.Ptr(daprrp_types.DaprSecretStoresResourceType),
+				Type: to.Ptr(dapr_ctrl.DaprSecretStoresResourceType),
 			},
 		},
 		{
@@ -188,7 +188,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss"),
 				Name: to.Ptr("test-dss"),
-				Type: to.Ptr(daprrp_types.DaprSecretStoresResourceType),
+				Type: to.Ptr(dapr_ctrl.DaprSecretStoresResourceType),
 			},
 		},
 	}
