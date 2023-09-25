@@ -78,12 +78,12 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 		rootScopePath,
 	}
 
-	err := AddMessagingRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
-	if err != nil {
-		return err
-	}
+	// err := AddMessagingRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
+	err := AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}

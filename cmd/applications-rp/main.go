@@ -45,6 +45,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
+	messagingrp_setup "github.com/radius-project/radius/pkg/messagingrp/setup"
 )
 
 const serviceName = "radius"
@@ -187,6 +188,7 @@ func builders(options hostoptions.HostOptions) ([]builder.Builder, error) {
 
 	return []builder.Builder{
 		corerp_setup.SetupNamespace(config).GenerateBuilder(),
+		messagingrp_setup.SetupNamespace(config).GenerateBuilder(),
 		// Add resource provider builders...
 	}, nil
 }
