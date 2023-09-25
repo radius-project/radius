@@ -1,0 +1,195 @@
+{
+  "operationId": "Operations_List",
+  "title": "Get the operations for the Applications.Core resource provider",
+  "parameters": {
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "name": "Applications.Core/operations/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "Operations",
+              "operation": "Get operations",
+              "description": "Get the list of Operations"
+            }
+          },
+          {
+            "name": "Applications.Core/environments/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "environments",
+              "operation": "Get/List environment",
+              "description": "Get or list of environments."
+            }
+          },
+          {
+            "name": "Applications.Core/environments/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "environments",
+              "operation": "Create/Update environment",
+              "description": "Create or update an environment."
+            }
+          },
+          {
+            "name": "Applications.Core/environments/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "environments",
+              "operation": "Delete environment",
+              "description": "Deletes an environment."
+            }
+          },
+          {
+            "name": "Applications.Core/environments/join/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "environments",
+              "operation": "Join environment",
+              "description": "Join to application environment."
+            }
+          },
+          {
+            "name": "Applications.Core/register/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "Applications.Core",
+              "operation": "Register the Applications.Core",
+              "description": "Register the subscription for Applications.Core"
+            }
+          },
+          {
+            "name": "Applications.Core/unregister/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "Applications.Core",
+              "operation": "Unregister the Applications.Core",
+              "description": "Unregister the subscription for Applications.Core"
+            }
+          },
+          {
+            "name": "Applications.Core/applications/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Get/List application",
+              "description": "Get or list of applications."
+            }
+          },
+          {
+            "name": "Applications.Core/applications/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Create/Update application",
+              "description": "Create or update an application."
+            }
+          },
+          {
+            "name": "Applications.Core/applications/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Delete application",
+              "description": "Deletes an application."
+            }
+          },
+          {
+            "name": "Applications.Core/applications/join/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "applications",
+              "operation": "Join application",
+              "description": "Join to application."
+            }
+          },
+          {
+            "name": "Applications.Core/httpRoutes/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "httpRoutes",
+              "operation": "Get/List HTTP Route",
+              "description": "Get or list of HTTP Routes."
+            }
+          },
+          {
+            "name": "Applications.Core/httpRoutes/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "httpRoutes",
+              "operation": "Create/Update HTTP Route",
+              "description": "Create or update an HTTP Route."
+            }
+          },
+          {
+            "name": "Applications.Core/httpRoutes/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "httpRoutes",
+              "operation": "Delete HTTP Route",
+              "description": "Deletes an HTTP Route."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/read",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Get/List Gateways",
+              "description": "Get or list of Gateways."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/write",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Create/Update Gateway",
+              "description": "Create or update a Gateway."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/delete",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Delete Gateway",
+              "description": "Deletes a Gateway."
+            }
+          },
+          {
+            "name": "Applications.Core/gateways/join/action",
+            "isDataAction": false,
+            "display": {
+              "provider": "Applications.Core",
+              "resource": "gateways",
+              "operation": "Join Gateway",
+              "description": "Join to Gateway."
+            }
+          }
+        ]
+      }
+    }
+  }
+}

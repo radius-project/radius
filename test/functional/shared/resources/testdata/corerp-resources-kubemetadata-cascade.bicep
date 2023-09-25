@@ -9,7 +9,7 @@ param magpieimage string
 @description('Specifies the port of the container resource.')
 param port int = 3000
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-kmd-cascade-env'
   location: location
   properties: {
@@ -40,7 +40,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-kmd-cascade-app'
   location: location
   properties: {
@@ -67,7 +67,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource container 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'corerp-kmd-cascade-ctnr'
   location: location
   properties: {

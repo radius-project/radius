@@ -1,0 +1,14 @@
+{
+  "operationId": "RabbitMqQueues_Delete",
+  "title": "Delete a RabbitMQQueue resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "rabbitMQQueueName": "rabbitmq0",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}

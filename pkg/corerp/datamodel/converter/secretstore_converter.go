@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // SecretStoreModelToVersioned converts version agnostic SecretStore datamodel to versioned model.
 func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.SecretStoreResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.SecretStoreResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -40,8 +40,8 @@ func SecretStoreModelToVersioned(model *datamodel.SecretStore, version string) (
 // ListSecretsToVersioned converts version agnostic SecretStoreListSecrets datamodel to versioned model.
 func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.SecretStoresClientListSecretsResponse{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.SecretStoresClientListSecretsResponse{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -53,8 +53,8 @@ func ListSecretsToVersioned(model *datamodel.SecretStoreListSecrets, version str
 // SecretStoreModelFromVersioned converts versioned SecretStore model to datamodel.
 func SecretStoreModelFromVersioned(content []byte, version string) (*datamodel.SecretStore, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.SecretStoreResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.SecretStoreResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

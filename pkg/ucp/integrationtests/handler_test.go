@@ -28,7 +28,7 @@ import (
 func Test_Handler_MethodNotAllowed(t *testing.T) {
 	ucp := testserver.StartWithMocks(t, testserver.NoModules)
 
-	response := ucp.MakeRequest(http.MethodDelete, "/planes?api-version=2022-09-01-privatepreview", nil)
+	response := ucp.MakeRequest(http.MethodDelete, "/planes?api-version=2023-10-01-preview", nil)
 	require.Equal(t, "failed to parse route: undefined route path", response.Error.Error.Details[0].Message)
 }
 

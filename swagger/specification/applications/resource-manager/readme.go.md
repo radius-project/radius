@@ -13,54 +13,54 @@ go:
 
 ```yaml $(go) && $(multiapi)
 batch:
-  - tag: package-core-2022-03-15-privatepreview
-  - tag: package-link-2022-03-15-privatepreview
-  - tag: package-datastores-2022-03-15-privatepreview
-  - tag: package-dapr-2022-03-15-privatepreview
-  - tag: package-messaging-2022-03-15-privatepreview
+  - tag: package-core-2023-10-01-preview
+  - tag: package-link-2023-10-01-preview
+  - tag: package-datastores-2023-10-01-preview
+  - tag: package-dapr-2023-10-01-preview
+  - tag: package-messaging-2023-10-01-preview
 ```
 
-### Tag: package-core-2022-03-15-privatepreview and go
+### Tag: package-core-2023-10-01-preview and go
 
-These settings apply only when `--tag=package-core-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-core-2023-10-01-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-core-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/core
+```yaml $(tag) == 'package-core-2023-10-01-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-10-01-preview/core
 ```
 
-### Tag: package-link-2022-03-15-privatepreview and go
+### Tag: package-link-2023-10-01-preview and go
 
-These settings apply only when `--tag=package-link-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-link-2023-10-01-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-link-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/link
+```yaml $(tag) == 'package-link-2023-10-01-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-10-01-preview/link
 ```
 
-### Tag: package-dapr-2022-03-15-privatepreview and go
+### Tag: package-dapr-2023-10-01-preview and go
 
-These settings apply only when `--tag=package-dapr-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-dapr-2023-10-01-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-dapr-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/dapr
+```yaml $(tag) == 'package-dapr-2023-10-01-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-10-01-preview/dapr
 ```
 
-### Tag: package-datastores-2022-03-15-privatepreview and go
+### Tag: package-datastores-2023-10-01-preview and go
 
-These settings apply only when `--tag=package-datastores-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-datastores-2023-10-01-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-datastores-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/datastores
+```yaml $(tag) == 'package-datastores-2023-10-01-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-10-01-preview/datastores
 ```
 
-### Tag: package-messaging-2022-03-15-privatepreview and go
+### Tag: package-messaging-2023-10-01-preview and go
 
-These settings apply only when `--tag=package-messaging-2022-03-15-privatepreview --go` is specified on the command line.
+These settings apply only when `--tag=package-messaging-2023-10-01-preview --go` is specified on the command line.
 Please also specify `--go-sdk-folder=<path to the root directory of your azure-sdk-for-go clone>`.
 
-```yaml $(tag) == 'package-messaging-2022-03-15-privatepreview' && $(go)
-output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2022-03-15-privatepreview/messaging
+```yaml $(tag) == 'package-messaging-2023-10-01-preview' && $(go)
+output-folder: $(go-sdk-folder)/services/preview/$(namespace)/mgmt/2023-10-01-preview/messaging
 ```

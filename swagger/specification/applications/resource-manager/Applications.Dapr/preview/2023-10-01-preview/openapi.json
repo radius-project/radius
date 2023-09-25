@@ -1,0 +1,1700 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Dapr Resource Management APIs",
+    "version": "2023-10-01-preview",
+    "description": "REST API for Applications.Dapr",
+    "x-typespec-generated": [
+      {
+        "emitter": "@azure-tools/typespec-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "management.azure.com",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "SecretStores"
+    },
+    {
+      "name": "StateStores"
+    },
+    {
+      "name": "PubSubBrokers"
+    }
+  ],
+  "paths": {
+    "/{rootScope}/providers/Applications.Dapr/pubSubBrokers": {
+      "get": {
+        "operationId": "PubSubBrokers_ListByScope",
+        "tags": [
+          "PubSubBrokers"
+        ],
+        "description": "List DaprPubSubBrokerResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List a PubSubBroker resource by resource group": {
+            "$ref": "./examples/PubSubBrokers_List.json"
+          },
+          "List a PubSubBroker resource by rootScope": {
+            "$ref": "./examples/PubSubBrokers_ListByRootScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}": {
+      "get": {
+        "operationId": "PubSubBrokers_Get",
+        "tags": [
+          "PubSubBrokers"
+        ],
+        "description": "Get a DaprPubSubBrokerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "pubSubBrokerName",
+            "in": "path",
+            "description": "PubSubBroker name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a PubSubBroker resource": {
+            "$ref": "./examples/PubSubBrokers_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "PubSubBrokers_CreateOrUpdate",
+        "tags": [
+          "PubSubBrokers"
+        ],
+        "description": "Create a DaprPubSubBrokerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "pubSubBrokerName",
+            "in": "path",
+            "description": "PubSubBroker name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprPubSubBrokerResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprPubSubBrokerResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a PubSubBroker resource": {
+            "$ref": "./examples/PubSubBrokers_CreateOrUpdate.json"
+          },
+          "Create or update a PubSubBroker resource with recipe": {
+            "$ref": "./examples/PubSubBrokers_CreateOrUpdateWithRecipe.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "PubSubBrokers_Update",
+        "tags": [
+          "PubSubBrokers"
+        ],
+        "description": "Update a DaprPubSubBrokerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "pubSubBrokerName",
+            "in": "path",
+            "description": "PubSubBroker name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprPubSubBrokerResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a PubSubBroker resource": {
+            "$ref": "./examples/PubSubBrokers_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "PubSubBrokers_Delete",
+        "tags": [
+          "PubSubBrokers"
+        ],
+        "description": "Delete a DaprPubSubBrokerResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "pubSubBrokerName",
+            "in": "path",
+            "description": "PubSubBroker name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a PubSubBroker resource": {
+            "$ref": "./examples/PubSubBrokers_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Dapr/secretStores": {
+      "get": {
+        "operationId": "SecretStores_ListByScope",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "List DaprSecretStoreResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List SecretStore resources by resource group": {
+            "$ref": "./examples/SecretStores_List.json"
+          },
+          "List SecretStore resources by rootScope": {
+            "$ref": "./examples/SecretStores_ListByRootScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}": {
+      "get": {
+        "operationId": "SecretStores_Get",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Get a DaprSecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a SecretStore resource": {
+            "$ref": "./examples/SecretStores_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "SecretStores_CreateOrUpdate",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Create a DaprSecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprSecretStoreResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprSecretStoreResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update an SecretStore resource": {
+            "$ref": "./examples/SecretStores_CreateOrUpdate.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "SecretStores_Update",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Update a DaprSecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprSecretStoreResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update an SecretStore resource": {
+            "$ref": "./examples/SecretStores_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "SecretStores_Delete",
+        "tags": [
+          "SecretStores"
+        ],
+        "description": "Delete a DaprSecretStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "secretStoreName",
+            "in": "path",
+            "description": "SecretStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a SecretStore resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/{rootScope}/providers/Applications.Dapr/stateStores": {
+      "get": {
+        "operationId": "StateStores_ListByScope",
+        "tags": [
+          "StateStores"
+        ],
+        "description": "List DaprStateStoreResource resources by Scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "List StateStore resources by resource group": {
+            "$ref": "./examples/StateStores_List.json"
+          },
+          "List StateStore resources by rootScope": {
+            "$ref": "./examples/StateStores_ListByRootScope.json"
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Dapr/stateStores/{stateStoreName}": {
+      "get": {
+        "operationId": "StateStores_Get",
+        "tags": [
+          "StateStores"
+        ],
+        "description": "Get a DaprStateStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "stateStoreName",
+            "in": "path",
+            "description": "StateStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Get a StateStore resource": {
+            "$ref": "./examples/StateStores_Get.json"
+          }
+        }
+      },
+      "put": {
+        "operationId": "StateStores_CreateOrUpdate",
+        "tags": [
+          "StateStores"
+        ],
+        "description": "Create a DaprStateStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "stateStoreName",
+            "in": "path",
+            "description": "StateStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "description": "Resource create parameters.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'DaprStateStoreResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'DaprStateStoreResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            },
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create or update a StateStore resource": {
+            "$ref": "./examples/StateStores_CreateOrUpdate.json"
+          },
+          "Create or update a StateStore resource with recipe": {
+            "$ref": "./examples/StateStores_CreateOrUpdateWithRecipe.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "azure-async-operation"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "patch": {
+        "operationId": "StateStores_Update",
+        "tags": [
+          "StateStores"
+        ],
+        "description": "Update a DaprStateStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "stateStoreName",
+            "in": "path",
+            "description": "StateStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "properties",
+            "in": "body",
+            "description": "The resource properties to be updated.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResourceUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/DaprStateStoreResource"
+            }
+          },
+          "202": {
+            "description": "Resource update request accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Update a StateStore resource": {
+            "$ref": "./examples/StateStores_Update.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      },
+      "delete": {
+        "operationId": "StateStores_Delete",
+        "tags": [
+          "StateStores"
+        ],
+        "description": "Delete a DaprStateStoreResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "stateStoreName",
+            "in": "path",
+            "description": "StateStore name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "type": "integer",
+                "format": "int32",
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status."
+              },
+              "Location": {
+                "type": "string",
+                "description": "The Location header contains the URL where the status of the long running operation can be checked."
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Delete a StateStore resource": {
+            "$ref": "./examples/StateStores_Delete.json"
+          }
+        },
+        "x-ms-long-running-operation-options": {
+          "final-state-via": "location"
+        },
+        "x-ms-long-running-operation": true
+      }
+    },
+    "/providers/Applications.Dapr/operations": {
+      "get": {
+        "operationId": "Operations_List",
+        "tags": [
+          "Operations"
+        ],
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "DaprPubSubBrokerProperties": {
+      "type": "object",
+      "description": "Dapr PubSubBroker portable resource properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the pubSubBroker",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "DaprPubSubBrokerResource": {
+      "type": "object",
+      "description": "Dapr PubSubBroker portable resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubBrokerProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "DaprPubSubBrokerResourceListResult": {
+      "type": "object",
+      "description": "The response of a DaprPubSubBrokerResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The DaprPubSubBrokerResource items on this page",
+          "items": {
+            "$ref": "#/definitions/DaprPubSubBrokerResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "DaprPubSubBrokerResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprPubSubBrokerResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprPubSubBrokerResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprPubSubBrokerResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprPubSubBrokerResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the pubSubBroker",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "DaprSecretStoreProperties": {
+      "type": "object",
+      "description": "Dapr SecretStore portable resource properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "DaprSecretStoreResource": {
+      "type": "object",
+      "description": "Dapr SecretStore portable resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprSecretStoreProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "DaprSecretStoreResourceListResult": {
+      "type": "object",
+      "description": "The response of a DaprSecretStoreResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The DaprSecretStoreResource items on this page",
+          "items": {
+            "$ref": "#/definitions/DaprSecretStoreResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "DaprSecretStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprSecretStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprSecretStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprSecretStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprSecretStoreResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "DaprStateStoreProperties": {
+      "type": "object",
+      "description": "Dapr StateStore portable resource properties",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource.",
+          "readOnly": true
+        },
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the state store",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/Recipe",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "DaprStateStoreResource": {
+      "type": "object",
+      "description": "Dapr StateStore portable resource",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "DaprStateStoreResourceListResult": {
+      "type": "object",
+      "description": "The response of a DaprStateStoreResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The DaprStateStoreResource items on this page",
+          "items": {
+            "$ref": "#/definitions/DaprStateStoreResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "DaprStateStoreResourceUpdate": {
+      "type": "object",
+      "description": "The type used for update operations of the DaprStateStoreResource.",
+      "properties": {
+        "tags": {
+          "type": "object",
+          "description": "Resource tags.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "properties": {
+          "$ref": "#/definitions/DaprStateStoreResourceUpdateProperties",
+          "x-ms-client-flatten": true
+        }
+      }
+    },
+    "DaprStateStoreResourceUpdateProperties": {
+      "type": "object",
+      "description": "The updatable properties of the DaprStateStoreResource.",
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+        },
+        "application": {
+          "type": "string",
+          "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
+          "properties": {}
+        },
+        "type": {
+          "type": "string",
+          "description": "Dapr component type which must matches the format used by Dapr Kubernetes configuration format"
+        },
+        "version": {
+          "type": "string",
+          "description": "Dapr component version"
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the state store",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeUpdate",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ResourceProvisioning",
+          "description": "Specifies how the underlying service/resource is provisioned and managed."
+        }
+      }
+    },
+    "EnvironmentCompute": {
+      "type": "object",
+      "description": "Represents backing compute resource",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        },
+        "identity": {
+          "$ref": "#/definitions/IdentitySettings",
+          "description": "Configuration for supported external identity providers"
+        }
+      },
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ]
+    },
+    "IdentitySettingKind": {
+      "type": "string",
+      "description": "IdentitySettingKind is the kind of supported external identity setting",
+      "enum": [
+        "undefined",
+        "azure.com.workload"
+      ],
+      "x-ms-enum": {
+        "name": "IdentitySettingKind",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "undefined",
+            "value": "undefined",
+            "description": "undefined identity"
+          },
+          {
+            "name": "azure.com.workload",
+            "value": "azure.com.workload",
+            "description": "azure ad workload identity"
+          }
+        ]
+      }
+    },
+    "IdentitySettings": {
+      "type": "object",
+      "description": "IdentitySettings is the external identity setting.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/IdentitySettingKind",
+          "description": "kind of identity setting"
+        },
+        "oidcIssuer": {
+          "type": "string",
+          "description": "The URI for your compute platform's OIDC issuer"
+        },
+        "resource": {
+          "type": "string",
+          "description": "The resource ID of the provisioned identity"
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "KubernetesCompute": {
+      "type": "object",
+      "description": "The Kubernetes compute configuration",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the environment."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
+    },
+    "OutputResource": {
+      "type": "object",
+      "description": "Properties of an output resource.",
+      "properties": {
+        "localId": {
+          "type": "string",
+          "description": "The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships."
+        },
+        "id": {
+          "type": "string",
+          "description": "The UCP resource ID of the underlying resource."
+        },
+        "radiusManaged": {
+          "type": "boolean",
+          "description": "Determines whether Radius manages the lifecycle of the underlying resource."
+        }
+      }
+    },
+    "ProvisioningState": {
+      "type": "string",
+      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "enum": [
+        "Succeeded",
+        "Failed",
+        "Canceled",
+        "Provisioning",
+        "Updating",
+        "Deleting",
+        "Accepted"
+      ],
+      "x-ms-enum": {
+        "name": "ProvisioningState",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Succeeded",
+            "value": "Succeeded",
+            "description": "Resource has been created."
+          },
+          {
+            "name": "Failed",
+            "value": "Failed",
+            "description": "Resource creation failed."
+          },
+          {
+            "name": "Canceled",
+            "value": "Canceled",
+            "description": "Resource creation was canceled."
+          },
+          {
+            "name": "Provisioning",
+            "value": "Provisioning",
+            "description": "The resource is being provisioned"
+          },
+          {
+            "name": "Updating",
+            "value": "Updating",
+            "description": "The resource is updating"
+          },
+          {
+            "name": "Deleting",
+            "value": "Deleting",
+            "description": "The resource is being deleted"
+          },
+          {
+            "name": "Accepted",
+            "value": "Accepted",
+            "description": "The resource create request has been accepted"
+          }
+        ]
+      },
+      "readOnly": true
+    },
+    "Recipe": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "RecipeUpdate": {
+      "type": "object",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the recipe within the environment to use"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "properties": {}
+        }
+      }
+    },
+    "ResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.",
+      "enum": [
+        "recipe",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ResourceProvisioning",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "recipe",
+            "value": "recipe",
+            "description": "The resource lifecycle will be managed by Radius"
+          },
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
+      }
+    },
+    "ResourceReference": {
+      "type": "object",
+      "description": "Describes a reference to an existing resource",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource id of an existing resource"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "description": "Status of a resource.",
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource associated with the resource."
+        },
+        "outputResources": {
+          "type": "array",
+          "description": "Properties of an output resource",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "x-ms-identifiers": []
+        }
+      }
+    },
+    "Versions": {
+      "type": "string",
+      "description": "Supported API versions for the Applications.Dapr resource provider.",
+      "enum": [
+        "2023-10-01-preview"
+      ],
+      "x-ms-enum": {
+        "name": "Versions",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "v2023_10_01_preview",
+            "value": "2023-10-01-preview",
+            "description": "2023-10-01-preview"
+          }
+        ]
+      }
+    }
+  },
+  "parameters": {
+    "RootScopeParameter": {
+      "name": "rootScope",
+      "in": "path",
+      "description": "The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID} and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "required": true,
+      "type": "string",
+      "minLength": 1,
+      "x-ms-parameter-location": "client",
+      "x-ms-skip-url-encoding": true
+    }
+  }
+}

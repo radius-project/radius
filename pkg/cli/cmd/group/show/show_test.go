@@ -28,7 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -79,7 +79,7 @@ func Test_Run(t *testing.T) {
 		id := "/planes/radius/local/resourceGroups/testrg"
 		name := "testrg"
 
-		testResourceGroup := v20220901privatepreview.ResourceGroupResource{
+		testResourceGroup := v20231001preview.ResourceGroupResource{
 			ID:   &id,
 			Name: &name,
 		}
@@ -110,7 +110,7 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		resourceGroup := v20220901privatepreview.ResourceGroupResource{
+		resourceGroup := v20231001preview.ResourceGroupResource{
 			ID:   &id,
 			Name: &runner.UCPResourceGroupName,
 		}

@@ -1,0 +1,34 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/httproutes/hrt0",
+  "name": "hrt0",
+  "type": "applications.core/httproutes",
+  "location": "West US",
+  "systemData": {
+    "createdAt": "2022-03-22T18:54:52.6857175Z",
+    "createdBy": "fake@hotmail.com",
+    "createdByType": "User",
+    "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+    "lastModifiedBy": "fake@hotmail.com",
+    "lastModifiedByType": "User"
+  },
+  "provisioningState": "Succeeded",
+  "properties": {
+    "status": {
+      "outputResources": [
+        {
+          "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+        }
+      ]
+    },
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "hostname": "foo.example.com",
+    "port": 8080,
+    "scheme": "https",
+    "url": "https://foo.example.com"
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "subscriptionId": "00000000-0000-0000-0000-000000000000",
+  "resourceGroup": "radius-test-rg",
+  "createdApiVersion": "2023-10-01-preview",
+  "updatedApiVersion": "2023-10-01-preview"
+}

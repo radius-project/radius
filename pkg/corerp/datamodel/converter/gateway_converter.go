@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // GatewayDataModelToVersioned converts version agnostic Gateway datamodel to versioned model.
 func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.GatewayResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.GatewayResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -40,8 +40,8 @@ func GatewayDataModelToVersioned(model *datamodel.Gateway, version string) (v1.V
 // GatewayDataModelFromVersioned converts versioned Gateway model to datamodel.
 func GatewayDataModelFromVersioned(content []byte, version string) (*datamodel.Gateway, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.GatewayResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.GatewayResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

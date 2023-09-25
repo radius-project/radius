@@ -25,19 +25,19 @@ import (
 )
 
 const (
-	radiusPlaneResourceURL     = "/planes/radius/local?api-version=2022-09-01-privatepreview"
-	radiusPlaneRequestFixture  = "../planes/testdata/radiusplane_v20220901privatepreview_requestbody.json"
-	radiusPlaneResponseFixture = "../planes/testdata/radiusplane_v20220901privatepreview_responsebody.json"
+	radiusPlaneResourceURL     = "/planes/radius/local?api-version=2023-10-01-preview"
+	radiusPlaneRequestFixture  = "../planes/testdata/radiusplane_v20231001preview_requestbody.json"
+	radiusPlaneResponseFixture = "../planes/testdata/radiusplane_v20231001preview_responsebody.json"
 
-	resourceGroupCollectionURL          = "/planes/radius/local/resourceGroups?api-version=2022-09-01-privatepreview"
-	resourceGroupResourceURL            = "/planes/radius/local/resourcegroups/test-rg?api-version=2022-09-01-privatepreview"
-	resourceGroupRequestFixture         = "testdata/resourcegroup_v20220901privatepreview_requestbody.json"
-	resourceGroupResponseFixture        = "testdata/resourcegroup_v20220901privatepreview_responsebody.json"
-	resourceGroupListResponseFixture    = "testdata/resourcegroup_v20220901privatepreview_list_responsebody.json"
-	resourceGroupUpdatedRequestFixture  = "testdata/resourcegroup_updated_v20220901privatepreview_requestbody.json"
-	resourceGroupUpdatedResponseFixture = "testdata/resourcegroup_updated_v20220901privatepreview_responsebody.json"
-	resourceGroupInvalidRequestFixture  = "testdata/resourcegroup_invalid_v20220901privatepreview_requestbody.json"
-	resourceGroupInvalidResponseFixture = "testdata/resourcegroup_invalid_v20220901privatepreview_responsebody.json"
+	resourceGroupCollectionURL          = "/planes/radius/local/resourceGroups?api-version=2023-10-01-preview"
+	resourceGroupResourceURL            = "/planes/radius/local/resourcegroups/test-rg?api-version=2023-10-01-preview"
+	resourceGroupRequestFixture         = "testdata/resourcegroup_v20231001preview_requestbody.json"
+	resourceGroupResponseFixture        = "testdata/resourcegroup_v20231001preview_responsebody.json"
+	resourceGroupListResponseFixture    = "testdata/resourcegroup_v20231001preview_list_responsebody.json"
+	resourceGroupUpdatedRequestFixture  = "testdata/resourcegroup_updated_v20231001preview_requestbody.json"
+	resourceGroupUpdatedResponseFixture = "testdata/resourcegroup_updated_v20231001preview_responsebody.json"
+	resourceGroupInvalidRequestFixture  = "testdata/resourcegroup_invalid_v20231001preview_requestbody.json"
+	resourceGroupInvalidResponseFixture = "testdata/resourcegroup_invalid_v20231001preview_responsebody.json"
 )
 
 func createRadiusPlane(server *testserver.TestServer) {

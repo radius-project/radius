@@ -27,20 +27,20 @@ import (
 	"github.com/golang/mock/gomock"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources/renderers"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
-func TestListSecrets_20220315PrivatePreview(t *testing.T) {
+func TestListSecrets_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, rabbitMQDataModel, _ := getTest_Model20220315privatepreview()
+	_, rabbitMQDataModel, _ := getTest_Model20231001preview()
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -101,7 +101,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.RabbitMQSecrets{}
+		actualOutput := &v20231001preview.RabbitMQSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.URI], *actualOutput.URI)

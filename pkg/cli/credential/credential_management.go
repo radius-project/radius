@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 const (
