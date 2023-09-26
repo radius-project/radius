@@ -2,7 +2,7 @@ import radius as radius
 
 param application string
 
-resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource container 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'k8s-cli-run-logger'
   location: 'global'
   properties: {

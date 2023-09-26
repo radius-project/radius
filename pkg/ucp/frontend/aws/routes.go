@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -191,7 +191,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
 		{
 			ParentRouter: credentialCollectionRouter,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
+			ResourceType: v20231001preview.AWSCredentialType,
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewListResources(opt,
@@ -204,7 +204,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: credentialResourceRouter,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
+			ResourceType: v20231001preview.AWSCredentialType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -218,7 +218,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationPut,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
+			ResourceType: v20231001preview.AWSCredentialType,
 			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
 				return aws_credential_ctrl.NewCreateOrUpdateAWSCredential(o, secretClient)
 			},
@@ -226,7 +226,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		{
 			ParentRouter: credentialResourceRouter,
 			Method:       v1.OperationDelete,
-			ResourceType: v20220901privatepreview.AWSCredentialType,
+			ResourceType: v20231001preview.AWSCredentialType,
 			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
 				return aws_credential_ctrl.NewDeleteAWSCredential(o, secretClient)
 			},

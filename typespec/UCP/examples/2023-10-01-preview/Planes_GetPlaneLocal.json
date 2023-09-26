@@ -1,0 +1,26 @@
+{
+  "operationId": "Planes_Get",
+  "title": "Get a plane",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "planeType": "radius"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local",
+        "name": "local",
+        "type": "System.Planes/radius",
+        "location": "global",
+        "properties": {
+          "resourceProviders": {
+            "Applications.Datastores": "http://applications-rp.radius-system:5444",
+            "Applications.Core": "http://applications-rp.radius-system:5443"
+          },
+          "kind": "UCPNative"
+        }
+      }
+    }
+  }
+}

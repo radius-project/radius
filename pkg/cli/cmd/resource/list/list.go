@@ -157,7 +157,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		_, err = client.ShowApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
-			return clierrors.Message("The application %q could not be found in workspace %q.", r.ApplicationName, r.Workspace.Name)
+			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application' or switch applications with 'rad app switch'.", r.ApplicationName, r.Workspace.Name)
 		} else if err != nil {
 			return err
 		}

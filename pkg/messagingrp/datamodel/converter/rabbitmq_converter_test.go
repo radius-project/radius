@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/messagingrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/messagingrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,13 +37,13 @@ func TestRabbitMQQueueDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_datamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RabbitMQQueueResource{},
+			"../../api/v20231001preview/testdata/rabbitmq_manual_datamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.RabbitMQQueueResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_datamodel.json",
+			"../../api/v20231001preview/testdata/rabbitmq_manual_datamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -74,17 +74,17 @@ func TestRabbitMQQueueDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/rabbitmq_manual_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/rabbitmqresource-invalid.json",
+			"2023-10-01-preview",
 			errors.New("json: cannot unmarshal number into Go struct field RabbitMQQueueProperties.properties.resource of type string"),
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmq_manual_resource.json",
+			"../../api/v20231001preview/testdata/rabbitmq_manual_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -112,13 +112,13 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqsecretsdatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RabbitMQSecrets{},
+			"../../api/v20231001preview/testdata/rabbitmqsecretsdatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.RabbitMQSecrets{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rabbitmqsecretsdatamodel.json",
+			"../../api/v20231001preview/testdata/rabbitmqsecretsdatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,

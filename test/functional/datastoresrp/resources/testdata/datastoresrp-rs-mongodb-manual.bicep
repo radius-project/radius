@@ -11,7 +11,7 @@ param environment string
 
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dsrp-resources-mongodb-manual'
   location: 'global'
   properties: {
@@ -19,7 +19,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'mdb-us-app-ctnr'
   location: 'global'
   properties: {
@@ -37,7 +37,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 
 // https://hub.docker.com/_/mongo/
-resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource mongoContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'mdb-us-ctnr'
   location: 'global'
   properties: {
@@ -60,7 +60,7 @@ resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview'
   }
 }
 
-resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
+resource mongoRoute 'Applications.Core/httproutes@2023-10-01-preview' = {
   name: 'mdb-us-rte'
   location: 'global'
   properties: {
@@ -69,7 +69,7 @@ resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource mongo 'Applications.Datastores/mongoDatabases@2022-03-15-privatepreview' = {
+resource mongo 'Applications.Datastores/mongoDatabases@2023-10-01-preview' = {
   name: 'mdb-us-db'
   location: 'global'
   properties: {

@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,13 +37,13 @@ func TestSqlDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.SQLDatabaseResource{},
+			"../../api/v20231001preview/testdata/sqldatabase_manual_resourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.SQLDatabaseResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resourcedatamodel.json",
+			"../../api/v20231001preview/testdata/sqldatabase_manual_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -74,27 +74,27 @@ func TestSqlDatabaseDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_manual_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/sqldatabase_manual_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/sqldatabase_recipe_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabaseresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/sqldatabaseresource-invalid.json",
+			"2023-10-01-preview",
 			errors.New("json: cannot unmarshal number into Go struct field SqlDatabaseProperties.properties.database of type string"),
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_invalid_properties_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/sqldatabase_invalid_properties_resource.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "multiple errors were found:\n\tserver must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual"},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_invalid_properties_resource.json",
+			"../../api/v20231001preview/testdata/sqldatabase_invalid_properties_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -122,19 +122,19 @@ func TestSqlDatabaseSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_secrets_datamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.SQLDatabaseSecrets{},
+			"../../api/v20231001preview/testdata/sqldatabase_secrets_datamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.SQLDatabaseSecrets{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.SQLDatabaseSecrets{},
+			"../../api/v20231001preview/testdata/sqldatabase_recipe_resourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.SQLDatabaseSecrets{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/sqldatabase_recipe_resourcedatamodel.json",
+			"../../api/v20231001preview/testdata/sqldatabase_recipe_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,

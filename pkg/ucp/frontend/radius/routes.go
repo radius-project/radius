@@ -24,7 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
@@ -56,13 +56,13 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	handlerOptions := []server.HandlerOptions{
 		{
 			ParentRouter:      resourceGroupCollectionRouter,
-			ResourceType:      v20220901privatepreview.ResourceGroupType,
+			ResourceType:      v20231001preview.ResourceGroupType,
 			Method:            v1.OperationList,
 			ControllerFactory: resourcegroups_ctrl.NewListResourceGroups,
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
-			ResourceType: v20220901privatepreview.ResourceGroupType,
+			ResourceType: v20231001preview.ResourceGroupType,
 			Method:       v1.OperationGet,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewGetResource(opt,
@@ -75,7 +75,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
-			ResourceType: v20220901privatepreview.ResourceGroupType,
+			ResourceType: v20231001preview.ResourceGroupType,
 			Method:       v1.OperationPut,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncPut(opt,
@@ -88,7 +88,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
-			ResourceType: v20220901privatepreview.ResourceGroupType,
+			ResourceType: v20231001preview.ResourceGroupType,
 			Method:       v1.OperationDelete,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
 				return defaultoperation.NewDefaultSyncDelete(opt,
@@ -101,7 +101,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
-			ResourceType: v20220901privatepreview.ResourceType,
+			ResourceType: v20231001preview.ResourceType,
 			Path:         "/resources",
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {

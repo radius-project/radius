@@ -4,14 +4,14 @@ param magpieimage string
 param environment string
 param namespace string = 'default'
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dpsb-manual-app'
   properties: {
     environment: environment
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'dpsb-manual-app-ctnr'
   properties: {
     application: app.id
@@ -49,7 +49,7 @@ module redis '../../../shared/resources/testdata/modules/redis-selfhost.bicep' =
 }
 
 
-resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsubBroker 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
   name: 'dpsb-manual'
   properties: {
     application: app.id

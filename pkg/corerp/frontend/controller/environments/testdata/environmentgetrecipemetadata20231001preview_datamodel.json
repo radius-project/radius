@@ -1,0 +1,53 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
+    "name": "env0",
+    "type": "applications.core/environments",
+    "location": "West US",
+    "systemData": {
+        "createdAt": "2022-03-22T18:54:52.6857175Z",
+        "createdBy": "fake@hotmail.com",
+        "createdByType": "User",
+        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+        "lastModifiedBy": "fake@hotmail.com",
+        "lastModifiedByType": "User"
+    },
+    "provisioningState": "Succeeded",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "kubernetes": {
+                "resourceId": "fakeid",
+                "namespace": "default"
+            }
+        },
+        "recipes": {
+            "Applications.Datastores/mongoDatabases":{
+                "mongo-parameters": {
+                    "templateKind": "bicep",                  
+                    "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+                },
+                "mongo-terraform": {
+                    "templateKind":"terraform",
+                    "templatePath": "Azure/cosmosdb/azurerm",
+                    "templateVersion": "1.1.0"
+                }
+            },
+            "Applications.Datastores/redisCache":{
+                "redis": {
+                    "templateKind": "bicep",
+                    "templatePath": "radiusdev.azurecr.io/redis:1.0"
+                  }
+            }
+        },
+        "providers": {
+            "azure": {
+                "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
+            }
+        }
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroup": "radius-test-rg",
+    "createdApiVersion": "2023-10-01-preview",
+    "updatedApiVersion": "2023-10-01-preview"
+}

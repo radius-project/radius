@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
@@ -29,10 +30,11 @@ import (
 func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	templateFmt := "testdata/aws-mechanics-redeploy-withupdatedresource.step%d.bicep"
 	name := "radiusfunctionaltestbucket-" + uuid.New().String()
+	creationTimestamp := functional.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -49,6 +51,10 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 									"Key":   "testKey",
 									"Value": "testValue",
 								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},
@@ -56,7 +62,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "bucketName="+name, "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
@@ -72,6 +78,10 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 									"Key":   "testKey",
 									"Value": "testValue2",
 								},
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},
@@ -86,10 +96,11 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 	t.Skip("This test will fail because step 2 is updating a create-and-write-only property.")
 	name := "my-db"
 	templateFmt := "testdata/aws-mechanics-redeploy-withcreateandwriteonlypropertyupdate.step%d.bicep"
+	creationTimestamp := functional.GetCreationTimestamp()
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1)),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
@@ -103,13 +114,19 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 							"Endpoint": map[string]any{
 								"Port": 1444,
 							},
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
+							},
 						},
 					},
 				},
 			},
 		},
 		{
-			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2)),
+			Executor:                               step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), "creationTimestamp="+creationTimestamp),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
@@ -121,6 +138,12 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 						Properties: map[string]any{
 							"Endpoint": map[string]any{
 								"Port": 1444,
+							},
+							"Tags": []any{
+								map[string]any{
+									"Key":   "RadiusCreationTimestamp",
+									"Value": creationTimestamp,
+								},
 							},
 						},
 					},

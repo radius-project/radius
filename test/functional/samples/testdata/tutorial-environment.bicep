@@ -3,7 +3,7 @@ import radius as radius
 param registry string
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'tutorial'
   properties: {
     compute: {

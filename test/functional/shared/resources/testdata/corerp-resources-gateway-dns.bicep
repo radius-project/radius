@@ -12,7 +12,7 @@ param port int = 3000
 @description('Specifies the image for the container resource.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
 	name: 'corerp-resources-gateway-dns'
 	location: location
 	properties: {
@@ -20,7 +20,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 	}
 }
 
-resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
+resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
 	name: 'http-gtwy-gtwy-dns'
 	location: location
 	properties: {
@@ -45,7 +45,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
 	}
 }
 
-resource frontendcontainerdns 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontendcontainerdns 'Applications.Core/containers@2023-10-01-preview' = {
 	name: 'frontendcontainerdns'
 	location: location
 	properties: {
@@ -71,7 +71,7 @@ resource frontendcontainerdns 'Applications.Core/containers@2022-03-15-privatepr
 	}
 }
 
-resource backendcontainerdns 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource backendcontainerdns 'Applications.Core/containers@2023-10-01-preview' = {
 	name: 'backendcontainerdns'
 	location: location
 	properties: {

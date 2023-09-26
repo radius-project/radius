@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/logstream"
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -149,7 +149,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	namespace := ""
 	appStatus := app.Properties.Status
 	if appStatus != nil && appStatus.Compute != nil {
-		kube, ok := appStatus.Compute.(*v20220315privatepreview.KubernetesCompute)
+		kube, ok := appStatus.Compute.(*v20231001preview.KubernetesCompute)
 		if ok && kube.Namespace != nil {
 			namespace = to.String(kube.Namespace)
 		}

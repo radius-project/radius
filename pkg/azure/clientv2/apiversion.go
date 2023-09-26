@@ -17,10 +17,10 @@ limitations under the License.
 package clientv2
 
 var (
-	AccountsClientAPIVersion       = "2022-09-01"
-	StateStoreClientAPIVersion     = "2022-09-01"
-	ServiceBusClientAPIVersion     = "2022-01-01-preview"
-	MSIClientAPIVersion            = "2022-01-31-preview"
+	AccountsClientAPIVersion       = "2023-10-01"
+	StateStoreClientAPIVersion     = "2023-10-01"
+	ServiceBusClientAPIVersion     = "2023-10-01-preview"
+	MSIClientAPIVersion            = "2023-10-01-preview"
 	RoleAssignmentClientAPIVersion = "2022-04-01"
 
 	// https://github.com/Azure/azure-rest-api-specs/blob/main/specification/sql/resource-manager/readme.md

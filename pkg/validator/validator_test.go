@@ -32,7 +32,7 @@ import (
 func Test_FindParam(t *testing.T) {
 	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/subscriptions/{subscriptionID}/resourceGroups/{rgName}"}, "rootScope")
 	require.NoError(t, err)
-	v, ok := l.GetValidator("applications.core/environments", "2022-03-15-privatepreview")
+	v, ok := l.GetValidator("applications.core/environments", "2023-10-01-preview")
 	require.True(t, ok)
 	validator := v.(*validator)
 
@@ -68,7 +68,7 @@ func Test_ToRouteParams(t *testing.T) {
 	})
 
 	t.Run("azure subscription path", func(t *testing.T) {
-		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/environments?api-version=2023-10-01-preview", nil)
 		require.NoError(t, err)
 		rctx := chi.NewRouteContext()
 		rctx.URLParams.Add("subscriptionID", "00000000-0000-0000-0000-000000000000")
@@ -77,14 +77,14 @@ func Test_ToRouteParams(t *testing.T) {
 
 		expected := middleware.RouteParams{
 			{Name: "rootScope", Value: "/subscriptions/00000000-0000-0000-0000-000000000000"},
-			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "api-version", Value: "2023-10-01-preview"},
 			{Name: "subscriptionID", Value: "00000000-0000-0000-0000-000000000000"},
 		}
 		require.Equal(t, expected, ps)
 	})
 
 	t.Run("azure resource-group path", func(t *testing.T) {
-		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2023-10-01-preview", nil)
 		require.NoError(t, err)
 		rctx := chi.NewRouteContext()
 		rctx.URLParams.Add("subscriptionID", "00000000-0000-0000-0000-000000000000")
@@ -94,7 +94,7 @@ func Test_ToRouteParams(t *testing.T) {
 
 		expected := middleware.RouteParams{
 			{Name: "rootScope", Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"},
-			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "api-version", Value: "2023-10-01-preview"},
 			{Name: "subscriptionID", Value: "00000000-0000-0000-0000-000000000000"},
 			{Name: "environmentName", Value: "env0"},
 		}
@@ -102,7 +102,7 @@ func Test_ToRouteParams(t *testing.T) {
 	})
 
 	t.Run("ucp plane path", func(t *testing.T) {
-		req, err := http.NewRequest("", "http://radius/planes/radius/local/providers/applications.core/environments?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/planes/radius/local/providers/applications.core/environments?api-version=2023-10-01-preview", nil)
 		require.NoError(t, err)
 		rctx := chi.NewRouteContext()
 		rctx.URLParams.Add("planeType", "radius")
@@ -112,7 +112,7 @@ func Test_ToRouteParams(t *testing.T) {
 
 		expected := middleware.RouteParams{
 			{Name: "rootScope", Value: "/planes/radius/local"},
-			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "api-version", Value: "2023-10-01-preview"},
 			{Name: "planeType", Value: "radius"},
 			{Name: "planeName", Value: "local"},
 		}
@@ -120,7 +120,7 @@ func Test_ToRouteParams(t *testing.T) {
 	})
 
 	t.Run("ucp resource-group path", func(t *testing.T) {
-		req, err := http.NewRequest("", "http://radius/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2022-03-15-privatepreview", nil)
+		req, err := http.NewRequest("", "http://radius/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0?api-version=2023-10-01-preview", nil)
 		require.NoError(t, err)
 		rctx := chi.NewRouteContext()
 		rctx.URLParams.Add("planeType", "radius")
@@ -131,7 +131,7 @@ func Test_ToRouteParams(t *testing.T) {
 
 		expected := middleware.RouteParams{
 			{Name: "rootScope", Value: "/planes/radius/local/resourceGroups/radius-test-rg"},
-			{Name: "api-version", Value: "2022-03-15-privatepreview"},
+			{Name: "api-version", Value: "2023-10-01-preview"},
 			{Name: "planeType", Value: "radius"},
 			{Name: "planeName", Value: "local"},
 			{Name: "environmentName", Value: "env0"},
