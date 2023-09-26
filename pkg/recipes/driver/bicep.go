@@ -57,18 +57,18 @@ var _ Driver = (*bicepDriver)(nil)
 // NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client and resource client.
 func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
 	return &bicepDriver{
-		ArmClientOptions: armOptions,
-		DeploymentClient: deploymentClient,
-		ResourceClient:   client,
-		RetryConfig:      NewDefaultRetryConfig(),
+		ArmClientOptions:  armOptions,
+		DeploymentClient:  deploymentClient,
+		ResourceClient:    client,
+		DeleteRetryConfig: NewDefaultDeleteRetryConfig(),
 	}
 }
 
 type bicepDriver struct {
-	ArmClientOptions *arm.ClientOptions
-	DeploymentClient *clients.ResourceDeploymentsClient
-	ResourceClient   processors.ResourceClient
-	RetryConfig      RetryConfig
+	ArmClientOptions  *arm.ClientOptions
+	DeploymentClient  *clients.ResourceDeploymentsClient
+	ResourceClient    processors.ResourceClient
+	DeleteRetryConfig DeleteRetryConfig
 }
 
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
@@ -149,22 +149,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 	// as bicep does not take care of automatically deleting the unused resources.
 	// Identify the output resources that are no longer relevant to the recipe.
 	garbageCollectionStartTime := time.Now()
-	diff := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
-	outputResourcesToDelete := make([]rpv1.OutputResource, len(diff))
-	for i, resourceID := range diff {
-		id, err := resources.Parse(resourceID)
-		if err != nil {
-			return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
-		}
-		outputResourcesToDelete[i] = rpv1.OutputResource{
-			ID:            id,
-			RadiusManaged: to.Ptr(true),
-		}
+	diff, err := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+	if err != nil {
+		return nil, err
 	}
 
 	// Deleting obsolete output resources.
 	err = d.Delete(ctx, DeleteOptions{
-		OutputResources: outputResourcesToDelete,
+		OutputResources: diff,
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
@@ -179,6 +171,8 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 // Delete deletes all of the output resources that are marked as managed by Radius.
 // It will create a goroutine for each resource to be deleted and wait for them to finish,
 // retrying if necessary.
+// We don't have context on the dependency ordering here, so we need to try to delete them
+// all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -199,27 +193,28 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				return nil
 			}
 
-			for attempt := 1; attempt <= d.RetryConfig.RetryCount; attempt++ {
+			for attempt := 1; attempt <= d.DeleteRetryConfig.RetryCount; attempt++ {
 				logger.WithValues("attempt", attempt)
 				ctx := logr.NewContext(groupCtx, logger)
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
 				err := d.ResourceClient.Delete(ctx, id)
 				if err != nil {
-				    if attempt < d.RetryConfig.RetryCount {
-				        logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.RetryConfig.RetryDelay)
-					time.Sleep(d.RetryConfig.RetryDelay)
-					continue
+					if attempt < d.DeleteRetryConfig.RetryCount {
+						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.DeleteRetryConfig.RetryDelay)
+						time.Sleep(d.DeleteRetryConfig.RetryDelay)
+						continue
+					}
+
+					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
 				}
-				return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
-			}
 
 				// If the err is nil, then the resource is deleted successfully
 				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
 				return nil
 			}
 
-			err := fmt.Errorf("failed to delete resource after %d attempts", d.RetryConfig.RetryCount)
+			err := fmt.Errorf("failed to delete resource after %d attempts", d.DeleteRetryConfig.RetryCount)
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
 		})
 	}
@@ -364,24 +359,32 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*armresourc
 }
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
-// returns a slice of resource ids that contains the elements that are in the "previous" slice but not in the "current".
-func (d *bicepDriver) getGCOutputResources(current []string, previous []string) []string {
+// returns a slice of OutputResources that contains the elements that are in the "previous" slice but not in the "current".
+func (d *bicepDriver) getGCOutputResources(current []string, previous []string) ([]rpv1.OutputResource, error) {
 	// We can easily determine which resources have changed via a brute-force search comparing IDs.
 	// The lists of resources we work with are small, so this is fine.
-	diff := []string{}
-	for _, prevResource := range previous {
+	diff := []rpv1.OutputResource{}
+	for _, prevResourceId := range previous {
 		found := false
-		for _, currentResource := range current {
-			if prevResource == currentResource {
+		for _, currentResourceId := range current {
+			if prevResourceId == currentResourceId {
 				found = true
 				break
 			}
 		}
 
 		if !found {
-			diff = append(diff, prevResource)
+			id, err := resources.Parse(prevResourceId)
+			if err != nil {
+				return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+			}
+
+			diff = append(diff, rpv1.OutputResource{
+				ID:            id,
+				RadiusManaged: to.Ptr(true),
+			})
 		}
 	}
 
-	return diff
+	return diff, nil
 }

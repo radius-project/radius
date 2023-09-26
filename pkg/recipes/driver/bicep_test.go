@@ -359,7 +359,7 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 
 	driver := bicepDriver{
 		ResourceClient: client,
-		RetryConfig: RetryConfig{
+		DeleteRetryConfig: DeleteRetryConfig{
 			RetryCount: 1,
 			RetryDelay: 1 * time.Second,
 		},
@@ -485,10 +485,51 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	require.Equal(t, err, &expErr)
 }
 
+func Test_GetGCOutputResources(t *testing.T) {
+	d := &bicepDriver{}
+	before := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	after := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
+	}
+
+	expId := "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2"
+	id, err := resources.Parse(expId)
+	require.NoError(t, err)
+	exp := []rpv1.OutputResource{
+		{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		},
+	}
+	res, err := d.getGCOutputResources(after, before)
+	require.NoError(t, err)
+	require.Equal(t, exp, res)
+}
+
+func Test_GetGCOutputResources_NoDiff(t *testing.T) {
+	d := &bicepDriver{}
+	before := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	after := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
+	}
+	exp := []rpv1.OutputResource{}
+	res, err := d.getGCOutputResources(after, before)
+	require.NoError(t, err)
+	require.Equal(t, exp, res)
+}
+
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
-	driver.RetryConfig = RetryConfig{
+	driver.DeleteRetryConfig = DeleteRetryConfig{
 		RetryCount: 2,
 		RetryDelay: 1 * time.Second,
 	}

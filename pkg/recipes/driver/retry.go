@@ -23,8 +23,8 @@ const (
 	defaultRetryDelay = time.Minute * 1
 )
 
-// RetryConfig represents the configuration for retrying a request.
-type RetryConfig struct {
+// DeleteRetryConfig represents the configuration for retrying a deletion request.
+type DeleteRetryConfig struct {
 	// RetryCount is the number of times to retry the request.
 	RetryCount int
 
@@ -32,9 +32,9 @@ type RetryConfig struct {
 	RetryDelay time.Duration
 }
 
-// NewDefaultRetryConfig creates a new RetryConfig with default values.
-func NewDefaultRetryConfig() RetryConfig {
-	return RetryConfig{
+// NewDefaultDeleteRetryConfig creates a new DeleteRetryConfig with default values.
+func NewDefaultDeleteRetryConfig() DeleteRetryConfig {
+	return DeleteRetryConfig{
 		RetryCount: defaultRetryCount,
 		RetryDelay: defaultRetryDelay,
 	}
