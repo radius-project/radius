@@ -444,9 +444,9 @@ func Test_Run(t *testing.T) {
 			Return(map[string]any{}, nil).
 			Times(1)
 
-		// options := deploy.Options{}
-
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
+
+		// GetEnvDetails returns a 404 error
 		appManagmentMock.EXPECT().
 			GetEnvDetails(gomock.Any(), "envdoesntexist").
 			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
@@ -456,8 +456,6 @@ func Test_Run(t *testing.T) {
 		deployMock.EXPECT().
 			DeployWithProgress(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
-				// Capture options for verification
-				// options = o
 				return clients.DeploymentResult{}, nil
 			}).
 			Times(1)
@@ -485,6 +483,8 @@ func Test_Run(t *testing.T) {
 		}
 
 		err := runner.Run(context.Background())
+
+		// Even though GetEnvDetails returns a 404 error, the deployment should still succeed
 		require.NoError(t, err)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
