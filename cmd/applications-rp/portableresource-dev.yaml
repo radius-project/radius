@@ -35,5 +35,8 @@ ucp:
 logging:
   level: "info"
   json: false
+bicep:
+  deleteRetryCount: 20
+  deleteRetryDelaySeconds: 60
 terraform:
   path: "/terraform"
