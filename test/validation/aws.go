@@ -192,6 +192,6 @@ func assertFieldsArePresent(t *testing.T, actual any, expected any) {
 			require.Fail(t, "types of actual and expected do not match")
 		}
 	default:
-		require.Equal(t, actual, expected)
+		require.Equal(t, expected, actual)
 	}
 }
