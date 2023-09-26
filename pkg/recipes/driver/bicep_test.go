@@ -359,7 +359,7 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 	driver := bicepDriver{
 		ResourceClient: client,
 		options: BicepOptions{
-			DeleteRetryCount:        1,
+			DeleteRetryCount:        0,
 			DeleteRetryDelaySeconds: 1,
 		},
 	}
@@ -418,7 +418,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeletionFailed,
-			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+			Message: fmt.Sprintf("failed to delete resource after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
 		},
 	}
 	client.EXPECT().
@@ -528,6 +528,8 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
+	driver.options.DeleteRetryCount = 1
+
 	outputResources := []rpv1.OutputResource{
 		{
 			ID: resources_kubernetes.IDFromParts(
@@ -543,7 +545,7 @@ func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().
 			Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
-			Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)),
+			Return(fmt.Errorf("failed to delete resource after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)),
 		client.EXPECT().
 			Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
 			Return(nil),

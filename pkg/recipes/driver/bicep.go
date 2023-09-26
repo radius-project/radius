@@ -198,14 +198,16 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				return nil
 			}
 
-			for attempt := 1; attempt <= d.options.DeleteRetryCount; attempt++ {
+			allowedAttempts := d.options.DeleteRetryCount + 1
+			var err error
+			for attempt := 1; attempt <= allowedAttempts; attempt++ {
 				logger.WithValues("attempt", attempt)
 				ctx := logr.NewContext(groupCtx, logger)
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err := d.ResourceClient.Delete(ctx, id)
+				err = d.ResourceClient.Delete(ctx, id)
 				if err != nil {
-					if attempt < d.options.DeleteRetryCount {
+					if attempt <= allowedAttempts {
 						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
 						time.Sleep(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
 						continue
@@ -219,8 +221,8 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				return nil
 			}
 
-			err := fmt.Errorf("failed to delete resource after %d attempts", d.options.DeleteRetryCount)
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
+			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %s", allowedAttempts, err.Error())
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetRecipeErrorDetails(deletionErr))
 		})
 	}
 
