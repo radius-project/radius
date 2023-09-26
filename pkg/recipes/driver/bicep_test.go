@@ -19,7 +19,6 @@ package driver
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	gomock "github.com/golang/mock/gomock"
@@ -359,9 +358,9 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 
 	driver := bicepDriver{
 		ResourceClient: client,
-		DeleteRetryConfig: DeleteRetryConfig{
-			RetryCount: 1,
-			RetryDelay: 1 * time.Second,
+		options: BicepOptions{
+			DeleteRetryCount:        1,
+			DeleteRetryDelaySeconds: 1,
 		},
 	}
 
@@ -529,10 +528,6 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
-	driver.DeleteRetryConfig = DeleteRetryConfig{
-		RetryCount: 2,
-		RetryDelay: 1 * time.Second,
-	}
 	outputResources := []rpv1.OutputResource{
 		{
 			ID: resources_kubernetes.IDFromParts(

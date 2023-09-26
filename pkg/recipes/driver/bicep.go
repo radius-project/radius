@@ -54,21 +54,26 @@ const (
 
 var _ Driver = (*bicepDriver)(nil)
 
-// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client and resource client.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient) Driver {
+// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient *clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) Driver {
 	return &bicepDriver{
-		ArmClientOptions:  armOptions,
-		DeploymentClient:  deploymentClient,
-		ResourceClient:    client,
-		DeleteRetryConfig: NewDefaultDeleteRetryConfig(),
+		ArmClientOptions: armOptions,
+		DeploymentClient: deploymentClient,
+		ResourceClient:   client,
+		options:          options,
 	}
 }
 
+type BicepOptions struct {
+	DeleteRetryCount        int
+	DeleteRetryDelaySeconds int
+}
+
 type bicepDriver struct {
-	ArmClientOptions  *arm.ClientOptions
-	DeploymentClient  *clients.ResourceDeploymentsClient
-	ResourceClient    processors.ResourceClient
-	DeleteRetryConfig DeleteRetryConfig
+	ArmClientOptions *arm.ClientOptions
+	DeploymentClient *clients.ResourceDeploymentsClient
+	ResourceClient   processors.ResourceClient
+	options          BicepOptions
 }
 
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
@@ -193,16 +198,16 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				return nil
 			}
 
-			for attempt := 1; attempt <= d.DeleteRetryConfig.RetryCount; attempt++ {
+			for attempt := 1; attempt <= d.options.DeleteRetryCount; attempt++ {
 				logger.WithValues("attempt", attempt)
 				ctx := logr.NewContext(groupCtx, logger)
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
 				err := d.ResourceClient.Delete(ctx, id)
 				if err != nil {
-					if attempt < d.DeleteRetryConfig.RetryCount {
-						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.DeleteRetryConfig.RetryDelay)
-						time.Sleep(d.DeleteRetryConfig.RetryDelay)
+					if attempt < d.options.DeleteRetryCount {
+						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
+						time.Sleep(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
 						continue
 					}
 
@@ -214,7 +219,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				return nil
 			}
 
-			err := fmt.Errorf("failed to delete resource after %d attempts", d.DeleteRetryConfig.RetryCount)
+			err := fmt.Errorf("failed to delete resource after %d attempts", d.options.DeleteRetryCount)
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
 		})
 	}
