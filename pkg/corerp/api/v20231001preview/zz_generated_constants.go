@@ -123,6 +123,24 @@ func PossibleDaprSidecarExtensionProtocolValues() []DaprSidecarExtensionProtocol
 	}
 }
 
+// Direction - The direction of a connection.
+type Direction string
+
+const (
+	// DirectionFrom - From
+	DirectionFrom Direction = "From"
+	// DirectionTo - To
+	DirectionTo Direction = "To"
+)
+
+// PossibleDirectionValues returns the possible values for the Direction const type.
+func PossibleDirectionValues() []Direction {
+	return []Direction{	
+		DirectionFrom,
+		DirectionTo,
+	}
+}
+
 // IAMKind - The kind of IAM provider to configure
 type IAMKind string
 

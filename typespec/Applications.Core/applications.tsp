@@ -64,6 +64,63 @@ model ApplicationProperties {
   status?: ResourceStatus;
 }
 
+@doc("Describes the application architecture and its dependencies.")
+model ApplicationGraphResponse {
+  @doc("The resources in the application graph.")
+  @extension("x-ms-identifiers", ["id"])
+  resources: Array<ApplicationGraphResource>;
+}
+
+@doc("Describes the connection between two resources.")
+model ApplicationGraphConnection {
+  @doc("The resource ID ")
+  id: string;
+
+  @doc("The direction of the connection. To indicates the id is destination and From indicates the id is source")
+  direction: Direction;
+}
+
+@doc("The direction of a connection.")
+enum Direction {
+  @doc("To")
+  To,
+
+  @doc("From")
+  From,
+}
+
+@doc("Describes a resource in the application graph.")
+model ApplicationGraphResource {
+  @doc("The resource ID.")
+  id: string;
+
+  @doc("The resource type.")
+  type: string;
+
+  @doc("The resource name.")
+  name: string;
+
+  @doc("The resources that comprise this resource.")
+  @extension("x-ms-identifiers", ["id"])
+  resources: Array<ApplicationGraphOutputResource>;
+
+  @doc("The connections between resources in the application graph.")
+  @extension("x-ms-identifiers",[])
+  connections: Array<ApplicationGraphConnection>;
+}
+
+@doc("Describes an output resource that comprises an application graph resource.")
+model ApplicationGraphOutputResource {
+  @doc("The resource ID.")
+  id: string;
+
+  @doc("The resource type.")
+  type: string;
+
+  @doc("The resource name.")
+  name: string;
+}
+
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface Applications {
@@ -93,5 +150,14 @@ interface Applications {
     UCPBaseParameters<ApplicationResource>,
     "Scope",
     "Scope"
+  >;
+
+  @doc("Gets the application graph and resources.")
+  @action("getGraph")
+  getGraph is ArmResourceActionSync<
+    ApplicationResource,
+    {},
+    ApplicationGraphResponse,
+    UCPBaseParameters<ApplicationResource>
   >;
 }
