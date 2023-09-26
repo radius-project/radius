@@ -28,9 +28,9 @@ import (
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	corerpv20220315 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20231001 "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources"
-	ucpv20220901 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -205,15 +205,15 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 
 // ListApplications() retrieves a list of ApplicationResource objects from the Azure API
 // and returns them in a slice, or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerpv20220315.ApplicationResource, error) {
-	results := []corerpv20220315.ApplicationResource{}
+func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerpv20231001.ApplicationResource, error) {
+	results := []corerpv20231001.ApplicationResource{}
 
-	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	client, err := corerpv20231001.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return results, err
 	}
 
-	pager := client.NewListByScopePager(&corerpv20220315.ApplicationsClientListByScopeOptions{})
+	pager := client.NewListByScopePager(&corerpv20231001.ApplicationsClientListByScopeOptions{})
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
@@ -230,8 +230,8 @@ func (amc *UCPApplicationsManagementClient) ListApplications(ctx context.Context
 
 // ListApplicationsByEnv takes in a context and an environment name and returns a slice of ApplicationResource objects
 // and an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]corerpv20220315.ApplicationResource, error) {
-	results := []corerpv20220315.ApplicationResource{}
+func (amc *UCPApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]corerpv20231001.ApplicationResource, error) {
+	results := []corerpv20231001.ApplicationResource{}
 	applicationsList, err := amc.ListApplications(ctx)
 	if err != nil {
 		return nil, err
@@ -247,14 +247,14 @@ func (amc *UCPApplicationsManagementClient) ListApplicationsByEnv(ctx context.Co
 
 // ShowApplication creates a new ApplicationsClient, attempts to get an application
 // resource from the Azure Cognitive Search service, and returns the resource or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (corerpv20220315.ApplicationResource, error) {
-	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (corerpv20231001.ApplicationResource, error) {
+	client, err := corerpv20231001.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.ApplicationResource{}, err
+		return corerpv20231001.ApplicationResource{}, err
 	}
 
-	getResponse, err := client.Get(ctx, applicationName, &corerpv20220315.ApplicationsClientGetOptions{})
-	var result corerpv20220315.ApplicationResource
+	getResponse, err := client.Get(ctx, applicationName, &corerpv20231001.ApplicationsClientGetOptions{})
+	var result corerpv20231001.ApplicationResource
 	if err != nil {
 		return result, err
 	}
@@ -287,7 +287,7 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return false, err
 	}
 
-	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	client, err := corerpv20231001.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
@@ -308,8 +308,8 @@ func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Contex
 
 // CreateOrUpdateApplication creates or updates an application resource in Azure using the
 // given application name and resource. It returns an error if the creation or update fails.
-func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerpv20220315.ApplicationResource) error {
-	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerpv20231001.ApplicationResource) error {
+	client, err := corerpv20231001.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return err
 	}
@@ -327,8 +327,8 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx contex
 
 // CreateApplicationIfNotFound checks if an application exists and creates it if it does
 // not exist, returning an error if any occurs.
-func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerpv20220315.ApplicationResource) error {
-	client, err := corerpv20220315.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerpv20231001.ApplicationResource) error {
+	client, err := corerpv20231001.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return err
 	}
@@ -356,13 +356,13 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 
 // CreateEnvironment creates or updates an environment with the given name, location and
 // properties, and returns an error if one occurs.
-func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20220315.EnvironmentProperties) error {
-	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, envProperties *corerpv20231001.EnvironmentProperties) error {
+	client, err := corerpv20231001.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.CreateOrUpdate(ctx, envName, corerpv20220315.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20220315.EnvironmentsClientCreateOrUpdateOptions{})
+	_, err = client.CreateOrUpdate(ctx, envName, corerpv20231001.EnvironmentResource{Location: &location, Properties: envProperties}, &corerpv20231001.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return err
 	}
@@ -422,15 +422,15 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 // ListEnvironmentsInResourceGroup creates a list of environment resources by paging through the list of environments in
 // the resource group and appending each environment to the list. It returns the list of environment resources or an error
 // if one occurs.
-func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerpv20220315.EnvironmentResource, error) {
-	envResourceList := []corerpv20220315.EnvironmentResource{}
+func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerpv20231001.EnvironmentResource, error) {
+	envResourceList := []corerpv20231001.EnvironmentResource{}
 
-	envClient, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	envClient, err := corerpv20231001.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return envResourceList, err
 	}
 
-	pager := envClient.NewListByScopePager(&corerpv20220315.EnvironmentsClientListByScopeOptions{})
+	pager := envClient.NewListByScopePager(&corerpv20231001.EnvironmentsClientListByScopeOptions{})
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
@@ -446,10 +446,10 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx 
 }
 
 // ListEnvironmentsAll queries the scope for all environment resources and returns a slice of environment resources or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]corerpv20220315.EnvironmentResource, error) {
+func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]corerpv20231001.EnvironmentResource, error) {
 	scope, err := resources.ParseScope("/" + amc.RootScope)
 	if err != nil {
-		return []corerpv20220315.EnvironmentResource{}, err
+		return []corerpv20231001.EnvironmentResource{}, err
 	}
 
 	// Query at plane scope, not resource group scope. We don't enforce the exact structure of the scope, so handle both cases.
@@ -460,17 +460,17 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 		scope = scope.Truncate()
 	}
 
-	environments := []corerpv20220315.EnvironmentResource{}
-	client, err := corerpv20220315.NewEnvironmentsClient(scope.String(), &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	environments := []corerpv20231001.EnvironmentResource{}
+	client, err := corerpv20231001.NewEnvironmentsClient(scope.String(), &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return []corerpv20220315.EnvironmentResource{}, err
+		return []corerpv20231001.EnvironmentResource{}, err
 	}
 
-	pager := client.NewListByScopePager(&corerpv20220315.EnvironmentsClientListByScopeOptions{})
+	pager := client.NewListByScopePager(&corerpv20231001.EnvironmentsClientListByScopeOptions{})
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
-			return []corerpv20220315.EnvironmentResource{}, err
+			return []corerpv20231001.EnvironmentResource{}, err
 		}
 
 		for _, environment := range nextPage.EnvironmentResourceListResult.Value {
@@ -483,18 +483,18 @@ func (amc *UCPApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 
 // GetEnvDetails attempts to retrieve an environment resource from an environment client, and returns the environment
 // resource or an error if unsuccessful.
-func (amc *UCPApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerpv20220315.EnvironmentResource, error) {
-	envClient, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerpv20231001.EnvironmentResource, error) {
+	envClient, err := corerpv20231001.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.EnvironmentResource{}, err
+		return corerpv20231001.EnvironmentResource{}, err
 	}
 
-	envGetResp, err := envClient.Get(ctx, envName, &corerpv20220315.EnvironmentsClientGetOptions{})
+	envGetResp, err := envClient.Get(ctx, envName, &corerpv20231001.EnvironmentsClientGetOptions{})
 	if err == nil {
 		return envGetResp.EnvironmentResource, nil
 	}
 
-	return corerpv20220315.EnvironmentResource{}, err
+	return corerpv20231001.EnvironmentResource{}, err
 
 }
 
@@ -513,7 +513,7 @@ func (amc *UCPApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 		}
 	}
 
-	envClient, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	envClient, err := corerpv20231001.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
@@ -531,9 +531,9 @@ func (amc *UCPApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 
 // CreateUCPGroup creates a new resource group in the specified plane type and plane name using the provided resource
 // group resource and returns an error if one occurs.
-func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20220901.ResourceGroupResource) error {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientCreateOrUpdateOptions
-	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20231001.ResourceGroupResource) error {
+	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientCreateOrUpdateOptions
+	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return err
 	}
@@ -549,8 +549,8 @@ func (amc *UCPApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 // DeleteUCPGroup attempts to delete a UCP resource group using the provided plane type, plane name and resource group
 // name, and returns a boolean indicating success or failure and an error if one occurs.
 func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientDeleteOptions
-	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientDeleteOptions
+	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
@@ -569,16 +569,16 @@ func (amc *UCPApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 
 // ShowUCPGroup is a function that retrieves a resource group from the Azure Resource Manager using the given plane type,
 // plane name and resource group name, and returns the resource group resource or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucpv20220901.ResourceGroupResource, error) {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientGetOptions
-	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucpv20231001.ResourceGroupResource, error) {
+	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientGetOptions
+	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return ucpv20220901.ResourceGroupResource{}, err
+		return ucpv20231001.ResourceGroupResource{}, err
 	}
 
 	resp, err := resourcegroupClient.Get(ctx, planeType, planeName, resourceGroupName, resourceGroupOptions)
 	if err != nil {
-		return ucpv20220901.ResourceGroupResource{}, err
+		return ucpv20231001.ResourceGroupResource{}, err
 	}
 
 	return resp.ResourceGroupResource, nil
@@ -586,10 +586,10 @@ func (amc *UCPApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 
 // ListUCPGroup is a function that retrieves a list of resource groups from the UCP API and returns them as a slice of
 // ResourceGroupResource objects. It may return an error if there is an issue with the API request.
-func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220901.ResourceGroupResource, error) {
-	var resourceGroupOptions *ucpv20220901.ResourceGroupsClientListOptions
-	resourceGroupResources := []ucpv20220901.ResourceGroupResource{}
-	resourcegroupClient, err := ucpv20220901.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20231001.ResourceGroupResource, error) {
+	var resourceGroupOptions *ucpv20231001.ResourceGroupsClientListOptions
+	resourceGroupResources := []ucpv20231001.ResourceGroupResource{}
+	resourcegroupClient, err := ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return resourceGroupResources, err
 	}
@@ -614,16 +614,16 @@ func (amc *UCPApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 
 // ShowRecipe creates a new EnvironmentsClient, gets the recipe metadata from the
 // environment, and returns the EnvironmentRecipeProperties or an error if one occurs.
-func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20220315.RecipeGetMetadata) (corerpv20220315.RecipeGetMetadataResponse, error) {
-	client, err := corerpv20220315.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *UCPApplicationsManagementClient) ShowRecipe(ctx context.Context, environmentName string, recipeName corerpv20231001.RecipeGetMetadata) (corerpv20231001.RecipeGetMetadataResponse, error) {
+	client, err := corerpv20231001.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerpv20220315.RecipeGetMetadataResponse{}, err
+		return corerpv20231001.RecipeGetMetadataResponse{}, err
 	}
 
-	resp, err := client.GetMetadata(ctx, environmentName, recipeName, &corerpv20220315.EnvironmentsClientGetMetadataOptions{})
+	resp, err := client.GetMetadata(ctx, environmentName, recipeName, &corerpv20231001.EnvironmentsClientGetMetadataOptions{})
 	if err != nil {
-		return corerpv20220315.RecipeGetMetadataResponse{}, err
+		return corerpv20231001.RecipeGetMetadataResponse{}, err
 	}
 
-	return corerpv20220315.RecipeGetMetadataResponse(resp.RecipeGetMetadataResponse), nil
+	return corerpv20231001.RecipeGetMetadataResponse(resp.RecipeGetMetadataResponse), nil
 }
