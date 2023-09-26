@@ -191,6 +191,21 @@ func Test_Validate(t *testing.T) {
 				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
+		{
+			Name:          "rad deploy - missing env and app succeeds",
+			Input:         []string{"app.bicep", "--group", "new-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvDetails(gomock.Any(), gomock.Any()).
+					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+					Times(1)
+			},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
@@ -361,6 +376,10 @@ func Test_Run(t *testing.T) {
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagmentMock.EXPECT().
+			GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
+			Return(v20231001preview.EnvironmentResource{}, nil).
+			Times(1)
+		appManagmentMock.EXPECT().
 			CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 			Return(nil).
 			Times(1)
@@ -409,6 +428,64 @@ func Test_Run(t *testing.T) {
 		// Deployment is scoped to app and env
 		require.Equal(t, runner.Providers.Radius.ApplicationID, options.Providers.Radius.ApplicationID)
 		require.Equal(t, runner.Providers.Radius.EnvironmentID, options.Providers.Radius.EnvironmentID)
+
+		// All of the output in this command is being done by functions that we mock for testing, so this
+		// is always empty.
+		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Deployment that doesn't need an app or env", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		bicep := bicep.NewMockInterface(ctrl)
+		bicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{}, nil).
+			Times(1)
+
+		// options := deploy.Options{}
+
+		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagmentMock.EXPECT().
+			GetEnvDetails(gomock.Any(), "envdoesntexist").
+			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+			Times(1)
+
+		deployMock := deploy.NewMockInterface(ctrl)
+		deployMock.EXPECT().
+			DeployWithProgress(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
+				// Capture options for verification
+				// options = o
+				return clients.DeploymentResult{}, nil
+			}).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "kind-kind",
+		}
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			Bicep:             bicep,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
+			Deploy:            deployMock,
+			Output:            outputSink,
+			Providers:         nil,
+			FilePath:          "app.bicep",
+			ApplicationName:   "appdoesntexist",
+			EnvironmentName:   "envdoesntexist",
+			Parameters:        map[string]map[string]any{},
+			Workspace:         workspace,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.

@@ -163,7 +163,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// does not exist.
 	workspace.Scope = scope
 
-	didSpecifyEnvironment := cli.DidSpecifyEnvironmentName(cmd, args)
 	r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {
 		return err
@@ -189,7 +188,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 		// If the environment doesn't exist, but the user specified it as
 		// a command-line option, return an error
-		if clients.Is404Error(err) && didSpecifyEnvironment {
+		if clients.Is404Error(err) && cli.DidSpecifyEnvironmentName(cmd, args) {
 			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first.", r.EnvironmentName, r.Workspace.Scope)
 		}
 	}
