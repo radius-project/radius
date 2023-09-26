@@ -518,7 +518,7 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 	}
 	after := []string{
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
-		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
 	}
 	exp := []rpv1.OutputResource{}
 	res, err := d.getGCOutputResources(after, before)
