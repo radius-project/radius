@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
@@ -162,6 +163,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// does not exist.
 	workspace.Scope = scope
 
+	didSpecifyEnvironment := cli.DidSpecifyEnvironmentName(cmd, args)
 	r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {
 		return err
@@ -180,11 +182,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	env, err := client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
+	if err != nil {
+		if !clients.Is404Error(err) {
+			return err
+		}
 
-	// A 404 error is ok
-	if err != nil && !clients.Is404Error(err) {
-		return err
+		// If the environment doesn't exist, but the user specified it as
+		// a command-line option, return an error
+		if clients.Is404Error(err) && didSpecifyEnvironment {
+			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first.", r.EnvironmentName, r.Workspace.Scope)
+		}
 	}
+
 	r.Providers = &clients.Providers{}
 	r.Providers.Radius = &clients.RadiusProvider{}
 	r.Providers.Radius.EnvironmentID = r.Workspace.Scope + "/providers/applications.core/environments/" + r.EnvironmentName

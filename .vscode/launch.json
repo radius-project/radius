@@ -44,7 +44,7 @@
             "preLaunchTask": "Build Radius (all)",
             "program": "${workspaceFolder}/cmd/rad/main.go",
             "cwd": "${workspaceFolder}",
-            "args": ["deploy", "/Users/willsmith/dev/radius-sandbox/wow/test.bicep", "-g", "test-env-2"],
+            "args": [],
         },
         {
             "name": "Launch Deployment Engine",
