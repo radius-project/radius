@@ -201,6 +201,10 @@ func Test_Run(t *testing.T) {
 
 	clientMock := clients.NewMockApplicationsManagementClient(ctrl)
 	clientMock.EXPECT().
+		GetEnvDetails(gomock.Any(), "test-environment").
+		Return(v20231001preview.EnvironmentResource{}, nil).
+		Times(1)
+	clientMock.EXPECT().
 		CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 		Return(nil).
 		Times(1)
