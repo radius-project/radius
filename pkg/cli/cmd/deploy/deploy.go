@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/deploy"
@@ -181,9 +180,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	env, err := client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
-	if clients.Is404Error(err) {
-		return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` try again.", r.EnvironmentName, r.Workspace.Scope)
-	} else if err != nil {
+
+	// A 404 error is ok
+	if err != nil && !clients.Is404Error(err) {
 		return err
 	}
 	r.Providers = &clients.Providers{}
@@ -243,14 +242,24 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20231001preview.ApplicationResource{
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20231001preview.ApplicationProperties{
-				Environment: &r.Workspace.Environment,
-			},
-		})
+		// Validate that the environment exists already
+		_, err = client.GetEnvDetails(ctx, r.EnvironmentName)
 		if err != nil {
-			return err
+			if clients.Is404Error(err) {
+				// If the environment is missing, don't create the application
+			} else {
+				return err
+			}
+		} else {
+			err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20231001preview.ApplicationResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &v20231001preview.ApplicationProperties{
+					Environment: &r.Workspace.Environment,
+				},
+			})
+			if err != nil {
+				return err
+			}
 		}
 	}
 
