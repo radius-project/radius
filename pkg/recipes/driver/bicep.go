@@ -205,13 +205,14 @@ func (d *bicepDriver) Delete(ctx context.Context, opts DeleteOptions) error {
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
 				err := d.ResourceClient.Delete(ctx, id)
-				if err != nil && attempt == d.RetryConfig.RetryCount {
-					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
-				} else if err != nil {
-					logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.RetryConfig.RetryDelay)
+				if err != nil {
+				    if attempt < d.RetryConfig.RetryCount {
+				        logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.RetryConfig.RetryDelay)
 					time.Sleep(d.RetryConfig.RetryDelay)
 					continue
 				}
+				return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
+			}
 
 				// If the err is nil, then the resource is deleted successfully
 				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
