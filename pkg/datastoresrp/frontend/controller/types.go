@@ -25,14 +25,14 @@ const (
 	OperationListSecret = "LISTSECRETS"
 
 	// AsyncCreateOrUpdateMongoDatabaseTimeout is the timeout for async create or update Mongo database
-	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(60) * time.Minute
+	AsyncCreateOrUpdateMongoDatabaseTimeout = time.Duration(10) * time.Minute
 	// AsyncDeleteMongoDatabaseTimeout is the timeout for async delete Mongo database
-	AsyncDeleteMongoDatabaseTimeout = time.Duration(30) * time.Minute
+	AsyncDeleteMongoDatabaseTimeout = time.Duration(15) * time.Minute
 
 	// AsyncCreateOrUpdateRedisCacheTimeout is the timeout for async create or update Redis cache
-	AsyncCreateOrUpdateRedisCacheTimeout = time.Duration(10) * time.Minute
+	AsyncCreateOrUpdateRedisCacheTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteRedisCacheTimeout is the timeout for async delete Redis cache
-	AsyncDeleteRedisCacheTimeout = time.Duration(15) * time.Minute
+	AsyncDeleteRedisCacheTimeout = time.Duration(30) * time.Minute
 
 	// AsyncCreateOrUpdateDaprStateStoreTimeout is the timeout for async create or update dapr state store
 	AsyncCreateOrUpdateDaprStateStoreTimeout = time.Duration(60) * time.Minute
