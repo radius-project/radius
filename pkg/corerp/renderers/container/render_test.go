@@ -470,7 +470,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 
 	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
-	podLabels["radius.dev/route-httproutes-a"] = "true"
+	podLabels["radapp.io/route-httproutes-a"] = "true"
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, _ := kubernetes.FindDeployment(output.Resources)

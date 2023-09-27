@@ -42,9 +42,9 @@ func Test_KubeMetadataHTTPRoute(t *testing.T) {
 		"app.kubernetes.io/managed-by": "radius-rp",
 		"app.kubernetes.io/name":       "ctnr-rte-kme",
 		"app.kubernetes.io/part-of":    "corerp-app-rte-kme",
-		"radius.dev/application":       "corerp-app-rte-kme",
-		"radius.dev/resource":          "ctnr-rte-kme",
-		"radius.dev/resource-type":     "applications.core-httproutes",
+		"radapp.io/application":        "corerp-app-rte-kme",
+		"radapp.io/resource":           "ctnr-rte-kme",
+		"radapp.io/resource-type":      "applications.core-httproutes",
 		"user.lbl.1":                   "user.lbl.val.1",
 		"user.lbl.2":                   "user.lbl.val.2",
 	}

@@ -46,7 +46,7 @@ func verifyDaprComponentsDeleted(ctx context.Context, t *testing.T, test shared.
 	}
 
 	resourceList, err := dynamicClient.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "radius.dev/resource=" + resourceName,
+		LabelSelector: "radapp.io/resource=" + resourceName,
 	})
 	require.NoError(t, err)
 	require.Equal(t, 0, len(resourceList.Items))
