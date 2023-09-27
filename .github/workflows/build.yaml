@@ -441,19 +441,19 @@ jobs:
       - run: oras version
       - name: Push rad cli binaries to GHCR (macos-x64:latest)
         run: |
-          ./oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-x64:latest rad_cli_darwin_amd64/rad
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-x64:latest rad_cli_darwin_amd64/rad
       - name: Push rad cli binaries to GHCR (macos-arm64:latest)
         run: |
-          ./oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-arm64:latest rad_cli_darwin_arm64/rad
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-arm64:latest rad_cli_darwin_arm64/rad
       - name: Push rad cli binaries to GHCR (linux-x64:latest)
         run: |
-          ./oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-x64:latest rad_cli_linux_amd64/rad
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-x64:latest rad_cli_linux_amd64/rad
       - name: Push rad cli binaries to GHCR (linux-arm:latest)
         run: |
-          ./oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm:latest rad_cli_linux_arm/rad
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm:latest rad_cli_linux_arm/rad
       - name: Push rad cli binaries to GHCR (linux-arm64:latest)
         run: |
-          ./oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm64:latest rad_cli_linux_arm64/rad
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm64:latest rad_cli_linux_arm64/rad
       - name: Push rad cli binaries to GHCR (windows-x64:latest)
         run: |
           oras push ${{ env.CONTAINER_REGISTRY }}/rad/windows-x64:latest rad_cli_windows_amd64/rad.exe
