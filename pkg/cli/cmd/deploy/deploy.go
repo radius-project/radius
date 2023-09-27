@@ -182,15 +182,19 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	env, err := client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
 	if err != nil {
+		// If the error is not a 404, return it
 		if !clients.Is404Error(err) {
 			return err
 		}
 
 		// If the environment doesn't exist, but the user specified it as
 		// a command-line option, return an error
-		if clients.Is404Error(err) && cli.DidSpecifyEnvironmentName(cmd, args) {
+		if cli.DidSpecifyEnvironmentName(cmd, args) {
 			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first.", r.EnvironmentName, r.Workspace.Scope)
 		}
+
+		// If we got here, it means that the error was a 404 and the user did not specify the environment name.
+		// This is fine, because an environment is not required.
 	}
 
 	r.Providers = &clients.Providers{}
@@ -253,11 +257,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		// Validate that the environment exists already
 		_, err = client.GetEnvDetails(ctx, r.EnvironmentName)
 		if err != nil {
-			if clients.Is404Error(err) {
-				// If the environment is missing, don't create the application
-			} else {
+			// If the error is not a 404, return it
+			if !clients.Is404Error(err) {
 				return err
 			}
+
+			// If the error is a 404, it means that the environment does not exist,
+			// but this is okay. We don't want to create an application though.
 		} else {
 			err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20231001preview.ApplicationResource{
 				Location: to.Ptr(v1.LocationGlobal),
