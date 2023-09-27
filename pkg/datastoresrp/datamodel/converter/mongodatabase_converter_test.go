@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,13 +37,13 @@ func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.MongoDatabaseResource{},
+			"../../api/v20231001preview/testdata/mongodatabaseresourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.MongoDatabaseResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-missinginputs.json",
+			"../../api/v20231001preview/testdata/mongodatabaseresource-missinginputs.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -73,22 +73,22 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/mongodatabaseresource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/mongodatabaseresource-invalid.json",
+			"2023-10-01-preview",
 			errors.New("json: cannot unmarshal number into Go struct field MongoDatabaseProperties.properties.resource of type string"),
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-missinginputs.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/mongodatabaseresource-missinginputs.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual\n\tdatabase must be specified when resourceProvisioning is set to manual"},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresource-missinginputs.json",
+			"../../api/v20231001preview/testdata/mongodatabaseresource-missinginputs.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -116,13 +116,13 @@ func TestMongoDatabaseSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabasesecretsdatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.MongoDatabaseSecrets{},
+			"../../api/v20231001preview/testdata/mongodatabasesecretsdatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.MongoDatabaseSecrets{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabasesecretsdatamodel.json",
+			"../../api/v20231001preview/testdata/mongodatabasesecretsdatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,

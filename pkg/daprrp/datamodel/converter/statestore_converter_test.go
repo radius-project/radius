@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -36,19 +36,19 @@ func TestDaprStateStoreDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_recipe_resourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprStateStoreResource{},
+			"../../api/v20231001preview/testdata/statestore_recipe_resourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.DaprStateStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_values_resourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprStateStoreResource{},
+			"../../api/v20231001preview/testdata/statestore_values_resourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.DaprStateStoreResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_values_resourcedatamodel.json",
+			"../../api/v20231001preview/testdata/statestore_values_resourcedatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -79,27 +79,27 @@ func TestDaprStateStoreDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_invalidrecipe_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/statestore_invalidrecipe_resource.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{Code: v1.CodeInvalid, Message: "error(s) found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)"},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_invalidvalues_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/statestore_invalidvalues_resource.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{Code: "BadRequest", Message: "error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual"},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_recipe_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/statestore_recipe_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_values_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/statestore_values_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/statestore_values_resource.json",
+			"../../api/v20231001preview/testdata/statestore_values_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},

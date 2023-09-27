@@ -26,7 +26,6 @@ package resource_test
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -39,6 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test/functional"
@@ -316,7 +316,7 @@ func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 				require.Equal(t, 42.0, resource.Properties["c"])
 				require.Equal(t, "resource", resource.Properties["d"])
 
-				response, err := test.Options.CustomAction.InvokeCustomAction(ctx, *resource.ID, "2022-03-15-privatepreview", "listSecrets")
+				response, err := test.Options.CustomAction.InvokeCustomAction(ctx, *resource.ID, "2023-10-01-preview", "listSecrets")
 				require.NoError(t, err)
 
 				expected := map[string]any{"e": "secret value"}
@@ -382,24 +382,22 @@ func testSecretDeletion(t *testing.T, ctx context.Context, test shared.RPTest, a
 }
 
 func getSecretSuffix(resourceID, envName, appName string) (string, error) {
-	parsedResourceID, err := resources.Parse(resourceID)
+	envID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/environments/" + envName
+	appID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/applications/" + appName
+
+	resourceRecipe := recipes.ResourceMetadata{
+		EnvironmentID: envID,
+		ApplicationID: appID,
+		ResourceID:    resourceID,
+		Parameters:    nil,
+	}
+
+	backend := backends.NewKubernetesBackend()
+	secretMap, err := backend.BuildBackend(&resourceRecipe)
 	if err != nil {
 		return "", err
 	}
+	kubernetes := secretMap["kubernetes"].(map[string]any)
 
-	prefix := fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.Name())
-	maxResourceNameLen := 22
-	if len(prefix) >= maxResourceNameLen {
-		prefix = prefix[:maxResourceNameLen]
-	}
-
-	hasher := sha1.New()
-	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, parsedResourceID.String()))))
-	if err != nil {
-		return "", err
-	}
-	hash := hasher.Sum(nil)
-
-	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%x", prefix, hash), nil
+	return kubernetes["secret_suffix"].(string), nil
 }

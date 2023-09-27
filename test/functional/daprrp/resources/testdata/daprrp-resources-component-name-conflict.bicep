@@ -2,7 +2,7 @@ import radius as radius
 
 param environment string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'daprrp-rs-component-name-conflict'
   location: 'global'
   properties: {
@@ -11,7 +11,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 // Dapr Component #1
-resource pubsub 'Applications.Dapr/pubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsub 'Applications.Dapr/pubSubBrokers@2023-10-01-preview' = {
   name: 'dapr-component'
   location: 'global'
   properties: {
@@ -27,7 +27,7 @@ resource pubsub 'Applications.Dapr/pubSubBrokers@2022-03-15-privatepreview' = {
 }
 
 // Dapr Component #2
-resource secretstore 'Applications.Dapr/secretStores@2022-03-15-privatepreview' = {
+resource secretstore 'Applications.Dapr/secretStores@2023-10-01-preview' = {
   name: 'dapr-component'
   location: 'global'
   properties: {

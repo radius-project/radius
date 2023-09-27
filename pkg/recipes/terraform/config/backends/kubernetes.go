@@ -71,15 +71,6 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 		return "", err
 	}
 
-	prefix := fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.Name())
-
-	// Kubernetes enforces a character limit of 63 characters on the suffix for state file stored in kubernetes secret.
-	// 22 = 63 (max length of Kubernetes secret suffix) - 40 (hex hash length) - 1 (dot separator)
-	maxResourceNameLen := 22
-	if len(prefix) >= maxResourceNameLen {
-		prefix = prefix[:maxResourceNameLen]
-	}
-
 	hasher := sha1.New()
 	_, err = hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), parsedAppID.Name(), parsedResourceID.String()))))
 	if err != nil {
@@ -87,8 +78,7 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 	}
 	hash := hasher.Sum(nil)
 
-	// example: env-app-redis.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%x", prefix, hash), nil
+	return fmt.Sprintf("%x", hash), nil
 }
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.

@@ -24,7 +24,7 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -71,7 +71,7 @@ func (r *ListResources) Run(ctx context.Context, w http.ResponseWriter, req *htt
 
 	query := store.Query{
 		RootScope:    resourceGroupID.String(),
-		ResourceType: v20220901privatepreview.ResourceType,
+		ResourceType: v20231001preview.ResourceType,
 	}
 
 	result, err := r.StorageClient().Query(ctx, query)

@@ -51,6 +51,9 @@ data:
       zipkin: 
         url: {{ .Values.global.zipkin.url }}
     {{- end }}
+    bicep:
+      deleteRetryCount: 20
+      deleteRetryDelaySeconds: 60
     terraform:
       path: "/terraform"
 
@@ -98,5 +101,8 @@ data:
       zipkin: 
         url: {{ .Values.global.zipkin.url }}
     {{- end }}
+    bicep:
+      deleteRetryCount: 20
+      deleteRetryDelaySeconds: 60
     terraform:
       path: "/terraform"

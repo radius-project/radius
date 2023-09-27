@@ -1,0 +1,34 @@
+{
+  "operationId": "Planes_Update",
+  "title": "Update a plane",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeName": "local",
+    "planeType": "radius",
+    "Plane": {
+      "location": "global",
+      "properties": {
+        "kind": "UCPNative",
+        "resourceProviders": {
+          "Applications.Core": "http://localhost:7443"
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "location": "global",
+        "id": "/planes/radius/local",
+        "name": "local",
+        "type": "System.Planes/radius",
+        "properties": {
+          "kind": "UCPNative",
+          "resourceProviders": {
+            "Applications.Core": "http://localhost:7443"
+          }
+        }
+      }
+    }
+  }
+}

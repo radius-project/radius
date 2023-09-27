@@ -14,6 +14,8 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
+set -ex
+
 # RELEASE_VERSION_NUMBER is the Radius release version number
 # (e.g. 0.24.0, 0.24.0-rc1)
 RELEASE_VERSION_NUMBER=$1
@@ -27,7 +29,7 @@ fi
 EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
 
 EXPECTED_TAG_VERSION=$RELEASE_VERSION_NUMBER
-# if RELEASE_VERSION_NUMBER doesn't contain -rc, then it is a prerelease.
+# if RELEASE_VERSION_NUMBER contains -rc, then it is a prerelease.
 # In that case, we need to set expected tag version to the major.minor of the 
 # release version number
 if [[ $RELEASE_VERSION_NUMBER != *"rc"* ]]; then
@@ -38,7 +40,7 @@ echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
 echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
-curl https://get.radapp.dev/tools/rad/$RELEASE_VERSION_NUMBER/linux-x64/rad --output rad
+curl https://get.radapp.dev/tools/rad/$EXPECTED_TAG_VERSION/linux-x64/rad --output rad
 chmod +x ./rad
 
 RELEASE_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.release')
@@ -64,7 +66,6 @@ EXPECTED_DE_IMAGE="radius.azurecr.io/deployment-engine:${EXPECTED_TAG_VERSION}"
 APPCORE_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=applications-rp | awk '/^.*Image:/ {print $2}')
 UCP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=ucp | awk '/^.*Image:/ {print $2}')
 DE_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=bicep-de | awk '/^.*Image:/ {print $2}')
-
 
 if [[ "${APPCORE_RP_IMAGE}" != "${EXPECTED_APPCORE_RP_IMAGE}" ]]; then
     echo "Error: Applications RP image: ${APPCORE_RP_IMAGE} does not match the desired image: ${EXPECTED_APPCORE_RP_IMAGE}."

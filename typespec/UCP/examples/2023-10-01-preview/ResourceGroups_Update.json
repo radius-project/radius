@@ -1,0 +1,22 @@
+{
+  "operationId": "ResourceGroups_Update",
+  "title": "Update a resource group",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "planeType": "radius",
+    "planeName": "local",
+    "resourceGroupName": "rg1",
+    "ResourceGroup": {
+      "location": "global"
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "location": "global",
+        "id": "/planes/radius/local/resourcegroups/rg1",
+        "name": "rg1"
+      }
+    }
+  }
+}

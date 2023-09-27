@@ -39,7 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
-func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
+func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *deployment.MockDeploymentProcessor) {
 		mctrl := gomock.NewController(t)

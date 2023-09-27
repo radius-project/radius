@@ -28,14 +28,14 @@ import (
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 func Test_ListResources(t *testing.T) {
-	entryResource := v20220901privatepreview.GenericResource{
+	entryResource := v20231001preview.GenericResource{
 		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"),
 		Type: to.Ptr("Applications.Core/applications"),
 		Name: to.Ptr("test-app"),
@@ -69,7 +69,7 @@ func Test_ListResources(t *testing.T) {
 			Return(&store.Object{Data: resourceGroupDatamodel}, nil).
 			Times(1)
 
-		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20220901privatepreview.ResourceType}
+		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
 		storage.EXPECT().
 			Query(gomock.Any(), expectedQuery).
 			Return(&store.ObjectQueryResult{Items: []store.Object{{Data: entryDatamodel}}}, nil).
@@ -79,7 +79,7 @@ func Test_ListResources(t *testing.T) {
 			Value: []any{&entryResource},
 		})
 
-		request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20220901privatepreview.Version, nil)
+		request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20231001preview.Version, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(request)
 		response, err := ctrl.Run(ctx, nil, request)
@@ -95,7 +95,7 @@ func Test_ListResources(t *testing.T) {
 			Return(&store.Object{Data: resourceGroupDatamodel}, nil).
 			Times(1)
 
-		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20220901privatepreview.ResourceType}
+		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
 		storage.EXPECT().
 			Query(gomock.Any(), expectedQuery).
 			Return(&store.ObjectQueryResult{Items: []store.Object{}}, nil).
@@ -103,7 +103,7 @@ func Test_ListResources(t *testing.T) {
 
 		expected := armrpc_rest.NewOKResponse(&v1.PaginatedList{})
 
-		request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20220901privatepreview.Version, nil)
+		request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20231001preview.Version, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(request)
 		response, err := ctrl.Run(ctx, nil, request)
@@ -124,7 +124,7 @@ func Test_ListResources(t *testing.T) {
 
 		expected := armrpc_rest.NewNotFoundResponse(parsed)
 
-		request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20220901privatepreview.Version, nil)
+		request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20231001preview.Version, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(request)
 		response, err := ctrl.Run(ctx, nil, request)

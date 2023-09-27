@@ -16,7 +16,7 @@ limitations under the License.
 
 package testrp
 
-const Version = "2022-03-15-privatepreview"
+const Version = "2023-10-01-preview"
 
 type TestResourceList struct {
 	Value []TestResource `json:"value"`

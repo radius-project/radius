@@ -25,13 +25,13 @@ import (
 )
 
 const (
-	awsPlaneCollectionURL          = "/planes/aws?api-version=2022-09-01-privatepreview"
-	awsPlaneResourceURL            = "/planes/aws/aws?api-version=2022-09-01-privatepreview"
-	awsPlaneRequestFixture         = "testdata/awsplane_v20220901privatepreview_requestbody.json"
-	awsPlaneResponseFixture        = "testdata/awsplane_v20220901privatepreview_responsebody.json"
-	awsPlaneListResponseFixture    = "testdata/awsplane_v20220901privatepreview_list_responsebody.json"
-	awsPlaneUpdatedRequestFixture  = "testdata/awsplane_updated_v20220901privatepreview_requestbody.json"
-	awsPlaneUpdatedResponseFixture = "testdata/awsplane_updated_v20220901privatepreview_responsebody.json"
+	awsPlaneCollectionURL          = "/planes/aws?api-version=2023-10-01-preview"
+	awsPlaneResourceURL            = "/planes/aws/aws?api-version=2023-10-01-preview"
+	awsPlaneRequestFixture         = "testdata/awsplane_v20231001preview_requestbody.json"
+	awsPlaneResponseFixture        = "testdata/awsplane_v20231001preview_responsebody.json"
+	awsPlaneListResponseFixture    = "testdata/awsplane_v20231001preview_list_responsebody.json"
+	awsPlaneUpdatedRequestFixture  = "testdata/awsplane_updated_v20231001preview_requestbody.json"
+	awsPlaneUpdatedResponseFixture = "testdata/awsplane_updated_v20231001preview_responsebody.json"
 )
 
 func Test_AWSPlane_PUT_Create(t *testing.T) {

@@ -28,13 +28,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRunWith20220315PrivatePreview(t *testing.T) {
+func TestRunWith20231001Preview(t *testing.T) {
 	// arrange
 	opts := ctrl.Options{}
 	op, err := NewGetOperations(opts)
 	require.NoError(t, err)
 	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
-		APIVersion: api_ver.V20220315privatepreview,
+		APIVersion: api_ver.V20231001preview,
 	})
 	w := httptest.NewRecorder()
 

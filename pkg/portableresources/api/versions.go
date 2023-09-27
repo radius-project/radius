@@ -16,5 +16,5 @@ limitations under the License.
 
 package api
 
-// V20220315privatepreview represents the api version "2022-03-15-privatepreview".
-const V20220315privatepreview = "2022-03-15-privatepreview"
+// V20231001preview represents the api version "2023-10-01-preview".
+const V20231001preview = "2023-10-01-preview"

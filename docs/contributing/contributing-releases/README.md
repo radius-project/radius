@@ -19,7 +19,7 @@ The `versions.yaml` file is a declarative version tracking file that the Radius 
 1. Push these changes to a remote branch and create a pull request against `main`.
 1. After maintainer approval, merge the pull request to `main`.
 1. Verify that [GitHub actions triggers a build](https://github.com/project-radius/radius/actions), and that the build completes. This will build and push Radius assets.
-1. In the project-radius/radius repo, run the [Release verification](https://github.com/project-radius/samples/actions/workflows/release-verification.yaml) workflow.
+1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow.
 
 ### Test tutorials and samples
 
@@ -53,7 +53,7 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. In the project-radius/docs repository, run the [Release samples](https://github.com/project-radius/samples/actions/workflows/release.yaml) workflow.
 
-1. In the project-radius/radius repo, run the [Release verification](https://github.com/project-radius/samples/actions/workflows/release-verification.yaml) workflow.
+1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow.
 
 ## How releases work
 

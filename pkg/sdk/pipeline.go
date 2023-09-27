@@ -28,7 +28,7 @@ import (
 const (
 	// module is used to build a runtime.Pipeline. This is informational text about the client that
 	// is added as part of the User-Agent header.
-	module = "v20220315privatepreview"
+	module = "v20231001preview"
 
 	// version is used to build a runtime.Pipeline. This is informational text about the client that
 	// is added as part of the User-Agent header.

@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // It returns an error if the conversion fails.
 func GenericResourceDataModelToVersioned(model *datamodel.GenericResource, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.GenericResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.GenericResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}

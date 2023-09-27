@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -37,9 +37,9 @@ func TestSecretStoreModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore-datamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.SecretStoreResource{},
+			"../../api/v20231001preview/testdata/secretstore-datamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.SecretStoreResource{},
 			nil,
 		},
 		{
@@ -73,8 +73,8 @@ func TestSecretStoreModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/secretstore-versioned.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/secretstore-versioned.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{

@@ -1,0 +1,14 @@
+{
+  "operationId": "Environments_Delete",
+  "title": "Delete an environment resource",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "environmentName": "env0",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {},
+    "202": {},
+    "204": {}
+  }
+}

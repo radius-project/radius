@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -107,7 +107,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowApplication(gomock.Any(), "test-app").
-				Return(v20220315privatepreview.ApplicationResource{}, radcli.Create404Error()).Times(1)
+				Return(v20231001preview.ApplicationResource{}, radcli.Create404Error()).Times(1)
 
 			outputSink := &output.MockOutput{}
 
@@ -122,7 +122,7 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
-			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q.", "test-app", radcli.TestWorkspaceName))
+			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application' or switch applications with 'rad app switch'.", "test-app", radcli.TestWorkspaceName))
 		})
 
 		t.Run("Success", func(t *testing.T) {
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
 				ShowApplication(gomock.Any(), "test-app").
-				Return(v20220315privatepreview.ApplicationResource{}, nil).Times(1)
+				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
 			appManagementClient.EXPECT().
 				ListAllResourcesOfTypeInApplication(gomock.Any(), "test-app", "containers").
 				Return(resources, nil).Times(1)

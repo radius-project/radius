@@ -3,7 +3,7 @@ import radius as radius
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-app-env-env'
   location: location
   properties: {
@@ -15,7 +15,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-app-env-app'
   location: location
   properties: {

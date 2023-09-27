@@ -1,0 +1,76 @@
+{
+  "operationId": "Containers_CreateOrUpdate",
+  "title": "Create or update an container resource with base manifest",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "containerName": "app0",
+    "api-version": "2023-10-01-preview",
+    "ContainerResource": {
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+        "connections": {
+          "inventory": {
+            "kind": "dapr.io/InvokeHttp",
+            "source": "inventory_route_id"
+          }
+        },
+        "container": {
+          "image": "radius.azurecr.io/webapptutorial-todoapp",
+          "command": [
+            "/bin/sh"
+          ],
+          "args": [
+            "-c",
+            "while true; do echo hello; sleep 10;done"
+          ],
+          "workingDir": "/app"
+        },
+        "runtimes": {
+          "kubernetes": {
+            "base": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webserver\n  namespace: app-scoped\n  labels:\n    app: webserver\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: webserver\n  template:\n    metadata:\n      labels:\n        app: webserver\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.14.2\n        ports:\n        - containerPort: 80\n"
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/containers/container0",
+        "name": "container0",
+        "type": "Applications.Core/containers",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "connections": {
+            "inventory": {
+              "kind": "dapr.io/InvokeHttp",
+              "source": "inventory_route_id"
+            }
+          },
+          "container": {
+            "image": "radius.azurecr.io/webapptutorial-todoapp",
+            "command": [
+              "/bin/sh"
+            ],
+            "args": [
+              "-c",
+              "while true; do echo hello; sleep 10;done"
+            ],
+            "workingDir": "/app"
+          },
+          "runtimes": {
+            "kubernetes": {
+              "base": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: webserver\n  namespace: app-scoped\n  labels:\n    app: webserver\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: webserver\n  template:\n    metadata:\n      labels:\n        app: webserver\n    spec:\n      containers:\n      - name: nginx\n        image: nginx:1.14.2\n        ports:\n        - containerPort: 80\n"
+            }
+          },
+          "identity": {
+            "kind": "azure.com.workload",
+            "oidcIssuer": "https://oidcissuer/oidc",
+            "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/app0-container0"
+          }
+        }
+      }
+    }
+  }
+}
