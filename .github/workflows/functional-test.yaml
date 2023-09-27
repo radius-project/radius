@@ -417,16 +417,8 @@ jobs:
           EOF
       - name: Install dapr into cluster
         run: |
-          for attempt in 1 2 3 4 5; do
-            wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
-            dapr init -k --wait --timeout 600
-            if [ $? -eq 0 ]; then
-              break
-            else
-              echo "dapr init failed, retrying..."
-              sleep 60
-            fi
-          done
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
+          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }}
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
