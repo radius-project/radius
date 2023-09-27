@@ -45,5 +45,8 @@ rp:
       # limit is higher for applications-rp because the Terraform execution
       # can spike memory usage.
       memory: "500Mi"
+  bicep:
+    deleteRetryCount: 20
+    deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"

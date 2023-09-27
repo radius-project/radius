@@ -52,5 +52,8 @@ tracerProvider:
   serviceName: "applications.core"
   zipkin:
     url: "http://localhost:9411/api/v2/spans"
+bicep:
+  deleteRetryCount: 20
+  deleteRetryDelaySeconds: 60
 terraform:
   path: "/tmp"
