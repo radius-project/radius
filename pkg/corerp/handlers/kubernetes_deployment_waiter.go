@@ -85,18 +85,17 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 
 	var possibleFailureCauses []string
 
+	dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("@@@@ error getting deployment", err.Error())
+		return fmt.Errorf("deployment cannot be fetched, name: %s, namespace %s, error: %w", item.GetName(), item.GetNamespace(), err)
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			fmt.Println("@@@@@ Inside ctx.Done()")
 			// Get the final deployment status
-			dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
-			if err != nil {
-				return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
-			}
-
-			fmt.Println("@@@@@ Now get the latest available observation of deployment current state")
-
 			// Now get the latest available observation of deployment current state
 			// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
 			status := v1.DeploymentCondition{}
@@ -108,6 +107,7 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 			fmt.Println("@@@@@ Marking deployment as timed out")
 			// Return the error with the possible failure causes
 			errString := fmt.Sprintf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
+
 			if len(possibleFailureCauses) > 0 {
 				errString += fmt.Sprintf(", possible failure causes: %s", strings.Join(possibleFailureCauses, ", "))
 			}
@@ -118,8 +118,14 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 				logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
 				return status.err
 			} else if status.possibleFailureCause != "" {
-				possibleFailureCauses = append(possibleFailureCauses, status.possibleFailureCause)
-				fmt.Println("@@@@@ possibleFailureCauses", status.possibleFailureCause)
+				for _, cause := range possibleFailureCauses {
+					if strings.Contains(cause, status.possibleFailureCause) {
+						// Already added this possible failure cause. Do not add again
+						break
+					}
+					possibleFailureCauses = append(possibleFailureCauses, status.possibleFailureCause)
+					fmt.Println("@@@@@ possibleFailureCauses", status.possibleFailureCause)
+				}
 				continue
 			} else {
 				// Deployment is ready
@@ -188,6 +194,9 @@ func (handler *deploymentWaiter) startInformers(ctx context.Context, item client
 
 	// Add event handlers to the replicaset informer
 	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().ReplicaSets().Informer(), item, doneCh)
+
+	// Add event handlers to the events informer
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Events().Informer(), item, doneCh)
 
 	// Start the informers
 	informerFactory.Start(ctx.Done())
@@ -344,12 +353,14 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 		} else if !cs.Ready {
 			// The container is running but has not passed its readiness probe yet
 			// Check the pod events to see if the pod failed readiness probe
-			fmt.Println("@@@@@ cs.Ready false. Checking pod events")
+			fmt.Println("@@@@@ cs.Ready false. Checking pod events in namespace: ", pod.Namespace)
 			events, err := informerFactory.Core().V1().Events().Lister().Events(pod.Namespace).List(labels.Everything())
 			if err != nil {
+				fmt.Println("@@@@ Unable to get events for pod")
 				logger.Info("Unable to get events for pod")
 				return false, deploymentStatus{}
 			}
+			fmt.Println("@@@@@ len(events)", len(events))
 
 			// Sort events by creation timestamp in descending order
 			sort.Slice(events, func(i, j int) bool {
@@ -368,11 +379,14 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 		}
 	}
 
+	fmt.Println("@@@@@ Outside of container status. Checking pod events in namespace: ", pod.Namespace)
 	events, err := informerFactory.Core().V1().Events().Lister().Events(pod.Namespace).List(labels.Everything())
 	if err != nil {
+		fmt.Println("@@@@ Unable to get events for pod")
 		logger.Info("Unable to get events for pod")
 		return false, deploymentStatus{}
 	}
+	fmt.Println("@@@@@ len(events)", len(events))
 
 	// Sort events by creation timestamp in descending order
 	sort.Slice(events, func(i, j int) bool {
