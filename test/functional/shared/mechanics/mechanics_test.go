@@ -319,11 +319,20 @@ func Test_InvalidResourceIDs(t *testing.T) {
 				},
 			},
 		},
+		{
+			Code: "ResourceDeploymentFailure",
+			Details: []step.DeploymentErrorDetail{
+				{
+					Code:            "BadRequest",
+					MessageContains: "application ID \"global\" for the resource",
+				},
+			},
+		},
 	})
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, validate, functional.GetMagpieImage()),
+			Executor: step.NewDeployErrorExecutor(template, validate, functional.GetMagpieImage(), functional.GetBicepRecipeRegistry(), functional.GetBicepRecipeVersion()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
