@@ -65,72 +65,12 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Datastores/operations/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "operations",
-					Operation:   "Get operations",
-					Description: "Get the list of operations.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
 				Name: "Applications.Messaging/operations/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    MessagingProviderNamespace,
 					Resource:    "operations",
 					Operation:   "Get operations",
 					Description: "Get the list of operations.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/mongoDatabases/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "mongoDatabases",
-					Operation:   "Get/List mongoDatabases",
-					Description: "Gets/Lists mongoDatabase resource(s).",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/mongoDatabases/write",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "mongoDatabases",
-					Operation:   "Create/Update mongoDatabases",
-					Description: "Creates or updates a mongo database resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/mongoDatabases/delete",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "mongoDatabases",
-					Operation:   "Delete mongoDatabase",
-					Description: "Deletes a mongoDatabase resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/mongoDatabases/listsecrets/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "mongoDatabases",
-					Operation:   "List secrets",
-					Description: "Lists mongoDatabase secrets.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/register/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    DatastoresProviderNamespace,
-					Operation:   "Register Applications.Datastores resource provider",
-					Description: "Registers 'Applications.Datastores' resource provider with a subscription.",
 				},
 				IsDataAction: false,
 			},
@@ -151,106 +91,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    MessagingProviderNamespace,
 					Operation:   "Register Applications.Messaging resource provider",
 					Description: "Registers 'Applications.Messaging' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/unregister/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "Applications.Datastores",
-					Operation:   "Unregister 'Applications.Datastores' resource provider",
-					Description: "Unregisters 'Applications.Datastores' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Dapr/unregister/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DaprProviderNamespace,
-					Resource:    "Applications.Datastores",
-					Operation:   "Unregister 'Applications.Dapr' resource provider",
-					Description: "Unregisters 'Applications.Dapr' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/unregister/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "Applications.Datastores",
-					Operation:   "Unregister 'Applications.Messaging' resource provider",
-					Description: "Unregisters 'Applications.Messaging' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/sqlDatabases/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "sqlDatabases",
-					Operation:   "Get/List sqlDatabases",
-					Description: "Gets/Lists sqlDatabase resource(s).",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/sqlDatabases/write",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "sqlDatabases",
-					Operation:   "Create/Update sqlDatabases",
-					Description: "Creates or updates a sql database resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/sqlDatabases/delete",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "sqlDatabases",
-					Operation:   "Delete sqlDatabase",
-					Description: "Deletes a sqlDatabase resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/redisCaches/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "redisCaches",
-					Operation:   "Get/List redisCaches",
-					Description: "Gets/Lists redisCache resource(s).",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/redisCaches/write",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "redisCaches",
-					Operation:   "Create/Update redisCaches",
-					Description: "Creates or updates a redisCache resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/redisCaches/delete",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "redisCaches",
-					Operation:   "Delete redisCache",
-					Description: "Deletes a redisCache resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Datastores/redisCaches/listsecrets/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    DatastoresProviderNamespace,
-					Resource:    "redisCaches",
-					Operation:   "List secrets",
-					Description: "Lists redisCache secrets.",
 				},
 				IsDataAction: false,
 			},

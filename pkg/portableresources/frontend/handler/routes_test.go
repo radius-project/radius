@@ -26,7 +26,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	rabbitmq_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller/rabbitmqqueues"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
@@ -134,7 +133,7 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: portableresources.DaprStateStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodDelete,
-	}, {
+	}, /*{
 		OperationType: v1.OperationType{Type: portableresources.MongoDatabasesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.datastores/mongodatabases",
 		Method:        http.MethodGet,
@@ -218,7 +217,7 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: portableresources.SqlDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql/listsecrets",
 		Method:        http.MethodPost,
-	}, {
+	},*/{
 		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGet},
 		Path:          "/providers/applications.messaging/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
@@ -270,13 +269,6 @@ func TestHandlers(t *testing.T) {
 			{
 				OperationType:               v1.OperationType{Type: "Applications.Dapr/providers", Method: v1.OperationGet},
 				Path:                        "/providers/applications.dapr/operations",
-				Method:                      http.MethodGet,
-				WithoutRootScope:            true,
-				SkipOperationTypeValidation: true,
-			},
-			{
-				OperationType:               v1.OperationType{Type: "Applications.Datastores/providers", Method: v1.OperationGet},
-				Path:                        "/providers/applications.datastores/operations",
 				Method:                      http.MethodGet,
 				WithoutRootScope:            true,
 				SkipOperationTypeValidation: true,
