@@ -43,7 +43,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
 }
 
 resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'invalid-extndr1'
+  name: 'invalid-extndr'
   properties: {
     application: app.location
     environment: env.id
