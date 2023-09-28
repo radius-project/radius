@@ -323,8 +323,8 @@ func Test_InvalidResourceIDs(t *testing.T) {
 			Code: "ResourceDeploymentFailure",
 			Details: []step.DeploymentErrorDetail{
 				{
-					Code:            "BadRequest",
-					MessageContains: "application ID \"global\" for the resource",
+					Code:            "Internal",
+					MessageContains: "'global' is not a valid resource id",
 				},
 			},
 		},
