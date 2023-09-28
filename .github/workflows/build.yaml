@@ -54,6 +54,9 @@ env:
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
 
+  # ORAS (OCI Registry As Storage) CLI version
+  ORAS_VERSION: 1.1.0
+
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
@@ -388,12 +391,76 @@ jobs:
             --verify-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+  publish-ghcr:
+    name: Publish rad CLI latest binaries to GHCR
+    needs: [ 'build' ]
+    runs-on: ubuntu-latest
+    if: (github.ref == 'refs/heads/main')
+    steps:
+      - name: Download release artifacts (darwin_arm64)
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_darwin_arm64
+          path: rad_cli_darwin_arm64
+      - name: Download release artifacts (darwin_amd64)
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_darwin_amd64
+          path: rad_cli_darwin_amd64
+      - name: Download release artifacts (linux_arm)
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_linux_arm
+          path: rad_cli_linux_arm
+      - name: Download release artifacts (linux_arm64)
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_linux_arm64
+          path: rad_cli_linux_arm64
+      - name: Download release artifacts (linux_amd64)
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_linux_amd64
+          path: rad_cli_linux_amd64
+      - name: Download release artifacts (windows_amd64)
+        uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_windows_amd64
+          path: rad_cli_windows_amd64
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ env.GHCR_ACTOR }}
+          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      - uses: oras-project/setup-oras@v1
+        with:
+          version: ${{ env.ORAS_VERSION }}
+      - run: oras version
+      - name: Push rad cli binaries to GHCR (macos-x64:latest)
+        run: |
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-x64:latest rad_cli_darwin_amd64/rad
+      - name: Push rad cli binaries to GHCR (macos-arm64:latest)
+        run: |
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-arm64:latest rad_cli_darwin_arm64/rad
+      - name: Push rad cli binaries to GHCR (linux-x64:latest)
+        run: |
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-x64:latest rad_cli_linux_amd64/rad
+      - name: Push rad cli binaries to GHCR (linux-arm:latest)
+        run: |
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm:latest rad_cli_linux_arm/rad
+      - name: Push rad cli binaries to GHCR (linux-arm64:latest)
+        run: |
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm64:latest rad_cli_linux_arm64/rad
+      - name: Push rad cli binaries to GHCR (windows-x64:latest)
+        run: |
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/windows-x64:latest rad_cli_windows_amd64/rad.exe
   # TODO_LAUNCH: Remove this job once we opensource - https://github.com/radius-project/radius/issues/5892
-  publish:
+  publish-acr:
     name: Publish rad CLI binaries
     needs: [ 'build' ]
     runs-on: ubuntu-latest
-    # if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
+    if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v') # upload on push to main or tag
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -429,80 +496,52 @@ jobs:
         with:
           name: rad_cli_windows_amd64
           path: rad_cli_windows_amd64
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
-          registry: ghcr.io
-          username: ${{ env.GHCR_ACTOR }}
-          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-      - uses: oras-project/setup-oras@v1
+          source_dir: rad_cli_darwin_amd64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
         with:
-          version: 1.1.0
-      - run: oras version
-      - name: Push rad cli binaries to GHCR (macos-x64:latest)
-        run: |
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-x64:latest rad_cli_darwin_amd64/rad
-      - name: Push rad cli binaries to GHCR (macos-arm64:latest)
-        run: |
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/macos-arm64:latest rad_cli_darwin_arm64/rad
-      - name: Push rad cli binaries to GHCR (linux-x64:latest)
-        run: |
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-x64:latest rad_cli_linux_amd64/rad
-      - name: Push rad cli binaries to GHCR (linux-arm:latest)
-        run: |
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm:latest rad_cli_linux_arm/rad
-      - name: Push rad cli binaries to GHCR (linux-arm64:latest)
-        run: |
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/linux-arm64:latest rad_cli_linux_arm64/rad
-      - name: Push rad cli binaries to GHCR (windows-x64:latest)
-        run: |
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/windows-x64:latest rad_cli_windows_amd64/rad.exe
-      # - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-      #   with:
-      #     source_dir: rad_cli_darwin_amd64
-      #     container_name: 'tools'
-      #     connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-      #     overwrite: 'true'
-      #     extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-x64/ --pattern rad --timeout 300'
-      # - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-      #   with:
-      #     source_dir: rad_cli_darwin_arm64
-      #     container_name: 'tools'
-      #     connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-      #     overwrite: 'true'
-      #     extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-arm64/ --pattern rad --timeout 300'
-      # - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-      #   with:
-      #     source_dir: rad_cli_linux_amd64
-      #     container_name: 'tools'
-      #     connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-      #     overwrite: 'true'
-      #     extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300'
-      # - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-      #   with:
-      #     source_dir: rad_cli_linux_arm
-      #     container_name: 'tools'
-      #     connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-      #     overwrite: 'true'
-      #     extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300'
-      # - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-      #   with:
-      #     source_dir: rad_cli_linux_arm64
-      #     container_name: 'tools'
-      #     connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-      #     overwrite: 'true'
-      #     extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300'
-      # - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
-      #   with:
-      #     source_dir: rad_cli_windows_amd64
-      #     container_name: 'tools'
-      #     connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
-      #     overwrite: 'true'
-      #     extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
+          source_dir: rad_cli_darwin_arm64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/macos-arm64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: rad_cli_linux_amd64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-x64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: rad_cli_linux_arm
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: rad_cli_linux_arm64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/linux-arm64/ --pattern rad --timeout 300'
+      - uses: bacongobbler/azure-blob-storage-upload@v3.0.0
+        with:
+          source_dir: rad_cli_windows_amd64
+          container_name: 'tools'
+          connection_string: ${{ secrets.ASSETS_STORAGE_CONNECTION_STRING }}
+          overwrite: 'true'
+          extra_args: '--destination-path rad/${{ env.REL_CHANNEL }}/windows-x64/ --pattern rad.exe --timeout 300'
 
   delete_artifacts:
     name: Delete artifacts
-    needs: [ 'build', 'publish' ]
+    needs: [ 'build', 'publish-acr', 'publish-ghcr' ]
     if: ${{ always() && !contains(needs.build.result, 'failure') }}
     runs-on: ubuntu-latest
     steps:
