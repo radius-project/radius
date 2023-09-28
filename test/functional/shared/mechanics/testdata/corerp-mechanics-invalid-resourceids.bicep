@@ -47,6 +47,7 @@ resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
   properties: {
     application: app.location
     environment: env.id
+    resourceProvisioning: 'manual'
   }
 }
 
