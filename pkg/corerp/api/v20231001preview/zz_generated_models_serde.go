@@ -31,11 +31,11 @@ func (a *ApplicationGraphConnection) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "direction":
-				err = unpopulate(val, "Direction", &a.Direction)
+		case "destination":
+				err = unpopulate(val, "Destination", &a.Destination)
 			delete(rawMsg, key)
-		case "id":
-				err = unpopulate(val, "ID", &a.ID)
+		case "source":
+				err = unpopulate(val, "Source", &a.Source)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -139,6 +139,9 @@ func (a *ApplicationGraphResponse) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "connections":
+				err = unpopulate(val, "Connections", &a.Connections)
+			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &a.Resources)
 			delete(rawMsg, key)
