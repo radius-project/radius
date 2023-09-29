@@ -84,6 +84,13 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				app_ctrl.CreateAppScopedNamespace,
 			},
 		},
+		Custom: map[string]builder.Operation[datamodel.Application]{
+			"getGraph": {
+				APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
+					return app_ctrl.NewGetApplicationGraph(opt)
+				},
+			},
+		},
 	})
 
 	_ = ns.AddResource("httpRoutes", &builder.ResourceOption[*datamodel.HTTPRoute, datamodel.HTTPRoute]{
