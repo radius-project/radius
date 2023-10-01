@@ -76,6 +76,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 		expectedSecrets := map[string]any{
+			renderers.ConnectionURIValue:    "test-connection-uri",
 			renderers.PasswordStringHolder:  "testPassword",
 			renderers.ConnectionStringValue: "test-connection-string",
 		}
