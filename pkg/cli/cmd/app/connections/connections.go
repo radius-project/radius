@@ -7,6 +7,8 @@ package connections
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -125,6 +127,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	graph := compute(r.ApplicationName, applicationResources, environmentResources)
+	res2B, _ := json.Marshal(graph)
+	fmt.Println(string(res2B))
 	display := display(graph)
 	r.Output.LogInfo(display)
 

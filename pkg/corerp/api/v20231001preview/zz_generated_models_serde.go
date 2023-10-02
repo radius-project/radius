@@ -31,11 +31,11 @@ func (a *ApplicationGraphConnection) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "destination":
-				err = unpopulate(val, "Destination", &a.Destination)
+		case "direction":
+				err = unpopulate(val, "Direction", &a.Direction)
 			delete(rawMsg, key)
-		case "source":
-				err = unpopulate(val, "Source", &a.Source)
+		case "id":
+				err = unpopulate(val, "ID", &a.ID)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -86,7 +86,8 @@ func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "connections", a.Connections)
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "name", a.Name)
-	populate(objectMap, "resources", a.Resources)
+	populate(objectMap, "outputResources", a.OutputResources)
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "type", a.Type)
 	return json.Marshal(objectMap)
 }
@@ -109,8 +110,11 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 		case "name":
 				err = unpopulate(val, "Name", &a.Name)
 			delete(rawMsg, key)
-		case "resources":
-				err = unpopulate(val, "Resources", &a.Resources)
+		case "outputResources":
+				err = unpopulate(val, "OutputResources", &a.OutputResources)
+			delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &a.Type)
@@ -139,9 +143,6 @@ func (a *ApplicationGraphResponse) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "connections":
-				err = unpopulate(val, "Connections", &a.Connections)
-			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &a.Resources)
 			delete(rawMsg, key)
