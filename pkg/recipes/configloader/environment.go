@@ -120,7 +120,17 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 	if err != nil {
 		return nil, err
 	}
-	return getRecipeDefinition(environment, recipe)
+
+	envDefinition, err := getRecipeDefinition(environment, recipe)
+	if err != nil {
+		return nil, err
+	}
+
+	if environment.Properties.Simulated != nil {
+		envDefinition.Simulated = *environment.Properties.Simulated
+	}
+
+	return envDefinition, err
 }
 
 func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {

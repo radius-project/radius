@@ -56,6 +56,8 @@ type SharedMocks struct {
 	resourceHandler *handlers.MockResourceHandler
 	renderer        *renderers.MockRenderer
 	mctrl           *gomock.Controller
+	testApp         datamodel.Application
+	testEnv         datamodel.Environment
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -98,6 +100,37 @@ func setup(t *testing.T) SharedMocks {
 			resourcemodel.ProviderAzure:      true,
 		})
 
+	app := datamodel.Application{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+		},
+		Properties: datamodel.ApplicationProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+			},
+		},
+	}
+
+	env := datamodel.Environment{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+				Name: "test-env",
+			},
+		},
+		Properties: datamodel.EnvironmentProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: "kubernetes",
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
+					ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+					Namespace:  "default",
+				},
+			},
+		},
+	}
+
 	return SharedMocks{
 		model:           model,
 		db:              store.NewMockStorageClient(ctrl),
@@ -105,6 +138,8 @@ func setup(t *testing.T) SharedMocks {
 		resourceHandler: resourceHandler,
 		renderer:        renderer,
 		mctrl:           ctrl,
+		testApp:         app,
+		testEnv:         env,
 	}
 }
 
@@ -819,6 +854,69 @@ func Test_Render(t *testing.T) {
 	})
 }
 
+func setupDeployMocks(mocks SharedMocks, simulated bool) {
+	testResource := getTestResource()
+	mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).AnyTimes().Return(mocks.db, nil)
+	cr := store.Object{
+		Metadata: store.Metadata{
+			ID: testResource.ID,
+		},
+		Data: testResource,
+	}
+	mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+
+	app := datamodel.Application{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			},
+		},
+		Properties: datamodel.ApplicationProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+			},
+		},
+	}
+
+	ar := store.Object{
+		Metadata: store.Metadata{
+			ID: mocks.testApp.ID,
+		},
+		Data: app,
+	}
+	mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
+
+	env := datamodel.Environment{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+				Name: "test-env",
+			},
+		},
+		Properties: datamodel.EnvironmentProperties{
+			Compute: rpv1.EnvironmentCompute{
+				Kind: "kubernetes",
+				KubernetesCompute: rpv1.KubernetesComputeProperties{
+					ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+					Namespace:  "default",
+				},
+			},
+		},
+	}
+
+	if simulated {
+		env.Properties.Simulated = true
+	}
+
+	er := store.Object{
+		Metadata: store.Metadata{
+			ID: mocks.testEnv.ID,
+		},
+		Data: env,
+	}
+	mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+}
+
 func Test_Deploy(t *testing.T) {
 	t.Run("Verify deploy success", func(t *testing.T) {
 		ctx := testcontext.New(t)
@@ -842,6 +940,8 @@ func Test_Deploy(t *testing.T) {
 			kubeProp[handlers.KubernetesNamespaceKey],
 			kubeProp[handlers.ResourceName])
 
+		setupDeployMocks(mocks, false)
+
 		mocks.resourceHandler.
 			EXPECT().
 			Put(gomock.Any(), gomock.Any()).Times(1).
@@ -858,6 +958,24 @@ func Test_Deploy(t *testing.T) {
 		require.Equal(t, map[string]any{"url": testRendererOutput.ComputedValues["url"].Value}, deploymentOutput.ComputedValues)
 	})
 
+	t.Run("Verify deploy success with simulated env", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		mocks := setup(t)
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil}
+
+		testResource := getTestResource()
+		testRendererOutput := getTestRendererOutput()
+		resourceID := getTestResourceID(testResource.ID)
+
+		setupDeployMocks(mocks, true)
+
+		// Note: No PUT call is made on the mocks to actually deploy the resource
+		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
+	})
+
 	t.Run("Verify deploy failure", func(t *testing.T) {
 		ctx := testcontext.New(t)
 		mocks := setup(t)
@@ -866,6 +984,8 @@ func Test_Deploy(t *testing.T) {
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
+
+		setupDeployMocks(mocks, false)
 
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to deploy the resource"))
 
@@ -884,6 +1004,8 @@ func Test_Deploy(t *testing.T) {
 
 		testRendererOutput.Resources[0].CreateResource.Dependencies = []string{""}
 
+		setupDeployMocks(mocks, false)
+
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 
 		require.ErrorContains(t, err, "missing localID for outputresource")
@@ -899,6 +1021,8 @@ func Test_Deploy(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		testRendererOutput.Resources[0].CreateResource.ResourceType = resourcemodel.ResourceType{Provider: resourcemodel.ProviderAzure, Type: "foo"}
+
+		setupDeployMocks(mocks, false)
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 
@@ -922,6 +1046,7 @@ func Test_Deploy(t *testing.T) {
 				return map[string]string{}, nil
 			})
 
+		setupDeployMocks(mocks, false)
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 
 		require.ErrorContains(t, err, `output resource "Service" does not have an id. This is a bug in the handler`)

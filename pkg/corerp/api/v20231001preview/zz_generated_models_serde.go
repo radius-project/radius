@@ -309,6 +309,7 @@ func (a ApplicationResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "providers", a.Providers)
 	populate(objectMap, "recipes", a.Recipes)
+	populate(objectMap, "simulated", a.Simulated)
 	return json.Marshal(objectMap)
 }
 
@@ -343,6 +344,9 @@ func (a *ApplicationResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 				}
 			}
 			a.Recipes = recipes
+			delete(rawMsg, key)
+		case "simulated":
+				err = unpopulate(val, "Simulated", &a.Simulated)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1170,6 +1174,7 @@ func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
 	populate(objectMap, "recipes", e.Recipes)
+	populate(objectMap, "simulated", e.Simulated)
 	return json.Marshal(objectMap)
 }
 
@@ -1207,6 +1212,9 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 				}
 			}
 			e.Recipes = recipes
+			delete(rawMsg, key)
+		case "simulated":
+				err = unpopulate(val, "Simulated", &e.Simulated)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1336,6 +1344,7 @@ func (e EnvironmentResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "extensions", e.Extensions)
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "recipes", e.Recipes)
+	populate(objectMap, "simulated", e.Simulated)
 	return json.Marshal(objectMap)
 }
 
@@ -1370,6 +1379,9 @@ func (e *EnvironmentResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 				}
 			}
 			e.Recipes = recipes
+			delete(rawMsg, key)
+		case "simulated":
+				err = unpopulate(val, "Simulated", &e.Simulated)
 			delete(rawMsg, key)
 		}
 		if err != nil {

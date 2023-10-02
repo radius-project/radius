@@ -352,6 +352,38 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
+func Test_Bicep_Execute_SimulatedEnvironment(t *testing.T) {
+	opts := ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace: "test-namespace",
+					},
+				},
+			},
+			Recipe: recipes.ResourceMetadata{
+				EnvironmentID: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+				Name:          "test-recipe",
+				ResourceID:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Datastores/mongoDatabases/test-db",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "test-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+				ResourceType: "Applications.Datastores/mongoDatabases",
+				Simulated:    true,
+			},
+		},
+	}
+	ctx := testcontext.New(t)
+	d := &bicepDriver{}
+	recipesOutput, err := d.Execute(ctx, opts)
+	require.NoError(t, err)
+	require.NotNil(t, recipesOutput)
+	require.True(t, recipesOutput.IsSimulation)
+}
+
 func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient) {
 	ctrl := gomock.NewController(t)
 	client := processors.NewMockResourceClient(ctrl)

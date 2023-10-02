@@ -103,6 +103,10 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		}
 	}
 
+	if src.Properties.Simulated != nil && *src.Properties.Simulated {
+		converted.Properties.Simulated = true
+	}
+
 	var extensions []datamodel.Extension
 	if src.Properties.Extensions != nil {
 		for _, e := range src.Properties.Extensions {
@@ -159,6 +163,10 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 				Scope: to.Ptr(env.Properties.Providers.AWS.Scope),
 			}
 		}
+	}
+
+	if env.Properties.Simulated {
+		dst.Properties.Simulated = to.Ptr(env.Properties.Simulated)
 	}
 
 	var extensions []ExtensionClassification

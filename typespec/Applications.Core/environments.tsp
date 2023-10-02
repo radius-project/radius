@@ -58,6 +58,9 @@ model EnvironmentProperties {
   @doc("Cloud providers configuration for the environment.")
   providers?: Providers;
 
+  @doc("Simulated environment.")
+  simulated?: boolean;
+
   @doc("Specifies Recipes linked to the Environment.")
   recipes?: Record<Record<RecipeProperties>>;
 

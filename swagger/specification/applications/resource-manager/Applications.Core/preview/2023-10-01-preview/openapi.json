@@ -2723,6 +2723,10 @@
           "$ref": "#/definitions/ProvidersUpdate",
           "description": "Cloud providers configuration for the environment."
         },
+        "simulated": {
+          "type": "boolean",
+          "description": "Simulated environment."
+        },
         "recipes": {
           "type": "object",
           "description": "Specifies Recipes linked to the Environment.",
@@ -3460,6 +3464,10 @@
           "$ref": "#/definitions/Providers",
           "description": "Cloud providers configuration for the environment."
         },
+        "simulated": {
+          "type": "boolean",
+          "description": "Simulated environment."
+        },
         "recipes": {
           "type": "object",
           "description": "Specifies Recipes linked to the Environment.",
@@ -3552,6 +3560,10 @@
         "providers": {
           "$ref": "#/definitions/ProvidersUpdate",
           "description": "Cloud providers configuration for the environment."
+        },
+        "simulated": {
+          "type": "boolean",
+          "description": "Simulated environment."
         },
         "recipes": {
           "type": "object",

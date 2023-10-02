@@ -58,6 +58,8 @@ type EnvironmentDefinition struct {
 	TemplatePath string
 	// TemplateVersion represents the version of the terraform module provided by the recipe.
 	TemplateVersion string
+	// Simulated represents whether the environment is simulated or not.
+	Simulated bool
 }
 
 // ResourceMetadata represents recipe details provided while creating a portable resource.
@@ -96,6 +98,9 @@ type RecipeOutput struct {
 
 	// Values represents the key/value pairs of properties of the deployed resource.
 	Values map[string]any
+
+	// IsSimulation represents whether the recipe deployment is a simulation or not.
+	IsSimulation bool
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.

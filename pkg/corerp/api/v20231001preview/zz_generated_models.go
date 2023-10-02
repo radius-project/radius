@@ -125,6 +125,9 @@ type ApplicationResourceUpdateProperties struct {
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
+
+	// Simulated environment.
+	Simulated *bool
 }
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
@@ -536,6 +539,9 @@ type EnvironmentProperties struct {
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
+	// Simulated environment.
+	Simulated *bool
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
@@ -595,6 +601,9 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
+
+	// Simulated environment.
+	Simulated *bool
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container

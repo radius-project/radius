@@ -63,6 +63,7 @@ func NewCreateOrUpdateResource[P interface {
 // Run retrieves an existing resource, executes a recipe if needed, loads runtime configuration,
 // processes the resource, cleans up any obsolete output resources, and saves the updated resource.
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
 	if errors.Is(&store.ErrNotFound{ID: req.ResourceID}, err) {
 		return ctrl.Result{}, err
@@ -83,7 +84,6 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
-			logger := ucplog.FromContextOrDiscard(ctx)
 			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
 			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
@@ -109,10 +109,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	// Now we're ready to process the resource. This will handle the updates to any user-visible state.
-	err = c.processor.Process(ctx, data, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: *runtimeConfiguration})
-	if err != nil {
-		return ctrl.Result{}, err
+	if recipeOutput != nil && recipeOutput.IsSimulation {
+		logger.Info("The recipe was executed in simulation mode. No resources were deployed.")
+	} else {
+		// Now we're ready to process the resource. This will handle the updates to any user-visible state.
+		err = c.processor.Process(ctx, data, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: *runtimeConfiguration})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if recipeDataModel.Recipe() != nil {
