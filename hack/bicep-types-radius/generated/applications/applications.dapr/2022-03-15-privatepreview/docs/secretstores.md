@@ -4,14 +4,14 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version  (_ReadOnly, DeployTimeConstant_) |
-| **id** | string | The resource id  (_ReadOnly, DeployTimeConstant_) |
-| **location** | string | The geo-location where the resource lives  (_Required_) |
-| **name** | string | The resource name  (_Required, DeployTimeConstant_) |
+| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
+| **location** | string | The geo-location where the resource lives <br />_(required)_ |
+| **name** | string | The resource name <br />_(required, deploy-time constant)_ |
 | **properties** | [DaprSecretStoreProperties](#daprsecretstoreproperties) | Dapr SecretStore portable resource properties |
-| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource.  (_ReadOnly_) |
+| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Dapr/secretStores' | The resource type  (_ReadOnly, DeployTimeConstant_) |
+| **type** | 'Applications.Dapr/secretStores' | The resource type <br />_(read-only, deploy-time constant)_ |
 
 ### DaprSecretStoreProperties
 
@@ -20,13 +20,13 @@
 | Property | Type | Description |
 |----------|------|-------------|
 | **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
-| **componentName** | string | The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.  (_ReadOnly_) |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to  (_Required_) |
+| **componentName** | string | The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component. <br />_(read-only)_ |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
 | **metadata** | any | Any object |
-| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called  (_ReadOnly_) |
+| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
 | **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
 | **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
-| **status** | [ResourceStatus](#resourcestatus) | Status of a resource.  (_ReadOnly_) |
+| **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
 | **type** | string | Dapr component type which must matches the format used by Dapr Kubernetes configuration format |
 | **version** | string | Dapr component version |
 
@@ -36,7 +36,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **name** | string | The name of the recipe within the environment to use  (_Required_) |
+| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
 | **parameters** | any | Any object |
 
 ### ResourceStatus
@@ -65,8 +65,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute.  (_Required_) |
-| **namespace** | string | The namespace to use for the environment.  (_Required_) |
+| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute. <br />_(required)_ |
+| **namespace** | string | The namespace to use for the environment. <br />_(required)_ |
 
 
 ### IdentitySettings
@@ -75,7 +75,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting  (_Required_) |
+| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting <br />_(required)_ |
 | **oidcIssuer** | string | The URI for your compute platform's OIDC issuer |
 | **resource** | string | The resource ID of the provisioned identity |
 

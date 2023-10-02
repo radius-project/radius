@@ -4,14 +4,14 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version  (_ReadOnly, DeployTimeConstant_) |
-| **id** | string | The resource id  (_ReadOnly, DeployTimeConstant_) |
-| **location** | string | The geo-location where the resource lives  (_Required_) |
-| **name** | string | The resource name  (_Required, DeployTimeConstant_) |
+| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
+| **location** | string | The geo-location where the resource lives <br />_(required)_ |
+| **name** | string | The resource name <br />_(required, deploy-time constant)_ |
 | **properties** | [ContainerProperties](#containerproperties) | Container properties |
-| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource.  (_ReadOnly_) |
+| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/containers' | The resource type  (_ReadOnly, DeployTimeConstant_) |
+| **type** | 'Applications.Core/containers' | The resource type <br />_(read-only, deploy-time constant)_ |
 
 ### ContainerProperties
 
@@ -19,15 +19,15 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by  (_Required_) |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
 | **connections** | [ContainerPropertiesConnections](#containerpropertiesconnections) | Specifies a connection to another resource. |
-| **container** | [Container](#container) | Definition of a container  (_Required_) |
+| **container** | [Container](#container) | Definition of a container <br />_(required)_ |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
 | **extensions** | [Extension](#extension)[] | Extensions spec of the resource |
 | **identity** | [IdentitySettings](#identitysettings) | IdentitySettings is the external identity setting. |
-| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called  (_ReadOnly_) |
+| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
 | **runtimes** | [RuntimesProperties](#runtimesproperties) | The properties for runtime configuration |
-| **status** | [ResourceStatus](#resourcestatus) | Status of a resource.  (_ReadOnly_) |
+| **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
 
 ### ContainerPropertiesConnections
 
@@ -47,7 +47,7 @@
 |----------|------|-------------|
 | **disableDefaultEnvVars** | bool | default environment variable override |
 | **iam** | [IamProperties](#iamproperties) | IAM properties |
-| **source** | string | The source of the connection  (_Required_) |
+| **source** | string | The source of the connection <br />_(required)_ |
 
 ### IamProperties
 
@@ -55,7 +55,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'azure' | The kind of IAM provider to configure  (_Required_) |
+| **kind** | 'azure' | The kind of IAM provider to configure <br />_(required)_ |
 | **roles** | string[] | RBAC permissions to be assigned on the source resource |
 
 ### Container
@@ -67,7 +67,7 @@
 | **args** | string[] | Arguments to the entrypoint. Overrides the container image's CMD |
 | **command** | string[] | Entrypoint array. Overrides the container image's ENTRYPOINT |
 | **env** | [ContainerEnv](#containerenv) | environment |
-| **image** | string | The registry and image to download and run in your container  (_Required_) |
+| **image** | string | The registry and image to download and run in your container <br />_(required)_ |
 | **imagePullPolicy** | 'Always' | 'IfNotPresent' | 'Never' | The image pull policy for the container |
 | **livenessProbe** | [HealthProbeProperties](#healthprobeproperties) | Properties for readiness/liveness probe |
 | **ports** | [ContainerPorts](#containerports) | container ports |
@@ -104,8 +104,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **command** | string | Command to execute to probe readiness/liveness  (_Required_) |
-| **kind** | 'exec' | Discriminator property for HealthProbeProperties.  (_Required_) |
+| **command** | string | Command to execute to probe readiness/liveness <br />_(required)_ |
+| **kind** | 'exec' | Discriminator property for HealthProbeProperties. <br />_(required)_ |
 
 #### HttpGetHealthProbeProperties
 
@@ -113,10 +113,10 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **containerPort** | int | The listening port number  (_Required_) |
+| **containerPort** | int | The listening port number <br />_(required)_ |
 | **headers** | [HttpGetHealthProbePropertiesHeaders](#httpgethealthprobepropertiesheaders) | Custom HTTP headers to add to the get request |
-| **kind** | 'httpGet' | Discriminator property for HealthProbeProperties.  (_Required_) |
-| **path** | string | The route to make the HTTP request on  (_Required_) |
+| **kind** | 'httpGet' | Discriminator property for HealthProbeProperties. <br />_(required)_ |
+| **path** | string | The route to make the HTTP request on <br />_(required)_ |
 
 #### TcpHealthProbeProperties
 
@@ -124,8 +124,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **containerPort** | int | The listening port number  (_Required_) |
-| **kind** | 'tcp' | Discriminator property for HealthProbeProperties.  (_Required_) |
+| **containerPort** | int | The listening port number <br />_(required)_ |
+| **kind** | 'tcp' | Discriminator property for HealthProbeProperties. <br />_(required)_ |
 
 
 ### HttpGetHealthProbePropertiesHeaders
@@ -154,7 +154,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **containerPort** | int | The listening port number  (_Required_) |
+| **containerPort** | int | The listening port number <br />_(required)_ |
 | **port** | int | Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired |
 | **protocol** | 'TCP' | 'UDP' | The protocol in use by the port |
 | **provides** | string | Specifies a route provided by this port |
@@ -186,8 +186,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'ephemeral' | Discriminator property for Volume.  (_Required_) |
-| **managedStore** | 'disk' | 'memory' | The managed store for the ephemeral volume  (_Required_) |
+| **kind** | 'ephemeral' | Discriminator property for Volume. <br />_(required)_ |
+| **managedStore** | 'disk' | 'memory' | The managed store for the ephemeral volume <br />_(required)_ |
 
 #### PersistentVolume
 
@@ -195,9 +195,9 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'persistent' | Discriminator property for Volume.  (_Required_) |
+| **kind** | 'persistent' | Discriminator property for Volume. <br />_(required)_ |
 | **permission** | 'read' | 'write' | The persistent volume permission |
-| **source** | string | The source of the volume  (_Required_) |
+| **source** | string | The source of the volume <br />_(required)_ |
 
 
 ### Extension
@@ -215,10 +215,10 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **appId** | string | The Dapr appId. Specifies the identifier used by Dapr for service invocation.  (_Required_) |
+| **appId** | string | The Dapr appId. Specifies the identifier used by Dapr for service invocation. <br />_(required)_ |
 | **appPort** | int | The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. |
 | **config** | string | Specifies the Dapr configuration to use for the resource. |
-| **kind** | 'daprSidecar' | Discriminator property for Extension.  (_Required_) |
+| **kind** | 'daprSidecar' | Discriminator property for Extension. <br />_(required)_ |
 | **protocol** | 'grpc' | 'http' | The Dapr sidecar extension protocol |
 
 #### KubernetesMetadataExtension
@@ -228,7 +228,7 @@
 | Property | Type | Description |
 |----------|------|-------------|
 | **annotations** | [KubernetesMetadataExtensionAnnotations](#kubernetesmetadataextensionannotations) | Annotations to be applied to the Kubernetes resources output by the resource |
-| **kind** | 'kubernetesMetadata' | Discriminator property for Extension.  (_Required_) |
+| **kind** | 'kubernetesMetadata' | Discriminator property for Extension. <br />_(required)_ |
 | **labels** | [KubernetesMetadataExtensionLabels](#kubernetesmetadataextensionlabels) | Labels to be applied to the Kubernetes resources output by the resource |
 
 #### KubernetesNamespaceExtension
@@ -237,8 +237,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'kubernetesNamespace' | Discriminator property for Extension.  (_Required_) |
-| **namespace** | string | The namespace of the application environment.  (_Required_) |
+| **kind** | 'kubernetesNamespace' | Discriminator property for Extension. <br />_(required)_ |
+| **namespace** | string | The namespace of the application environment. <br />_(required)_ |
 
 #### ManualScalingExtension
 
@@ -246,8 +246,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'manualScaling' | Discriminator property for Extension.  (_Required_) |
-| **replicas** | int | Replica count.  (_Required_) |
+| **kind** | 'manualScaling' | Discriminator property for Extension. <br />_(required)_ |
+| **replicas** | int | Replica count. <br />_(required)_ |
 
 
 ### KubernetesMetadataExtensionAnnotations
@@ -276,7 +276,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting  (_Required_) |
+| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting <br />_(required)_ |
 | **oidcIssuer** | string | The URI for your compute platform's OIDC issuer |
 | **resource** | string | The resource ID of the provisioned identity |
 
@@ -333,8 +333,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute.  (_Required_) |
-| **namespace** | string | The namespace to use for the environment.  (_Required_) |
+| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute. <br />_(required)_ |
+| **namespace** | string | The namespace to use for the environment. <br />_(required)_ |
 
 
 ### OutputResource

@@ -3,98 +3,98 @@
 ## Resource Applications.Core/applications@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [ApplicationProperties](#applicationproperties): Application properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/applications' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/applications' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/containers@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [ContainerProperties](#containerproperties): Container properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/containers' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/containers' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/environments@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [EnvironmentProperties](#environmentproperties): Environment properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/environments' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/environments' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/extenders@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [ExtenderProperties](#extenderproperties): ExtenderResource portable resource properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/extenders' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/extenders' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/gateways@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [GatewayProperties](#gatewayproperties): Gateway properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/gateways' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/gateways' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/httpRoutes@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [HttpRouteProperties](#httprouteproperties): HTTPRoute properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/httpRoutes' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/httpRoutes' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/secretStores@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [SecretStoreProperties](#secretstoreproperties): The properties of SecretStore
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/secretStores' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/secretStores' (read-only, deploy-time constant): The resource type
 
 ## Resource Applications.Core/volumes@2022-03-15-privatepreview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2022-03-15-privatepreview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [VolumeProperties](#volumeproperties): Volume properties
-* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
-* **type**: 'Applications.Core/volumes' (ReadOnly, DeployTimeConstant): The resource type
+* **type**: 'Applications.Core/volumes' (read-only, deploy-time constant): The resource type
 
 ## Function listSecrets (Applications.Core/extenders@2022-03-15-privatepreview)
 * **Resource**: Applications.Core/extenders
@@ -110,10 +110,10 @@
 
 ## ApplicationProperties
 ### Properties
-* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
+* **environment**: string (required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **extensions**: [Extension](#extension)[]: The application extension.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
 
 ## Extension
 * **Discriminator**: kind
@@ -121,27 +121,27 @@
 ### Base Properties
 ### DaprSidecarExtension
 #### Properties
-* **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
+* **appId**: string (required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
 * **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
 * **config**: string: Specifies the Dapr configuration to use for the resource.
-* **kind**: 'daprSidecar' (Required): Discriminator property for Extension.
+* **kind**: 'daprSidecar' (required): Discriminator property for Extension.
 * **protocol**: 'grpc' | 'http': The Dapr sidecar extension protocol
 
 ### KubernetesMetadataExtension
 #### Properties
 * **annotations**: [KubernetesMetadataExtensionAnnotations](#kubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
-* **kind**: 'kubernetesMetadata' (Required): Discriminator property for Extension.
+* **kind**: 'kubernetesMetadata' (required): Discriminator property for Extension.
 * **labels**: [KubernetesMetadataExtensionLabels](#kubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
 
 ### KubernetesNamespaceExtension
 #### Properties
-* **kind**: 'kubernetesNamespace' (Required): Discriminator property for Extension.
-* **namespace**: string (Required): The namespace of the application environment.
+* **kind**: 'kubernetesNamespace' (required): Discriminator property for Extension.
+* **namespace**: string (required): The namespace of the application environment.
 
 ### ManualScalingExtension
 #### Properties
-* **kind**: 'manualScaling' (Required): Discriminator property for Extension.
-* **replicas**: int (Required): Replica count.
+* **kind**: 'manualScaling' (required): Discriminator property for Extension.
+* **replicas**: int (required): Replica count.
 
 
 ## KubernetesMetadataExtensionAnnotations
@@ -167,13 +167,13 @@
 * **resourceId**: string: The resource id of the compute resource for application environment.
 ### KubernetesCompute
 #### Properties
-* **kind**: 'kubernetes' (Required): Discriminator property for EnvironmentCompute.
-* **namespace**: string (Required): The namespace to use for the environment.
+* **kind**: 'kubernetes' (required): Discriminator property for EnvironmentCompute.
+* **namespace**: string (required): The namespace to use for the environment.
 
 
 ## IdentitySettings
 ### Properties
-* **kind**: 'azure.com.workload' | 'undefined' (Required): IdentitySettingKind is the kind of supported external identity setting
+* **kind**: 'azure.com.workload' | 'undefined' (required): IdentitySettingKind is the kind of supported external identity setting
 * **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
 * **resource**: string: The resource ID of the provisioned identity
 
@@ -199,15 +199,15 @@
 
 ## ContainerProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string (required): Fully qualified resource ID for the application that the portable resource is consumed by
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Specifies a connection to another resource.
-* **container**: [Container](#container) (Required): Definition of a container
+* **container**: [Container](#container) (required): Definition of a container
 * **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings): IdentitySettings is the external identity setting.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
 * **runtimes**: [RuntimesProperties](#runtimesproperties): The properties for runtime configuration
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
 
 ## ContainerPropertiesConnections
 ### Properties
@@ -218,11 +218,11 @@
 ### Properties
 * **disableDefaultEnvVars**: bool: default environment variable override
 * **iam**: [IamProperties](#iamproperties): IAM properties
-* **source**: string (Required): The source of the connection
+* **source**: string (required): The source of the connection
 
 ## IamProperties
 ### Properties
-* **kind**: 'azure' (Required): The kind of IAM provider to configure
+* **kind**: 'azure' (required): The kind of IAM provider to configure
 * **roles**: string[]: RBAC permissions to be assigned on the source resource
 
 ## Container
@@ -230,7 +230,7 @@
 * **args**: string[]: Arguments to the entrypoint. Overrides the container image's CMD
 * **command**: string[]: Entrypoint array. Overrides the container image's ENTRYPOINT
 * **env**: [ContainerEnv](#containerenv): environment
-* **image**: string (Required): The registry and image to download and run in your container
+* **image**: string (required): The registry and image to download and run in your container
 * **imagePullPolicy**: 'Always' | 'IfNotPresent' | 'Never': The image pull policy for the container
 * **livenessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
 * **ports**: [ContainerPorts](#containerports): container ports
@@ -253,20 +253,20 @@
 * **timeoutSeconds**: int: Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
 ### ExecHealthProbeProperties
 #### Properties
-* **command**: string (Required): Command to execute to probe readiness/liveness
-* **kind**: 'exec' (Required): Discriminator property for HealthProbeProperties.
+* **command**: string (required): Command to execute to probe readiness/liveness
+* **kind**: 'exec' (required): Discriminator property for HealthProbeProperties.
 
 ### HttpGetHealthProbeProperties
 #### Properties
-* **containerPort**: int (Required): The listening port number
+* **containerPort**: int (required): The listening port number
 * **headers**: [HttpGetHealthProbePropertiesHeaders](#httpgethealthprobepropertiesheaders): Custom HTTP headers to add to the get request
-* **kind**: 'httpGet' (Required): Discriminator property for HealthProbeProperties.
-* **path**: string (Required): The route to make the HTTP request on
+* **kind**: 'httpGet' (required): Discriminator property for HealthProbeProperties.
+* **path**: string (required): The route to make the HTTP request on
 
 ### TcpHealthProbeProperties
 #### Properties
-* **containerPort**: int (Required): The listening port number
-* **kind**: 'tcp' (Required): Discriminator property for HealthProbeProperties.
+* **containerPort**: int (required): The listening port number
+* **kind**: 'tcp' (required): Discriminator property for HealthProbeProperties.
 
 
 ## HttpGetHealthProbePropertiesHeaders
@@ -281,7 +281,7 @@
 
 ## ContainerPortProperties
 ### Properties
-* **containerPort**: int (Required): The listening port number
+* **containerPort**: int (required): The listening port number
 * **port**: int: Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired
 * **protocol**: 'TCP' | 'UDP': The protocol in use by the port
 * **provides**: string: Specifies a route provided by this port
@@ -299,14 +299,14 @@
 * **mountPath**: string: The path where the volume is mounted
 ### EphemeralVolume
 #### Properties
-* **kind**: 'ephemeral' (Required): Discriminator property for Volume.
-* **managedStore**: 'disk' | 'memory' (Required): The managed store for the ephemeral volume
+* **kind**: 'ephemeral' (required): Discriminator property for Volume.
+* **managedStore**: 'disk' | 'memory' (required): The managed store for the ephemeral volume
 
 ### PersistentVolume
 #### Properties
-* **kind**: 'persistent' (Required): Discriminator property for Volume.
+* **kind**: 'persistent' (required): Discriminator property for Volume.
 * **permission**: 'read' | 'write': The persistent volume permission
-* **source**: string (Required): The source of the volume
+* **source**: string (required): The source of the volume
 
 
 ## RuntimesProperties
@@ -330,10 +330,10 @@
 
 ## EnvironmentProperties
 ### Properties
-* **compute**: [EnvironmentCompute](#environmentcompute) (Required): Represents backing compute resource
+* **compute**: [EnvironmentCompute](#environmentcompute) (required): Represents backing compute resource
 * **extensions**: [Extension](#extension)[]: The environment extension.
 * **providers**: [Providers](#providers): The Cloud providers configuration
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Specifies Recipes linked to the Environment.
 
 ## Providers
@@ -343,11 +343,11 @@
 
 ## ProvidersAws
 ### Properties
-* **scope**: string (Required): Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'
+* **scope**: string (required): Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'
 
 ## ProvidersAzure
 ### Properties
-* **scope**: string (Required): Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+* **scope**: string (required): Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 
 ## EnvironmentPropertiesRecipes
 ### Properties
@@ -364,14 +364,14 @@
 
 ### Base Properties
 * **parameters**: any: Any object
-* **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+* **templatePath**: string (required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 ### BicepRecipeProperties
 #### Properties
-* **templateKind**: 'bicep' (Required): Discriminator property for RecipeProperties.
+* **templateKind**: 'bicep' (required): Discriminator property for RecipeProperties.
 
 ### TerraformRecipeProperties
 #### Properties
-* **templateKind**: 'terraform' (Required): Discriminator property for RecipeProperties.
+* **templateKind**: 'terraform' (required): Discriminator property for RecipeProperties.
 * **templateVersion**: string: Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.
 
 
@@ -383,18 +383,18 @@
 ## ExtenderProperties
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)
-* **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **environment**: string (required): Fully qualified resource ID for the environment that the portable resource is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a portable resource
 * **resourceProvisioning**: 'manual' | 'recipe': Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values.
 * **secrets**: any: Any object
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
 
 ## Recipe
 ### Properties
-* **name**: string (Required): The name of the recipe within the environment to use
+* **name**: string (required): The name of the recipe within the environment to use
 * **parameters**: any: Any object
 
 ## TrackedResourceTags
@@ -404,15 +404,15 @@
 
 ## GatewayProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string (required): Fully qualified resource ID for the application that the portable resource is consumed by
 * **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 * **hostname**: [GatewayHostname](#gatewayhostname): Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 * **internal**: bool: Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **routes**: [GatewayRoute](#gatewayroute)[] (Required): Routes attached to this Gateway
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
+* **routes**: [GatewayRoute](#gatewayroute)[] (required): Routes attached to this Gateway
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
 * **tls**: [GatewayTls](#gatewaytls): TLS configuration definition for Gateway resource.
-* **url**: string (ReadOnly): URL of the gateway resource. Readonly
+* **url**: string (read-only): URL of the gateway resource. Readonly
 
 ## GatewayHostname
 ### Properties
@@ -438,14 +438,14 @@
 
 ## HttpRouteProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string (required): Fully qualified resource ID for the application that the portable resource is consumed by
 * **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 * **hostname**: string: The internal hostname accepting traffic for the HTTP Route. Readonly.
 * **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **scheme**: string (ReadOnly): The scheme used for traffic. Readonly.
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-* **url**: string (ReadOnly): A stable URL that that can be used to route traffic to a resource. Readonly.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
+* **scheme**: string (read-only): The scheme used for traffic. Readonly.
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
+* **url**: string (read-only): A stable URL that that can be used to route traffic to a resource. Readonly.
 
 ## TrackedResourceTags
 ### Properties
@@ -454,12 +454,12 @@
 
 ## SecretStoreProperties
 ### Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
-* **data**: [SecretStorePropertiesData](#secretstorepropertiesdata) (Required): An object to represent key-value type secrets
+* **application**: string (required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **data**: [SecretStorePropertiesData](#secretstorepropertiesdata) (required): An object to represent key-value type secrets
 * **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
 * **resource**: string: The resource id of external secret store.
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
 * **type**: 'certificate' | 'generic': The type of SecretStore data
 
 ## SecretStorePropertiesData
@@ -475,7 +475,7 @@
 
 ## ValueFromProperties
 ### Properties
-* **name**: string (Required): The name of the referenced secret.
+* **name**: string (required): The name of the referenced secret.
 * **version**: string: The version of the referenced secret.
 
 ## TrackedResourceTags
@@ -487,16 +487,16 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **application**: string (Required): Fully qualified resource ID for the application that the portable resource is consumed by
+* **application**: string (required): Fully qualified resource ID for the application that the portable resource is consumed by
 * **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
+* **status**: [ResourceStatus](#resourcestatus) (read-only): Status of a resource.
 ### AzureKeyVaultVolumeProperties
 #### Properties
 * **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
 * **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
-* **kind**: 'azure.com.keyvault' (Required): Discriminator property for VolumeProperties.
-* **resource**: string (Required): The ID of the keyvault to use for this volume resource
+* **kind**: 'azure.com.keyvault' (required): Discriminator property for VolumeProperties.
+* **resource**: string (required): The ID of the keyvault to use for this volume resource
 * **secrets**: [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets): The KeyVault secrets that this volume exposes
 
 
@@ -511,7 +511,7 @@
 * **certType**: 'certificate' | 'privatekey' | 'publickey': Represents certificate types
 * **encoding**: 'base64' | 'hex' | 'utf-8': Represents secret encodings
 * **format**: 'pem' | 'pfx': Represents certificate formats
-* **name**: string (Required): The name of the certificate
+* **name**: string (required): The name of the certificate
 * **version**: string: Certificate version
 
 ## AzureKeyVaultVolumePropertiesKeys
@@ -522,7 +522,7 @@
 ## KeyObjectProperties
 ### Properties
 * **alias**: string: File name when written to disk
-* **name**: string (Required): The name of the key
+* **name**: string (required): The name of the key
 * **version**: string: Key version
 
 ## AzureKeyVaultVolumePropertiesSecrets
@@ -534,7 +534,7 @@
 ### Properties
 * **alias**: string: File name when written to disk
 * **encoding**: 'base64' | 'hex' | 'utf-8': Represents secret encodings
-* **name**: string (Required): The name of the secret
+* **name**: string (required): The name of the secret
 * **version**: string: secret version
 
 ## TrackedResourceTags
@@ -544,8 +544,8 @@
 
 ## SecretStoreListSecretsResult
 ### Properties
-* **data**: [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) (ReadOnly): An object to represent key-value type secrets
-* **type**: 'certificate' | 'generic' (ReadOnly): The type of SecretStore data
+* **data**: [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) (read-only): An object to represent key-value type secrets
+* **type**: 'certificate' | 'generic' (read-only): The type of SecretStore data
 
 ## SecretStoreListSecretsResultData
 ### Properties

@@ -4,14 +4,14 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version  (_ReadOnly, DeployTimeConstant_) |
-| **id** | string | The resource id  (_ReadOnly, DeployTimeConstant_) |
-| **location** | string | The geo-location where the resource lives  (_Required_) |
-| **name** | string | The resource name  (_Required, DeployTimeConstant_) |
+| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
+| **location** | string | The geo-location where the resource lives <br />_(required)_ |
+| **name** | string | The resource name <br />_(required, deploy-time constant)_ |
 | **properties** | [VolumeProperties](#volumeproperties) | Volume properties |
-| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource.  (_ReadOnly_) |
+| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/volumes' | The resource type  (_ReadOnly, DeployTimeConstant_) |
+| **type** | 'Applications.Core/volumes' | The resource type <br />_(read-only, deploy-time constant)_ |
 
 ### VolumeProperties
 
@@ -21,10 +21,10 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by  (_Required_) |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
-| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called  (_ReadOnly_) |
-| **status** | [ResourceStatus](#resourcestatus) | Status of a resource.  (_ReadOnly_) |
+| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
+| **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
 
 #### AzureKeyVaultVolumeProperties
 
@@ -34,8 +34,8 @@
 |----------|------|-------------|
 | **certificates** | [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates) | The KeyVault certificates that this volume exposes |
 | **keys** | [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys) | The KeyVault keys that this volume exposes |
-| **kind** | 'azure.com.keyvault' | Discriminator property for VolumeProperties.  (_Required_) |
-| **resource** | string | The ID of the keyvault to use for this volume resource  (_Required_) |
+| **kind** | 'azure.com.keyvault' | Discriminator property for VolumeProperties. <br />_(required)_ |
+| **resource** | string | The ID of the keyvault to use for this volume resource <br />_(required)_ |
 | **secrets** | [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets) | The KeyVault secrets that this volume exposes |
 
 
@@ -65,8 +65,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute.  (_Required_) |
-| **namespace** | string | The namespace to use for the environment.  (_Required_) |
+| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute. <br />_(required)_ |
+| **namespace** | string | The namespace to use for the environment. <br />_(required)_ |
 
 
 ### IdentitySettings
@@ -75,7 +75,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting  (_Required_) |
+| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting <br />_(required)_ |
 | **oidcIssuer** | string | The URI for your compute platform's OIDC issuer |
 | **resource** | string | The resource ID of the provisioned identity |
 
@@ -109,7 +109,7 @@
 | **certType** | 'certificate' | 'privatekey' | 'publickey' | Represents certificate types |
 | **encoding** | 'base64' | 'hex' | 'utf-8' | Represents secret encodings |
 | **format** | 'pem' | 'pfx' | Represents certificate formats |
-| **name** | string | The name of the certificate  (_Required_) |
+| **name** | string | The name of the certificate <br />_(required)_ |
 | **version** | string | Certificate version |
 
 ### AzureKeyVaultVolumePropertiesKeys
@@ -129,7 +129,7 @@
 | Property | Type | Description |
 |----------|------|-------------|
 | **alias** | string | File name when written to disk |
-| **name** | string | The name of the key  (_Required_) |
+| **name** | string | The name of the key <br />_(required)_ |
 | **version** | string | Key version |
 
 ### AzureKeyVaultVolumePropertiesSecrets
@@ -150,7 +150,7 @@
 |----------|------|-------------|
 | **alias** | string | File name when written to disk |
 | **encoding** | 'base64' | 'hex' | 'utf-8' | Represents secret encodings |
-| **name** | string | The name of the secret  (_Required_) |
+| **name** | string | The name of the secret <br />_(required)_ |
 | **version** | string | secret version |
 
 ### SystemData

@@ -4,14 +4,14 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version  (_ReadOnly, DeployTimeConstant_) |
-| **id** | string | The resource id  (_ReadOnly, DeployTimeConstant_) |
-| **location** | string | The geo-location where the resource lives  (_Required_) |
-| **name** | string | The resource name  (_Required, DeployTimeConstant_) |
+| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
+| **location** | string | The geo-location where the resource lives <br />_(required)_ |
+| **name** | string | The resource name <br />_(required, deploy-time constant)_ |
 | **properties** | [SecretStoreProperties](#secretstoreproperties) | The properties of SecretStore |
-| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource.  (_ReadOnly_) |
+| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/secretStores' | The resource type  (_ReadOnly, DeployTimeConstant_) |
+| **type** | 'Applications.Core/secretStores' | The resource type <br />_(read-only, deploy-time constant)_ |
 
 ### Function listSecrets (Applications.Core/secretStores@2022-03-15-privatepreview)
 
@@ -26,12 +26,12 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by  (_Required_) |
-| **data** | [SecretStorePropertiesData](#secretstorepropertiesdata) | An object to represent key-value type secrets  (_Required_) |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
+| **data** | [SecretStorePropertiesData](#secretstorepropertiesdata) | An object to represent key-value type secrets <br />_(required)_ |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
-| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called  (_ReadOnly_) |
+| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
 | **resource** | string | The resource id of external secret store. |
-| **status** | [ResourceStatus](#resourcestatus) | Status of a resource.  (_ReadOnly_) |
+| **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
 | **type** | 'certificate' | 'generic' | The type of SecretStore data |
 
 ### SecretStorePropertiesData
@@ -60,7 +60,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **name** | string | The name of the referenced secret.  (_Required_) |
+| **name** | string | The name of the referenced secret. <br />_(required)_ |
 | **version** | string | The version of the referenced secret. |
 
 ### ResourceStatus
@@ -89,8 +89,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute.  (_Required_) |
-| **namespace** | string | The namespace to use for the environment.  (_Required_) |
+| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute. <br />_(required)_ |
+| **namespace** | string | The namespace to use for the environment. <br />_(required)_ |
 
 
 ### IdentitySettings
@@ -99,7 +99,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting  (_Required_) |
+| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting <br />_(required)_ |
 | **oidcIssuer** | string | The URI for your compute platform's OIDC issuer |
 | **resource** | string | The resource ID of the provisioned identity |
 
@@ -142,8 +142,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **data** | [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) | An object to represent key-value type secrets  (_ReadOnly_) |
-| **type** | 'certificate' | 'generic' | The type of SecretStore data  (_ReadOnly_) |
+| **data** | [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) | An object to represent key-value type secrets <br />_(read-only)_ |
+| **type** | 'certificate' | 'generic' | The type of SecretStore data <br />_(read-only)_ |
 
 ### SecretStoreListSecretsResultData
 

@@ -4,14 +4,14 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version  (_ReadOnly, DeployTimeConstant_) |
-| **id** | string | The resource id  (_ReadOnly, DeployTimeConstant_) |
-| **location** | string | The geo-location where the resource lives  (_Required_) |
-| **name** | string | The resource name  (_Required, DeployTimeConstant_) |
+| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
+| **location** | string | The geo-location where the resource lives <br />_(required)_ |
+| **name** | string | The resource name <br />_(required, deploy-time constant)_ |
 | **properties** | [SqlDatabaseProperties](#sqldatabaseproperties) | SqlDatabase properties |
-| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource.  (_ReadOnly_) |
+| **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Datastores/sqlDatabases' | The resource type  (_ReadOnly, DeployTimeConstant_) |
+| **type** | 'Applications.Datastores/sqlDatabases' | The resource type <br />_(read-only, deploy-time constant)_ |
 
 ### Function listSecrets (Applications.Datastores/sqlDatabases@2022-03-15-privatepreview)
 
@@ -28,15 +28,15 @@
 |----------|------|-------------|
 | **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
 | **database** | string | The name of the Sql database. |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to  (_Required_) |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
 | **port** | int | Port value of the target Sql database |
-| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called  (_ReadOnly_) |
+| **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
 | **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
 | **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
 | **resources** | [ResourceReference](#resourcereference)[] | List of the resource IDs that support the SqlDatabase resource |
 | **secrets** | [SqlDatabaseSecrets](#sqldatabasesecrets) | The secret values for the given SqlDatabase resource |
 | **server** | string | The fully qualified domain name of the Sql database. |
-| **status** | [ResourceStatus](#resourcestatus) | Status of a resource.  (_ReadOnly_) |
+| **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
 | **username** | string | Username to use when connecting to the target Sql database |
 
 ### Recipe
@@ -45,7 +45,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **name** | string | The name of the recipe within the environment to use  (_Required_) |
+| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
 | **parameters** | any | Any object |
 
 ### ResourceReference
@@ -54,7 +54,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **id** | string | Resource id of an existing resource  (_Required_) |
+| **id** | string | Resource id of an existing resource <br />_(required)_ |
 
 ### SqlDatabaseSecrets
 
@@ -91,8 +91,8 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute.  (_Required_) |
-| **namespace** | string | The namespace to use for the environment.  (_Required_) |
+| **kind** | 'kubernetes' | Discriminator property for EnvironmentCompute. <br />_(required)_ |
+| **namespace** | string | The namespace to use for the environment. <br />_(required)_ |
 
 
 ### IdentitySettings
@@ -101,7 +101,7 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting  (_Required_) |
+| **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting <br />_(required)_ |
 | **oidcIssuer** | string | The URI for your compute platform's OIDC issuer |
 | **resource** | string | The resource ID of the provisioned identity |
 
@@ -144,6 +144,6 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **connectionString** | string | Connection string used to connect to the target Sql database  (_ReadOnly_) |
-| **password** | string | Password to use when connecting to the target Sql database  (_ReadOnly_) |
+| **connectionString** | string | Connection string used to connect to the target Sql database <br />_(read-only)_ |
+| **password** | string | Password to use when connecting to the target Sql database <br />_(read-only)_ |
 
