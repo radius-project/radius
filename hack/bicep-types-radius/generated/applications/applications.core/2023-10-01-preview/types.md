@@ -3,10 +3,10 @@
 ## Resource Applications.Core/applications@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [ApplicationProperties](#applicationproperties): Application properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -15,10 +15,10 @@
 ## Resource Applications.Core/containers@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [ContainerProperties](#containerproperties): Container properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -27,10 +27,10 @@
 ## Resource Applications.Core/environments@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [EnvironmentProperties](#environmentproperties): Environment properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -39,10 +39,10 @@
 ## Resource Applications.Core/extenders@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [ExtenderProperties](#extenderproperties): ExtenderResource portable resource properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -51,10 +51,10 @@
 ## Resource Applications.Core/gateways@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [GatewayProperties](#gatewayproperties): Gateway properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -63,10 +63,10 @@
 ## Resource Applications.Core/httpRoutes@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [HttpRouteProperties](#httprouteproperties): HTTPRoute properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -75,10 +75,10 @@
 ## Resource Applications.Core/secretStores@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [SecretStoreProperties](#secretstoreproperties): The properties of SecretStore
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -87,10 +87,10 @@
 ## Resource Applications.Core/volumes@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [VolumeProperties](#volumeproperties): Volume properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.

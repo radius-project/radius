@@ -4,95 +4,40 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [ApplicationProperties](#applicationproperties) | Application properties |
+| **properties** | [DaprSecretStoreProperties](#daprsecretstoreproperties) | Dapr SecretStore portable resource properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/applications' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Dapr/secretStores' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### ApplicationProperties
+### DaprSecretStoreProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
+| **componentName** | string | The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component. <br />_(read-only)_ |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
-| **extensions** | [Extension](#extension)[] | The application extension. |
+| **metadata** | any | Any object |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
+| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
+| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
+| **type** | string | Dapr component type which must matches the format used by Dapr Kubernetes configuration format |
+| **version** | string | Dapr component version |
 
-### Extension
-
-* **Discriminator**: kind
-
-#### Base Properties
-
-* **none**
-
-
-#### DaprSidecarExtension
-
-##### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **appId** | string | The Dapr appId. Specifies the identifier used by Dapr for service invocation. <br />_(required)_ |
-| **appPort** | int | The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. |
-| **config** | string | Specifies the Dapr configuration to use for the resource. |
-| **kind** | 'daprSidecar' | Discriminator property for Extension. <br />_(required)_ |
-| **protocol** | 'grpc' | 'http' | The Dapr sidecar extension protocol |
-
-#### KubernetesMetadataExtension
-
-##### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **annotations** | [KubernetesMetadataExtensionAnnotations](#kubernetesmetadataextensionannotations) | Annotations to be applied to the Kubernetes resources output by the resource |
-| **kind** | 'kubernetesMetadata' | Discriminator property for Extension. <br />_(required)_ |
-| **labels** | [KubernetesMetadataExtensionLabels](#kubernetesmetadataextensionlabels) | Labels to be applied to the Kubernetes resources output by the resource |
-
-#### KubernetesNamespaceExtension
-
-##### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **kind** | 'kubernetesNamespace' | Discriminator property for Extension. <br />_(required)_ |
-| **namespace** | string | The namespace of the application environment. <br />_(required)_ |
-
-#### ManualScalingExtension
-
-##### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **kind** | 'manualScaling' | Discriminator property for Extension. <br />_(required)_ |
-| **replicas** | int | Replica count. <br />_(required)_ |
-
-
-### KubernetesMetadataExtensionAnnotations
+### Recipe
 
 #### Properties
 
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: string
-
-### KubernetesMetadataExtensionLabels
-
-#### Properties
-
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: string
+| Property | Type | Description |
+|----------|------|-------------|
+| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
+| **parameters** | any | Any object |
 
 ### ResourceStatus
 

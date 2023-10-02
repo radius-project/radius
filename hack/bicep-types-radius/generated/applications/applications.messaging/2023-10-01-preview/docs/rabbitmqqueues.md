@@ -4,64 +4,68 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [SecretStoreProperties](#secretstoreproperties) | The properties of SecretStore |
+| **properties** | [RabbitMQQueueProperties](#rabbitmqqueueproperties) | RabbitMQQueue portable resource properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/secretStores' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Messaging/rabbitMQQueues' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### Function listSecrets (Applications.Core/secretStores@2022-03-15-privatepreview)
+### Function listSecrets (Applications.Messaging/rabbitMQQueues@2023-10-01-preview)
 
-* **Resource**: Applications.Core/secretStores
-* **ApiVersion**: 2022-03-15-privatepreview
+* **Resource**: Applications.Messaging/rabbitMQQueues
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
-* **Output**: [SecretStoreListSecretsResult](#secretstorelistsecretsresult)
+* **Output**: [RabbitMQListSecretsResult](#rabbitmqlistsecretsresult)
 
-### SecretStoreProperties
+### RabbitMQQueueProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
-| **data** | [SecretStorePropertiesData](#secretstorepropertiesdata) | An object to represent key-value type secrets <br />_(required)_ |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
+| **host** | string | The hostname of the RabbitMQ instance |
+| **port** | int | The port of the RabbitMQ instance. Defaults to 5672 |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **resource** | string | The resource id of external secret store. |
+| **queue** | string | The name of the queue |
+| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
+| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
+| **resources** | [ResourceReference](#resourcereference)[] | List of the resource IDs that support the rabbitMQ resource |
+| **secrets** | [RabbitMQSecrets](#rabbitmqsecrets) | The connection secrets properties to the RabbitMQ instance |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
-| **type** | 'certificate' | 'generic' | The type of SecretStore data |
+| **tls** | bool | Specifies whether to use SSL when connecting to the RabbitMQ instance |
+| **username** | string | The username to use when connecting to the RabbitMQ instance |
+| **vHost** | string | The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost. |
 
-### SecretStorePropertiesData
-
-#### Properties
-
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
-
-### SecretValueProperties
+### Recipe
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **encoding** | 'base64' | 'raw' | The type of SecretValue Encoding |
-| **value** | string | The value of secret. |
-| **valueFrom** | [ValueFromProperties](#valuefromproperties) | The Secret value source properties |
+| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
+| **parameters** | any | Any object |
 
-### ValueFromProperties
+### ResourceReference
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **name** | string | The name of the referenced secret. <br />_(required)_ |
-| **version** | string | The version of the referenced secret. |
+| **id** | string | Resource id of an existing resource <br />_(required)_ |
+
+### RabbitMQSecrets
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **password** | string | The password used to connect to the RabbitMQ instance |
+| **uri** | string | The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value |
 
 ### ResourceStatus
 
@@ -136,22 +140,12 @@
 
 * **Additional Properties Type**: string
 
-### SecretStoreListSecretsResult
+### RabbitMQListSecretsResult
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **data** | [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) | An object to represent key-value type secrets <br />_(read-only)_ |
-| **type** | 'certificate' | 'generic' | The type of SecretStore data <br />_(read-only)_ |
-
-### SecretStoreListSecretsResultData
-
-#### Properties
-
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
+| **password** | string | The password used to connect to the RabbitMQ instance <br />_(read-only)_ |
+| **uri** | string | The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value <br />_(read-only)_ |
 

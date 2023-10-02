@@ -4,67 +4,29 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [RedisCacheProperties](#rediscacheproperties) | RedisCache portable resource properties |
+| **properties** | [HttpRouteProperties](#httprouteproperties) | HTTPRoute properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Datastores/redisCaches' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Core/httpRoutes' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### Function listSecrets (Applications.Datastores/redisCaches@2022-03-15-privatepreview)
-
-* **Resource**: Applications.Datastores/redisCaches
-* **ApiVersion**: 2022-03-15-privatepreview
-* **Input**: any
-* **Output**: [RedisCacheListSecretsResult](#rediscachelistsecretsresult)
-
-### RedisCacheProperties
+### HttpRouteProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
-| **host** | string | The host name of the target Redis cache |
-| **port** | int | The port value of the target Redis cache |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
+| **hostname** | string | The internal hostname accepting traffic for the HTTP Route. Readonly. |
+| **port** | int | The port number for the HTTP Route. Defaults to 80. Readonly. |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
-| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
-| **resources** | [ResourceReference](#resourcereference)[] | List of the resource IDs that support the Redis resource |
-| **secrets** | [RedisCacheSecrets](#rediscachesecrets) | The secret values for the given RedisCache resource |
+| **scheme** | string | The scheme used for traffic. Readonly. <br />_(read-only)_ |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
-| **tls** | bool | Specifies whether to enable SSL connections to the Redis cache |
-| **username** | string | The username for Redis cache |
-
-### Recipe
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
-| **parameters** | any | Any object |
-
-### ResourceReference
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **id** | string | Resource id of an existing resource <br />_(required)_ |
-
-### RedisCacheSecrets
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **connectionString** | string | The connection string used to connect to the Redis cache |
-| **password** | string | The password for this Redis cache instance |
-| **url** | string | The URL used to connect to the Redis cache |
+| **url** | string | A stable URL that that can be used to route traffic to a resource. Readonly. <br />_(read-only)_ |
 
 ### ResourceStatus
 
@@ -138,14 +100,4 @@
 #### Additional Properties
 
 * **Additional Properties Type**: string
-
-### RedisCacheListSecretsResult
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **connectionString** | string | The connection string used to connect to the Redis cache <br />_(read-only)_ |
-| **password** | string | The password for this Redis cache instance <br />_(read-only)_ |
-| **url** | string | The URL used to connect to the Redis cache <br />_(read-only)_ |
 

@@ -4,47 +4,64 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [ExtenderProperties](#extenderproperties) | ExtenderResource portable resource properties |
+| **properties** | [SecretStoreProperties](#secretstoreproperties) | The properties of SecretStore |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/extenders' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Core/secretStores' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### Function listSecrets (Applications.Core/extenders@2022-03-15-privatepreview)
+### Function listSecrets (Applications.Core/secretStores@2023-10-01-preview)
 
-* **Resource**: Applications.Core/extenders
-* **ApiVersion**: 2022-03-15-privatepreview
+* **Resource**: Applications.Core/secretStores
+* **ApiVersion**: 2023-10-01-preview
 * **Input**: any
-* **Output**: any
+* **Output**: [SecretStoreListSecretsResult](#secretstorelistsecretsresult)
 
-### ExtenderProperties
+### SecretStoreProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
+| **data** | [SecretStorePropertiesData](#secretstorepropertiesdata) | An object to represent key-value type secrets <br />_(required)_ |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
-| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
-| **secrets** | any | Any object |
+| **resource** | string | The resource id of external secret store. |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
+| **type** | 'certificate' | 'generic' | The type of SecretStore data |
+
+### SecretStorePropertiesData
+
+#### Properties
+
+* **none**
+
 #### Additional Properties
 
-* **Additional Properties Type**: any
+* **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
 
-### Recipe
+### SecretValueProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
-| **parameters** | any | Any object |
+| **encoding** | 'base64' | 'raw' | The type of SecretValue Encoding |
+| **value** | string | The value of secret. |
+| **valueFrom** | [ValueFromProperties](#valuefromproperties) | The Secret value source properties |
+
+### ValueFromProperties
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **name** | string | The name of the referenced secret. <br />_(required)_ |
+| **version** | string | The version of the referenced secret. |
 
 ### ResourceStatus
 
@@ -118,4 +135,23 @@
 #### Additional Properties
 
 * **Additional Properties Type**: string
+
+### SecretStoreListSecretsResult
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **data** | [SecretStoreListSecretsResultData](#secretstorelistsecretsresultdata) | An object to represent key-value type secrets <br />_(read-only)_ |
+| **type** | 'certificate' | 'generic' | The type of SecretStore data <br />_(read-only)_ |
+
+### SecretStoreListSecretsResultData
+
+#### Properties
+
+* **none**
+
+#### Additional Properties
+
+* **Additional Properties Type**: [SecretValueProperties](#secretvalueproperties)
 

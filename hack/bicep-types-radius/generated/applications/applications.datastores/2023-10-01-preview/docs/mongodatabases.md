@@ -4,40 +4,66 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [VolumeProperties](#volumeproperties) | Volume properties |
+| **properties** | [MongoDatabaseProperties](#mongodatabaseproperties) | MongoDatabase portable resource properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/volumes' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Datastores/mongoDatabases' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### VolumeProperties
+### Function listSecrets (Applications.Datastores/mongoDatabases@2023-10-01-preview)
 
-* **Discriminator**: kind
+* **Resource**: Applications.Datastores/mongoDatabases
+* **ApiVersion**: 2023-10-01-preview
+* **Input**: any
+* **Output**: [MongoDatabaseListSecretsResult](#mongodatabaselistsecretsresult)
 
-#### Base Properties
+### MongoDatabaseProperties
+
+#### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
+| **database** | string | Database name of the target Mongo database |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
+| **host** | string | Host name of the target Mongo database |
+| **port** | int | Port value of the target Mongo database |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
+| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
+| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
+| **resources** | [ResourceReference](#resourcereference)[] | List of the resource IDs that support the MongoDB resource |
+| **secrets** | [MongoDatabaseSecrets](#mongodatabasesecrets) | The secret values for the given MongoDatabase resource |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
+| **username** | string | Username to use when connecting to the target Mongo database |
 
-#### AzureKeyVaultVolumeProperties
+### Recipe
 
-##### Properties
+#### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **certificates** | [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates) | The KeyVault certificates that this volume exposes |
-| **keys** | [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys) | The KeyVault keys that this volume exposes |
-| **kind** | 'azure.com.keyvault' | Discriminator property for VolumeProperties. <br />_(required)_ |
-| **resource** | string | The ID of the keyvault to use for this volume resource <br />_(required)_ |
-| **secrets** | [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets) | The KeyVault secrets that this volume exposes |
+| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
+| **parameters** | any | Any object |
 
+### ResourceReference
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **id** | string | Resource id of an existing resource <br />_(required)_ |
+
+### MongoDatabaseSecrets
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **connectionString** | string | Connection string used to connect to the target Mongo database |
+| **password** | string | Password to use when connecting to the target Mongo database |
 
 ### ResourceStatus
 
@@ -89,70 +115,6 @@
 | **localId** | string | The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships. |
 | **radiusManaged** | bool | Determines whether Radius manages the lifecycle of the underlying resource. |
 
-### AzureKeyVaultVolumePropertiesCertificates
-
-#### Properties
-
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: [CertificateObjectProperties](#certificateobjectproperties)
-
-### CertificateObjectProperties
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **alias** | string | File name when written to disk |
-| **certType** | 'certificate' | 'privatekey' | 'publickey' | Represents certificate types |
-| **encoding** | 'base64' | 'hex' | 'utf-8' | Represents secret encodings |
-| **format** | 'pem' | 'pfx' | Represents certificate formats |
-| **name** | string | The name of the certificate <br />_(required)_ |
-| **version** | string | Certificate version |
-
-### AzureKeyVaultVolumePropertiesKeys
-
-#### Properties
-
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: [KeyObjectProperties](#keyobjectproperties)
-
-### KeyObjectProperties
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **alias** | string | File name when written to disk |
-| **name** | string | The name of the key <br />_(required)_ |
-| **version** | string | Key version |
-
-### AzureKeyVaultVolumePropertiesSecrets
-
-#### Properties
-
-* **none**
-
-#### Additional Properties
-
-* **Additional Properties Type**: [SecretObjectProperties](#secretobjectproperties)
-
-### SecretObjectProperties
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **alias** | string | File name when written to disk |
-| **encoding** | 'base64' | 'hex' | 'utf-8' | Represents secret encodings |
-| **name** | string | The name of the secret <br />_(required)_ |
-| **version** | string | secret version |
-
 ### SystemData
 
 #### Properties
@@ -175,4 +137,13 @@
 #### Additional Properties
 
 * **Additional Properties Type**: string
+
+### MongoDatabaseListSecretsResult
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **connectionString** | string | Connection string used to connect to the target Mongo database <br />_(read-only)_ |
+| **password** | string | Password to use when connecting to the target Mongo database <br />_(read-only)_ |
 

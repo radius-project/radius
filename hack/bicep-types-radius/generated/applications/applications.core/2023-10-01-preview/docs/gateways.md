@@ -4,49 +4,49 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [DaprStateStoreProperties](#daprstatestoreproperties) | Dapr StateStore portable resource properties |
+| **properties** | [GatewayProperties](#gatewayproperties) | Gateway properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Dapr/stateStores' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Core/gateways' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### DaprStateStoreProperties
+### GatewayProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
-| **componentName** | string | The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component. <br />_(read-only)_ |
-| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
-| **metadata** | any | Any object |
+| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
+| **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
+| **hostname** | [GatewayHostname](#gatewayhostname) | Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io. |
+| **internal** | bool | Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet). |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
-| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
-| **resources** | [ResourceReference](#resourcereference)[] | A collection of references to resources associated with the state store |
+| **routes** | [GatewayRoute](#gatewayroute)[] | Routes attached to this Gateway <br />_(required)_ |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
-| **type** | string | Dapr component type which must matches the format used by Dapr Kubernetes configuration format |
-| **version** | string | Dapr component version |
+| **tls** | [GatewayTls](#gatewaytls) | TLS configuration definition for Gateway resource. |
+| **url** | string | URL of the gateway resource. Readonly <br />_(read-only)_ |
 
-### Recipe
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
-| **parameters** | any | Any object |
-
-### ResourceReference
+### GatewayHostname
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **id** | string | Resource id of an existing resource <br />_(required)_ |
+| **fullyQualifiedHostname** | string | Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined. |
+| **prefix** | string | Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden if both are defined. |
+
+### GatewayRoute
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **destination** | string | The HttpRoute to route to. Ex - myserviceroute.id. |
+| **path** | string | The path to match the incoming request path on. Ex - /myservice. |
+| **replacePrefix** | string | Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute' |
 
 ### ResourceStatus
 
@@ -97,6 +97,16 @@
 | **id** | string | The UCP resource ID of the underlying resource. |
 | **localId** | string | The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships. |
 | **radiusManaged** | bool | Determines whether Radius manages the lifecycle of the underlying resource. |
+
+### GatewayTls
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **certificateFrom** | string | The resource id for the secret containing the TLS certificate and key for the gateway. |
+| **minimumProtocolVersion** | '1.2' | '1.3' | Tls Minimum versions for Gateway resource. |
+| **sslPassthrough** | bool | If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption. |
 
 ### SystemData
 

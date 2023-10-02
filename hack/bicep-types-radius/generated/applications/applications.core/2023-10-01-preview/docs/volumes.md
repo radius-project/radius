@@ -4,29 +4,40 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [HttpRouteProperties](#httprouteproperties) | HTTPRoute properties |
+| **properties** | [VolumeProperties](#volumeproperties) | Volume properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Core/httpRoutes' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Core/volumes' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### HttpRouteProperties
+### VolumeProperties
 
-#### Properties
+* **Discriminator**: kind
+
+#### Base Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
 | **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by <br />_(required)_ |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to (if applicable) |
-| **hostname** | string | The internal hostname accepting traffic for the HTTP Route. Readonly. |
-| **port** | int | The port number for the HTTP Route. Defaults to 80. Readonly. |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **scheme** | string | The scheme used for traffic. Readonly. <br />_(read-only)_ |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
-| **url** | string | A stable URL that that can be used to route traffic to a resource. Readonly. <br />_(read-only)_ |
+
+#### AzureKeyVaultVolumeProperties
+
+##### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **certificates** | [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates) | The KeyVault certificates that this volume exposes |
+| **keys** | [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys) | The KeyVault keys that this volume exposes |
+| **kind** | 'azure.com.keyvault' | Discriminator property for VolumeProperties. <br />_(required)_ |
+| **resource** | string | The ID of the keyvault to use for this volume resource <br />_(required)_ |
+| **secrets** | [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets) | The KeyVault secrets that this volume exposes |
+
 
 ### ResourceStatus
 
@@ -77,6 +88,70 @@
 | **id** | string | The UCP resource ID of the underlying resource. |
 | **localId** | string | The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships. |
 | **radiusManaged** | bool | Determines whether Radius manages the lifecycle of the underlying resource. |
+
+### AzureKeyVaultVolumePropertiesCertificates
+
+#### Properties
+
+* **none**
+
+#### Additional Properties
+
+* **Additional Properties Type**: [CertificateObjectProperties](#certificateobjectproperties)
+
+### CertificateObjectProperties
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **alias** | string | File name when written to disk |
+| **certType** | 'certificate' | 'privatekey' | 'publickey' | Represents certificate types |
+| **encoding** | 'base64' | 'hex' | 'utf-8' | Represents secret encodings |
+| **format** | 'pem' | 'pfx' | Represents certificate formats |
+| **name** | string | The name of the certificate <br />_(required)_ |
+| **version** | string | Certificate version |
+
+### AzureKeyVaultVolumePropertiesKeys
+
+#### Properties
+
+* **none**
+
+#### Additional Properties
+
+* **Additional Properties Type**: [KeyObjectProperties](#keyobjectproperties)
+
+### KeyObjectProperties
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **alias** | string | File name when written to disk |
+| **name** | string | The name of the key <br />_(required)_ |
+| **version** | string | Key version |
+
+### AzureKeyVaultVolumePropertiesSecrets
+
+#### Properties
+
+* **none**
+
+#### Additional Properties
+
+* **Additional Properties Type**: [SecretObjectProperties](#secretobjectproperties)
+
+### SecretObjectProperties
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **alias** | string | File name when written to disk |
+| **encoding** | 'base64' | 'hex' | 'utf-8' | Represents secret encodings |
+| **name** | string | The name of the secret <br />_(required)_ |
+| **version** | string | secret version |
 
 ### SystemData
 

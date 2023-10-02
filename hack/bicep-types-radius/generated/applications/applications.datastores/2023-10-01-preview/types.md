@@ -3,10 +3,10 @@
 ## Resource Applications.Datastores/mongoDatabases@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [MongoDatabaseProperties](#mongodatabaseproperties): MongoDatabase portable resource properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -15,10 +15,10 @@
 ## Resource Applications.Datastores/redisCaches@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [RedisCacheProperties](#rediscacheproperties): RedisCache portable resource properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
@@ -27,10 +27,10 @@
 ## Resource Applications.Datastores/sqlDatabases@2023-10-01-preview
 * **Valid Scope(s)**: Unknown
 ### Properties
-* **apiVersion**: '2023-10-01-preview' (ReadOnly, DeployTimeConstant): The resource api version
-* **id**: string (ReadOnly, DeployTimeConstant): The resource id
-* **location**: string (Required): The geo-location where the resource lives
-* **name**: string (Required, DeployTimeConstant): The resource name
+* **apiVersion**: '2023-10-01-preview' (read-only, deploy-time constant): The resource api version
+* **id**: string (read-only, deploy-time constant): The resource id
+* **location**: string (required): The geo-location where the resource lives
+* **name**: string (required, deploy-time constant): The resource name
 * **properties**: [SqlDatabaseProperties](#sqldatabaseproperties): SqlDatabase properties
 * **systemData**: [SystemData](#systemdata) (read-only): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.

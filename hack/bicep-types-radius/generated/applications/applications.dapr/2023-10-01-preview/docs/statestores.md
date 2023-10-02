@@ -4,42 +4,32 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [RabbitMQQueueProperties](#rabbitmqqueueproperties) | RabbitMQQueue portable resource properties |
+| **properties** | [DaprStateStoreProperties](#daprstatestoreproperties) | Dapr StateStore portable resource properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Messaging/rabbitMQQueues' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Dapr/stateStores' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### Function listSecrets (Applications.Messaging/rabbitMQQueues@2022-03-15-privatepreview)
-
-* **Resource**: Applications.Messaging/rabbitMQQueues
-* **ApiVersion**: 2022-03-15-privatepreview
-* **Input**: any
-* **Output**: [RabbitMQListSecretsResult](#rabbitmqlistsecretsresult)
-
-### RabbitMQQueueProperties
+### DaprStateStoreProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
 | **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
+| **componentName** | string | The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component. <br />_(read-only)_ |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
-| **host** | string | The hostname of the RabbitMQ instance |
-| **port** | int | The port of the RabbitMQ instance. Defaults to 5672 |
+| **metadata** | any | Any object |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **queue** | string | The name of the queue |
 | **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
 | **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
-| **resources** | [ResourceReference](#resourcereference)[] | List of the resource IDs that support the rabbitMQ resource |
-| **secrets** | [RabbitMQSecrets](#rabbitmqsecrets) | The connection secrets properties to the RabbitMQ instance |
+| **resources** | [ResourceReference](#resourcereference)[] | A collection of references to resources associated with the state store |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
-| **tls** | bool | Specifies whether to use SSL when connecting to the RabbitMQ instance |
-| **username** | string | The username to use when connecting to the RabbitMQ instance |
-| **vHost** | string | The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost. |
+| **type** | string | Dapr component type which must matches the format used by Dapr Kubernetes configuration format |
+| **version** | string | Dapr component version |
 
 ### Recipe
 
@@ -57,15 +47,6 @@
 | Property | Type | Description |
 |----------|------|-------------|
 | **id** | string | Resource id of an existing resource <br />_(required)_ |
-
-### RabbitMQSecrets
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **password** | string | The password used to connect to the RabbitMQ instance |
-| **uri** | string | The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value |
 
 ### ResourceStatus
 
@@ -139,13 +120,4 @@
 #### Additional Properties
 
 * **Additional Properties Type**: string
-
-### RabbitMQListSecretsResult
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **password** | string | The password used to connect to the RabbitMQ instance <br />_(read-only)_ |
-| **uri** | string | The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value <br />_(read-only)_ |
 

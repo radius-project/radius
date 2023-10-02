@@ -4,66 +4,95 @@
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **apiVersion** | '2022-03-15-privatepreview' | The resource api version <br />_(read-only, deploy-time constant)_ |
+| **apiVersion** | '2023-10-01-preview' | The resource api version <br />_(read-only, deploy-time constant)_ |
 | **id** | string | The resource id <br />_(read-only, deploy-time constant)_ |
 | **location** | string | The geo-location where the resource lives <br />_(required)_ |
 | **name** | string | The resource name <br />_(required, deploy-time constant)_ |
-| **properties** | [MongoDatabaseProperties](#mongodatabaseproperties) | MongoDatabase portable resource properties |
+| **properties** | [ApplicationProperties](#applicationproperties) | Application properties |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(read-only)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
-| **type** | 'Applications.Datastores/mongoDatabases' | The resource type <br />_(read-only, deploy-time constant)_ |
+| **type** | 'Applications.Core/applications' | The resource type <br />_(read-only, deploy-time constant)_ |
 
-### Function listSecrets (Applications.Datastores/mongoDatabases@2022-03-15-privatepreview)
-
-* **Resource**: Applications.Datastores/mongoDatabases
-* **ApiVersion**: 2022-03-15-privatepreview
-* **Input**: any
-* **Output**: [MongoDatabaseListSecretsResult](#mongodatabaselistsecretsresult)
-
-### MongoDatabaseProperties
+### ApplicationProperties
 
 #### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **application** | string | Fully qualified resource ID for the application that the portable resource is consumed by (if applicable) |
-| **database** | string | Database name of the target Mongo database |
 | **environment** | string | Fully qualified resource ID for the environment that the portable resource is linked to <br />_(required)_ |
-| **host** | string | Host name of the target Mongo database |
-| **port** | int | Port value of the target Mongo database |
+| **extensions** | [Extension](#extension)[] | The application extension. |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
-| **recipe** | [Recipe](#recipe) | The recipe used to automatically deploy underlying infrastructure for a portable resource |
-| **resourceProvisioning** | 'manual' | 'recipe' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values. |
-| **resources** | [ResourceReference](#resourcereference)[] | List of the resource IDs that support the MongoDB resource |
-| **secrets** | [MongoDatabaseSecrets](#mongodatabasesecrets) | The secret values for the given MongoDatabase resource |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
-| **username** | string | Username to use when connecting to the target Mongo database |
 
-### Recipe
+### Extension
 
-#### Properties
+* **Discriminator**: kind
 
-| Property | Type | Description |
-|----------|------|-------------|
-| **name** | string | The name of the recipe within the environment to use <br />_(required)_ |
-| **parameters** | any | Any object |
+#### Base Properties
 
-### ResourceReference
+* **none**
 
-#### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| **id** | string | Resource id of an existing resource <br />_(required)_ |
+#### DaprSidecarExtension
 
-### MongoDatabaseSecrets
-
-#### Properties
+##### Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| **connectionString** | string | Connection string used to connect to the target Mongo database |
-| **password** | string | Password to use when connecting to the target Mongo database |
+| **appId** | string | The Dapr appId. Specifies the identifier used by Dapr for service invocation. <br />_(required)_ |
+| **appPort** | int | The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. |
+| **config** | string | Specifies the Dapr configuration to use for the resource. |
+| **kind** | 'daprSidecar' | Discriminator property for Extension. <br />_(required)_ |
+| **protocol** | 'grpc' | 'http' | The Dapr sidecar extension protocol |
+
+#### KubernetesMetadataExtension
+
+##### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **annotations** | [KubernetesMetadataExtensionAnnotations](#kubernetesmetadataextensionannotations) | Annotations to be applied to the Kubernetes resources output by the resource |
+| **kind** | 'kubernetesMetadata' | Discriminator property for Extension. <br />_(required)_ |
+| **labels** | [KubernetesMetadataExtensionLabels](#kubernetesmetadataextensionlabels) | Labels to be applied to the Kubernetes resources output by the resource |
+
+#### KubernetesNamespaceExtension
+
+##### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **kind** | 'kubernetesNamespace' | Discriminator property for Extension. <br />_(required)_ |
+| **namespace** | string | The namespace of the application environment. <br />_(required)_ |
+
+#### ManualScalingExtension
+
+##### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **kind** | 'manualScaling' | Discriminator property for Extension. <br />_(required)_ |
+| **replicas** | int | Replica count. <br />_(required)_ |
+
+
+### KubernetesMetadataExtensionAnnotations
+
+#### Properties
+
+* **none**
+
+#### Additional Properties
+
+* **Additional Properties Type**: string
+
+### KubernetesMetadataExtensionLabels
+
+#### Properties
+
+* **none**
+
+#### Additional Properties
+
+* **Additional Properties Type**: string
 
 ### ResourceStatus
 
@@ -137,13 +166,4 @@
 #### Additional Properties
 
 * **Additional Properties Type**: string
-
-### MongoDatabaseListSecretsResult
-
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| **connectionString** | string | Connection string used to connect to the target Mongo database <br />_(read-only)_ |
-| **password** | string | Password to use when connecting to the target Mongo database <br />_(read-only)_ |
 
