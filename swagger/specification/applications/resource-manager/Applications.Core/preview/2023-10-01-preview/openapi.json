@@ -2950,6 +2950,17 @@
           },
           "x-ms-identifiers": []
         },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ContainerResourceProvisioning",
+          "description": "Specifies how the underlying container resource is provisioned and managed."
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the container",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
+        },
         "runtimes": {
           "$ref": "#/definitions/RuntimesProperties",
           "description": "Specifies Runtime-specific functionality"
@@ -3000,6 +3011,30 @@
       "required": [
         "value"
       ]
+    },
+    "ContainerResourceProvisioning": {
+      "type": "string",
+      "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource.",
+      "enum": [
+        "internal",
+        "manual"
+      ],
+      "x-ms-enum": {
+        "name": "ContainerResourceProvisioning",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "internal",
+            "value": "internal",
+            "description": "The resource lifecycle will be managed internally by Radius"
+          },
+          {
+            "name": "manual",
+            "value": "manual",
+            "description": "The resource lifecycle will be managed by the user"
+          }
+        ]
+      }
     },
     "ContainerResourceUpdate": {
       "type": "object",
@@ -3052,6 +3087,17 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "resourceProvisioning": {
+          "$ref": "#/definitions/ContainerResourceProvisioning",
+          "description": "Specifies how the underlying container resource is provisioned and managed."
+        },
+        "resources": {
+          "type": "array",
+          "description": "A collection of references to resources associated with the container",
+          "items": {
+            "$ref": "#/definitions/ResourceReference"
+          }
         },
         "runtimes": {
           "$ref": "#/definitions/RuntimesProperties",
@@ -4587,6 +4633,19 @@
           }
         ]
       }
+    },
+    "ResourceReference": {
+      "type": "object",
+      "description": "Describes a reference to an existing resource",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource id of an existing resource"
+        }
+      },
+      "required": [
+        "id"
+      ]
     },
     "ResourceStatus": {
       "type": "object",

@@ -397,6 +397,41 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	require.Len(t, output.Resources, 4)
 }
 
+func Test_Render_Manual(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image: "none",
+		},
+		ResourceProvisioning: datamodel.ContainerResourceProvisioningManual,
+		Resources: []datamodel.ResourceReference{
+			{
+				ID: testResourceID,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	ctx := testcontext.New(t)
+	renderer := Renderer{}
+	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	expected := []rpv1.OutputResource{
+		{
+			ID:            resources.MustParse(testResourceID),
+			RadiusManaged: to.Ptr(false),
+		},
+	}
+
+	require.Equal(t, expected, output.Resources)
+}
+
 func Test_Render_PortWithoutRoute(t *testing.T) {
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rpv1.BasicResourceProperties{

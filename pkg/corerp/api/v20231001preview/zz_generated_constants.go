@@ -65,6 +65,26 @@ func PossibleCertificateTypesValues() []CertificateTypes {
 	}
 }
 
+// ContainerResourceProvisioning - Specifies how the underlying service/resource is provisioned and managed. Available values
+// are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user
+// manages the resource.
+type ContainerResourceProvisioning string
+
+const (
+	// ContainerResourceProvisioningInternal - The resource lifecycle will be managed internally by Radius
+	ContainerResourceProvisioningInternal ContainerResourceProvisioning = "internal"
+	// ContainerResourceProvisioningManual - The resource lifecycle will be managed by the user
+	ContainerResourceProvisioningManual ContainerResourceProvisioning = "manual"
+)
+
+// PossibleContainerResourceProvisioningValues returns the possible values for the ContainerResourceProvisioning const type.
+func PossibleContainerResourceProvisioningValues() []ContainerResourceProvisioning {
+	return []ContainerResourceProvisioning{	
+		ContainerResourceProvisioningInternal,
+		ContainerResourceProvisioningManual,
+	}
+}
+
 // CreatedByType - The type of identity that created the resource.
 type CreatedByType string
 

@@ -133,14 +133,16 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 				Args:            stringSlice(src.Properties.Container.Args),
 				WorkingDir:      to.String(src.Properties.Container.WorkingDir),
 			},
-			Extensions: extensions,
-			Runtimes:   toRuntimeProperties(src.Properties.Runtimes),
+			Extensions:           extensions,
+			Runtimes:             toRuntimePropertiesDataModel(src.Properties.Runtimes),
+			ResourceProvisioning: toContainerResourceProvisioningDataModel(src.Properties.ResourceProvisioning),
+			Resources:            toResourceReferencesDataModel(src.Properties.Resources),
 		},
 	}
 
 	if src.Properties.Identity != nil {
 		converted.Properties.Identity = &rpv1.IdentitySettings{
-			Kind:       toIdentityKind(src.Properties.Identity.Kind),
+			Kind:       toIdentityKindDataModel(src.Properties.Identity.Kind),
 			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
 			Resource:   to.String(src.Properties.Identity.Resource),
 		}
@@ -241,7 +243,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: toOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: toOutputResourcesDataModel(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.Ptr(c.Properties.Application),
@@ -258,9 +260,11 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 			Args:            to.SliceOfPtrs(c.Properties.Container.Args...),
 			WorkingDir:      to.Ptr(c.Properties.Container.WorkingDir),
 		},
-		Extensions: extensions,
-		Identity:   identity,
-		Runtimes:   fromRuntimeProperties(c.Properties.Runtimes),
+		Extensions:           extensions,
+		Identity:             identity,
+		Runtimes:             fromRuntimePropertiesDataModel(c.Properties.Runtimes),
+		Resources:            fromResourceReferencesDataModel(c.Properties.Resources),
+		ResourceProvisioning: fromContainerResourceProvisioningDataModel(c.Properties.ResourceProvisioning),
 	}
 
 	return nil
@@ -504,7 +508,7 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 	return &m
 }
 
-func toRuntimeProperties(runtime *RuntimesProperties) *datamodel.RuntimeProperties {
+func toRuntimePropertiesDataModel(runtime *RuntimesProperties) *datamodel.RuntimeProperties {
 	if runtime == nil {
 		return nil
 	}
@@ -528,7 +532,7 @@ func toRuntimeProperties(runtime *RuntimesProperties) *datamodel.RuntimeProperti
 	return r
 }
 
-func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) *RuntimesProperties {
+func fromRuntimePropertiesDataModel(runtime *datamodel.RuntimeProperties) *RuntimesProperties {
 	if runtime == nil {
 		return nil
 	}
@@ -546,6 +550,50 @@ func fromRuntimeProperties(runtime *datamodel.RuntimeProperties) *RuntimesProper
 		}
 	}
 	return r
+}
+
+func toResourceReferencesDataModel(r []*ResourceReference) []datamodel.ResourceReference {
+	result := []datamodel.ResourceReference{}
+	for _, rr := range r {
+		result = append(result, datamodel.ResourceReference{ID: to.String(rr.ID)})
+	}
+
+	return result
+}
+
+func fromResourceReferencesDataModel(r []datamodel.ResourceReference) []*ResourceReference {
+	result := []*ResourceReference{}
+	for _, rr := range r {
+		result = append(result, &ResourceReference{ID: to.Ptr(rr.ID)})
+	}
+
+	return result
+}
+
+func toContainerResourceProvisioningDataModel(r *ContainerResourceProvisioning) datamodel.ContainerResourceProvisioning {
+	if r == nil {
+		return datamodel.ContainerResourceProvisioningInternal
+	}
+
+	switch *r {
+	case ContainerResourceProvisioningInternal:
+		return datamodel.ContainerResourceProvisioningInternal
+	case ContainerResourceProvisioningManual:
+		return datamodel.ContainerResourceProvisioningManual
+	default:
+		return datamodel.ContainerResourceProvisioningInternal
+	}
+}
+
+func fromContainerResourceProvisioningDataModel(r datamodel.ContainerResourceProvisioning) *ContainerResourceProvisioning {
+	switch r {
+	case datamodel.ContainerResourceProvisioningInternal:
+		return to.Ptr(ContainerResourceProvisioningInternal)
+	case datamodel.ContainerResourceProvisioningManual:
+		return to.Ptr(ContainerResourceProvisioningManual)
+	default:
+		return nil
+	}
 }
 
 func toPermissionDataModel(rbac *VolumePermission) datamodel.VolumePermission {

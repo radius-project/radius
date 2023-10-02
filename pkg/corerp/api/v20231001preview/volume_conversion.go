@@ -95,7 +95,7 @@ func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 		azProp := resource.Properties.AzureKeyVault
 		p := &AzureKeyVaultVolumeProperties{
 			Status: &ResourceStatus{
-				OutputResources: toOutputResources(resource.Properties.Status.OutputResources),
+				OutputResources: toOutputResourcesDataModel(resource.Properties.Status.OutputResources),
 			},
 			Kind:              to.Ptr(resource.Properties.Kind),
 			Application:       to.Ptr(resource.Properties.Application),

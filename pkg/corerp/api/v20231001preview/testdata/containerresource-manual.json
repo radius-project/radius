@@ -1,0 +1,17 @@
+{
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0",
+  "name": "container0",
+  "type": "Applications.Core/containers",
+  "properties": {
+    "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+    "container": {
+      "image": "none"
+    },
+    "resourceProvisioning": "manual",
+    "resources": [
+      {
+        "id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource"
+      }
+    ]
+  }
+}

@@ -187,7 +187,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.En
 		var identity *rpv1.IdentitySettings
 		if v.Identity != nil {
 			identity = &rpv1.IdentitySettings{
-				Kind:       toIdentityKind(v.Identity.Kind),
+				Kind:       toIdentityKindDataModel(v.Identity.Kind),
 				Resource:   to.String(v.Identity.Resource),
 				OIDCIssuer: to.String(v.Identity.OidcIssuer),
 			}
