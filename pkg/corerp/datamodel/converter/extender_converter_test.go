@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/stretchr/testify/require"
 )
@@ -36,9 +36,9 @@ func TestExtenderDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/extenderresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.ExtenderResource{},
+			"../../api/v20231001preview/testdata/extenderresourcedatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.ExtenderResource{},
 			nil,
 		},
 		{
@@ -72,13 +72,13 @@ func TestExtenderDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/extender_manual.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/extender_manual.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/extenderresource-invalid.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/extenderresource-invalid.json",
+			"2023-10-01-preview",
 			errors.New("json: cannot unmarshal number into Go struct field ExtenderProperties.properties.resource of type string"),
 		},
 		{

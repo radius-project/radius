@@ -1,0 +1,52 @@
+{
+  "operationId": "Applications_ListByScope",
+  "title": "Get applications by resource group",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+            "name": "app0",
+            "type": "Applications.Core/applications",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "extensions": [
+                {
+                  "kind": "kubernetesMetadata",
+                  "annotations": {
+                    "prometheus.io/scrape": "true",
+                    "prometheus.io/port": "80"
+                  },
+                  "labels": {
+                    "foo/bar/team": "credit",
+                    "foo/bar/contact": "radiususer"
+                  }
+                },
+                {
+                  "kind": "kubernetesNamespace",
+                  "namespace": "app-ns"
+                }
+              ]
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/app1",
+            "name": "app1",
+            "type": "Applications.Core/applications",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env1"
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications?api-version=2023-10-01-preview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

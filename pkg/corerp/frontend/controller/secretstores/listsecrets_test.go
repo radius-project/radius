@@ -27,7 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/test/k8sutil"
@@ -37,7 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestListSecrets_20220315PrivatePreview(t *testing.T) {
+func TestListSecrets_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -45,7 +45,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
-		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2022-03-15-privatepreview", nil)
+		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
 
 	t.Run("not found the resource", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.SecretStoreListSecretsResult{}
+		actualOutput := &v20231001preview.SecretStoreListSecretsResult{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 	})
 }
@@ -119,7 +119,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 	req, err := rpctest.NewHTTPRequestWithContent(
 		context.Background(),
 		v1.OperationPost.HTTPMethod(),
-		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2022-03-15-privatepreview", nil)
+		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
 
 	secretdm := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)

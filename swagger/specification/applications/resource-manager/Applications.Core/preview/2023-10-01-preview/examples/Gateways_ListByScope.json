@@ -1,0 +1,59 @@
+{
+  "operationId": "Gateways_ListByScope",
+  "title": "List gateway resources by rootScope",
+  "parameters": {
+    "rootScope": "/planes/radius/local",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/gateways/gateway0",
+            "name": "gateway0",
+            "type": "Applications.Core/gateways",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "routes":[
+                {
+                  "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-front-rte",
+                  "path":"/"
+                }
+              ],    
+              "tls":{
+                "sslPassthrough": false,
+                "hostname": "myapp.radapp.dev",
+                "minimumProtocolVersion": "1.2",
+                "certificateFrom": "myapp-tls-cert"
+              }
+            }
+          },
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/gateways/gateway1",
+            "name": "gateway1",
+            "type": "Applications.Core/gateways",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "routes":[
+                {
+                  "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-back-rte",
+                  "path":"/backend2"
+                }
+              ],    
+              "tls":{
+                "sslPassthrough": false,
+                "hostname": "myapp.radapp.dev",
+                "minimumProtocolVersion": "1.2",
+                "certificateFrom": "myapp-tls-cert"
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/providers/Applications.Core/gateways?api-version=2023-10-01-preview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

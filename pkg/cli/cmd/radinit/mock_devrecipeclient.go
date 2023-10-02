@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 )
 
 // MockDevRecipeClient is a mock of DevRecipeClient interface.
@@ -36,10 +36,10 @@ func (m *MockDevRecipeClient) EXPECT() *MockDevRecipeClientMockRecorder {
 }
 
 // GetDevRecipes mocks base method.
-func (m *MockDevRecipeClient) GetDevRecipes(arg0 context.Context) (map[string]map[string]v20220315privatepreview.RecipePropertiesClassification, error) {
+func (m *MockDevRecipeClient) GetDevRecipes(arg0 context.Context) (map[string]map[string]v20231001preview.RecipePropertiesClassification, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDevRecipes", arg0)
-	ret0, _ := ret[0].(map[string]map[string]v20220315privatepreview.RecipePropertiesClassification)
+	ret0, _ := ret[0].(map[string]map[string]v20231001preview.RecipePropertiesClassification)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

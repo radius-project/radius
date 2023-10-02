@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 // HTTPRouteDataModelToVersioned converts version agnostic HTTPRoute datamodel to versioned model.
 func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.HTTPRouteResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.HTTPRouteResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -40,8 +40,8 @@ func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (
 // HTTPRouteDataModelFromVersioned converts versioned HTTPRoute model to datamodel.
 func HTTPRouteDataModelFromVersioned(content []byte, version string) (*datamodel.HTTPRoute, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.HTTPRouteResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.HTTPRouteResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

@@ -23,7 +23,7 @@ In order to update or create a new schema follow these steps:
 
         For example, to generate the `Applications.Core` resources run:
         ```bash
-        autorest pkg/corerp/api/README.md --tag=link-2022-03-15-privatepreview
+        autorest pkg/corerp/api/README.md --tag=link-2023-10-01-preview
         ```
         The autotrest configuration file (_i.e README.md_) is generally found in `pkg/<NAMESPACE>/api/` directory and has details on which tag to use.
     </details>

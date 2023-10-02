@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	globalPlaneCollectionURL   = "/planes?api-version=2022-09-01-privatepreview"
-	planeTypeCollectionURL     = "/planes/radius?api-version=2022-09-01-privatepreview"
-	globalPlaneResponseFixture = "testdata/globalplane_v20220901privatepreview_list_responsebody.json"
+	globalPlaneCollectionURL   = "/planes?api-version=2023-10-01-preview"
+	planeTypeCollectionURL     = "/planes/radius?api-version=2023-10-01-preview"
+	globalPlaneResponseFixture = "testdata/globalplane_v20231001preview_list_responsebody.json"
 )
 
 func Test_AllPlanes_LIST(t *testing.T) {

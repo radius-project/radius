@@ -27,14 +27,14 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestListSecrets_20220315PrivatePreview(t *testing.T) {
+func TestListSecrets_20231001Preview(t *testing.T) {
 	const (
 		usernameStringValue   string = "username"
 		passwordStringValue   string = "password"
@@ -46,7 +46,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, sqlDataModel, _ := getTestModels20220315privatepreview()
+	_, sqlDataModel, _ := getTestModels20231001preview()
 
 	t.Run("listSecrets non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -106,7 +106,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.SQLDatabaseSecrets{}
+		actualOutput := &v20231001preview.SQLDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[connectionStringValue], *actualOutput.ConnectionString)
@@ -144,7 +144,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.SQLDatabaseSecrets{}
+		actualOutput := &v20231001preview.SQLDatabaseSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[connectionStringValue], *actualOutput.ConnectionString)

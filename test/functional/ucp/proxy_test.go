@@ -27,7 +27,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/to"
-	v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -52,16 +52,16 @@ func Test_ProxyOperations(t *testing.T) {
 
 		// Create a Non UCP-Native Plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
 		nonNativePlaneID := "/planes/testnonnativetype/nonnativeplane"
-		apiVersion := v20220901privatepreview.Version
+		apiVersion := v20231001preview.Version
 		nonNativePlaneURL := fmt.Sprintf("%s%s?api-version=%s", url, nonNativePlaneID, apiVersion)
 
-		nonNativePlane := v20220901privatepreview.PlaneResource{
+		nonNativePlane := v20231001preview.PlaneResource{
 			ID:       to.Ptr(nonNativePlaneID),
 			Type:     to.Ptr("System.Planes/testnonnativetype"),
 			Name:     to.Ptr("nonnativeplane"),
 			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20220901privatepreview.PlaneResourceProperties{
-				Kind: to.Ptr(v20220901privatepreview.PlaneKindAWS),
+			Properties: &v20231001preview.PlaneResourceProperties{
+				Kind: to.Ptr(v20231001preview.PlaneKindAWS),
 				URL:  to.Ptr(fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber)),
 			},
 		}
@@ -85,13 +85,13 @@ func Test_ProxyOperations(t *testing.T) {
 		// Create UCP-native plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
 		nativePlaneID := "/planes/testnativetype/testnativeplane"
 		nativeplaneURL := fmt.Sprintf("%s%s?api-version=%s", url, nativePlaneID, apiVersion)
-		nativePlane := v20220901privatepreview.PlaneResource{
+		nativePlane := v20231001preview.PlaneResource{
 			ID:       to.Ptr(nonNativePlaneID),
 			Type:     to.Ptr("System.Planes/testnativetype"),
 			Name:     to.Ptr("testnativeplane"),
 			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &v20220901privatepreview.PlaneResourceProperties{
-				Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
+			Properties: &v20231001preview.PlaneResourceProperties{
+				Kind: to.Ptr(v20231001preview.PlaneKindUCPNative),
 				ResourceProviders: map[string]*string{
 					"Applications.Test": to.Ptr(fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber)),
 				},

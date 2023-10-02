@@ -19,7 +19,7 @@ param registry string
 
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'dsrp-resources-env-sql-recipe-env'
   location: 'global'
   properties: {
@@ -43,7 +43,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dsrp-resources-sqldb-recipe'
   location: location
   properties: {
@@ -57,7 +57,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'sql-recipe-app-ctnr'
   location: location
   properties: {
@@ -81,7 +81,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Datastores/sqlDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Datastores/sqlDatabases@2023-10-01-preview' = {
   name: 'sql-db-recipe'
   location: location
   properties: {

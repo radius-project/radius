@@ -1,0 +1,66 @@
+{
+  "operationId": "PubSubBrokers_CreateOrUpdate",
+  "title": "Create or update a PubSubBroker resource with recipe",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "pubSubBrokerName": "daprpubsub0",
+    "api-version": "2023-10-01-preview",
+    "PubSubBrokerParameters": {
+      "location": "West US",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+        "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "recipe": {
+          "name": "pubsub-test",
+          "parameters": {
+            "port": 6081
+          }
+        }
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprpubsub0",
+        "name": "daprpubsub0",
+        "type": "Applications.Dapr/pubSubBrokers",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "pubsub.azure.servicebus",
+          "recipe": {
+            "name": "pubsub-test",
+            "parameters": {
+              "port": 6081
+            }
+          }
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Dapr/pubSubBrokers/daprpubsub0",
+        "name": "daprpubsub0",
+        "type": "Applications.Dapr/pubSubBrokers",
+        "location": "West US",
+        "properties": {
+          "provisioningState": "Accepted",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "recipe",
+          "type": "pubsub.azure.servicebus",
+          "recipe": {
+            "name": "pubsub-test",
+            "parameters": {
+              "port": 6081
+            }
+          }
+        }
+      }
+    }
+  }
+}

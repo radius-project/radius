@@ -19,7 +19,7 @@ package create
 import (
 	"context"
 
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/spf13/cobra"
 

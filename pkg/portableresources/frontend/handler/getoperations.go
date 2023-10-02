@@ -44,7 +44,7 @@ func (opctrl *GetOperations) Run(ctx context.Context, w http.ResponseWriter, req
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	switch sCtx.APIVersion {
-	case api_ver.V20220315privatepreview:
+	case api_ver.V20231001preview:
 		return rest.NewOKResponse(opctrl.availableOperationsV1()), nil
 	}
 

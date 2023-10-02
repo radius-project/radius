@@ -59,7 +59,7 @@ pl: pl,
 
 // CreateOrUpdate - Creates or updates a Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // resourceName - The name of the generic resource
 // genericResourceParameters - generic resource create parameters
 // options - GenericResourcesClientCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.CreateOrUpdate
@@ -93,7 +93,7 @@ func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Co
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, genericResourceParameters)
@@ -110,7 +110,7 @@ func (client *GenericResourcesClient) createOrUpdateHandleResponse(resp *http.Re
 
 // BeginDelete - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // resourceName - The name of the generic resource
 // options - GenericResourcesClientBeginDeleteOptions contains the optional parameters for the GenericResourcesClient.BeginDelete
 // method.
@@ -130,7 +130,7 @@ func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceN
 
 // Delete - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceName, options)
 	if err != nil {
@@ -160,7 +160,7 @@ func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, r
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -168,7 +168,7 @@ func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, r
 
 // Get - Retrieves information about a generic resource with the name given of the type given within the root scope
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // resourceName - The name of the generic resource
 // options - GenericResourcesClientGetOptions contains the optional parameters for the GenericResourcesClient.Get method.
 func (client *GenericResourcesClient) Get(ctx context.Context, resourceName string, options *GenericResourcesClientGetOptions) (GenericResourcesClientGetResponse, error) {
@@ -200,7 +200,7 @@ func (client *GenericResourcesClient) getCreateRequest(ctx context.Context, reso
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -216,7 +216,7 @@ func (client *GenericResourcesClient) getHandleResponse(resp *http.Response) (Ge
 }
 
 // NewListByRootScopePager - Lists information about all resources of the given resource type in the given root scope
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // options - GenericResourcesClientListByRootScopeOptions contains the optional parameters for the GenericResourcesClient.ListByRootScope
 // method.
 func (client *GenericResourcesClient) NewListByRootScopePager(options *GenericResourcesClientListByRootScopeOptions) (*runtime.Pager[GenericResourcesClientListByRootScopeResponse]) {
@@ -257,7 +257,7 @@ func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.C
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil

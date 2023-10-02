@@ -17,6 +17,8 @@ limitations under the License.
 package controllerconfig
 
 import (
+	"strconv"
+
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -69,11 +71,29 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 		return nil, err
 	}
 
+	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
+	if err != nil {
+		return nil, err
+	}
+
+	bicepDeleteRetryDeleteSeconds, err := strconv.Atoi(options.Config.Bicep.DeleteRetryDelaySeconds)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg.ConfigLoader = configloader.NewEnvironmentLoader(clientOptions)
 	cfg.Engine = engine.NewEngine(engine.Options{
 		ConfigurationLoader: cfg.ConfigLoader,
 		Drivers: map[string]driver.Driver{
-			recipes.TemplateKindBicep: driver.NewBicepDriver(clientOptions, cfg.DeploymentEngineClient, cfg.ResourceClient),
+			recipes.TemplateKindBicep: driver.NewBicepDriver(
+				clientOptions,
+				cfg.DeploymentEngineClient,
+				cfg.ResourceClient,
+				driver.BicepOptions{
+					DeleteRetryCount:        bicepDeleteRetryCount,
+					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
+				},
+			),
 			recipes.TemplateKindTerraform: driver.NewTerraformDriver(options.UCPConnection, provider.NewSecretProvider(options.Config.SecretProvider),
 				driver.TerraformOptions{
 					Path: options.Config.Terraform.Path,

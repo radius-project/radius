@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/radcli"
@@ -97,7 +97,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		application := v20220315privatepreview.ApplicationResource{
+		application := v20231001preview.ApplicationResource{
 			Name: to.Ptr("test-app"),
 		}
 
@@ -203,7 +203,7 @@ func Test_Run(t *testing.T) {
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
 			ShowApplication(gomock.Any(), "test-app").
-			Return(v20220315privatepreview.ApplicationResource{}, radcli.Create404Error()).
+			Return(v20231001preview.ApplicationResource{}, radcli.Create404Error()).
 			Times(1)
 
 		workspace := &workspaces.Workspace{

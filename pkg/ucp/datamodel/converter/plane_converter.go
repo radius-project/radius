@@ -20,15 +20,15 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 // PlaneDataModelToVersioned converts version agnostic plane datamodel to versioned model.
 func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.PlaneResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.PlaneResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -42,8 +42,8 @@ func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.Versi
 // PlaneDataModelFromVersioned converts versioned plane model to datamodel.
 func PlaneDataModelFromVersioned(content []byte, version string) (*datamodel.Plane, error) {
 	switch version {
-	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.PlaneResource{}
+	case v20231001preview.Version:
+		vm := &v20231001preview.PlaneResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}

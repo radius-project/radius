@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/datastoresrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/datastoresrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -37,13 +37,13 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresourcedatamodel_manual.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RedisCacheResource{},
+			"../../api/v20231001preview/testdata/rediscacheresourcedatamodel_manual.json",
+			"2023-10-01-preview",
+			&v20231001preview.RedisCacheResource{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresourcedatamodel_manual.json",
+			"../../api/v20231001preview/testdata/rediscacheresourcedatamodel_manual.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,
@@ -74,22 +74,22 @@ func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource_manual.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/rediscacheresource_manual.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalidinput.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/rediscacheresource-invalidinput.json",
+			"2023-10-01-preview",
 			errors.New("json: cannot unmarshal number into Go struct field RedisCacheProperties.properties.host of type string"),
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid2.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/rediscacheresource-invalid2.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{Code: "BadRequest", Message: "multiple errors were found:\n\thost must be specified when resourceProvisioning is set to manual\n\tport must be specified when resourceProvisioning is set to manual"},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresource-invalid2.json",
+			"../../api/v20231001preview/testdata/rediscacheresource-invalid2.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},
@@ -117,13 +117,13 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/rediscachesecretsdatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RedisCacheSecrets{},
+			"../../api/v20231001preview/testdata/rediscachesecretsdatamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.RedisCacheSecrets{},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/rediscachesecretsdatamodel.json",
+			"../../api/v20231001preview/testdata/rediscachesecretsdatamodel.json",
 			"unsupported",
 			nil,
 			v1.ErrUnsupportedAPIVersion,

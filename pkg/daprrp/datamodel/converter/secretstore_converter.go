@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // string, returning an error if the version is not supported.
 func SecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.DaprSecretStoreResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.DaprSecretStoreResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
@@ -42,8 +42,8 @@ func SecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version s
 // it to a version-agnostic DaprSecretStore object, returning an error if either of these steps fail.
 func SecretStoreDataModelFromVersioned(content []byte, version string) (*datamodel.DaprSecretStore, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.DaprSecretStoreResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.DaprSecretStoreResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}
