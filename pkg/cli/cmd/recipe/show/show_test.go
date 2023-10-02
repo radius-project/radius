@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
@@ -96,7 +96,7 @@ func Test_Validate(t *testing.T) {
 func Test_Run(t *testing.T) {
 	t.Run("Show bicep recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		envRecipe := v20220315privatepreview.RecipeGetMetadataResponse{
+		envRecipe := v20231001preview.RecipeGetMetadataResponse{
 			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 			TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 			Parameters: map[string]any{
@@ -171,7 +171,7 @@ func Test_Run(t *testing.T) {
 
 	t.Run("Show terraformn recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		envRecipe := v20220315privatepreview.RecipeGetMetadataResponse{
+		envRecipe := v20231001preview.RecipeGetMetadataResponse{
 			TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
 			TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
 			TemplateVersion: to.Ptr("1.1.0"),

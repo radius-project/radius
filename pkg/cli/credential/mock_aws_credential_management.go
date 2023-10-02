@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 // MockAWSCredentialManagementClientInterface is a mock of AWSCredentialManagementClientInterface interface.
@@ -81,7 +81,7 @@ func (mr *MockAWSCredentialManagementClientInterfaceMockRecorder) List(arg0 inte
 }
 
 // Put mocks base method.
-func (m *MockAWSCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20220901privatepreview.AwsCredentialResource) error {
+func (m *MockAWSCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20231001preview.AwsCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Put", arg0, arg1)
 	ret0, _ := ret[0].(error)

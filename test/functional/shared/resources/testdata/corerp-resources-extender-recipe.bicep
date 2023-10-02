@@ -4,7 +4,7 @@ param registry string
 
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-resources-extender-recipe-env'
   location: 'global'
   properties: {
@@ -27,7 +27,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-extender-recipe'
   location: 'global'
   properties: {
@@ -41,7 +41,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
   name: 'extender-recipe'
   properties: {
     environment: env.id

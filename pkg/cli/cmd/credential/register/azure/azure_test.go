@@ -33,7 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/to"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

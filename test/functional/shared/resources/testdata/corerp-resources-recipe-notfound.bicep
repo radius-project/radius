@@ -3,7 +3,7 @@ import radius as radius
 @description('The base name of the test, used to qualify resources and namespaces. eg: corerp-resources-terraform-helloworld')
 param basename string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: basename
   properties: {
     compute: {
@@ -16,7 +16,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: basename
   properties: {
     environment: env.id
@@ -29,7 +29,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
   name: basename
   properties: {
     application: app.id

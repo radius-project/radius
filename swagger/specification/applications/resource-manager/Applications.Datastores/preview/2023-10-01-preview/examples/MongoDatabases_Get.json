@@ -1,0 +1,33 @@
+{
+  "operationId": "MongoDatabases_Get",
+  "title": "Get a MongoDatabase resource",
+  "parameters": {
+    "rootScope": "planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview",
+    "mongoDatabaseName": "mongo0"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/mongoDatabases/mongo0",
+        "name": "mongo0",
+        "type": "Applications.Datastores/mongoDatabases",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db"
+            }
+          ],
+          "database": "mongo0",
+          "host": "testAccount1.mongo.cosmos.azure.com",
+          "port": 10255
+        }
+      }
+    }
+  }
+}

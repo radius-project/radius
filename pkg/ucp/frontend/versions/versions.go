@@ -15,4 +15,4 @@ limitations under the License.
 */
 package versions
 
-const DefaultAPIVersion = "2022-09-01-privatepreview"
+const DefaultAPIVersion = "2023-10-01-preview"

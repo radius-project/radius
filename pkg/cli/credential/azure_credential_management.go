@@ -23,7 +23,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	ucp "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 //go:generate mockgen -destination=./mock_azure_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AzureCredentialManagementClientInterface

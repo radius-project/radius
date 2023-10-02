@@ -6,7 +6,7 @@ param location string = resourceGroup().location
 param registry string
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'daprrp-env-secretstore-recipes-env'
   properties: {
     compute: {
@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'daprrp-rs-secretstore-recipe'
   properties: {
     environment: env.id
@@ -38,7 +38,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'gnrc-scs-ctnr-recipe'
   location: location
   properties: {
@@ -66,7 +66,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource secretstore 'Applications.Dapr/secretStores@2022-03-15-privatepreview' = {
+resource secretstore 'Applications.Dapr/secretStores@2023-10-01-preview' = {
   name: 'gnrc-scs-recipe'
   location: location
   properties: {

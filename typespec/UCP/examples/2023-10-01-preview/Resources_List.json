@@ -1,0 +1,30 @@
+{
+    "operationId": "Resources_List",
+    "title": "List resources in a resource group.",
+    "parameters": {
+      "api-version": "2023-10-01-preview",
+      "planeName": "local",
+      "planeType": "radius",
+      "resourceGroupName": "rg1"
+    },
+    "responses": {
+      "200": {
+        "body": {
+          "value": [
+            {
+              "id": "/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/containers/my-container",
+              "name": "my-container",
+              "location": "global",
+              "type": "Applications.Core/containers"
+            },
+            {
+                "id": "/planes/radius/local/resourcegroups/rg1/providers/Applications.Core/applications/my-application",
+                "name": "my-application",
+                "location": "global",
+                "type": "Applications.Core/applications"
+            }
+          ]
+        }
+      }
+    }
+  }

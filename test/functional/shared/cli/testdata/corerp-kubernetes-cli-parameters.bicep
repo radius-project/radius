@@ -12,7 +12,7 @@ param magpietag string = 'latest'
 @description('Specifies the registry of the image to be deployed.')
 param registry string
 
-resource parametersApp 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource parametersApp 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'kubernetes-cli-params'
   location: location
   properties: {
@@ -20,7 +20,7 @@ resource parametersApp 'Applications.Core/applications@2022-03-15-privatepreview
   }
 }
 
-resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerc 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containerC'
   location: location
   properties: {
@@ -31,7 +31,7 @@ resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource containerd 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerd 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containerD'
   location: location
   properties: {

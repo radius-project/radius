@@ -86,8 +86,8 @@ func getTestEnvironmentModel(rootScope string, resourceName string) *datamodel.E
 		},
 	}
 
-	env.InternalMetadata.CreatedAPIVersion = "2022-03-15-privatepreview"
-	env.InternalMetadata.UpdatedAPIVersion = "2022-03-15-privatepreview"
+	env.InternalMetadata.CreatedAPIVersion = "2023-10-01-preview"
+	env.InternalMetadata.UpdatedAPIVersion = "2023-10-01-preview"
 
 	return env
 }

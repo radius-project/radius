@@ -12,7 +12,7 @@ param port int = 3000
 @description('Specifies the image for the container resource.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-gateway'
   location: location
   properties: {
@@ -20,7 +20,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
+resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
   name: 'http-gtwy-gtwy'
   location: location
   properties: {
@@ -45,7 +45,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'http-gtwy-front-rte'
   location: location
   properties: {
@@ -54,7 +54,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'http-gtwy-front-ctnr'
   location: location
   properties: {
@@ -81,7 +81,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
   }
 }
 
-resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
+resource backendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
   name: 'http-gtwy-back-rte'
   location: location
   properties: {
@@ -89,7 +89,7 @@ resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' =
   }
 }
 
-resource backendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'http-gtwy-back-ctnr'
   location: location
   properties: {

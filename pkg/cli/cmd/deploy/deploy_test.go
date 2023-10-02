@@ -30,7 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -54,7 +54,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -69,7 +69,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 
 			},
@@ -85,10 +85,10 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{
-						Properties: &v20220315privatepreview.EnvironmentProperties{
-							Providers: &v20220315privatepreview.Providers{
-								Azure: &v20220315privatepreview.ProvidersAzure{
+					Return(v20231001preview.EnvironmentResource{
+						Properties: &v20231001preview.EnvironmentProperties{
+							Providers: &v20231001preview.Providers{
+								Azure: &v20231001preview.ProvidersAzure{
 									Scope: to.Ptr("/subscriptions/test-subId/resourceGroups/test-rg"),
 								},
 							},
@@ -109,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, radcli.Create404Error()).
+					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
 					Times(1)
 
 			},
@@ -125,7 +125,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 			ValidateCallback: func(t *testing.T, obj framework.Runner) {
@@ -154,7 +154,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -169,7 +169,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -189,6 +189,21 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadEmptyConfig(t),
+			},
+		},
+		{
+			Name:          "rad deploy - missing env and app succeeds",
+			Input:         []string{"app.bicep", "--group", "new-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.ApplicationManagementClient.EXPECT().
+					GetEnvDetails(gomock.Any(), gomock.Any()).
+					Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+					Times(1)
 			},
 		},
 	}
@@ -361,6 +376,10 @@ func Test_Run(t *testing.T) {
 
 		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagmentMock.EXPECT().
+			GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
+			Return(v20231001preview.EnvironmentResource{}, nil).
+			Times(1)
+		appManagmentMock.EXPECT().
 			CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 			Return(nil).
 			Times(1)
@@ -409,6 +428,64 @@ func Test_Run(t *testing.T) {
 		// Deployment is scoped to app and env
 		require.Equal(t, runner.Providers.Radius.ApplicationID, options.Providers.Radius.ApplicationID)
 		require.Equal(t, runner.Providers.Radius.EnvironmentID, options.Providers.Radius.EnvironmentID)
+
+		// All of the output in this command is being done by functions that we mock for testing, so this
+		// is always empty.
+		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Deployment that doesn't need an app or env", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		bicep := bicep.NewMockInterface(ctrl)
+		bicep.EXPECT().
+			PrepareTemplate("app.bicep").
+			Return(map[string]any{}, nil).
+			Times(1)
+
+		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
+
+		// GetEnvDetails returns a 404 error
+		appManagmentMock.EXPECT().
+			GetEnvDetails(gomock.Any(), "envdoesntexist").
+			Return(v20231001preview.EnvironmentResource{}, radcli.Create404Error()).
+			Times(1)
+
+		deployMock := deploy.NewMockInterface(ctrl)
+		deployMock.EXPECT().
+			DeployWithProgress(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
+				return clients.DeploymentResult{}, nil
+			}).
+			Times(1)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "kind-kind",
+		}
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			Bicep:             bicep,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
+			Deploy:            deployMock,
+			Output:            outputSink,
+			Providers:         nil,
+			FilePath:          "app.bicep",
+			ApplicationName:   "appdoesntexist",
+			EnvironmentName:   "envdoesntexist",
+			Parameters:        map[string]map[string]any{},
+			Workspace:         workspace,
+		}
+
+		err := runner.Run(context.Background())
+
+		// Even though GetEnvDetails returns a 404 error, the deployment should still succeed
+		require.NoError(t, err)
 
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.

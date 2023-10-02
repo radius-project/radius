@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +152,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20220315privatepreview.RecipeGetMetadata{Name: &r.RecipeName, ResourceType: &r.ResourceType})
+	recipeDetails, err := client.ShowRecipe(ctx, r.Workspace.Environment, v20231001preview.RecipeGetMetadata{Name: &r.RecipeName, ResourceType: &r.ResourceType})
 	if err != nil {
 		return err
 	}

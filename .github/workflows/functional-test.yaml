@@ -418,7 +418,7 @@ jobs:
       - name: Install dapr into cluster
         run: |
           wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
-          dapr init -k --wait --timeout 600
+          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }}
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts

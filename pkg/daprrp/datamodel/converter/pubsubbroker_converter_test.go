@@ -22,7 +22,7 @@ import (
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/daprrp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/daprrp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
@@ -42,24 +42,24 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 		dataModelFile string
 		apiVersion    string
 		apiModelType  any
-		expected      *v20220315privatepreview.DaprPubSubBrokerResource
+		expected      *v20231001preview.DaprPubSubBrokerResource
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_manual_datamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprPubSubBrokerResource{},
-			&v20220315privatepreview.DaprPubSubBrokerResource{
+			"../../api/v20231001preview/testdata/pubsubbroker_manual_datamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.DaprPubSubBrokerResource{},
+			&v20231001preview.DaprPubSubBrokerResource{
 				Location: to.Ptr("global"),
-				Properties: &v20220315privatepreview.DaprPubSubBrokerProperties{
+				Properties: &v20231001preview.DaprPubSubBrokerProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
 					Metadata: map[string]interface{}{
 						"foo": "bar",
 					},
 					Recipe:               nil,
-					ResourceProvisioning: to.Ptr(v20220315privatepreview.ResourceProvisioningManual),
-					Resources: []*v20220315privatepreview.ResourceReference{
+					ResourceProvisioning: to.Ptr(v20231001preview.ResourceProvisioningManual),
+					Resources: []*v20231001preview.ResourceReference{
 						{
 							ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"),
 						},
@@ -67,66 +67,66 @@ func TestPubSubBrokerDataModelToVersioned(t *testing.T) {
 					Type:              to.Ptr("pubsub.azure.servicebus"),
 					Version:           to.Ptr("v1"),
 					ComponentName:     to.Ptr("test-dpsb"),
-					ProvisioningState: to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
-					Status:            resourcetypeutil.MustPopulateResourceStatus(&v20220315privatepreview.ResourceStatus{}),
+					ProvisioningState: to.Ptr(v20231001preview.ProvisioningStateAccepted),
+					Status:            resourcetypeutil.MustPopulateResourceStatus(&v20231001preview.ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb"),
 				Name: to.Ptr("test-dpsb"),
-				SystemData: &v20220315privatepreview.SystemData{
+				SystemData: &v20231001preview.SystemData{
 					CreatedAt:          &createdAt,
 					CreatedBy:          to.Ptr("fakeid@live.com"),
-					CreatedByType:      to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+					CreatedByType:      to.Ptr(v20231001preview.CreatedByTypeUser),
 					LastModifiedAt:     &lastModifiedAt,
 					LastModifiedBy:     to.Ptr("fakeid@live.com"),
-					LastModifiedByType: to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+					LastModifiedByType: to.Ptr(v20231001preview.CreatedByTypeUser),
 				},
 				Type: to.Ptr("Applications.Dapr/pubSubBrokers"),
 			},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_manual_generic_datamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.DaprPubSubBrokerResource{},
-			&v20220315privatepreview.DaprPubSubBrokerResource{
+			"../../api/v20231001preview/testdata/pubsubbroker_manual_generic_datamodel.json",
+			"2023-10-01-preview",
+			&v20231001preview.DaprPubSubBrokerResource{},
+			&v20231001preview.DaprPubSubBrokerResource{
 				Location: to.Ptr("global"),
-				Properties: &v20220315privatepreview.DaprPubSubBrokerProperties{
+				Properties: &v20231001preview.DaprPubSubBrokerProperties{
 					Environment: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/test-env"),
 					Application: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app"),
 					Metadata: map[string]interface{}{
 						"foo": "bar",
 					},
 					Recipe:               nil,
-					ResourceProvisioning: to.Ptr(v20220315privatepreview.ResourceProvisioningManual),
+					ResourceProvisioning: to.Ptr(v20231001preview.ResourceProvisioningManual),
 					Resources:            nil,
 					Type:                 to.Ptr("pubsub.kafka"),
 					Version:              to.Ptr("v1"),
 					ComponentName:        to.Ptr("test-dpsb"),
-					ProvisioningState:    to.Ptr(v20220315privatepreview.ProvisioningStateAccepted),
-					Status:               resourcetypeutil.MustPopulateResourceStatus(&v20220315privatepreview.ResourceStatus{}),
+					ProvisioningState:    to.Ptr(v20231001preview.ProvisioningStateAccepted),
+					Status:               resourcetypeutil.MustPopulateResourceStatus(&v20231001preview.ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb"),
 				Name: to.Ptr("test-dpsb"),
-				SystemData: &v20220315privatepreview.SystemData{
+				SystemData: &v20231001preview.SystemData{
 					CreatedAt:          &createdAt,
 					CreatedBy:          to.Ptr("fakeid@live.com"),
-					CreatedByType:      to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+					CreatedByType:      to.Ptr(v20231001preview.CreatedByTypeUser),
 					LastModifiedAt:     &lastModifiedAt,
 					LastModifiedBy:     to.Ptr("fakeid@live.com"),
-					LastModifiedByType: to.Ptr(v20220315privatepreview.CreatedByTypeUser),
+					LastModifiedByType: to.Ptr(v20231001preview.CreatedByTypeUser),
 				},
 				Type: to.Ptr("Applications.Dapr/pubSubBrokers"),
 			},
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_manual_generic_datamodel.json",
+			"../../api/v20231001preview/testdata/pubsubbroker_manual_generic_datamodel.json",
 			"unsupported",
 			nil,
 			nil,
@@ -160,33 +160,33 @@ func TestDaprPubSubBrokerDataModelFromVersioned(t *testing.T) {
 		err                error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_invalidrecipe_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/pubsubbroker_invalidrecipe_resource.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{
 				Code:    v1.CodeInvalid,
 				Message: "error(s) found:\n\tmetadata cannot be specified when resourceProvisioning is set to recipe (default)\n\ttype cannot be specified when resourceProvisioning is set to recipe (default)\n\tversion cannot be specified when resourceProvisioning is set to recipe (default)",
 			},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_invalidmanual_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/pubsubbroker_invalidmanual_resource.json",
+			"2023-10-01-preview",
 			&v1.ErrClientRP{
 				Code:    "BadRequest",
 				Message: "error(s) found:\n\trecipe details cannot be specified when resourceProvisioning is set to manual\n\tmetadata must be specified when resourceProvisioning is set to manual\n\ttype must be specified when resourceProvisioning is set to manual\n\tversion must be specified when resourceProvisioning is set to manual",
 			},
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_recipe_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/pubsubbroker_recipe_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_manual_resource.json",
-			"2022-03-15-privatepreview",
+			"../../api/v20231001preview/testdata/pubsubbroker_manual_resource.json",
+			"2023-10-01-preview",
 			nil,
 		},
 		{
-			"../../api/v20220315privatepreview/testdata/pubsubbroker_manual_resource.json",
+			"../../api/v20231001preview/testdata/pubsubbroker_manual_resource.json",
 			"unsupported",
 			v1.ErrUnsupportedAPIVersion,
 		},

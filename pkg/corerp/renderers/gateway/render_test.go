@@ -34,6 +34,7 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -1472,6 +1473,10 @@ func validateHTTPProxy(t *testing.T, outputResources []rpv1.OutputResource, expe
 			expectedHTTPProxyOutputResource.CreateResource.Dependencies = append(expectedHTTPProxyOutputResource.CreateResource.Dependencies, r.LocalID)
 		}
 	}
+
+	// Sort the dependencies so that tests aren't flaky
+	slices.Sort(expectedHTTPProxyOutputResource.CreateResource.Dependencies)
+	slices.Sort(httpProxyOutputResource.CreateResource.Dependencies)
 
 	require.Equal(t, expectedHTTPProxyOutputResource, httpProxyOutputResource)
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), httpProxy.Name)
