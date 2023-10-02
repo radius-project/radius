@@ -63,7 +63,7 @@ export function writeTableMarkdown(provider: string, apiVersion: string, resourc
   }
 
   function writeTableEntry(name: string, type: string, flags: string, description: string){
-    const flagString = flags ? ` (_${flags}_) ` : '';
+    const flagString = flags ? `<br />_(${flags})_ ` : '';
     output += `| **${name}** | ${type} | ${description} ${flagString}|\n`;
   }
 

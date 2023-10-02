@@ -78,10 +78,10 @@ export enum ObjectPropertyFlags {
 }
 
 const ObjectPropertyFlagsLabel = new Map<ObjectPropertyFlags, string>([
-  [ObjectPropertyFlags.Required, 'Required'],
-  [ObjectPropertyFlags.ReadOnly, 'ReadOnly'],
-  [ObjectPropertyFlags.WriteOnly, 'WriteOnly'],
-  [ObjectPropertyFlags.DeployTimeConstant, 'DeployTimeConstant'],
+  [ObjectPropertyFlags.Required, 'required'],
+  [ObjectPropertyFlags.ReadOnly, 'read-only'],
+  [ObjectPropertyFlags.WriteOnly, 'write-only'],
+  [ObjectPropertyFlags.DeployTimeConstant, 'deploy-time constant'],
 ]);
 
 export function getObjectPropertyFlagsLabels(input: ObjectPropertyFlags) {
