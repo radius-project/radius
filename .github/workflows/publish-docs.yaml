@@ -66,13 +66,13 @@ jobs:
           name: cli-docs
           path: docs/docs/content/reference/cli
       # Open PR against docs repository
-      - name: Show git diff in ./docs directory
+      - name: Show git diff
         run: |
           cd docs
-          git status --short
+          git status --porcelain -unormal -- *.md
       - name: Create pull request
         uses: peter-evans/create-pull-request@v5
-        #if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request'
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           path: docs
