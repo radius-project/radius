@@ -2576,7 +2576,7 @@
           "type": "string",
           "description": "The resource name."
         },
-        "resources": {
+        "outputResources": {
           "type": "array",
           "description": "The resources that comprise this resource.",
           "items": {
@@ -2593,14 +2593,19 @@
             "$ref": "#/definitions/ApplicationGraphConnection"
           },
           "x-ms-identifiers": []
+        },
+        "provisioningState": {
+          "type": "string",
+          "description": "provisioningState of this resource"
         }
       },
       "required": [
         "id",
         "type",
         "name",
-        "resources",
-        "connections"
+        "outputResources",
+        "connections",
+        "provisioningState"
       ]
     },
     "ApplicationGraphResponse": {

@@ -73,11 +73,20 @@ model ApplicationGraphResponse {
 
 @doc("Describes the connection between two resources.")
 model ApplicationGraphConnection {
-  @doc("The source of the connection.")
-  source: string;
+  @doc("The resource ID ")
+  id: string;
 
-  @doc("The destination of the connection.")
-  destination: string;
+  @doc("The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source.")
+  direction: Direction;
+}
+
+@doc("The direction of a connection.")
+enum Direction {
+  @doc("The resource defining this connection makes an outbound connection resource specified by this id.")
+  Outbound,
+
+  @doc("The resource defining this connection accepts inbound connections from the resource specified by this id.")
+  Inbound,
 }
 
 @doc("Describes a resource in the application graph.")
@@ -93,11 +102,14 @@ model ApplicationGraphResource {
 
   @doc("The resources that comprise this resource.")
   @extension("x-ms-identifiers", ["id"])
-  resources: Array<ApplicationGraphOutputResource>;
+  outputResources: Array<ApplicationGraphOutputResource>;
 
   @doc("The connections between resources in the application graph.")
   @extension("x-ms-identifiers",[])
   connections: Array<ApplicationGraphConnection>;
+
+  @doc("provisioningState of this resource") 
+  provisioningState: string
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")

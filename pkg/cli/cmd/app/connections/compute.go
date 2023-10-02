@@ -152,6 +152,7 @@ func compute(applicationName string, applicationResources []generated.GenericRes
 
 			// Note the connection in both directions.
 			connectionsBySource[connection.From.ID] = append(connectionsBySource[connection.From.ID], connection)
+
 			connectionsByDestination[connection.To.ID] = append(connectionsByDestination[connection.To.ID], connection)
 		}
 	}
