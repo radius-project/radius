@@ -21,7 +21,7 @@
     "X-Fd-Routekey": "000075000",
     "X-Fd-Socketip": "0000:0000:0000:1:0000:0000:0000:0000",
     "X-Forwarded-For": "192.168.0.10",
-    "X-Forwarded-Host": "radius.dev",
+    "X-Forwarded-Host": "radapp.io",
     "X-Forwarded-Port": "443",
     "X-Forwarded-Proto": "https",
     "X-Forwarded-Scheme": "https",

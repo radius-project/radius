@@ -36,7 +36,7 @@ func TestFromARMRequest(t *testing.T) {
 	}{
 		{
 			"With referer header",
-			"https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-10-01-preview",
+			"https://radapp.io/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-10-01-preview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 		{
@@ -46,7 +46,7 @@ func TestFromARMRequest(t *testing.T) {
 		},
 		{
 			"With referer path base",
-			"https://radius.dev/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-10-01-preview",
+			"https://radapp.io/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-10-01-preview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 	}

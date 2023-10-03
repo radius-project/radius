@@ -9,6 +9,15 @@ global:
   # zipkin:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
+controller:
+  image: radius.azurecr.io/controller
+  # Default tag uses Chart AppVersion.
+  # tag: latest
+  resources:
+    requests:
+      memory: "60Mi"
+    limits:
+      memory: "300Mi"
 
 de:
   image: radius.azurecr.io/deployment-engine

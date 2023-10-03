@@ -9,9 +9,9 @@
       "app.kubernetes.io/managed-by": "radius-rp",
       "app.kubernetes.io/name": "test-container",
       "app.kubernetes.io/part-of": "test-app",
-      "radius.dev/application": "test-app",
-      "radius.dev/resource": "test-container",
-      "radius.dev/resource-type": "applications.core-containers"
+      "radapp.io/application": "test-app",
+      "radapp.io/resource": "test-container",
+      "radapp.io/resource-type": "applications.core-containers"
     },
     "annotations": {
       "source": "base-manifest-test"
@@ -23,8 +23,8 @@
       "matchLabels": {
         "app": "test-container",
         "basemanifest": "default",
-        "radius.dev/application": "test-app",
-        "radius.dev/resource": "test-container"
+        "radapp.io/application": "test-app",
+        "radapp.io/resource": "test-container"
       }
     },
     "template": {
@@ -34,9 +34,9 @@
           "app.kubernetes.io/managed-by": "radius-rp",
           "app.kubernetes.io/name": "test-container",
           "app.kubernetes.io/part-of": "test-app",
-          "radius.dev/application": "test-app",
-          "radius.dev/resource": "test-container",
-          "radius.dev/resource-type": "applications.core-containers"
+          "radapp.io/application": "test-app",
+          "radapp.io/resource": "test-container",
+          "radapp.io/resource-type": "applications.core-containers"
         }
       },
       "spec": {
