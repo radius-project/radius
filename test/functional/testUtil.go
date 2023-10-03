@@ -162,7 +162,7 @@ func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, nam
 func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespace, application string) (*contourv1.HTTPProxyList, error) {
 	var httpproxies contourv1.HTTPProxyList
 
-	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	label, err := labels.Parse(fmt.Sprintf("radapp.io/application=%s", application))
 	if err != nil {
 		return nil, err
 	}

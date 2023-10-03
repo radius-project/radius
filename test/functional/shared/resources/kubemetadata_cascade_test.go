@@ -57,15 +57,15 @@ func Test_KubeMetadataCascade(t *testing.T) {
 	}
 
 	notExpectedAnnotations := map[string]string{
-		"radius.dev/env.ann.1":  "reserved.ann.val.1",
-		"radius.dev/app.ann.1":  "reserved.ann.val.1",
-		"radius.dev/cntr.ann.1": "reserved.ann.val.1",
+		"radapp.io/env.ann.1":  "reserved.ann.val.1",
+		"radapp.io/app.ann.1":  "reserved.ann.val.1",
+		"radapp.io/cntr.ann.1": "reserved.ann.val.1",
 	}
 
 	notExpectedLabels := map[string]string{
-		"radius.dev/env.lbl.1":  "reserved.lbl.val.1",
-		"radius.dev/app.lbl.1":  "reserved.lbl.val.1",
-		"radius.dev/cntr.lbl.1": "reserved.lbl.val.1",
+		"radapp.io/env.lbl.1":  "reserved.lbl.val.1",
+		"radapp.io/app.lbl.1":  "reserved.lbl.val.1",
+		"radapp.io/cntr.lbl.1": "reserved.lbl.val.1",
 	}
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
@@ -97,7 +97,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
 				// Verify pod labels and annotations
-				label := fmt.Sprintf("radius.dev/application=%s", name)
+				label := fmt.Sprintf("radapp.io/application=%s", name)
 				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: label,
 				})

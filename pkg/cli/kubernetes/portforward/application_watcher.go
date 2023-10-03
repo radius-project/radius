@@ -60,7 +60,7 @@ func NewApplicationWatcher(options Options) *applicationWatcher {
 func (aw *applicationWatcher) Run(ctx context.Context) error {
 	defer close(aw.done)
 
-	// We use the `radius.dev/application` label to include pods that are part of an application.
+	// We use the `radapp.io/application` label to include pods that are part of an application.
 	// This can include the user's Radius containers as well as any Kubernetes resources that are labeled
 	// as part of the application (eg: something created with a recipe).
 	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{aw.Options.ApplicationName})
