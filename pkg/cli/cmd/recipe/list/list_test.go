@@ -30,7 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/portableresources"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
@@ -86,7 +86,7 @@ func Test_Run(t *testing.T) {
 			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20231001preview.EnvironmentProperties{
 				Recipes: map[string]map[string]v20231001preview.RecipePropertiesClassification{
-					portableresources.MongoDatabasesResourceType: {
+					ds_ctrl.MongoDatabasesResourceType: {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
@@ -103,13 +103,13 @@ func Test_Run(t *testing.T) {
 		recipes := []types.EnvironmentRecipe{
 			{
 				Name:         "cosmosDB",
-				ResourceType: portableresources.MongoDatabasesResourceType,
+				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			},
 			{
 				Name:            "cosmosDB-terraform",
-				ResourceType:    portableresources.MongoDatabasesResourceType,
+				ResourceType:    ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind:    recipes.TemplateKindTerraform,
 				TemplatePath:    "Azure/cosmosdb/azurerm",
 				TemplateVersion: "1.1.0",

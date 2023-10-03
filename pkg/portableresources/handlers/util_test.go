@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -32,16 +32,16 @@ import (
 func Test_CheckDaprResourceNameUniqueness_NotFound(t *testing.T) {
 	client := k8sutil.NewFakeKubeClient(nil)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", portableresources.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.NoError(t, err)
 }
 
 func Test_CheckDaprResourceNameUniqueness_SameRadiusResource(t *testing.T) {
-	labels := kubernetes.MakeDescriptiveDaprLabels("test-app", "test-resource", portableresources.DaprStateStoresResourceType)
+	labels := kubernetes.MakeDescriptiveDaprLabels("test-app", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	existing := createUnstructuredComponent("test-component", "default", labels)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", portableresources.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.NoError(t, err)
 }
 
@@ -49,27 +49,27 @@ func Test_CheckDaprResourceNameUniqueness_NoLabels(t *testing.T) {
 	existing := createUnstructuredComponent("test-component", "default", nil)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", portableresources.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf(daprConflictFmt, "test-component"), err.Error())
 }
 
 func Test_CheckDaprResourceNameUniqueness_DifferentResourceNames(t *testing.T) {
-	labels := kubernetes.MakeDescriptiveDaprLabels("test-app", "different-resource", portableresources.DaprStateStoresResourceType)
+	labels := kubernetes.MakeDescriptiveDaprLabels("test-app", "different-resource", dapr_ctrl.DaprStateStoresResourceType)
 	existing := createUnstructuredComponent("test-component", "default", labels)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", portableresources.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf(daprConflictFmt, "test-component"), err.Error())
 }
 
 func Test_CheckDaprResourceNameUniqueness_DifferentResourceTypes(t *testing.T) {
-	labels := kubernetes.MakeDescriptiveDaprLabels("test-app", "test-resource", portableresources.DaprPubSubBrokersResourceType)
+	labels := kubernetes.MakeDescriptiveDaprLabels("test-app", "test-resource", dapr_ctrl.DaprPubSubBrokersResourceType)
 	existing := createUnstructuredComponent("test-component", "default", labels)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", portableresources.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf(daprConflictFmt, "test-component"), err.Error())
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -81,7 +82,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		resource.Properties.ComponentName,
 		applicationID.Name(),
 		resource.Name,
-		portableresources.DaprSecretStoresResourceType)
+		dapr_ctrl.DaprSecretStoresResourceType)
 	if err != nil {
 		return err
 	}
@@ -91,7 +92,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ResourceError{Inner: err}
 	}
 
-	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, portableresources.DaprSecretStoresResourceType)
+	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, dapr_ctrl.DaprSecretStoresResourceType)
 	if err != nil {
 		return &processors.ValidationError{Message: err.Error()}
 	}
@@ -137,7 +138,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprSecretSt
 			"metadata": map[string]any{
 				"namespace": options.RuntimeConfiguration.Kubernetes.Namespace,
 				"name":      kubernetes.NormalizeDaprResourceName(resource.Properties.ComponentName),
-				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, portableresources.DaprSecretStoresResourceType),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, dapr_ctrl.DaprSecretStoresResourceType),
 			},
 		},
 	}

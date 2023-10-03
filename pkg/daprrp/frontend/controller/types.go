@@ -20,17 +20,23 @@ import (
 	"time"
 )
 
-var (
+const (
+	// DaprStateStoresResourceType represents the resource type for Dapr State stores.
+	DaprStateStoresResourceType = "Applications.Dapr/stateStores"
 	// AsyncCreateOrUpdateDaprStateStoreTimeout is the timeout for async create or update dapr state store
 	AsyncCreateOrUpdateDaprStateStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprStateStoreTimeout is the timeout for async delete dapr state store
 	AsyncDeleteDaprStateStoreTimeout = time.Duration(30) * time.Minute
 
+	// DaprSecretStoresResourceType represents the resource type for Dapr Secret stores.
+	DaprSecretStoresResourceType = "Applications.Dapr/secretStores"
 	// AsyncCreateOrUpdateDaprSecretStoreTimeout is the timeout for async create or update dapr secret store
 	AsyncCreateOrUpdateDaprSecretStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprSecretStoreTimeout is the timeout for async delete dapr secret store
 	AsyncDeleteDaprSecretStoreTimeout = time.Duration(30) * time.Minute
 
+	// DaprPubSubBrokersResourceType represents the resource type for Dapr PubSub brokers.
+	DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
 	// AsyncCreateOrUpdateDaprPubSubBrokerTimeout is the timeout for async create or update dapr pub sub broker
 	AsyncCreateOrUpdateDaprPubSubBrokerTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprPubSubBrokerTimeout is the timeout for async delete dapr pub sub broker
