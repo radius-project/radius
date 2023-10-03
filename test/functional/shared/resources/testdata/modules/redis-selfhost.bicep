@@ -25,7 +25,7 @@ resource redis 'apps/Deployment@v1' = {
           resource: name
 
           // Label pods with the application name so `rad run` can find the logs.
-          'radius.dev/application': application == '' ? '' : application
+          'radapp.io/application': application == '' ? '' : application
         }
       }
       spec: {
