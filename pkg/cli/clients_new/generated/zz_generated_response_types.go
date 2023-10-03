@@ -28,3 +28,9 @@ type GenericResourcesClientListByRootScopeResponse struct {
 	GenericResourcesList
 }
 
+// GenericResourcesClientListSecretsResponse contains the response from method GenericResourcesClient.ListSecrets.
+type GenericResourcesClientListSecretsResponse struct {
+	// Response to a list secrets request
+	Value map[string]*string
+}
+

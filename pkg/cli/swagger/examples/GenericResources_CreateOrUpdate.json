@@ -1,0 +1,43 @@
+{
+  "operationId": "GenericResources_CreateOrUpdate",
+  "title": "Create or update resource",
+  "parameters": {
+    "api-version": "2023-10-01-preview",
+    "rootScope": "/planes/radius/local/resourceGroups/test-group",
+    "resourceType": "Applications.Core/extenders",
+    "resourceName": "my-resource",
+    "GenericResourceParameters": {
+      "id": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/extenders/my-resource",
+      "name": "my-resource",
+      "type": "Applications.Core/extenders",
+      "location": "global",
+      "properties": {
+        "provisioningState": "Succeeded"
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/extenders/my-resource",
+        "name": "my-resource",
+        "type": "Applications.Core/extenders",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded"
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/extenders/my-resource",
+        "name": "my-resource",
+        "type": "Applications.Core/extenders",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Accepted"
+        }
+      }
+    }
+  }
+}
