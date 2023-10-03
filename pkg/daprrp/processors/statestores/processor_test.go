@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -164,7 +165,7 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", portableresources.DaprStateStoresResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprStateStoresResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -251,7 +252,7 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-component",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", portableresources.DaprStateStoresResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprStateStoresResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -366,7 +367,7 @@ func Test_Process(t *testing.T) {
 			"test-component",
 			"test-app",
 			"some-other-other-name",
-			portableresources.DaprStateStoresResourceType)
+			dapr_ctrl.DaprStateStoresResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{
