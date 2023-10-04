@@ -308,6 +308,56 @@
         }
       }
     },
+    "/{rootScope}/providers/Applications.Core/applications/{applicationName}/getGraph": {
+      "post": {
+        "operationId": "Applications_GetGraph",
+        "tags": [
+          "Applications"
+        ],
+        "description": "Gets the application graph and resources.",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParameter"
+          },
+          {
+            "name": "applicationName",
+            "in": "path",
+            "description": "The application name",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The content of the action request",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationGraphResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/{rootScope}/providers/Applications.Core/containers": {
       "get": {
         "operationId": "Containers_ListByScope",
@@ -2469,6 +2519,109 @@
     }
   },
   "definitions": {
+    "ApplicationGraphConnection": {
+      "type": "object",
+      "description": "Describes the connection between two resources.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID "
+        },
+        "direction": {
+          "$ref": "#/definitions/Direction",
+          "description": "The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source."
+        }
+      },
+      "required": [
+        "id",
+        "direction"
+      ]
+    },
+    "ApplicationGraphOutputResource": {
+      "type": "object",
+      "description": "Describes an output resource that comprises an application graph resource.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID."
+        },
+        "type": {
+          "type": "string",
+          "description": "The resource type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The resource name."
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "name"
+      ]
+    },
+    "ApplicationGraphResource": {
+      "type": "object",
+      "description": "Describes a resource in the application graph.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The resource ID."
+        },
+        "type": {
+          "type": "string",
+          "description": "The resource type."
+        },
+        "name": {
+          "type": "string",
+          "description": "The resource name."
+        },
+        "resources": {
+          "type": "array",
+          "description": "The resources that comprise this resource.",
+          "items": {
+            "$ref": "#/definitions/ApplicationGraphOutputResource"
+          },
+          "x-ms-identifiers": [
+            "id"
+          ]
+        },
+        "connections": {
+          "type": "array",
+          "description": "The connections between resources in the application graph.",
+          "items": {
+            "$ref": "#/definitions/ApplicationGraphConnection"
+          },
+          "x-ms-identifiers": []
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "name",
+        "resources",
+        "connections"
+      ]
+    },
+    "ApplicationGraphResponse": {
+      "type": "object",
+      "description": "Describes the application architecture and its dependencies.",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "description": "The resources in the application graph.",
+          "items": {
+            "$ref": "#/definitions/ApplicationGraphResource"
+          },
+          "x-ms-identifiers": [
+            "id"
+          ]
+        }
+      },
+      "required": [
+        "resources"
+      ]
+    },
     "ApplicationProperties": {
       "type": "object",
       "description": "Application properties",
@@ -3218,6 +3371,30 @@
             "name": "grpc",
             "value": "grpc",
             "description": "gRPC protocol"
+          }
+        ]
+      }
+    },
+    "Direction": {
+      "type": "string",
+      "description": "The direction of a connection.",
+      "enum": [
+        "Outbound",
+        "Inbound"
+      ],
+      "x-ms-enum": {
+        "name": "Direction",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Outbound",
+            "value": "Outbound",
+            "description": "The resource defining this connection makes an outbound connection resource specified by this id."
+          },
+          {
+            "name": "Inbound",
+            "value": "Inbound",
+            "description": "The resource defining this connection accepts inbound connections from the resource specified by this id."
           }
         ]
       }
