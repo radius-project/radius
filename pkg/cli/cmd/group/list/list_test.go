@@ -105,7 +105,7 @@ func Test_Run(t *testing.T) {
 			Name: "kind-kind",
 		}
 
-		groups := []v20220901privatepreview.ResourceGroupResource{
+		groups := []v20231001preview.ResourceGroupResource{
 			{
 				Name: to.Ptr("rg1"),
 				ID:   to.Ptr("/planes/radius/local/resourcegroups/rg1"),
