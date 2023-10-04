@@ -300,6 +300,12 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
+	// Specifies how the underlying container resource is provisioned and managed.
+	ResourceProvisioning *ContainerResourceProvisioning
+
+	// A collection of references to resources associated with the container
+	Resources []*ResourceReference
+
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
 
@@ -371,6 +377,12 @@ type ContainerResourceUpdateProperties struct {
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettingsUpdate
+
+	// Specifies how the underlying container resource is provisioned and managed.
+	ResourceProvisioning *ContainerResourceProvisioning
+
+	// A collection of references to resources associated with the container
+	Resources []*ResourceReference
 
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
@@ -1370,6 +1382,12 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceReference - Describes a reference to an existing resource
+type ResourceReference struct {
+	// REQUIRED; Resource id of an existing resource
+	ID *string
 }
 
 // ResourceStatus - Status of a resource.
