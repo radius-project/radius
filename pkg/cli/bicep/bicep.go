@@ -18,7 +18,6 @@ package bicep
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
@@ -74,11 +73,10 @@ func DeleteBicep() error {
 // DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
 // the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {
-	dirPrefix := "bicep-extensibility"
 	// Placeholders are for: channel, platform, filename
-	downloadURIFmt := fmt.Sprint("https://get.radapp.dev/tools/", dirPrefix, "/%s/%s/%s")
+	downloadURIFmt := fmt.Sprint("ghcr.io/radius-project/radius/bicep/rad-bicep", "/%s:%s")
 
-	uri, err := tools.GetDownloadURI(downloadURIFmt, binaryName)
+	uri, err := tools.GetDownloadURI(downloadURIFmt)
 	if err != nil {
 		return err
 	}
@@ -103,27 +101,7 @@ func DownloadBicep() error {
 }
 
 func retry(uri, filepath string, attempt, retryAttempts int) (bool, error) {
-	resp, err := http.Get(uri)
-	if err != nil {
-		if attempt == retryAttempts {
-			return false, fmt.Errorf("failed to download bicep: %v", err)
-		}
-		fmt.Printf("Attempt %d failed to download bicep: %v\nRetrying...", attempt, err)
-		time.Sleep(retryDelaySecs * time.Second)
-		return false, nil
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		if attempt == retryAttempts {
-			return false, fmt.Errorf("failed to download bicep from '%s' with status code: %d", uri, resp.StatusCode)
-		}
-		fmt.Printf("Attempt %d failed to download bicep from '%s' with status code: %d\nRetrying...", attempt, uri, resp.StatusCode)
-		time.Sleep(retryDelaySecs * time.Second)
-		return false, nil
-	}
-
-	err = tools.DownloadToFolder(filepath, resp)
+	err := tools.DownloadToFolder(filepath)
 	if err != nil {
 		if attempt == retryAttempts {
 			return false, fmt.Errorf("failed to download bicep: %v", err)

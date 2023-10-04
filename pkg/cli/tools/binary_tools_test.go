@@ -28,12 +28,12 @@ import (
 )
 
 func TestGetDownloadURI(t *testing.T) {
-	got, err := GetDownloadURI("%s/%s/%s", "test-bin")
+	got, err := GetDownloadURI("%s:%s")
 	require.NoError(t, err)
 
 	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
 	require.NoError(t, err, "GetValidPlatform() error = %v", err)
-	want := fmt.Sprintf("%s/%s/test-bin", version.Channel(), platform)
+	want := fmt.Sprintf("%s:%s", platform, version.Channel())
 
 	require.Equal(t, want, got, "GetDownloadURI() got = %v, want %v", got, want)
 }

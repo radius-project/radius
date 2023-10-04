@@ -17,14 +17,21 @@ limitations under the License.
 package tools
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path"
 	"runtime"
+	"strings"
 
+	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/radius-project/radius/pkg/version"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	retry_lib "oras.land/oras-go/v2/registry/remote/retry"
 )
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
@@ -118,38 +125,89 @@ func GetValidPlatform(currentOS, currentArch string) (string, error) {
 
 // GetDownloadURI takes in a download URI format string and a binary name, and returns a download URI
 // string based on the runtime OS and architecture, or an error if the platform is not valid.
-func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
-	filename, err := getFilename(binaryName)
-	if err != nil {
-		return "", err
-	}
-
+func GetDownloadURI(downloadURIFmt string) (string, error) {
 	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf(downloadURIFmt, version.Channel(), platform, filename), nil
+	return fmt.Sprintf(downloadURIFmt, platform, version.Channel()), nil
 }
 
 // DownloadToFolder creates a folder and a file, writes the response body to the file, and makes the file executable by
 // everyone. An error is returned if any of these steps fail.
-func DownloadToFolder(filepath string, resp *http.Response) error {
+func DownloadToFolder(filepath string) error {
 	// create folders
-	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
+	dirPath := strings.TrimSuffix(filepath, "rad-bicep")
+	err := os.MkdirAll(path.Dir(dirPath), os.ModePerm)
 	if err != nil {
+		// output.LogInfo(fmt.Sprintf("FAIL: error with mkdir"))
 		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+	}
+
+	// The ORAS client downloads the full artifact folder. Save this to a temp directory to extract the bicep binary
+	tmpDir, err := os.MkdirTemp(dirPath, "tmp")
+	if err != nil {
+		return fmt.Errorf("failed to create artifact download folder %s: %v", path.Dir(filepath), err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create a temporary file store
+	fs, err := file.New(tmpDir)
+	if err != nil {
+		return fmt.Errorf("failed to create file store %s: %v", filepath, err)
+	}
+	defer fs.Close()
+
+	ctx := context.Background()
+	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return err
+	}
+
+	reg := "ghcr.io/radius-project/radius/bicep/rad-bicep/"
+	repo, err := remote.NewRepository(reg + platform)
+	if err != nil {
+		return err
+	}
+
+	ds, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
+		AllowPlaintextPut: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	repo.Client = &auth.Client{
+		Client:     retry_lib.DefaultClient,
+		Cache:      auth.DefaultCache,
+		Credential: ds.Get,
+	}
+
+	// TODO: change tag to correct version
+	// Copy the artifact from the registry into the temp directory's file store
+	tag := "latest"
+	_, err = oras.Copy(ctx, repo, tag, fs, tag, oras.DefaultCopyOptions)
+	if err != nil {
+		return err
 	}
 
 	// will truncate the file if it exists
 	out, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create file %s: %v", filepath, err)
+		return fmt.Errorf("failed to create bicep file %s: %v", filepath, err)
 	}
 	defer out.Close()
 
+	// Move the binary from the artifact folder to the correct location
+	bicepDir := fmt.Sprintf(tmpDir + "/artifacts/bicep/" + platform + "/rad-bicep")
+	bicepBinary, err := os.Open(bicepDir)
+	if err != nil {
+		return fmt.Errorf("failed to create bicep file %s: %v", filepath, err)
+	}
+
 	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
+	_, err = io.Copy(out, bicepBinary)
 	if err != nil {
 		return fmt.Errorf("failed to write file %s: %v", filepath, err)
 	}
