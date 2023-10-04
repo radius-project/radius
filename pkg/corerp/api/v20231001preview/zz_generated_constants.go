@@ -127,17 +127,18 @@ func PossibleDaprSidecarExtensionProtocolValues() []DaprSidecarExtensionProtocol
 type Direction string
 
 const (
-	// DirectionFrom - From
-	DirectionFrom Direction = "From"
-	// DirectionTo - To
-	DirectionTo Direction = "To"
+	// DirectionInbound - The resource defining this connection accepts inbound connections from the resource specified by this
+// id.
+	DirectionInbound Direction = "Inbound"
+	// DirectionOutbound - The resource defining this connection makes an outbound connection resource specified by this id.
+	DirectionOutbound Direction = "Outbound"
 )
 
 // PossibleDirectionValues returns the possible values for the Direction const type.
 func PossibleDirectionValues() []Direction {
 	return []Direction{	
-		DirectionFrom,
-		DirectionTo,
+		DirectionInbound,
+		DirectionOutbound,
 	}
 }
 

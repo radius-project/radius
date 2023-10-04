@@ -11,7 +11,8 @@ import "time"
 
 // ApplicationGraphConnection - Describes the connection between two resources.
 type ApplicationGraphConnection struct {
-	// REQUIRED; The direction of the connection. To indicates the id is destination and From indicates the id is source
+	// REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
+// 'Inbound' indicates indicates this connection specifies the ID of the source.
 	Direction *Direction
 
 	// REQUIRED; The resource ID

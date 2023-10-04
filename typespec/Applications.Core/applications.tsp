@@ -76,17 +76,17 @@ model ApplicationGraphConnection {
   @doc("The resource ID ")
   id: string;
 
-  @doc("The direction of the connection. To indicates the id is destination and From indicates the id is source")
+  @doc("The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source.")
   direction: Direction;
 }
 
 @doc("The direction of a connection.")
 enum Direction {
-  @doc("To")
-  To,
+  @doc("The resource defining this connection makes an outbound connection resource specified by this id.")
+  Outbound,
 
-  @doc("From")
-  From,
+  @doc("The resource defining this connection accepts inbound connections from the resource specified by this id.")
+  Inbound,
 }
 
 @doc("Describes a resource in the application graph.")

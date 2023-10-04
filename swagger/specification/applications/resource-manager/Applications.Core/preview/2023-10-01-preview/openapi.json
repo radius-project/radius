@@ -2529,7 +2529,7 @@
         },
         "direction": {
           "$ref": "#/definitions/Direction",
-          "description": "The direction of the connection. To indicates the id is destination and From indicates the id is source"
+          "description": "The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source."
         }
       },
       "required": [
@@ -3379,22 +3379,22 @@
       "type": "string",
       "description": "The direction of a connection.",
       "enum": [
-        "To",
-        "From"
+        "Outbound",
+        "Inbound"
       ],
       "x-ms-enum": {
         "name": "Direction",
         "modelAsString": true,
         "values": [
           {
-            "name": "To",
-            "value": "To",
-            "description": "To"
+            "name": "Outbound",
+            "value": "Outbound",
+            "description": "The resource defining this connection makes an outbound connection resource specified by this id."
           },
           {
-            "name": "From",
-            "value": "From",
-            "description": "From"
+            "name": "Inbound",
+            "value": "Inbound",
+            "description": "The resource defining this connection accepts inbound connections from the resource specified by this id."
           }
         ]
       }
