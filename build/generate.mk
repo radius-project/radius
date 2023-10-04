@@ -17,13 +17,14 @@
 ##@ Generate (Code and Schema Generation)
 
 GOOS ?= $(shell go env GOOS)
+CONTROLLER_TOOLS_VERSION ?= v0.12.0
 
 ifeq ($(GOOS),windows)
    CMD_EXT = .cmd
 endif
 
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed:
@@ -59,40 +60,46 @@ generate-controller-gen-installed:
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-ucp-crd
-generate-ucp-crd: generate-controller-gen-installed
+generate-ucp-crd: generate-controller-gen-installed ## Generates the CRDs for UCP APIServer store.
 	@echo "$(ARROW) Generating CRDs for ucp.dev..."
 	controller-gen object paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... object:headerFile=./boilerplate.go.txt
-	controller-gen rbac:roleName=manager-role crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
+	controller-gen crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
+
+.PHONY: generate-controller
+generate-controller: generate-controller-gen-installed ## Generates the CRDs for the Radius controller.
+	@echo "$(ARROW) Generating CRDs for radapp.io..."
+	controller-gen object paths=./pkg/controller/api/... object:headerFile=./boilerplate.go.txt
+	controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
 
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-node-installed generate-autorest-installed
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
+	autorest pkg/cli/clients_new/README.md --tag=2023-10-01-preview
 
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
+	autorest pkg/corerp/api/README.md --tag=core-2023-10-01-preview
 
 .PHONY: generate-rad-datastoresrp-client
 generate-rad-datastoresrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/datastoresrp/api/README.md --tag=datastores-2022-03-15-privatepreview
+	autorest pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview
 
 .PHONY: generate-rad-messagingrp-client
 generate-rad-messagingrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/messagingrp/api/README.md --tag=messaging-2022-03-15-privatepreview
+	autorest pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview
 
 .PHONY: generate-rad-daprrp-client
 generate-rad-daprrp-client: generate-node-installed generate-autorest-installed generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/daprrp/api/README.md --tag=dapr-2022-03-15-privatepreview
+	autorest pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview
 
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/ucp/api/README.md --tag=ucp-2022-09-01-privatepreview
+	autorest pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

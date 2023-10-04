@@ -17,34 +17,10 @@ limitations under the License.
 package portableresources
 
 import (
-	"strings"
+	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
 const (
-	// DaprPubSubBrokersResourceType represents the resource type for Dapr PubSub brokers.
-	DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
-
-	// DaprSecretStoresResourceType represents the resource type for Dapr Secret stores.
-	DaprSecretStoresResourceType = "Applications.Dapr/secretStores"
-
-	// DaprStateStoresResourceType represents the resource type for Dapr State stores.
-	DaprStateStoresResourceType = "Applications.Dapr/stateStores"
-
-	// RabbitMQQueuesResourceType represents the resource type for RabbitMQ queue.
-	RabbitMQQueuesResourceType = "Applications.Messaging/rabbitMQQueues"
-
-	// MongoDatabasesResourceType represents the resource type for Mongo database.
-	MongoDatabasesResourceType = "Applications.Datastores/mongoDatabases"
-
-	// RedisCachesResourceType represents the resource type for Redis caches.
-	RedisCachesResourceType = "Applications.Datastores/redisCaches"
-
-	// SqlDatabasesResourceType represents the resource type for SQL databases.
-	SqlDatabasesResourceType = "Applications.Datastores/sqlDatabases"
-
-	// ExtendersResourceType represents the resource type for Extenders resource.
-	ExtendersResourceType = "Applications.Core/extenders"
-
 	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe.
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
 
@@ -80,6 +56,8 @@ type ResourceRecipe struct {
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any `json:"parameters,omitempty"`
+	// DeploymentStatus is the deployment status of the recipe
+	DeploymentStatus util.RecipeDeploymentStatus `json:"recipeStatus,omitempty"`
 }
 
 // ResourceReference represents a reference to a resource that was deployed by the user
@@ -124,26 +102,4 @@ type Kubernetes struct {
 	Namespace string `json:"namespace"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
-}
-
-// IsValidPortableResourceType checks if the provided resource type is a valid portable resource type.
-// Returns true if the resource type is valid, false otherwise.
-func IsValidPortableResourceType(resourceType string) bool {
-	portableResourceTypes := []string{
-		DaprPubSubBrokersResourceType,
-		DaprSecretStoresResourceType,
-		DaprStateStoresResourceType,
-		RabbitMQQueuesResourceType,
-		MongoDatabasesResourceType,
-		RedisCachesResourceType,
-		SqlDatabasesResourceType,
-		ExtendersResourceType,
-	}
-	for _, s := range portableResourceTypes {
-		if strings.EqualFold(s, resourceType) {
-			return true
-		}
-	}
-
-	return false
 }

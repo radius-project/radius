@@ -192,6 +192,7 @@ jobs:
             * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
             * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
+            * controller test image location: `${{ env.CACHE_REGISTRY }}/controller:${{ env.REL_VERSION }}`
             * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
             * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
 
@@ -418,7 +419,7 @@ jobs:
       - name: Install dapr into cluster
         run: |
           wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
-          dapr init -k --wait --timeout 600
+          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }}
       - name: Install Azure Keyvault CSI driver chart
         run: |
           helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
@@ -454,7 +455,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
+            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CACHE_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes

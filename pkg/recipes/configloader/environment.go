@@ -22,9 +22,10 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/to"
@@ -58,7 +59,7 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 		return nil, err
 	}
 
-	var application *v20220315privatepreview.ApplicationResource
+	var application *v20231001preview.ApplicationResource
 	if recipe.ApplicationID != "" {
 		application, err = util.FetchApplication(ctx, recipe.ApplicationID, e.ArmClientOptions)
 		if err != nil {
@@ -69,14 +70,14 @@ func (e *environmentLoader) LoadConfiguration(ctx context.Context, recipe recipe
 	return getConfiguration(environment, application)
 }
 
-func getConfiguration(environment *v20220315privatepreview.EnvironmentResource, application *v20220315privatepreview.ApplicationResource) (*recipes.Configuration, error) {
+func getConfiguration(environment *v20231001preview.EnvironmentResource, application *v20231001preview.ApplicationResource) (*recipes.Configuration, error) {
 	config := recipes.Configuration{
 		Runtime:   recipes.RuntimeConfiguration{},
 		Providers: datamodel.Providers{},
 	}
 
 	switch environment.Properties.Compute.(type) {
-	case *v20220315privatepreview.KubernetesCompute:
+	case *v20231001preview.KubernetesCompute:
 		config.Runtime.Kubernetes = &recipes.KubernetesRuntime{}
 		var err error
 
@@ -122,19 +123,22 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 	return getRecipeDefinition(environment, recipe)
 }
 
-func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
+func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
 	if environment.Properties.Recipes == nil {
-		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	resource, err := resources.ParseResource(recipe.ResourceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+		err := fmt.Errorf("failed to parse resourceID: %q %w", recipe.ResourceID, err)
+		return nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 	recipeName := recipe.Name
 	found, ok := environment.Properties.Recipes[resource.Type()][recipeName]
 	if !ok {
-		return nil, &recipes.ErrRecipeNotFound{Name: recipe.Name, Environment: recipe.EnvironmentID}
+		err := fmt.Errorf("could not find recipe %q in environment %q", recipe.Name, recipe.EnvironmentID)
+		return nil, recipes.NewRecipeError(recipes.RecipeNotFoundFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
 	}
 
 	definition := &recipes.EnvironmentDefinition{
@@ -145,7 +149,7 @@ func getRecipeDefinition(environment *v20220315privatepreview.EnvironmentResourc
 		TemplatePath: *found.GetRecipeProperties().TemplatePath,
 	}
 	switch c := found.(type) {
-	case *v20220315privatepreview.TerraformRecipeProperties:
+	case *v20231001preview.TerraformRecipeProperties:
 		definition.TemplateVersion = *c.TemplateVersion
 	}
 

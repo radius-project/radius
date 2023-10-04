@@ -14,7 +14,7 @@ param environmentRecipeName string = 'default'
 @description('The environment parameters to pass to the recipe. eg: {"message": "Hello World"}')
 param environmentParameters object = {}
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: basename
   properties: {
     compute: {
@@ -34,7 +34,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: basename
   properties: {
     environment: env.id
@@ -49,7 +49,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 
 // This resources is intentionally NOT using a recipe. It's being created so we can reference
 // it inside a recipe in the next step.
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
   name: '${basename}-existing'
   properties: {
     application: app.id

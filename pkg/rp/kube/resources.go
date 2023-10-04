@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	cdm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
@@ -71,9 +71,9 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 
 // FetchNamespaceFromEnvironmentResource finds the environment-scope Kubernetes namespace from EnvironmentResource.
 // If no namespace is found, an error is returned.
-func FetchNamespaceFromEnvironmentResource(environment *v20220315privatepreview.EnvironmentResource) (string, error) {
+func FetchNamespaceFromEnvironmentResource(environment *v20231001preview.EnvironmentResource) (string, error) {
 	if environment.Properties.Compute != nil {
-		kubernetes, ok := environment.Properties.Compute.(*v20220315privatepreview.KubernetesCompute)
+		kubernetes, ok := environment.Properties.Compute.(*v20231001preview.KubernetesCompute)
 		if !ok {
 			return "", v1.ErrInvalidModelConversion
 		}
@@ -85,9 +85,9 @@ func FetchNamespaceFromEnvironmentResource(environment *v20220315privatepreview.
 
 // FetchNamespaceFromApplicationResource finds the application-scope Kubernetes namespace from ApplicationResource.
 // If no namespace is found, an error is returned.
-func FetchNamespaceFromApplicationResource(application *v20220315privatepreview.ApplicationResource) (string, error) {
+func FetchNamespaceFromApplicationResource(application *v20231001preview.ApplicationResource) (string, error) {
 	if application.Properties.Status != nil && application.Properties.Status.Compute != nil {
-		kubernetes, ok := application.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
+		kubernetes, ok := application.Properties.Status.Compute.(*v20231001preview.KubernetesCompute)
 		if !ok {
 			return "", v1.ErrInvalidModelConversion
 		}

@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -171,7 +172,96 @@ func Test_Process(t *testing.T) {
 				"metadata": map[string]any{
 					"namespace":       "test-namespace",
 					"name":            "test-dapr-pubsub-broker",
-					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", portableresources.DaprPubSubBrokersResourceType),
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("test-app", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
+					"resourceVersion": "1",
+				},
+				"spec": map[string]any{
+					"type":    "pubsub.redis",
+					"version": "v1",
+					"metadata": []any{
+						map[string]any{
+							"name":  "config",
+							"value": "extrasecure",
+						},
+					},
+				},
+			},
+		}
+
+		component := rpv1.NewKubernetesOutputResource("Component", generated, metav1.ObjectMeta{Name: generated.GetName(), Namespace: generated.GetNamespace()})
+		component.RadiusManaged = to.Ptr(true)
+		expectedOutputResources = append(expectedOutputResources, component)
+		require.NoError(t, err)
+
+		require.Equal(t, expectedValues, resource.ComputedValues)
+		require.Equal(t, expectedSecrets, resource.SecretValues)
+		require.Equal(t, expectedOutputResources, resource.Properties.Status.OutputResources)
+
+		components := unstructured.UnstructuredList{}
+		components.SetAPIVersion("dapr.io/v1alpha1")
+		components.SetKind("Component")
+		err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+		require.NoError(t, err)
+		require.NotEmpty(t, components.Items)
+		require.Equal(t, []unstructured.Unstructured{*generated}, components.Items)
+	})
+
+	t.Run("success - manual (no application)", func(t *testing.T) {
+		processor := Processor{
+			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
+		}
+
+		resource := &datamodel.DaprPubSubBroker{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					Name: "some-other-name",
+				},
+			},
+			Properties: datamodel.DaprPubSubBrokerProperties{
+				BasicResourceProperties: rpv1.BasicResourceProperties{
+					Environment: envID,
+				},
+				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
+					ComponentName: componentName,
+				},
+				ResourceProvisioning: portableresources.ResourceProvisioningManual,
+				Metadata: map[string]any{
+					"config": "extrasecure",
+				},
+				Resources: []*portableresources.ResourceReference{{ID: externalResourceID1}},
+				Type:      "pubsub.redis",
+				Version:   "v1",
+			},
+		}
+
+		options := processors.Options{
+			RuntimeConfiguration: recipes.RuntimeConfiguration{
+				Kubernetes: &recipes.KubernetesRuntime{
+					Namespace: "test-namespace",
+				},
+			},
+		}
+
+		err := processor.Process(context.Background(), resource, options)
+		require.NoError(t, err)
+
+		require.Equal(t, componentName, resource.Properties.ComponentName)
+
+		expectedValues := map[string]any{
+			"componentName": componentName,
+		}
+		expectedSecrets := map[string]rpv1.SecretValueReference{}
+
+		expectedOutputResources, err := processors.GetOutputResourcesFromResourcesField(resource.Properties.Resources)
+
+		generated := &unstructured.Unstructured{
+			Object: map[string]any{
+				"apiVersion": dapr.DaprAPIVersion,
+				"kind":       dapr.DaprKind,
+				"metadata": map[string]any{
+					"namespace":       "test-namespace",
+					"name":            "test-dapr-pubsub-broker",
+					"labels":          kubernetes.MakeDescriptiveDaprLabels("", "some-other-name", dapr_ctrl.DaprPubSubBrokersResourceType),
 					"resourceVersion": "1",
 				},
 				"spec": map[string]any{
@@ -290,7 +380,7 @@ func Test_Process(t *testing.T) {
 			"test-dapr-pubsub-broker",
 			"test-app",
 			"some-other-other-name",
-			portableresources.DaprPubSubBrokersResourceType)
+			dapr_ctrl.DaprPubSubBrokersResourceType)
 		require.NoError(t, err)
 
 		processor := Processor{

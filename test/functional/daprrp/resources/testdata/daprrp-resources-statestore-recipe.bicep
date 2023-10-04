@@ -4,7 +4,7 @@ param magpieimage string
 param registry string
 param version string
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'daprrp-env-recipes-env'
   properties: {
     compute: {
@@ -23,7 +23,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'daprrp-rs-sts-recipe'
   properties: {
     environment: env.id
@@ -36,7 +36,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'dapr-sts-recipe-ctnr'
   properties: {
     application: app.id
@@ -63,7 +63,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource statestore 'Applications.Dapr/stateStores@2022-03-15-privatepreview' = {
+resource statestore 'Applications.Dapr/stateStores@2023-10-01-preview' = {
   name: 'dapr-sts-recipe'
   properties: {
     application: app.id

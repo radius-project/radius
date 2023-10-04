@@ -1,7 +1,9 @@
 supported:
+  - channel: '0.25'
+    version: 'v0.25.0'
+deprecated:
   - channel: '0.24'
     version: 'v0.24.0'
-deprecated:
   - channel: '0.23'
     version: 'v0.23.1'
   - channel: '0.22'

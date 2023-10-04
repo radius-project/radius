@@ -86,7 +86,7 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 
 	// This is the only Radius-specific customization we make.
 	//
-	// We use the `radius.dev/application` label to include pods that are part of an application.
+	// We use the `radapp.io/application` label to include pods that are part of an application.
 	// This can include the user's Radius containers as well as any Kubernetes resources that are labeled
 	// as part of the application (eg: something created with a recipe).
 	req, err := labels.NewRequirement(kubernetes.LabelRadiusApplication, selection.Equals, []string{options.ApplicationName})

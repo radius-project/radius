@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
@@ -28,8 +28,8 @@ import (
 // string, returning an error if the conversion fails.
 func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1.VersionedModelInterface, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.ExtenderResource{}
+	case v20231001preview.Version:
+		versioned := &v20231001preview.ExtenderResource{}
 		err := versioned.ConvertFrom(model)
 		if err != nil {
 			return nil, err
@@ -46,8 +46,8 @@ func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (v1
 // converts it to a datamodel.Extender struct and returns it, or returns an error if the unmarshal or conversion fails.
 func ExtenderDataModelFromVersioned(content []byte, version string) (*datamodel.Extender, error) {
 	switch version {
-	case v20220315privatepreview.Version:
-		am := &v20220315privatepreview.ExtenderResource{}
+	case v20231001preview.Version:
+		am := &v20231001preview.ExtenderResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}

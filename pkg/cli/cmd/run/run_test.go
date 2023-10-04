@@ -35,7 +35,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testcontext"
@@ -65,7 +65,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -85,7 +85,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -100,7 +100,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
+					Return(v20231001preview.EnvironmentResource{}, nil).
 					Times(1)
 			},
 		},
@@ -188,10 +188,10 @@ func Test_Run(t *testing.T) {
 		}).
 		Times(1)
 
-	app := v20220315privatepreview.ApplicationResource{
-		Properties: &v20220315privatepreview.ApplicationProperties{
-			Status: &v20220315privatepreview.ResourceStatus{
-				Compute: &v20220315privatepreview.KubernetesCompute{
+	app := v20231001preview.ApplicationResource{
+		Properties: &v20231001preview.ApplicationProperties{
+			Status: &v20231001preview.ResourceStatus{
+				Compute: &v20231001preview.KubernetesCompute{
 					Kind:      to.Ptr("kubernetes"),
 					Namespace: to.Ptr("test-namespace-app"),
 				},
@@ -200,6 +200,10 @@ func Test_Run(t *testing.T) {
 	}
 
 	clientMock := clients.NewMockApplicationsManagementClient(ctrl)
+	clientMock.EXPECT().
+		GetEnvDetails(gomock.Any(), "test-environment").
+		Return(v20231001preview.EnvironmentResource{}, nil).
+		Times(1)
 	clientMock.EXPECT().
 		CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 		Return(nil).

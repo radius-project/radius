@@ -57,30 +57,47 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a Generic resource
+// BeginCreateOrUpdate - Creates or updates a Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // resourceName - The name of the generic resource
 // genericResourceParameters - generic resource create parameters
-// options - GenericResourcesClientCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.CreateOrUpdate
+// options - GenericResourcesClientBeginCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.BeginCreateOrUpdate
 // method.
-func (client *GenericResourcesClient) CreateOrUpdate(ctx context.Context, resourceName string, genericResourceParameters GenericResource, options *GenericResourcesClientCreateOrUpdateOptions) (GenericResourcesClientCreateOrUpdateResponse, error) {
+func (client *GenericResourcesClient) BeginCreateOrUpdate(ctx context.Context, resourceName string, genericResourceParameters GenericResource, options *GenericResourcesClientBeginCreateOrUpdateOptions) (*runtime.Poller[GenericResourcesClientCreateOrUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.createOrUpdate(ctx, resourceName, genericResourceParameters, options)
+		if err != nil {
+			return nil, err
+		}
+		return runtime.NewPoller(resp, client.pl, &runtime.NewPollerOptions[GenericResourcesClientCreateOrUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaAzureAsyncOp,
+		})
+	} else {
+		return runtime.NewPollerFromResumeToken[GenericResourcesClientCreateOrUpdateResponse](options.ResumeToken, client.pl, nil)
+	}
+}
+
+// CreateOrUpdate - Creates or updates a Generic resource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2023-10-01-preview
+func (client *GenericResourcesClient) createOrUpdate(ctx context.Context, resourceName string, genericResourceParameters GenericResource, options *GenericResourcesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, resourceName, genericResourceParameters, options)
 	if err != nil {
-		return GenericResourcesClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return GenericResourcesClientCreateOrUpdateResponse{}, err
+		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return GenericResourcesClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return nil, runtime.NewResponseError(resp)
 	}
-	return client.createOrUpdateHandleResponse(resp)
+	 return resp, nil
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Context, resourceName string, genericResourceParameters GenericResource, options *GenericResourcesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Context, resourceName string, genericResourceParameters GenericResource, options *GenericResourcesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
@@ -93,24 +110,15 @@ func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Co
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, genericResourceParameters)
 }
 
-// createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *GenericResourcesClient) createOrUpdateHandleResponse(resp *http.Response) (GenericResourcesClientCreateOrUpdateResponse, error) {
-	result := GenericResourcesClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.GenericResource); err != nil {
-		return GenericResourcesClientCreateOrUpdateResponse{}, err
-	}
-	return result, nil
-}
-
 // BeginDelete - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // resourceName - The name of the generic resource
 // options - GenericResourcesClientBeginDeleteOptions contains the optional parameters for the GenericResourcesClient.BeginDelete
 // method.
@@ -130,7 +138,7 @@ func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceN
 
 // Delete - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*http.Response, error) {
 	req, err := client.deleteCreateRequest(ctx, resourceName, options)
 	if err != nil {
@@ -160,7 +168,7 @@ func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, r
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -168,7 +176,7 @@ func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, r
 
 // Get - Retrieves information about a generic resource with the name given of the type given within the root scope
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // resourceName - The name of the generic resource
 // options - GenericResourcesClientGetOptions contains the optional parameters for the GenericResourcesClient.Get method.
 func (client *GenericResourcesClient) Get(ctx context.Context, resourceName string, options *GenericResourcesClientGetOptions) (GenericResourcesClientGetResponse, error) {
@@ -200,7 +208,7 @@ func (client *GenericResourcesClient) getCreateRequest(ctx context.Context, reso
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -216,7 +224,7 @@ func (client *GenericResourcesClient) getHandleResponse(resp *http.Response) (Ge
 }
 
 // NewListByRootScopePager - Lists information about all resources of the given resource type in the given root scope
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2023-10-01-preview
 // options - GenericResourcesClientListByRootScopeOptions contains the optional parameters for the GenericResourcesClient.ListByRootScope
 // method.
 func (client *GenericResourcesClient) NewListByRootScopePager(options *GenericResourcesClientListByRootScopeOptions) (*runtime.Pager[GenericResourcesClientListByRootScopeResponse]) {
@@ -257,7 +265,7 @@ func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.C
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	reqQP.Set("api-version", "2023-10-01-preview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
@@ -268,6 +276,56 @@ func (client *GenericResourcesClient) listByRootScopeHandleResponse(resp *http.R
 	result := GenericResourcesClientListByRootScopeResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.GenericResourcesList); err != nil {
 		return GenericResourcesClientListByRootScopeResponse{}, err
+	}
+	return result, nil
+}
+
+// ListSecrets - Lists secrets for a resource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2023-10-01-preview
+// resourceName - The name of the generic resource
+// options - GenericResourcesClientListSecretsOptions contains the optional parameters for the GenericResourcesClient.ListSecrets
+// method.
+func (client *GenericResourcesClient) ListSecrets(ctx context.Context, resourceName string, options *GenericResourcesClientListSecretsOptions) (GenericResourcesClientListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, resourceName, options)
+	if err != nil {
+		return GenericResourcesClientListSecretsResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return GenericResourcesClientListSecretsResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return GenericResourcesClientListSecretsResponse{}, runtime.NewResponseError(resp)
+	}
+	return client.listSecretsHandleResponse(resp)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *GenericResourcesClient) listSecretsCreateRequest(ctx context.Context, resourceName string, options *GenericResourcesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}/listSecrets"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+	if resourceName == "" {
+		return nil, errors.New("parameter resourceName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceName}", url.PathEscape(resourceName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2023-10-01-preview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *GenericResourcesClient) listSecretsHandleResponse(resp *http.Response) (GenericResourcesClientListSecretsResponse, error) {
+	result := GenericResourcesClientListSecretsResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.Value); err != nil {
+		return GenericResourcesClientListSecretsResponse{}, err
 	}
 	return result, nil
 }

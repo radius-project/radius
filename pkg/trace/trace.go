@@ -26,6 +26,27 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
+// Service implements the hosting.Service interface for the tracer.
+type Service struct {
+	Options Options
+}
+
+// Name gets the service name.
+func (s *Service) Name() string {
+	return "tracer"
+}
+
+// Run runs the tracer service.
+func (s *Service) Run(ctx context.Context) error {
+	shutdown, err := InitTracer(s.Options)
+	if err != nil {
+		return err
+	}
+
+	<-ctx.Done()
+	return shutdown(ctx)
+}
+
 // InitTracer sets up a tracer provider with a sampler and resource attributes, and optionally registers a Zipkin exporter
 // and batcher. It returns a shutdown function and an error if one occurs.
 func InitTracer(opts Options) (func(context.Context) error, error) {

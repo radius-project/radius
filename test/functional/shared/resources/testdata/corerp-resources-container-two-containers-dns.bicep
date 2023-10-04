@@ -12,7 +12,7 @@ param port int = 3000
 @description('Specifies the environment for resources.')
 param environment string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-container-two-containers-dns'
   location: location
   properties: {
@@ -26,7 +26,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource containerad 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerad 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containerad'
   location: location
   properties: {
@@ -42,7 +42,7 @@ resource containerad 'Applications.Core/containers@2022-03-15-privatepreview' = 
   }
 }
 
-resource containeraf 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containeraf 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containeraf'
   location: location
   properties: {

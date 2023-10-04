@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -26,8 +27,10 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/store"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // CreateOrUpdateResource is the async operation controller to create or update portable resources.
@@ -76,9 +79,25 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	previousOutputResources := c.copyOutputResources(data)
 
 	// Now we're ready to process recipes (if needed).
+	recipeDataModel := any(data).(datamodel.RecipeDataModel)
 	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
+			logger := ucplog.FromContextOrDiscard(ctx)
+			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
+			// Set the deployment status to the recipe error code.
+			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
+			update := &store.Object{
+				Metadata: store.Metadata{
+					ID: req.ResourceID,
+				},
+				Data: recipeDataModel.(rpv1.RadiusResourceModel),
+			}
+			// Save portable resource with updated deployment status to track errors during deletion.
+			err = c.StorageClient().Save(ctx, update, store.WithETag(obj.ETag))
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 			return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
 		}
 		return ctrl.Result{}, err
@@ -96,11 +115,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	if recipeDataModel.Recipe() != nil {
+		recipeDataModel.Recipe().DeploymentStatus = util.Success
+	}
 	update := &store.Object{
 		Metadata: store.Metadata{
 			ID: req.ResourceID,
 		},
-		Data: data,
+		Data: recipeDataModel.(rpv1.RadiusResourceModel),
 	}
 	err = c.StorageClient().Save(ctx, update, store.WithETag(obj.ETag))
 	if err != nil {
@@ -137,7 +159,12 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		ResourceID:    data.GetBaseResource().ID,
 	}
 
-	return c.engine.Execute(ctx, request, prevState)
+	return c.engine.Execute(ctx, engine.ExecuteOptions{
+		BaseOptions: engine.BaseOptions{
+			Recipe: request,
+		},
+		PreviousState: prevState,
+	})
 }
 
 func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {

@@ -36,7 +36,7 @@ func TestFromARMRequest(t *testing.T) {
 	}{
 		{
 			"With referer header",
-			"https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
+			"https://radapp.io/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-10-01-preview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 		{
@@ -46,7 +46,7 @@ func TestFromARMRequest(t *testing.T) {
 		},
 		{
 			"With referer path base",
-			"https://radius.dev/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
+			"https://radapp.io/apis/api.ucp.dev/v1alpha3/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2023-10-01-preview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 	}
@@ -67,7 +67,7 @@ func TestFromARMRequest(t *testing.T) {
 
 			serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 			require.NoError(t, err)
-			require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
+			require.Equal(t, "2023-10-01-preview", serviceCtx.APIVersion)
 			require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 			require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
 			require.Equal(t, tt.resourceID, serviceCtx.ResourceID.String())
@@ -107,7 +107,7 @@ func TestFromContext(t *testing.T) {
 
 		sCtx := ARMRequestContextFromContext(newCtx)
 		require.NotNil(t, sCtx)
-		require.Equal(t, "2022-03-15-privatepreview", sCtx.APIVersion)
+		require.Equal(t, "2023-10-01-preview", sCtx.APIVersion)
 	})
 
 	t.Run("ARMRequestContext is not injected", func(t *testing.T) {

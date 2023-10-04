@@ -1,0 +1,37 @@
+{
+  "operationId": "Gateways_ListByScope",
+  "title": "List gateway resources",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "value": [
+          {
+            "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/gateways/gateway0",
+            "name": "gateway0",
+            "type": "Applications.Core/gateways",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "routes":[
+                {
+                  "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-front-rte"
+                }
+              ],    
+              "tls":{
+                "sslPassthrough": false,
+                "hostname": "myapp.radapp.io",
+                "minimumProtocolVersion": "1.2",
+                "certificateFrom": "myapp-tls-cert"
+              }
+            }
+          }
+        ],
+        "nextLink": "https://serviceRoot/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/gateways?api-version=2023-10-01-preview&$skiptoken=X'12345'"
+      }
+    }
+  }
+}

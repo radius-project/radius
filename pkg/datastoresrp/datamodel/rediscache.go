@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -54,17 +55,17 @@ func (r *RedisCache) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type of Redis cache resource.
-func (redis *RedisCache) ResourceTypeName() string {
-	return portableresources.RedisCachesResourceType
+func (r *RedisCache) ResourceTypeName() string {
+	return ds_ctrl.RedisCachesResourceType
 }
 
 // Recipe returns the ResourceRecipe from the Redis cache Properties if ResourceProvisioning is not set to Manual,
 // otherwise it returns nil.
-func (redis *RedisCache) Recipe() *portableresources.ResourceRecipe {
-	if redis.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
+func (r *RedisCache) Recipe() *portableresources.ResourceRecipe {
+	if r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		return nil
 	}
-	return &redis.Properties.Recipe
+	return &r.Properties.Recipe
 }
 
 // IsEmpty checks if the RedisCacheSecrets instance is empty or not.
@@ -74,13 +75,13 @@ func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
 
 // VerifyInputs checks if the required fields are set when the resourceProvisioning is set to manual
 // and returns an error if not.
-func (redisCache *RedisCache) VerifyInputs() error {
+func (r *RedisCache) VerifyInputs() error {
 	msgs := []string{}
-	if redisCache.Properties.ResourceProvisioning != "" && redisCache.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
-		if redisCache.Properties.Host == "" {
+	if r.Properties.ResourceProvisioning != "" && r.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
+		if r.Properties.Host == "" {
 			msgs = append(msgs, "host must be specified when resourceProvisioning is set to manual")
 		}
-		if redisCache.Properties.Port == 0 {
+		if r.Properties.Port == 0 {
 			msgs = append(msgs, "port must be specified when resourceProvisioning is set to manual")
 		}
 	}
@@ -136,5 +137,5 @@ type RedisCacheSecrets struct {
 
 // ResourceTypeName returns the resource type of RedisCache resource.
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return portableresources.RedisCachesResourceType
+	return ds_ctrl.RedisCachesResourceType
 }

@@ -68,23 +68,17 @@ type GenericResource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-type GenericResourceProperties struct {
-	PropertyKey *string `json:"propertyKey,omitempty"`
-
-	// Any object
-	PropertyValue map[string]interface{} `json:"propertyValue,omitempty"`
+// GenericResourcesClientBeginCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.BeginCreateOrUpdate
+// method.
+type GenericResourcesClientBeginCreateOrUpdateOptions struct {
+	// Resumes the LRO from the provided token.
+	ResumeToken string
 }
 
 // GenericResourcesClientBeginDeleteOptions contains the optional parameters for the GenericResourcesClient.BeginDelete method.
 type GenericResourcesClientBeginDeleteOptions struct {
 	// Resumes the LRO from the provided token.
 	ResumeToken string
-}
-
-// GenericResourcesClientCreateOrUpdateOptions contains the optional parameters for the GenericResourcesClient.CreateOrUpdate
-// method.
-type GenericResourcesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
 }
 
 // GenericResourcesClientGetOptions contains the optional parameters for the GenericResourcesClient.Get method.
@@ -95,6 +89,11 @@ type GenericResourcesClientGetOptions struct {
 // GenericResourcesClientListByRootScopeOptions contains the optional parameters for the GenericResourcesClient.ListByRootScope
 // method.
 type GenericResourcesClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// GenericResourcesClientListSecretsOptions contains the optional parameters for the GenericResourcesClient.ListSecrets method.
+type GenericResourcesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 

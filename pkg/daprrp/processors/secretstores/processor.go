@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -59,9 +60,16 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 	// If the resource is being provisioned manually then *we* are responsible for creating the Dapr Component.
 	// Let's do this now.
 
-	applicationID, err := resources.ParseResource(resource.Properties.Application)
-	if err != nil {
-		return err // This should already be validated by this point.
+	// DaprSecretStore resources may or may not be application scoped.
+	// Some Dapr Components can be specific to a single application, they would be application scoped and have
+	// resource.Properties.Application populated, while others could be shared across multiple applications and
+	// would not have resource.Properties.Application populated.
+	var applicationID resources.ID
+	if resource.Properties.Application != "" {
+		applicationID, err = resources.ParseResource(resource.Properties.Application)
+		if err != nil {
+			return err // This should already be validated by this point.
+		}
 	}
 
 	component, err := dapr.ConstructDaprGeneric(
@@ -74,7 +82,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		resource.Properties.ComponentName,
 		applicationID.Name(),
 		resource.Name,
-		portableresources.DaprSecretStoresResourceType)
+		dapr_ctrl.DaprSecretStoresResourceType)
 	if err != nil {
 		return err
 	}
@@ -84,7 +92,7 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ResourceError{Inner: err}
 	}
 
-	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, portableresources.DaprSecretStoresResourceType)
+	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, dapr_ctrl.DaprSecretStoresResourceType)
 	if err != nil {
 		return &processors.ValidationError{Message: err.Error()}
 	}
@@ -110,9 +118,17 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprSecretSt
 		return nil
 	}
 
-	applicationID, err := resources.ParseResource(resource.Properties.Application)
-	if err != nil {
-		return err // This should already be validated by this point.
+	// DaprSecretStore resources may or may not be application scoped.
+	// Some Dapr Components can be specific to a single application, they would be application scoped and have
+	// resource.Properties.Application populated, while others could be shared across multiple applications and
+	// would not have resource.Properties.Application populated.
+	var err error
+	var applicationID resources.ID
+	if resource.Properties.Application != "" {
+		applicationID, err = resources.ParseResource(resource.Properties.Application)
+		if err != nil {
+			return err
+		}
 	}
 
 	component := unstructured.Unstructured{
@@ -122,7 +138,7 @@ func (p *Processor) Delete(ctx context.Context, resource *datamodel.DaprSecretSt
 			"metadata": map[string]any{
 				"namespace": options.RuntimeConfiguration.Kubernetes.Namespace,
 				"name":      kubernetes.NormalizeDaprResourceName(resource.Properties.ComponentName),
-				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, portableresources.DaprSecretStoresResourceType),
+				"labels":    kubernetes.MakeDescriptiveDaprLabels(applicationID.Name(), resource.Name, dapr_ctrl.DaprSecretStoresResourceType),
 			},
 		},
 	}

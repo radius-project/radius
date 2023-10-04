@@ -42,7 +42,7 @@ var outputResource = rpv1.OutputResource{
 	RadiusManaged: to.Ptr(true),
 }
 
-func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
+func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 	resourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *ctrl.Request, *engine.MockEngine, *configloader.MockConfigurationLoader) {
 		mctrl := gomock.NewController(t)
@@ -122,7 +122,12 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 			if tt.getErr == nil {
 				eng.EXPECT().
-					Delete(gomock.Any(), recipeData, status.OutputResources).
+					Delete(gomock.Any(), engine.DeleteOptions{
+						BaseOptions: engine.BaseOptions{
+							Recipe: recipeData,
+						},
+						OutputResources: status.OutputResources,
+					}).
 					Return(tt.engDelErr).
 					Times(1)
 				if tt.engDelErr == nil {

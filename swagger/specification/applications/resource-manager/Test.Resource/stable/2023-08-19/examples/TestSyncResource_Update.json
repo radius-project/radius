@@ -1,0 +1,30 @@
+{
+  "operationId": "TestSyncResources_Update",
+  "title": "Update TestSyncResource resources",
+  "parameters": {
+    "rootScope": "/planes/radius/local/resourceGroups/testGroup",
+    "testSyncResourceName": "resource0",
+    "api-version": "2023-08-19",
+    "TestSyncResource": {
+      "location": "global",
+      "properties": {
+        "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+        "property1": "test"
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Test.Resource/testSyncResources/resource0",
+        "name": "resource0",
+        "type": "Test.Resource/testSyncResources",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "property1": "test"
+        }
+      }
+    }
+  }
+}

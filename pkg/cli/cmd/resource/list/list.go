@@ -44,7 +44,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Lists resources",
 		Long:  "List all resources of specified type",
 		Example: `
-	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+	sample list of resourceType: containers, gateways, httpRoutes, pubSubBrokers, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, stateStores, secretStores
 
 	# list all resources of a specified type in the default environment
 
@@ -157,7 +157,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else {
 		_, err = client.ShowApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
-			return clierrors.Message("The application %q could not be found in workspace %q.", r.ApplicationName, r.Workspace.Name)
+			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application' or switch applications with 'rad app switch'.", r.ApplicationName, r.Workspace.Name)
 		} else if err != nil {
 			return err
 		}

@@ -22,17 +22,17 @@ basic-setup-py: true
 output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications
 ```
 
-### Tag: package-core-2022-03-15-privatepreview and python
+### Tag: package-core-2023-10-01-preview and python
 
-These settings apply only when `--tag=package-core-2022-03-15-privatepreview --python` is specified on the command line.
+These settings apply only when `--tag=package-core-2023-10-01-preview --python` is specified on the command line.
 Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
 
-``` yaml $(tag) == 'package-core-2022-03-15-privatepreview'
-namespace: azure.mgmt.applications.core.v2022_03_15_privatepreview
-output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
+``` yaml $(tag) == 'package-core-2023-10-01-preview'
+namespace: azure.mgmt.applications.core.v2023_10_01_preview
+output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2023_10_01_preview
 python:
-  namespace: azure.mgmt.applications.core.v2022_03_15_privatepreview
-  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2022_03_15_privatepreview
+  namespace: azure.mgmt.applications.core.v2023_10_01_preview
+  output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/core/v2023_10_01_preview
 ```
 
 ### Python multi-api
@@ -42,8 +42,8 @@ Generate all API versions currently shipped for this package
 ```yaml $(multiapi) && $(track2)
 clear-output-folder: true
 batch:
-  - tag: package-core-2022-03-15-privatepreview
-  - tag: package-link-2022-03-15-privatepreview
+  - tag: package-core-2023-10-01-preview
+  - tag: package-link-2023-10-01-preview
   - multiapiscript: true
 ```
 

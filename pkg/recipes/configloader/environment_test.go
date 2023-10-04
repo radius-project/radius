@@ -19,7 +19,7 @@ package configloader
 import (
 	"testing"
 
-	model "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
+	model "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
@@ -249,7 +249,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		metadata.ResourceID = "invalid-id"
 		_, err := getRecipeDefinition(&envResource, &metadata)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to parse resourceID")
+		require.Contains(t, err.Error(), "'invalid-id' is not a valid resource id")
 	})
 
 	t.Run("recipe not found for the resource type", func(t *testing.T) {

@@ -31,7 +31,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
-	"github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
 	"github.com/radius-project/radius/test/validation"
@@ -58,7 +58,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
-		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20220901privatepreview.Version)
+		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20231001preview.Version)
 		deleteRequestBody := map[string]any{
 			"properties": map[string]any{
 				"BucketName": bucketName,
@@ -120,7 +120,7 @@ func Test_AWS_ListResources(t *testing.T) {
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
-		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20220901privatepreview.Version)
+		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20231001preview.Version)
 
 		// Issue the List Request
 		listRequest, err := http.NewRequest(http.MethodGet, listURL, nil)

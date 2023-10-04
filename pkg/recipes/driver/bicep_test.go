@@ -17,7 +17,6 @@ limitations under the License.
 package driver
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -359,6 +358,10 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 
 	driver := bicepDriver{
 		ResourceClient: client,
+		options: BicepOptions{
+			DeleteRetryCount:        0,
+			DeleteRetryDelaySeconds: 1,
+		},
 	}
 
 	return driver, client
@@ -390,7 +393,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 			RadiusManaged: to.Ptr(false),
 		},
 	}
-	client.EXPECT().Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
+	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
 
 	err := driver.Delete(ctx, DeleteOptions{
 		OutputResources: outputResources,
@@ -415,11 +418,11 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeletionFailed,
-			Message: fmt.Sprintf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+			Message: fmt.Sprintf("failed to delete resource after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
 		},
 	}
 	client.EXPECT().
-		Delete(ctx, "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+		Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
 		Return(fmt.Errorf("could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)).
 		Times(1)
 
@@ -474,6 +477,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 			Code:    recipes.RecipeLanguageFailure,
 			Message: "failed to fetch repository from the path \"radiusdev.azurecr.io/test-non-existent-recipe\": radiusdev.azurecr.io/test-non-existent-recipe:latest: not found",
 		},
+		DeploymentStatus: "setupError",
 	}
 
 	require.Error(t, err)
@@ -490,50 +494,65 @@ func Test_GetGCOutputResources(t *testing.T) {
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
 		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource3",
 	}
-	exp := []string{
-		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+
+	expId := "/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2"
+	id, err := resources.Parse(expId)
+	require.NoError(t, err)
+	exp := []rpv1.OutputResource{
+		{
+			ID:            id,
+			RadiusManaged: to.Ptr(true),
+		},
 	}
-	res := d.getGCOutputResources(after, before)
+	res, err := d.getGCOutputResources(after, before)
+	require.NoError(t, err)
 	require.Equal(t, exp, res)
 }
 
-func Test_DeleteGCOutputResources(t *testing.T) {
+func Test_GetGCOutputResources_NoDiff(t *testing.T) {
+	d := &bicepDriver{}
+	before := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	after := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
+	}
+	exp := []rpv1.OutputResource{}
+	res, err := d.getGCOutputResources(after, before)
+	require.NoError(t, err)
+	require.Equal(t, exp, res)
+}
+
+func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := testcontext.New(t)
 	driver, client := setupDeleteInputs(t)
-	tests := []struct {
-		desc              string
-		err               error
-		gcOutputResources []string
-	}{
+	driver.options.DeleteRetryCount = 1
+
+	outputResources := []rpv1.OutputResource{
 		{
-			desc: "success",
-			err:  nil,
-			gcOutputResources: []string{
-				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
-				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource2",
-			},
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"core",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: to.Ptr(true),
 		},
-		{
-			desc: "deletion failed",
-			err:  errors.New("test-error"),
-			gcOutputResources: []string{
-				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/resource1",
-			},
-		},
-	}
-	for _, tt := range tests {
-		for _, resource := range tt.gcOutputResources {
-			client.EXPECT().
-				Delete(ctx, resource).
-				Return(tt.err).
-				Times(1)
-		}
-		err := driver.deleteGCOutputResources(ctx, tt.gcOutputResources)
-		if tt.err != nil {
-			require.Equal(t, err, tt.err)
-		} else {
-			require.NoError(t, err)
-		}
 	}
 
+	gomock.InOrder(
+		client.EXPECT().
+			Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+			Return(fmt.Errorf("failed to delete resource after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type)),
+		client.EXPECT().
+			Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/core/Deployment/redis").
+			Return(nil),
+	)
+
+	err := driver.Delete(ctx, DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
 }

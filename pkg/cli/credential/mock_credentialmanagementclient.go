@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 // MockCredentialManagementClient is a mock of CredentialManagementClient interface.
@@ -81,7 +81,7 @@ func (mr *MockCredentialManagementClientMockRecorder) List(arg0 interface{}) *go
 }
 
 // PutAWS mocks base method.
-func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v20220901privatepreview.AwsCredentialResource) error {
+func (m *MockCredentialManagementClient) PutAWS(arg0 context.Context, arg1 v20231001preview.AwsCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutAWS", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -95,7 +95,7 @@ func (mr *MockCredentialManagementClientMockRecorder) PutAWS(arg0, arg1 interfac
 }
 
 // PutAzure mocks base method.
-func (m *MockCredentialManagementClient) PutAzure(arg0 context.Context, arg1 v20220901privatepreview.AzureCredentialResource) error {
+func (m *MockCredentialManagementClient) PutAzure(arg0 context.Context, arg1 v20231001preview.AzureCredentialResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PutAzure", arg0, arg1)
 	ret0, _ := ret[0].(error)

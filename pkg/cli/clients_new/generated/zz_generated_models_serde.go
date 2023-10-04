@@ -167,37 +167,6 @@ func (g *GenericResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type GenericResourceProperties.
-func (g GenericResourceProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "propertyKey", g.PropertyKey)
-	populate(objectMap, "propertyValue", g.PropertyValue)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type GenericResourceProperties.
-func (g *GenericResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", g, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "propertyKey":
-				err = unpopulate(val, "PropertyKey", &g.PropertyKey)
-				delete(rawMsg, key)
-		case "propertyValue":
-				err = unpopulate(val, "PropertyValue", &g.PropertyValue)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", g, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type GenericResourcesList.
 func (g GenericResourcesList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})

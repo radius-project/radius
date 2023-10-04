@@ -165,6 +165,21 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
 
+	outputResources := []rpv1.OutputResource{}
+	for _, rr := range properties.Resources {
+		id, err := resources.Parse(rr.ID)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+
+		outputResources = append(outputResources, rpv1.OutputResource{ID: id, RadiusManaged: to.Ptr(false)})
+	}
+
+	if properties.ResourceProvisioning == datamodel.ContainerResourceProvisioningManual {
+		// Do nothing! This is a manual resource.
+		return renderers.RendererOutput{Resources: outputResources}, nil
+	}
+
 	// this flag is used to indicate whether or not this resource needs a service to be generated.
 	// this flag is triggered when a container has an exposed port(s), but no 'provides' field.
 	var needsServiceGeneration = false
@@ -201,7 +216,6 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		}
 	}
 
-	outputResources := []rpv1.OutputResource{}
 	dependencies := options.Dependencies
 
 	// Connections might require a role assignment to grant access.

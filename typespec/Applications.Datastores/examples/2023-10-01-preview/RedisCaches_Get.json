@@ -1,0 +1,33 @@
+{
+  "operationId": "RedisCaches_Get",
+  "title": "Get a RedisCache resource",
+  "parameters": {
+    "rootScope": "planes/radius/local/resourceGroups/testGroup",
+    "api-version": "2023-10-01-preview",
+    "redisCacheName": "redis0"
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Datastores/redisCaches/redis0",
+        "name": "redis0",
+        "type": "Applications.Datastores/redisCaches",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/planes/radius/local/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "resourceProvisioning": "manual",
+          "resources": [
+            {
+              "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache"
+            }
+          ],
+          "host": "myrediscache.redis.cache.windows.net",
+          "port": 6380,
+          "username": "username"
+        }
+      }
+    }
+  }
+}

@@ -34,6 +34,9 @@ const (
 	// recipeDownloadDuration is the metric name for the recipe download duration.
 	recipeDownloadDuration = "recipe.download.duration"
 
+	// recipeGCDuration is the metric name for the bicep recipe garbage collection duration.
+	recipeGCDuration = "recipe.bicep.garbage.collection.duration"
+
 	// terraformInstallationDuration is the metric name for the Terraform installation duration.
 	terraformInstallationDuration = "recipe.tf.installation.duration"
 
@@ -48,6 +51,9 @@ const (
 
 	// RecipeEngineOperationDownloadRecipe represents the Download Recipe operation of the Recipe Engine.
 	RecipeEngineOperationDownloadRecipe = "download.recipe"
+
+	// RecipeEngineOperationGC represents the Garbage Collection operation of the Recipe Engine.
+	RecipeEngineOperationGC = "garbage.collection.recipe"
 )
 
 type recipeEngineMetrics struct {
@@ -120,6 +126,14 @@ func (m *recipeEngineMetrics) RecordTerraformInitializationDuration(ctx context.
 	if m.valueRecorders[terraformInitializationDuration] != nil {
 		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
 		m.valueRecorders[terraformInitializationDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
+	}
+}
+
+// RecordRecipeGarbageCollectionDuration records the recipe garbage collection duration with the given attributes.
+func (m *recipeEngineMetrics) RecordRecipeGarbageCollectionDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
+	if m.valueRecorders[recipeGCDuration] != nil {
+		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
+		m.valueRecorders[recipeGCDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
 	}
 }
 

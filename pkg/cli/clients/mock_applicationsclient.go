@@ -10,8 +10,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	v20220315privatepreview "github.com/radius-project/radius/pkg/corerp/api/v20220315privatepreview"
-	v20220901privatepreview "github.com/radius-project/radius/pkg/ucp/api/v20220901privatepreview"
+	v20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	v20231001preview0 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 // MockApplicationsManagementClient is a mock of ApplicationsManagementClient interface.
@@ -38,7 +38,7 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 }
 
 // CreateApplicationIfNotFound mocks base method.
-func (m *MockApplicationsManagementClient) CreateApplicationIfNotFound(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.ApplicationResource) error {
+func (m *MockApplicationsManagementClient) CreateApplicationIfNotFound(arg0 context.Context, arg1 string, arg2 v20231001preview.ApplicationResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateApplicationIfNotFound", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -52,7 +52,7 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateApplicationIfNotFo
 }
 
 // CreateEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2 string, arg3 *v20220315privatepreview.EnvironmentProperties) error {
+func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2 string, arg3 *v20231001preview.EnvironmentProperties) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
@@ -66,7 +66,7 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateEnvironment(arg0, 
 }
 
 // CreateOrUpdateApplication mocks base method.
-func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.ApplicationResource) error {
+func (m *MockApplicationsManagementClient) CreateOrUpdateApplication(arg0 context.Context, arg1 string, arg2 v20231001preview.ApplicationResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateOrUpdateApplication", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -80,7 +80,7 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateOrUpdateApplicatio
 }
 
 // CreateUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220901privatepreview.ResourceGroupResource) error {
+func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20231001preview0.ResourceGroupResource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUCPGroup", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
@@ -154,10 +154,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) DeleteUCPGroup(arg0, arg
 }
 
 // GetEnvDetails mocks base method.
-func (m *MockApplicationsManagementClient) GetEnvDetails(arg0 context.Context, arg1 string) (v20220315privatepreview.EnvironmentResource, error) {
+func (m *MockApplicationsManagementClient) GetEnvDetails(arg0 context.Context, arg1 string) (v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEnvDetails", arg0, arg1)
-	ret0, _ := ret[0].(v20220315privatepreview.EnvironmentResource)
+	ret0, _ := ret[0].(v20231001preview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -244,10 +244,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesOfTypeIn
 }
 
 // ListApplications mocks base method.
-func (m *MockApplicationsManagementClient) ListApplications(arg0 context.Context) ([]v20220315privatepreview.ApplicationResource, error) {
+func (m *MockApplicationsManagementClient) ListApplications(arg0 context.Context) ([]v20231001preview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListApplications", arg0)
-	ret0, _ := ret[0].([]v20220315privatepreview.ApplicationResource)
+	ret0, _ := ret[0].([]v20231001preview.ApplicationResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -259,10 +259,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListApplications(arg0 in
 }
 
 // ListEnvironmentsAll mocks base method.
-func (m *MockApplicationsManagementClient) ListEnvironmentsAll(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+func (m *MockApplicationsManagementClient) ListEnvironmentsAll(arg0 context.Context) ([]v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEnvironmentsAll", arg0)
-	ret0, _ := ret[0].([]v20220315privatepreview.EnvironmentResource)
+	ret0, _ := ret[0].([]v20231001preview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -274,10 +274,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsAll(arg0
 }
 
 // ListEnvironmentsInResourceGroup mocks base method.
-func (m *MockApplicationsManagementClient) ListEnvironmentsInResourceGroup(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+func (m *MockApplicationsManagementClient) ListEnvironmentsInResourceGroup(arg0 context.Context) ([]v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEnvironmentsInResourceGroup", arg0)
-	ret0, _ := ret[0].([]v20220315privatepreview.EnvironmentResource)
+	ret0, _ := ret[0].([]v20231001preview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -289,10 +289,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsInResour
 }
 
 // ListUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1, arg2 string) ([]v20220901privatepreview.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1, arg2 string) ([]v20231001preview0.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUCPGroup", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]v20220901privatepreview.ResourceGroupResource)
+	ret0, _ := ret[0].([]v20231001preview0.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -304,10 +304,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListUCPGroup(arg0, arg1,
 }
 
 // ShowApplication mocks base method.
-func (m *MockApplicationsManagementClient) ShowApplication(arg0 context.Context, arg1 string) (v20220315privatepreview.ApplicationResource, error) {
+func (m *MockApplicationsManagementClient) ShowApplication(arg0 context.Context, arg1 string) (v20231001preview.ApplicationResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowApplication", arg0, arg1)
-	ret0, _ := ret[0].(v20220315privatepreview.ApplicationResource)
+	ret0, _ := ret[0].(v20231001preview.ApplicationResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -319,10 +319,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ShowApplication(arg0, ar
 }
 
 // ShowRecipe mocks base method.
-func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1 string, arg2 v20220315privatepreview.RecipeGetMetadata) (v20220315privatepreview.RecipeGetMetadataResponse, error) {
+func (m *MockApplicationsManagementClient) ShowRecipe(arg0 context.Context, arg1 string, arg2 v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowRecipe", arg0, arg1, arg2)
-	ret0, _ := ret[0].(v20220315privatepreview.RecipeGetMetadataResponse)
+	ret0, _ := ret[0].(v20231001preview.RecipeGetMetadataResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -349,10 +349,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ShowResource(arg0, arg1,
 }
 
 // ShowUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (v20220901privatepreview.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (v20231001preview0.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowUCPGroup", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(v20220901privatepreview.ResourceGroupResource)
+	ret0, _ := ret[0].(v20231001preview0.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

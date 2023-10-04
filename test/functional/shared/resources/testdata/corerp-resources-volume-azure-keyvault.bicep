@@ -24,7 +24,7 @@ param rootScope string = resourceGroup().id
 param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'corerp-azure-workload-env'
   location: location
   properties: {
@@ -45,7 +45,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-volume-azure-keyvault'
   location: location
   properties: {
@@ -59,7 +59,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource keyvaultVolContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'volume-azkv-ctnr'
   location: location
   properties: {
@@ -82,7 +82,7 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
-resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = {
+resource keyvaultVolume 'Applications.Core/volumes@2023-10-01-preview' = {
   name: 'volume-azkv'
   location: location
   properties: {

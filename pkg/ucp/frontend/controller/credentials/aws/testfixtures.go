@@ -17,6 +17,6 @@ limitations under the License.
 package aws
 
 var (
-	testHeaderFile                  = "requestheaders20220901privatepreview.json"
-	testHeaderFileWithBadAPIVersion = "requestheaders20220901privatepreview_badapiversion.json"
+	testHeaderFile                  = "requestheaders20231001preview.json"
+	testHeaderFileWithBadAPIVersion = "requestheaders20231001preview_badapiversion.json"
 )

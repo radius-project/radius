@@ -48,7 +48,11 @@ test: test-get-envtools ## Runs unit tests, excluding kubernetes controller test
 
 .PHONY: test-get-envtools
 test-get-envtools:
+	@echo "$(ARROW) Installing Kubebuilder test tools..."
 	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	@echo "$(ARROW) Instructions:"
+	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
+	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests
@@ -90,6 +94,6 @@ oav-installed:
 .PHONY: test-ucp-spec-examples 
 test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
 	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
-	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/openapi.json
+	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 
 

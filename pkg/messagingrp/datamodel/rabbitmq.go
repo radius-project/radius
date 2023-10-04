@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -54,8 +55,8 @@ func (r *RabbitMQQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 }
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
-func (rabbitmq *RabbitMQQueue) ResourceTypeName() string {
-	return portableresources.RabbitMQQueuesResourceType
+func (r *RabbitMQQueue) ResourceTypeName() string {
+	return msg_ctrl.RabbitMQQueuesResourceType
 }
 
 // RabbitMQQueueProperties represents the properties of RabbitMQQueue response resource.
@@ -81,7 +82,7 @@ type RabbitMQSecrets struct {
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return portableresources.RabbitMQQueuesResourceType
+	return msg_ctrl.RabbitMQQueuesResourceType
 }
 
 // Recipe returns the recipe for the RabbitMQQueue. It gets the ResourceRecipe associated with the RabbitMQQueue instance
@@ -94,8 +95,8 @@ func (r *RabbitMQQueue) Recipe() *portableresources.ResourceRecipe {
 }
 
 // VerifyInputs checks if the queue is provided when resourceProvisioning is set to manual and returns an error if not.
-func (rabbitmq *RabbitMQQueue) VerifyInputs() error {
-	properties := rabbitmq.Properties
+func (r *RabbitMQQueue) VerifyInputs() error {
+	properties := r.Properties
 	msgs := []string{}
 	if properties.ResourceProvisioning != "" && properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
 		if properties.Queue == "" {

@@ -1,0 +1,21 @@
+environment:
+  name: Dev
+  roleLocation: "global"
+profilerProvider:
+  enabled: true
+  port: 6063
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 9093
+server:
+  host: "0.0.0.0"
+  port: 8083
+ucp:
+  kind: direct
+  direct:
+    endpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
+logging:
+  level: "info"
+  json: false

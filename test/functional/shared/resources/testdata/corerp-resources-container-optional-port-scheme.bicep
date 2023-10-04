@@ -9,7 +9,7 @@ param magpieimage string
 @description('Specifies the environment for resources.')
 param environment string
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-resources-container-optional-port-scheme'
   location: location
   properties: {
@@ -24,7 +24,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 // the container resource should use the optional port, protocol, and scheme variables if specified.
-resource containerqy 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerqy 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containerqy'
   location: location
   properties: {
@@ -45,7 +45,7 @@ resource containerqy 'Applications.Core/containers@2022-03-15-privatepreview' = 
 }
 
 // the container resource should use the optional port, protocol, and scheme variables if specified.
-resource containerqu 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerqu 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containerqu'
   location: location
   properties: {
@@ -66,7 +66,7 @@ resource containerqu 'Applications.Core/containers@2022-03-15-privatepreview' = 
 }
 
 // the container resource should still expose a port on the containerPort if the optional variables are not specified.
-resource containerqi 'Applications.Core/containers@2022-03-15-privatepreview' = {
+resource containerqi 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'containerqi'
   location: location
   properties: {

@@ -5,15 +5,15 @@ param basename string
 @description('The recipe name used to register the recipe. eg: default')
 param environmentRecipeName string = 'default'
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' existing = {
+resource env 'Applications.Core/environments@2023-10-01-preview' existing = {
   name: basename
 }
 
-resource app 'Applications.Core/applications@2022-03-15-privatepreview' existing = {
+resource app 'Applications.Core/applications@2023-10-01-preview' existing = {
   name: basename
 }
 
-resource extender 'Applications.Core/extenders@2022-03-15-privatepreview' = {
+resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
   name: basename
   properties: {
     application: app.id
