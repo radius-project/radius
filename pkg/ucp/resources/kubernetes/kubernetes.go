@@ -38,6 +38,7 @@ const (
 	ScopeNamespaces = "namespaces"
 )
 
+// Lookup map to get the group/Kind information from kubernetes resource kind.
 var providerLookup map[string]string = map[string]string{
 	strings.ToLower(KindDeployment):          ResourceTypeDeployment,
 	strings.ToLower(KindService):             ResourceTypeService,
@@ -97,8 +98,8 @@ func IDFromParts(planeName string, group string, kind string, namespace string, 
 	return resources.MustParse(resources.MakeUCPID(scopes, types, nil))
 }
 
+// ToUCPResourceID takes namespace, resourceType, resourceName, provider information and returns string representing UCP qualified resource ID.
 func ToUCPResourceID(namespace, resourceType, resourceName, provider string) string {
-
 	ucpID := "/planes/kubernetes/local/"
 	if namespace != "" {
 		ucpID += fmt.Sprintf("namespaces/%s/", namespace)

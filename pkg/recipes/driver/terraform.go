@@ -219,6 +219,8 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
+// getDeployedOutputResources is used to the get the resource ids by parsing the state store json.
+// it only supports Azure, AWS and Kubernetes providers.
 func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) ([]string, error) {
 	recipeResources := []string{}
 	if module == nil {
@@ -228,6 +230,8 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 		switch resource.ProviderName {
 		case "registry.terraform.io/hashicorp/kubernetes":
 			var resourceType, resourceName, namespace, provider string
+			// For resource type "kubernetes_manifest" get the required details from the manifest property.
+			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
 			if resource.Type == "kubernetes_manifest" {
 				if manifest, ok := resource.AttributeValues["manifest"].(map[string]interface{}); ok {
 					if metadata, ok := manifest["metadata"].(map[string]interface{}); ok {

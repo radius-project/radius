@@ -45,6 +45,8 @@ func ToAWSResourceType(id resources.ID) string {
 	return resourceType
 }
 
+// ToUCPResourceID takes ARN fomatted sting and returns string representing UCP qualified resource ID.
+// General formats for ARNs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
 func ToUCPResourceID(arn string) string {
 	arnSegments := strings.Split(arn, ":")
 	ucpId := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], arnSegments[4], arnSegments[3], arnSegments[2], strings.Join(arnSegments[5:], "/"))
