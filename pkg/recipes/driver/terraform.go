@@ -154,7 +154,7 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 	recipeResponse.Resources = append(recipeResponse.Resources, deployedResources...)
 	uniqueResourcesMap := map[string]bool{}
 	for _, val := range recipeResponse.Resources {
-		if ok, _ := uniqueResourcesMap[val]; !ok {
+		if ok := uniqueResourcesMap[val]; !ok {
 			uniqueResourcesMap[val] = true
 			uniqueResources = append(uniqueResources, val)
 		}
@@ -274,11 +274,6 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 			}
 		default:
 			continue
-		}
-		if resource.AttributeValues != nil {
-			if id, ok := resource.AttributeValues["id"].(string); ok {
-				recipeResources = append(recipeResources, id)
-			}
 		}
 	}
 	for _, childModule := range module.ChildModules {

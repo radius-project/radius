@@ -507,8 +507,22 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
-											"id": "outputResourceId2",
+											"arn": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
+										},
+									},
+									{
+										ProviderName: "registry.terraform.io/hashicorp/azurerm",
+										AttributeValues: map[string]any{
+											"id": "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
+										},
+									},
+									{
+										Type:         "kubernetes_deployment",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"id": "default/test-redis",
 										},
 									},
 								},
@@ -525,7 +539,11 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				Secrets: map[string]any{
 					"connectionString": "testConnectionString",
 				},
-				Resources: []string{"outputResourceId1"},
+				Resources: []string{"outputResourceId1",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
+					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
+					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
+				},
 			},
 		},
 		{
