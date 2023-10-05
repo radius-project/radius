@@ -238,10 +238,10 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 							namespace = ns
 						}
 					}
-					if apiVersion, ok := resource.AttributeValues["apiVersion"].(string); ok {
+					if apiVersion, ok := manifest["apiVersion"].(string); ok {
 						provider = strings.Split(apiVersion, "/")[0]
 					}
-					if kind, ok := resource.AttributeValues["kind"].(string); ok {
+					if kind, ok := manifest["kind"].(string); ok {
 						resourceType = kind
 					}
 

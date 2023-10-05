@@ -525,6 +525,20 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 											"id": "default/test-redis",
 										},
 									},
+									{
+										Type:         "kubernetes_manifest",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"manifest": map[string]any{
+												"apiVersion": "dapr.io/v1alpha1",
+												"kind":       "Component",
+												"metadata": map[string]any{
+													"name":      "test-dapr",
+													"namespace": "test-namespace",
+												},
+											},
+										},
+									},
 								},
 							},
 						},
@@ -543,6 +557,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
 					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
 					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
+					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
 				},
 			},
 		},
