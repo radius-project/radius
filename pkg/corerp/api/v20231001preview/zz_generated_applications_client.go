@@ -195,6 +195,62 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 	return result, nil
 }
 
+// GetGraph - Gets the application graph and resources.
+// If the operation fails it returns an *azcore.ResponseError type.
+//
+// Generated from API version 2023-10-01-preview
+//   - applicationName - The application name
+//   - body - The content of the action request
+//   - options - ApplicationsClientGetGraphOptions contains the optional parameters for the ApplicationsClient.GetGraph method.
+func (client *ApplicationsClient) GetGraph(ctx context.Context, applicationName string, body map[string]any, options *ApplicationsClientGetGraphOptions) (ApplicationsClientGetGraphResponse, error) {
+	var err error
+	req, err := client.getGraphCreateRequest(ctx, applicationName, body, options)
+	if err != nil {
+		return ApplicationsClientGetGraphResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ApplicationsClientGetGraphResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientGetGraphResponse{}, err
+	}
+	resp, err := client.getGraphHandleResponse(httpResp)
+	return resp, err
+}
+
+// getGraphCreateRequest creates the GetGraph request.
+func (client *ApplicationsClient) getGraphCreateRequest(ctx context.Context, applicationName string, body map[string]any, options *ApplicationsClientGetGraphOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/applications/{applicationName}/getGraph"
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2023-10-01-preview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+	return nil, err
+}
+	return req, nil
+}
+
+// getGraphHandleResponse handles the GetGraph response.
+func (client *ApplicationsClient) getGraphHandleResponse(resp *http.Response) (ApplicationsClientGetGraphResponse, error) {
+	result := ApplicationsClientGetGraphResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationGraphResponse); err != nil {
+		return ApplicationsClientGetGraphResponse{}, err
+	}
+	return result, nil
+}
+
 // NewListByScopePager - List ApplicationResource resources by Scope
 //
 // Generated from API version 2023-10-01-preview

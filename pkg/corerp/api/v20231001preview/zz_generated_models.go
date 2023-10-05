@@ -9,6 +9,52 @@ package v20231001preview
 
 import "time"
 
+// ApplicationGraphConnection - Describes the connection between two resources.
+type ApplicationGraphConnection struct {
+	// REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
+// 'Inbound' indicates indicates this connection specifies the ID of the source.
+	Direction *Direction
+
+	// REQUIRED; The resource ID
+	ID *string
+}
+
+// ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.
+type ApplicationGraphOutputResource struct {
+	// REQUIRED; The resource ID.
+	ID *string
+
+	// REQUIRED; The resource name.
+	Name *string
+
+	// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResource - Describes a resource in the application graph.
+type ApplicationGraphResource struct {
+	// REQUIRED; The connections between resources in the application graph.
+	Connections []*ApplicationGraphConnection
+
+	// REQUIRED; The resource ID.
+	ID *string
+
+	// REQUIRED; The resource name.
+	Name *string
+
+	// REQUIRED; The resources that comprise this resource.
+	Resources []*ApplicationGraphOutputResource
+
+	// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResponse - Describes the application architecture and its dependencies.
+type ApplicationGraphResponse struct {
+	// REQUIRED; The resources in the application graph.
+	Resources []*ApplicationGraphResource
+}
+
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to

@@ -78,11 +78,11 @@ func GetResourceGroupTableFormat() output.FormatterOptions {
 		Columns: []output.Column{
 			{
 				Heading:  "ID",
-				JSONPath: "{ .id }",
+				JSONPath: "{ .ID }",
 			},
 			{
-				Heading:  "Name",
-				JSONPath: "{ .name }",
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
 			},
 		},
 	}
