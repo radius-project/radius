@@ -27,7 +27,7 @@ import (
 const (
 	radBicepEnvVar = "RAD_BICEP"
 	binaryName     = "rad-bicep"
-	dirPrefix      = "bicep-extensibility"
+	binaryRepo     = "ghcr.io/radius-project/radius/bicep/rad-bicep"
 	retryAttempts  = 10
 	retryDelaySecs = 5
 )
@@ -74,7 +74,7 @@ func DeleteBicep() error {
 // the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {
 	// Placeholders are for: channel, platform, filename
-	downloadURIFmt := fmt.Sprint("ghcr.io/radius-project/radius/bicep/rad-bicep", "/%s:%s")
+	downloadURIFmt := fmt.Sprint(binaryRepo, "/%s:%s")
 
 	uri, err := tools.GetDownloadURI(downloadURIFmt)
 	if err != nil {
