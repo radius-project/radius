@@ -37,6 +37,7 @@ rules:
   - ucp.dev
   resources:
   - resources
+  - queuemessages
   verbs:
   - create
   - delete
