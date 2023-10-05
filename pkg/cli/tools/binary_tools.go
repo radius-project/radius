@@ -186,6 +186,9 @@ func DownloadToFolder(filepath string) error {
 
 	// Copy the artifact from the registry into the temp directory's file store
 	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
 	_, err = oras.Copy(ctx, repo, tag, fs, tag, oras.DefaultCopyOptions)
 	if err != nil {
 		return err
