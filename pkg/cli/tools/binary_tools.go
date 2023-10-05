@@ -33,6 +33,9 @@ import (
 	retry_lib "oras.land/oras-go/v2/registry/remote/retry"
 )
 
+// binaryName is the name of the bicep binary.
+const binaryName = "rad-bicep"
+
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
 var validPlatforms = map[string]string{
 	"windows-amd64": "windows-x64",
@@ -136,9 +139,15 @@ func GetDownloadURI(downloadURIFmt string) (string, error) {
 // DownloadToFolder creates a folder and a file, writes the response body to the file, and makes the file executable by
 // everyone. An error is returned if any of these steps fail.
 func DownloadToFolder(filepath string) error {
+	// get file name for bicep binary
+	filename, err := getFilename(binaryName)
+	if err != nil {
+		return err
+	}
+
 	// create folders
-	dirPath := strings.TrimSuffix(filepath, "rad-bicep")
-	err := os.MkdirAll(path.Dir(dirPath), os.ModePerm)
+	dirPath := strings.TrimSuffix(filepath, filename)
+	err = os.MkdirAll(path.Dir(dirPath), os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("failed to create folder %s: %v", path.Dir(dirPath), err)
 	}
@@ -146,7 +155,7 @@ func DownloadToFolder(filepath string) error {
 	// Create a file store
 	fs, err := file.New(dirPath)
 	if err != nil {
-		return fmt.Errorf("failed to create file store %s: %v", filepath, err)
+		return fmt.Errorf("failed to create file store %s: %v", dirPath, err)
 	}
 	defer fs.Close()
 
@@ -188,7 +197,7 @@ func DownloadToFolder(filepath string) error {
 	}
 
 	// Open the folder so we can mark it as executable
-	bicepBinary, err := os.Open(fmt.Sprintf(dirPath + "/rad-bicep"))
+	bicepBinary, err := os.Open(fmt.Sprintf(dirPath + filename))
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %v", filepath, err)
 	}

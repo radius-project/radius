@@ -73,7 +73,7 @@ func DeleteBicep() error {
 // DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
 // the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {
-	// Placeholders are for: channel, platform, filename
+	// Placeholders are for: platform, channel
 	downloadURIFmt := fmt.Sprint(binaryRepo, "/%s:%s")
 
 	uri, err := tools.GetDownloadURI(downloadURIFmt)
