@@ -17,6 +17,7 @@ limitations under the License.
 package aws
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -42,4 +43,10 @@ func ToAWSResourceType(id resources.ID) string {
 	}
 	resourceType := strings.Join(parts, "::")
 	return resourceType
+}
+
+func ToUCPResourceID(arn string) string {
+	arnSegments := strings.Split(arn, ":")
+	ucpId := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], arnSegments[4], arnSegments[3], arnSegments[2], strings.Join(arnSegments[5:], "/"))
+	return ucpId
 }

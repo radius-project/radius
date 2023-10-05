@@ -22,18 +22,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/radius-project/radius/pkg/recipes"
 
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/resources/aws"
+	kubernetes_resource "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
-	"k8s.io/client-go/kubernetes"
 
 	tfjson "github.com/hashicorp/terraform-json"
 )
@@ -141,8 +146,21 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 			}
 		}
 	}
-
-	return recipeResponse, nil
+	deployedResources, err := d.getDeployedOutputResources(tfState.Values.RootModule)
+	if err != nil {
+		return &recipes.RecipeOutput{}, err
+	}
+	uniqueResources := []string{}
+	recipeResponse.Resources = append(recipeResponse.Resources, deployedResources...)
+	uniqueResourcesMap := map[string]bool{}
+	for _, val := range recipeResponse.Resources {
+		if ok, _ := uniqueResourcesMap[val]; !ok {
+			uniqueResourcesMap[val] = true
+			uniqueResources = append(uniqueResources, val)
+		}
+	}
+	recipeResponse.Resources = uniqueResources
+	return recipeResponse, err
 }
 
 // createExecutionDirectory creates a unique directory for each execution of terraform.
@@ -199,4 +217,76 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	}
 
 	return recipeData, nil
+}
+
+func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) ([]string, error) {
+	recipeResources := []string{}
+	if module == nil {
+		return recipeResources, nil
+	}
+	for _, resource := range module.Resources {
+		switch resource.ProviderName {
+		case "registry.terraform.io/hashicorp/kubernetes":
+			var resourceType, resourceName, namespace, provider string
+			if resource.Type == "kubernetes_manifest" {
+				if manifest, ok := resource.AttributeValues["manifest"].(map[string]interface{}); ok {
+					if metadata, ok := manifest["metadata"].(map[string]interface{}); ok {
+						if name, ok := metadata["name"].(string); ok {
+							resourceName = name
+						}
+						if ns, ok := metadata["namespace"].(string); ok {
+							namespace = ns
+						}
+					}
+					if apiVersion, ok := resource.AttributeValues["apiVersion"].(string); ok {
+						provider = strings.Split(apiVersion, "/")[0]
+					}
+					if kind, ok := resource.AttributeValues["kind"].(string); ok {
+						resourceType = kind
+					}
+
+				}
+			} else {
+				resourceType = strings.SplitN(resource.Type, "_", 2)[1]
+				if resource.AttributeValues != nil {
+					if id, ok := resource.AttributeValues["id"].(string); ok {
+						namespace = strings.Split(id, "/")[0]
+						resourceName = strings.Split(id, "/")[1]
+					}
+				}
+			}
+			recipeResources = append(recipeResources, kubernetes_resource.ToUCPResourceID(namespace, resourceType, resourceName, provider))
+		case "registry.terraform.io/hashicorp/azurerm":
+			if resource.AttributeValues != nil {
+				if id, ok := resource.AttributeValues["id"].(string); ok {
+					_, err := resources.ParseResource(id)
+					if err != nil {
+						return []string{}, nil
+					}
+					recipeResources = append(recipeResources, id)
+				}
+			}
+		case "registry.terraform.io/hashicorp/aws":
+			if resource.AttributeValues != nil {
+				if arn, ok := resource.AttributeValues["arn"].(string); ok {
+					recipeResources = append(recipeResources, aws.ToUCPResourceID(arn))
+				}
+			}
+		default:
+			continue
+		}
+		if resource.AttributeValues != nil {
+			if id, ok := resource.AttributeValues["id"].(string); ok {
+				recipeResources = append(recipeResources, id)
+			}
+		}
+	}
+	for _, childModule := range module.ChildModules {
+		modResources, err := d.getDeployedOutputResources(childModule)
+		if err != nil {
+			return []string{}, nil
+		}
+		recipeResources = append(recipeResources, modResources...)
+	}
+	return recipeResources, nil
 }
