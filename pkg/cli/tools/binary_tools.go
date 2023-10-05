@@ -19,7 +19,6 @@ package tools
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"runtime"
@@ -141,19 +140,11 @@ func DownloadToFolder(filepath string) error {
 	dirPath := strings.TrimSuffix(filepath, "rad-bicep")
 	err := os.MkdirAll(path.Dir(dirPath), os.ModePerm)
 	if err != nil {
-		// output.LogInfo(fmt.Sprintf("FAIL: error with mkdir"))
-		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
+		return fmt.Errorf("failed to create folder %s: %v", path.Dir(dirPath), err)
 	}
 
-	// The ORAS client downloads the full artifact folder. Save this to a temp directory to extract the bicep binary
-	tmpDir, err := os.MkdirTemp(dirPath, "tmp")
-	if err != nil {
-		return fmt.Errorf("failed to create artifact download folder %s: %v", path.Dir(filepath), err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	// Create a temporary file store
-	fs, err := file.New(tmpDir)
+	// Create a file store
+	fs, err := file.New(dirPath)
 	if err != nil {
 		return fmt.Errorf("failed to create file store %s: %v", filepath, err)
 	}
@@ -165,12 +156,14 @@ func DownloadToFolder(filepath string) error {
 		return err
 	}
 
+	// Define remote repository
 	reg := "ghcr.io/radius-project/radius/bicep/rad-bicep/"
 	repo, err := remote.NewRepository(reg + platform)
 	if err != nil {
 		return err
 	}
 
+	// Create credentials to authenticate to repository
 	ds, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
 		AllowPlaintextPut: true,
 	})
@@ -184,7 +177,7 @@ func DownloadToFolder(filepath string) error {
 		Credential: ds.Get,
 	}
 
-	// Copy the artifact from the registry into the temp directory's file store
+	// Copy the artifact from the registry into the file store
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
 		tag = "latest"
@@ -194,34 +187,20 @@ func DownloadToFolder(filepath string) error {
 		return err
 	}
 
-	// will truncate the file if it exists
-	out, err := os.Create(filepath)
+	// Open the folder so we can mark it as executable
+	bicepBinary, err := os.Open(fmt.Sprintf(dirPath + "/rad-bicep"))
 	if err != nil {
-		return fmt.Errorf("failed to create bicep file %s: %v", filepath, err)
-	}
-	defer out.Close()
-
-	// Move the binary from the artifact folder to the correct location
-	bicepDir := fmt.Sprintf(tmpDir + "/artifacts/bicep/" + platform + "/rad-bicep")
-	bicepBinary, err := os.Open(bicepDir)
-	if err != nil {
-		return fmt.Errorf("failed to create bicep file %s: %v", filepath, err)
-	}
-
-	// Write the body to file
-	_, err = io.Copy(out, bicepBinary)
-	if err != nil {
-		return fmt.Errorf("failed to write file %s: %v", filepath, err)
+		return fmt.Errorf("failed to open file %s: %v", filepath, err)
 	}
 
 	// get the filemode so we can mark it as executable
-	file, err := out.Stat()
+	file, err := bicepBinary.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
 	}
 
 	// make file executable by everyone
-	err = out.Chmod(file.Mode() | 0111)
+	err = bicepBinary.Chmod(file.Mode() | 0111)
 	if err != nil {
 		return fmt.Errorf("failed to change permissons for %s: %v", filepath, err)
 	}
