@@ -392,7 +392,7 @@ func getSecretSuffix(resourceID, envName, appName string) (string, error) {
 		Parameters:    nil,
 	}
 
-	backend := backends.NewKubernetesBackend()
+	backend := backends.NewKubernetesBackend(nil)
 	secretMap, err := backend.BuildBackend(&resourceRecipe)
 	if err != nil {
 		return "", err
