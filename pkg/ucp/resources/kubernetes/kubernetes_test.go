@@ -32,11 +32,11 @@ func Test_ToUCPResourceID(t *testing.T) {
 		require.Equal(t, expectedID, ucpID)
 	})
 	t.Run("kubernetes resource type: dapr component", func(t *testing.T) {
-		namespace := "default"
+		namespace := "test-dapr"
 		resourceType := "Component"
 		resourceName := "test-dapr-pubsub"
 		provider := "dapr.io"
-		expectedID := " /planes/kubernetes/local/namespaces/test-dapr/providers/dapr.io/Component/test-dapr-pubsub"
+		expectedID := "/planes/kubernetes/local/namespaces/test-dapr/providers/dapr.io/Component/test-dapr-pubsub"
 		ucpID := ToUCPResourceID(namespace, resourceType, resourceName, provider)
 		require.Equal(t, expectedID, ucpID)
 	})
