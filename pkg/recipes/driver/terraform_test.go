@@ -536,9 +536,11 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										Type:         "kubernetes_deployment",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
-											"metadata": map[string]any{
-												"name":      "test-redis",
-												"namespace": "default",
+											"metadata": []any{
+												map[string]any{
+													"name":      "test-redis",
+													"namespace": "default",
+												},
 											},
 										},
 									},
@@ -547,8 +549,10 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										Type:         "kubernetes_deployment",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
-											"metadata": map[string]any{
-												"namespace": "default",
+											"metadata": []any{
+												map[string]any{
+													"namespace": "default",
+												},
 											},
 										},
 									},
@@ -556,9 +560,11 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										Type:         "kubernetes_service_account",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
-											"metadata": map[string]any{
-												"name":      "test-service-account",
-												"namespace": "default",
+											"metadata": []any{
+												map[string]any{
+													"name":      "test-service-account",
+													"namespace": "default",
+												},
 											},
 										},
 									},

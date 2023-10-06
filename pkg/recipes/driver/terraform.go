@@ -257,7 +257,11 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 				resourceType = strings.Join(strings.Split(resource.Type, "_")[1:], "")
 
 				if resource.AttributeValues != nil {
-					if metadata, ok := resource.AttributeValues["metadata"].(map[string]interface{}); ok {
+					if metadataList, ok := resource.AttributeValues["metadata"].([]interface{}); ok {
+						if len(metadataList) == 0 {
+							continue
+						}
+						metadata := metadataList[0].(map[string]interface{})
 						if name, ok := metadata["name"].(string); ok {
 							resourceName = name
 						}
