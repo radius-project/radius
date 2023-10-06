@@ -52,6 +52,7 @@ func Test_ToUCPResourceID(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expectedID, ucpID)
 	})
+
 	t.Run("empty resource type", func(t *testing.T) {
 		namespace := "default"
 		resourceName := "test-deployment"
