@@ -43,7 +43,7 @@ import (
 
 const (
 	// defaultMaxOperationConcurrency is the default maximum concurrency to process async request operation.
-	defaultMaxOperationConcurrency = 3
+	defaultMaxOperationConcurrency = 10
 
 	// defaultMaxOperationRetryCount is the default maximum retry count to process async operation.
 	defaultMaxOperationRetryCount = 3
