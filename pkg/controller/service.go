@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/controller/reconciler"
 )
 
 var (
@@ -82,6 +83,15 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	logger.Info("Registering controllers.")
+	err = (&reconciler.RecipeReconciler{
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
+		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+	}).SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup %s controller: %w", "Recipe", err)
+	}
 
 	if s.TLSCertDir == "" {
 		logger.Info("Webhooks will be skipped. TLS certificates not present.")
