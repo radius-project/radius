@@ -320,7 +320,7 @@ func Test_Terraform_Execute_SimulatedEnvironment(t *testing.T) {
 
 	_, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	envRecipe.Simulated = true
+	envConfig.Simulated = true
 
 	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
 		BaseOptions: BaseOptions{
@@ -330,8 +330,7 @@ func Test_Terraform_Execute_SimulatedEnvironment(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	require.NotNil(t, recipeOutput)
-	require.True(t, recipeOutput.IsSimulation)
+	require.Nil(t, recipeOutput)
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {

@@ -78,9 +78,9 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		}
 	}()
 
-	if opts.BaseOptions.Definition.Simulated {
+	if opts.Configuration.Simulated {
 		logger.Info("simulated environment is set to true, skipping deployment")
-		return &recipes.RecipeOutput{IsSimulation: true}, nil
+		return nil, nil
 	}
 
 	tfState, err := d.terraformExecutor.Deploy(ctx, terraform.Options{
