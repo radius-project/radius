@@ -80,10 +80,13 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:            name,
-						Type:            validation.ExtendersResource,
-						App:             appName,
-						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
+						Name: name,
+						Type: validation.ExtendersResource,
+						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-redis-app/providers/apps/Deployment/tf-redis-cache"},
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-redis-app/providers/core/Service/tf-redis-cache"},
+						},
 					},
 				},
 			},
