@@ -39,19 +39,27 @@ func Test_ToUCPResourceID(t *testing.T) {
 	t.Run("arn format 1", func(t *testing.T) {
 		arn := "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002"
 		expectedID := "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"
-		ucpID := ToUCPResourceID(arn)
+		ucpID, err := ToUCPResourceID(arn)
+		require.NoError(t, err)
 		require.Equal(t, ucpID, expectedID)
 	})
 	t.Run("arn format 2", func(t *testing.T) {
 		arn := "arn:aws:ec2:us-east-2:179022619019:subnet:subnet-0ddfaa93733f98002"
 		expectedID := "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"
-		ucpID := ToUCPResourceID(arn)
+		ucpID, err := ToUCPResourceID(arn)
+		require.NoError(t, err)
 		require.Equal(t, ucpID, expectedID)
 	})
 	t.Run("arn format 3", func(t *testing.T) {
 		arn := "arn:aws:ec2:us-east-2:179022619019:subnet-0ddfaa93733f98002"
 		expectedID := "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet-0ddfaa93733f98002"
-		ucpID := ToUCPResourceID(arn)
+		ucpID, err := ToUCPResourceID(arn)
+		require.NoError(t, err)
 		require.Equal(t, expectedID, ucpID)
+	})
+	t.Run("invalid arn", func(t *testing.T) {
+		arn := "arn:aws:ec2:us-east-2:179022619019"
+		_, err := ToUCPResourceID(arn)
+		require.EqualError(t, err, "\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN")
 	})
 }

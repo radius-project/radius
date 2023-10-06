@@ -28,7 +28,8 @@ func Test_ToUCPResourceID(t *testing.T) {
 		resourceType := "deployment"
 		resourceName := "test-deployment"
 		expectedID := "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-deployment"
-		ucpID := ToUCPResourceID(namespace, resourceType, resourceName, "")
+		ucpID, err := ToUCPResourceID(namespace, resourceType, resourceName, "")
+		require.NoError(t, err)
 		require.Equal(t, expectedID, ucpID)
 	})
 
@@ -38,7 +39,8 @@ func Test_ToUCPResourceID(t *testing.T) {
 		resourceName := "test-dapr-pubsub"
 		provider := "dapr.io"
 		expectedID := "/planes/kubernetes/local/namespaces/test-dapr/providers/dapr.io/Component/test-dapr-pubsub"
-		ucpID := ToUCPResourceID(namespace, resourceType, resourceName, provider)
+		ucpID, err := ToUCPResourceID(namespace, resourceType, resourceName, provider)
+		require.NoError(t, err)
 		require.Equal(t, expectedID, ucpID)
 	})
 
@@ -46,7 +48,14 @@ func Test_ToUCPResourceID(t *testing.T) {
 		resourceType := "deployment"
 		resourceName := "test-deployment"
 		expectedID := "/planes/kubernetes/local/providers/apps/Deployment/test-deployment"
-		ucpID := ToUCPResourceID("", resourceType, resourceName, "")
+		ucpID, err := ToUCPResourceID("", resourceType, resourceName, "")
+		require.NoError(t, err)
 		require.Equal(t, expectedID, ucpID)
+	})
+	t.Run("empty resource type", func(t *testing.T) {
+		namespace := "default"
+		resourceName := "test-deployment"
+		_, err := ToUCPResourceID(namespace, "", resourceName, "")
+		require.EqualError(t, err, "resourceType or resourceName is empty")
 	})
 }

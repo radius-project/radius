@@ -34,9 +34,9 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
-	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/ucp/resources/aws"
-	kubernetes_resource "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
+	resources "github.com/radius-project/radius/pkg/ucp/resources"
+	awsresources "github.com/radius-project/radius/pkg/ucp/resources/aws"
+	kubernetesresources "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
@@ -147,16 +147,14 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 			}
 		}
 	}
-	deployedResources, err := d.getDeployedOutputResources(tfState.Values.RootModule)
-	if err != nil {
-		return &recipes.RecipeOutput{}, err
-	}
+	deployedResources := d.getDeployedOutputResources(tfState.Values.RootModule)
 	for _, id := range deployedResources {
 		if !slices.Contains(recipeResponse.Resources, id) {
 			recipeResponse.Resources = append(recipeResponse.Resources, id)
 		}
 	}
-	return recipeResponse, err
+
+	return recipeResponse, nil
 }
 
 // createExecutionDirectory creates a unique directory for each execution of terraform.
@@ -215,17 +213,17 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
-// getDeployedOutputResources is used to the get the resource ids by parsing the terraform state for resource information and use it to create UCP qualified IDs.
+// getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
-func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) ([]string, error) {
+func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) []string {
 	recipeResources := []string{}
 	if module == nil {
-		return recipeResources, nil
+		return recipeResources
 	}
 
 	for _, resource := range module.Resources {
 		switch resource.ProviderName {
-		case "registry.terraform.io/hashicorp/kubernetes":
+		case TerraformKubernetesProvider:
 			var resourceType, resourceName, namespace, provider string
 			// For resource type "kubernetes_manifest" get the required details from the manifest property.
 			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
@@ -241,7 +239,11 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 					}
 
 					if apiVersion, ok := manifest["apiVersion"].(string); ok {
-						provider = strings.Split(apiVersion, "/")[0]
+						providerVersion := strings.Split(apiVersion, "/")
+						if len(providerVersion) == 0 {
+							continue
+						}
+						provider = providerVersion[0]
 					}
 
 					if kind, ok := manifest["kind"].(string); ok {
@@ -250,30 +252,43 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 
 				}
 			} else {
-				// Kubernetes resource types are prefixed with "kubernetes_" keyword, splitting the string with "_" in 2 parts to remove the prefix.
-				resourceType = strings.SplitN(resource.Type, "_", 2)[1]
+				// Kubernetes resource types are prefixed with "kubernetes_" keyword, remove the prefix
+				// Removing the "_" separator from the resource type. Ex: kubernetes_service_account -> serviceaccount
+				resourceType = strings.Join(strings.Split(resource.Type, "_")[1:], "")
+
 				if resource.AttributeValues != nil {
-					if id, ok := resource.AttributeValues["id"].(string); ok {
-						namespace = strings.Split(id, "/")[0]
-						resourceName = strings.Split(id, "/")[1]
+					if metadata, ok := resource.AttributeValues["metadata"].(map[string]interface{}); ok {
+						if name, ok := metadata["name"].(string); ok {
+							resourceName = name
+						}
+						if ns, ok := metadata["namespace"].(string); ok {
+							namespace = ns
+						}
 					}
+
 				}
 			}
-			recipeResources = append(recipeResources, kubernetes_resource.ToUCPResourceID(namespace, resourceType, resourceName, provider))
-		case "registry.terraform.io/hashicorp/azurerm":
+			kubernetesResourceID, err := kubernetesresources.ToUCPResourceID(namespace, resourceType, resourceName, provider)
+			if err == nil {
+				recipeResources = append(recipeResources, kubernetesResourceID)
+			}
+		case TerraformAzureProvider:
 			if resource.AttributeValues != nil {
 				if id, ok := resource.AttributeValues["id"].(string); ok {
 					_, err := resources.ParseResource(id)
-					if err != nil {
-						return []string{}, nil
+					if err == nil {
+						recipeResources = append(recipeResources, id)
 					}
-					recipeResources = append(recipeResources, id)
+
 				}
 			}
-		case "registry.terraform.io/hashicorp/aws":
+		case TerraformAWSProvider:
 			if resource.AttributeValues != nil {
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
-					recipeResources = append(recipeResources, aws.ToUCPResourceID(arn))
+					awsResourceID, err := awsresources.ToUCPResourceID(arn)
+					if err == nil {
+						recipeResources = append(recipeResources, awsResourceID)
+					}
 				}
 			}
 		default:
@@ -282,12 +297,9 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 	}
 
 	for _, childModule := range module.ChildModules {
-		modResources, err := d.getDeployedOutputResources(childModule)
-		if err != nil {
-			return []string{}, nil
-		}
+		modResources := d.getDeployedOutputResources(childModule)
 		recipeResources = append(recipeResources, modResources...)
 	}
 
-	return recipeResources, nil
+	return recipeResources
 }

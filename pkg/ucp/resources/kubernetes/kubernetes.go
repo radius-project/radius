@@ -17,6 +17,7 @@ limitations under the License.
 package kubernetes
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -99,7 +100,10 @@ func IDFromParts(planeName string, group string, kind string, namespace string, 
 }
 
 // ToUCPResourceID takes namespace, resourceType, resourceName, provider information and returns string representing UCP qualified resource ID.
-func ToUCPResourceID(namespace, resourceType, resourceName, provider string) string {
+func ToUCPResourceID(namespace, resourceType, resourceName, provider string) (string, error) {
+	if resourceType == "" || resourceName == "" {
+		return "", errors.New("resourceType or resourceName is empty")
+	}
 	ucpID := "/planes/kubernetes/local/"
 	if namespace != "" {
 		ucpID += fmt.Sprintf("namespaces/%s/", namespace)
@@ -114,5 +118,5 @@ func ToUCPResourceID(namespace, resourceType, resourceName, provider string) str
 		}
 	}
 	ucpID += resourceName
-	return ucpID
+	return ucpID, nil
 }

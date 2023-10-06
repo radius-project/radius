@@ -23,6 +23,12 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
+const (
+	TerraformAzureProvider      = "registry.terraform.io/hashicorp/azurerm"
+	TerraformAWSProvider        = "registry.terraform.io/hashicorp/aws"
+	TerraformKubernetesProvider = "registry.terraform.io/hashicorp/kubernetes"
+)
+
 // Driver is an interface to implement recipe deployment and recipe resources deletion.
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.

@@ -512,17 +512,54 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 											"arn": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
 										},
 									},
+									// resource with invalid arn
+									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019",
+										},
+									},
 									{
 										ProviderName: "registry.terraform.io/hashicorp/azurerm",
 										AttributeValues: map[string]any{
 											"id": "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
 										},
 									},
+									// resource with id value not in the ARM resource format
+									{
+										ProviderName: "registry.terraform.io/hashicorp/azurerm",
+										AttributeValues: map[string]any{
+											"id": "outputResourceId2",
+										},
+									},
 									{
 										Type:         "kubernetes_deployment",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
-											"id": "default/test-redis",
+											"metadata": map[string]any{
+												"name":      "test-redis",
+												"namespace": "default",
+											},
+										},
+									},
+									// resource with no resource name
+									{
+										Type:         "kubernetes_deployment",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": map[string]any{
+												"namespace": "default",
+											},
+										},
+									},
+									{
+										Type:         "kubernetes_service_account",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": map[string]any{
+												"name":      "test-service-account",
+												"namespace": "default",
+											},
 										},
 									},
 									{
@@ -557,6 +594,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
 					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
 					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
+					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
 					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
 				},
 			},
