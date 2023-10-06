@@ -215,8 +215,8 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
-// getDeployedOutputResources is used to the get the resource ids by parsing the state store json for resource information and use it to create UCP qualified IDs.
-// it only supports Azure, AWS and Kubernetes providers.
+// getDeployedOutputResources is used to the get the resource ids by parsing the terraform state for resource information and use it to create UCP qualified IDs.
+// Currently only Azure, AWS and Kubernetes providers are supported by output resources.
 func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) ([]string, error) {
 	recipeResources := []string{}
 	if module == nil {
