@@ -31,6 +31,7 @@ func Test_ToUCPResourceID(t *testing.T) {
 		ucpID := ToUCPResourceID(namespace, resourceType, resourceName, "")
 		require.Equal(t, expectedID, ucpID)
 	})
+
 	t.Run("kubernetes resource type: dapr component", func(t *testing.T) {
 		namespace := "test-dapr"
 		resourceType := "Component"
@@ -40,6 +41,7 @@ func Test_ToUCPResourceID(t *testing.T) {
 		ucpID := ToUCPResourceID(namespace, resourceType, resourceName, provider)
 		require.Equal(t, expectedID, ucpID)
 	})
+
 	t.Run("cluster scoped resource", func(t *testing.T) {
 		resourceType := "deployment"
 		resourceName := "test-deployment"

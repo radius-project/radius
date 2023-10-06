@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"golang.org/x/exp/slices"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/recipes"
@@ -150,16 +151,11 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 	if err != nil {
 		return &recipes.RecipeOutput{}, err
 	}
-	uniqueResources := []string{}
-	recipeResponse.Resources = append(recipeResponse.Resources, deployedResources...)
-	uniqueResourcesMap := map[string]bool{}
-	for _, val := range recipeResponse.Resources {
-		if ok := uniqueResourcesMap[val]; !ok {
-			uniqueResourcesMap[val] = true
-			uniqueResources = append(uniqueResources, val)
+	for _, id := range deployedResources {
+		if !slices.Contains(recipeResponse.Resources, id) {
+			recipeResponse.Resources = append(recipeResponse.Resources, id)
 		}
 	}
-	recipeResponse.Resources = uniqueResources
 	return recipeResponse, err
 }
 
@@ -219,13 +215,14 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	return recipeData, nil
 }
 
-// getDeployedOutputResources is used to the get the resource ids by parsing the state store json.
+// getDeployedOutputResources is used to the get the resource ids by parsing the state store json for resource information and use it to create UCP qualified IDs.
 // it only supports Azure, AWS and Kubernetes providers.
 func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule) ([]string, error) {
 	recipeResources := []string{}
 	if module == nil {
 		return recipeResources, nil
 	}
+
 	for _, resource := range module.Resources {
 		switch resource.ProviderName {
 		case "registry.terraform.io/hashicorp/kubernetes":
@@ -242,15 +239,18 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 							namespace = ns
 						}
 					}
+
 					if apiVersion, ok := manifest["apiVersion"].(string); ok {
 						provider = strings.Split(apiVersion, "/")[0]
 					}
+
 					if kind, ok := manifest["kind"].(string); ok {
 						resourceType = kind
 					}
 
 				}
 			} else {
+				// Kubernetes resource types are prefixed with "kubernetes_" keyword, splitting the string with "_" in 2 parts to remove the prefix.
 				resourceType = strings.SplitN(resource.Type, "_", 2)[1]
 				if resource.AttributeValues != nil {
 					if id, ok := resource.AttributeValues["id"].(string); ok {
@@ -280,6 +280,7 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 			continue
 		}
 	}
+
 	for _, childModule := range module.ChildModules {
 		modResources, err := d.getDeployedOutputResources(childModule)
 		if err != nil {
@@ -287,5 +288,6 @@ func (d *terraformDriver) getDeployedOutputResources(module *tfjson.StateModule)
 		}
 		recipeResources = append(recipeResources, modResources...)
 	}
+
 	return recipeResources, nil
 }

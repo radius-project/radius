@@ -498,7 +498,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 								"secrets": map[string]any{
 									"connectionString": "testConnectionString",
 								},
-								"resources": []any{"outputResourceId1"},
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
 							},
 						},
 					},

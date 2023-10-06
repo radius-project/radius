@@ -45,7 +45,7 @@ func ToAWSResourceType(id resources.ID) string {
 	return resourceType
 }
 
-// ToUCPResourceID takes ARN fomatted sting and returns string representing UCP qualified resource ID.
+// ToUCPResourceID takes AWS resource ARN and returns string representing UCP qualified resource ID.
 // General formats for ARNs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
 func ToUCPResourceID(arn string) string {
 	arnSegments := strings.Split(arn, ":")
