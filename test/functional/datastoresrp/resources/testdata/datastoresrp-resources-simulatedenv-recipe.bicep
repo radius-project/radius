@@ -1,9 +1,5 @@
 import radius as radius
 
-param rg string = resourceGroup().name
-
-param sub string = subscription().subscriptionId
-
 param registry string 
 
 param version string
@@ -19,14 +15,9 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       resourceId: 'self'
       namespace: 'dsrp-resources-simenv-recipe-env'
     }
-    providers: {
-      azure: {
-        scope: '/subscriptions/${sub}/resourceGroups/${rg}'
-      }
-    }
     recipes: {
       'Applications.Datastores/mongoDatabases':{
-        mongoazure: {
+        'mongodb-recipe-kubernetes': {
           templateKind: 'bicep'
           templatePath: '${registry}/test/functional/shared/recipes/mongodb-recipe-kubernetes:${version}' 
         }
@@ -81,7 +72,7 @@ resource recipedb 'Applications.Datastores/mongoDatabases@2023-10-01-preview' = 
     application: app.id
     environment: env.id
     recipe: {
-      name: 'mongoazure'
+      name: 'mongodb-recipe-kubernetes'
     }
   }
 }
