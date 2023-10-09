@@ -172,13 +172,3 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		Simulated:     simulated,
 	})
 }
-
-func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
-	metadata := recipes.ResourceMetadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
-	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config.Runtime, nil
-}
