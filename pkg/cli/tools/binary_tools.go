@@ -22,7 +22,6 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"strings"
 
 	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/radius-project/radius/pkg/version"
@@ -34,7 +33,10 @@ import (
 )
 
 // binaryName is the name of the bicep binary.
-const binaryName = "rad-bicep"
+const (
+	binaryName = "rad-bicep"
+	binaryRepo = "ghcr.io/radius-project/radius/bicep/rad-bicep/"
+)
 
 // validPlatforms is a map of valid platforms to download for. The key is the combination of GOOS and GOARCH.
 var validPlatforms = map[string]string{
@@ -139,23 +141,16 @@ func GetDownloadURI(downloadURIFmt string) (string, error) {
 // DownloadToFolder creates a folder and a file, writes the response body to the file, and makes the file executable by
 // everyone. An error is returned if any of these steps fail.
 func DownloadToFolder(filepath string) error {
-	// get file name for bicep binary
-	filename, err := getFilename(binaryName)
-	if err != nil {
-		return err
-	}
-
 	// create folders
-	dirPath := strings.TrimSuffix(filepath, filename)
-	err = os.MkdirAll(path.Dir(dirPath), os.ModePerm)
+	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("failed to create folder %s: %v", path.Dir(dirPath), err)
+		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
 	}
 
 	// Create a file store
-	fs, err := file.New(dirPath)
+	fs, err := file.New(path.Dir(filepath))
 	if err != nil {
-		return fmt.Errorf("failed to create file store %s: %v", dirPath, err)
+		return fmt.Errorf("failed to create file store %s: %v", filepath, err)
 	}
 	defer fs.Close()
 
@@ -166,8 +161,7 @@ func DownloadToFolder(filepath string) error {
 	}
 
 	// Define remote repository
-	reg := "ghcr.io/radius-project/radius/bicep/rad-bicep/"
-	repo, err := remote.NewRepository(reg + platform)
+	repo, err := remote.NewRepository(binaryRepo + platform)
 	if err != nil {
 		return err
 	}
@@ -197,7 +191,7 @@ func DownloadToFolder(filepath string) error {
 	}
 
 	// Open the folder so we can mark it as executable
-	bicepBinary, err := os.Open(fmt.Sprintf(dirPath + filename))
+	bicepBinary, err := os.Open(filepath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %v", filepath, err)
 	}
