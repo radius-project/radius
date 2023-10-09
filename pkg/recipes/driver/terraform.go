@@ -153,9 +153,14 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, tfState *tf
 		return &recipes.RecipeOutput{}, err
 	}
 
-	for _, id := range deployedResources {
-		if !slices.Contains(recipeResponse.Resources, id) {
-			recipeResponse.Resources = append(recipeResponse.Resources, id)
+	uniqueResourceIDs := []string{}
+	for _, val := range recipeResponse.Resources {
+		uniqueResourceIDs = append(uniqueResourceIDs, strings.ToLower(val))
+	}
+
+	for _, val := range deployedResources {
+		if !slices.Contains(uniqueResourceIDs, strings.ToLower(val)) {
+			recipeResponse.Resources = append(recipeResponse.Resources, val)
 		}
 	}
 
