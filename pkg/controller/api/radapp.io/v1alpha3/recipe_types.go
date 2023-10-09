@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha3
 
 import (
+	"net/http"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -75,9 +77,9 @@ type RecipeStatus struct {
 	// +kubebuilder:validation:Optional
 	Resource string `json:"resource,omitempty"`
 
-	// Operation is the operation URL of an operation in progress.
+	// Operation tracks the status of an in-progress provisioning operation.
 	// +kubebuilder:validation:Optional
-	Operation string `json:"operation,omitempty"`
+	Operation *ResourceOperation `json:"operation,omitempty"`
 
 	// Phrase indicates the current status of the Recipe.
 	// +kubebuilder:validation:Optional
@@ -88,20 +90,25 @@ type RecipeStatus struct {
 	Secret corev1.ObjectReference `json:"secret,omitempty"`
 }
 
-func (r *Recipe) SetDefaults() {
-	if r.Status.Scope == "" {
-		r.Status.Scope = "/planes/radius/local/resourceGroups/default"
-	}
-	if r.Status.Environment == "" {
-		r.Status.Environment = r.Status.Scope + "/providers/Applications.Core/environments/" + "default"
-	}
-	if r.Status.Application == "" {
-		r.Status.Application = r.Status.Scope + "/providers/Applications.Core/applications/" + r.Namespace
-	}
-	if r.Status.Resource == "" {
-		r.Status.Resource = r.Status.Scope + "/providers/" + r.Spec.Type + "/" + r.Name
-	}
+// ResourceOperation describes the status of an in-progress provisioning operation.
+type ResourceOperation struct {
+	// ResumeToken is a token that can be used to resume an in-progress provisioning operation.
+	ResumeToken string `json:"resumeToken,omitempty"`
+
+	// OperationKind describes the type of operation being performed.
+	OperationKind OperationKind `json:"operationKind,omitempty"`
 }
+
+// OperationKind is the type of operation being performed.
+type OperationKind string
+
+const (
+	// OperationKindPut is a PUT (create or update) operation.
+	OperationKindPut = http.MethodPut
+
+	// OperationKindDelete is a DELETE operation.
+	OperationKindDelete = http.MethodDelete
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:categories={"all","radius"}

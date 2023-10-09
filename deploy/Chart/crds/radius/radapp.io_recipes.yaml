@@ -75,8 +75,18 @@ spec:
                 format: int64
                 type: integer
               operation:
-                description: Operation is the operation URL of an operation in progress.
-                type: string
+                description: Operation tracks the status of an in-progress provisioning
+                  operation.
+                properties:
+                  operationKind:
+                    description: OperationKind describes the type of operation being
+                      performed.
+                    type: string
+                  resumeToken:
+                    description: ResumeToken is a token that can be used to resume
+                      an in-progress provisioning operation.
+                    type: string
+                type: object
               phrase:
                 description: Phrase indicates the current status of the Recipe.
                 type: string
