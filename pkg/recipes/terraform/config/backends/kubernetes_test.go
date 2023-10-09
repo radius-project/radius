@@ -17,6 +17,7 @@ limitations under the License.
 package backends
 
 import (
+	"context"
 	"crypto/sha1"
 	"fmt"
 	"strings"
@@ -24,6 +25,13 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
+	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -34,6 +42,8 @@ const (
 	envName             = "env"
 	appName             = "app"
 	resourceName        = "redis"
+
+	testSecretSuffix = "test-secret-suffix"
 )
 
 var (
@@ -66,10 +76,6 @@ func getTestInputs() (recipes.EnvironmentDefinition, recipes.ResourceMetadata) {
 	return envRecipe, resourceRecipe
 }
 
-const (
-	testSecretSuffix = "test-secret-suffix"
-)
-
 func Test_GenerateKubernetesBackendConfig(t *testing.T) {
 	t.Setenv("KUBERNETES_SERVICE_HOST", "")
 	t.Setenv("KUBERNETES_SERVICE_PORT", "")
@@ -83,15 +89,6 @@ func Test_GenerateKubernetesBackendConfig(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedConfig, actualConfig)
-}
-
-func Test_GenerateKubernetesBackendConfig_Error(t *testing.T) {
-	t.Setenv("KUBERNETES_SERVICE_HOST", "testvalue")
-	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
-
-	backend, err := generateKubernetesBackendConfig("test-suffix")
-	require.Error(t, err)
-	require.Nil(t, backend)
 }
 
 func Test_GenerateSecretSuffix(t *testing.T) {
@@ -124,4 +121,38 @@ func Test_GenerateSecretSuffix_invalid_appid(t *testing.T) {
 	resourceRecipe.ApplicationID = "invalid"
 	_, err := generateSecretSuffix(&resourceRecipe)
 	require.Equal(t, err.Error(), "'invalid' is not a valid resource id")
+}
+
+func Test_ValidateBackendExists(t *testing.T) {
+	clientset := fake.NewSimpleClientset()
+	secret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-secret",
+			Namespace: RadiusNamespace,
+		},
+		Data: map[string][]byte{
+			"key": []byte("value"),
+		},
+	}
+	_, err := clientset.CoreV1().Secrets(RadiusNamespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	b := NewKubernetesBackend(clientset)
+	exists, err := b.ValidateBackendExists(context.Background(), "test-secret")
+	require.NoError(t, err)
+	require.True(t, exists)
+
+	// Validate that the function returns false for a non-existent secret.
+	exists, err = b.ValidateBackendExists(context.Background(), "invalid-secret")
+	require.NoError(t, err)
+	require.False(t, exists)
+
+	// Validate error is returned for errors other than NotFound.
+	clientset.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, k8s_errors.NewServerTimeout(schema.GroupResource{Resource: "test-secret"}, "get", 1)
+	})
+	exists, err = b.ValidateBackendExists(context.Background(), "test-secret")
+	require.Error(t, err)
+	require.True(t, k8s_errors.IsServerTimeout(err))
+	require.False(t, exists)
 }

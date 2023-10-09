@@ -5,6 +5,7 @@
 package backends
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -47,4 +48,19 @@ func (m *MockBackend) BuildBackend(arg0 *recipes.ResourceMetadata) (map[string]i
 func (mr *MockBackendMockRecorder) BuildBackend(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildBackend", reflect.TypeOf((*MockBackend)(nil).BuildBackend), arg0)
+}
+
+// ValidateBackendExists mocks base method.
+func (m *MockBackend) ValidateBackendExists(arg0 context.Context, arg1 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateBackendExists", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateBackendExists indicates an expected call of ValidateBackendExists.
+func (mr *MockBackendMockRecorder) ValidateBackendExists(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateBackendExists", reflect.TypeOf((*MockBackend)(nil).ValidateBackendExists), arg0, arg1)
 }
