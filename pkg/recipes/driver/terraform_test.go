@@ -17,6 +17,7 @@ limitations under the License.
 package driver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -498,7 +499,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 								"secrets": map[string]any{
 									"connectionString": "testConnectionString",
 								},
-								"resources": []any{"outputResourceId1"},
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
 							},
 						},
 					},
@@ -507,8 +508,66 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
+										},
+									},
+									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019:Subnet/Subnet-0ddfaa93733f98002",
+										},
+									},
+									{
+										ProviderName: "registry.terraform.io/hashicorp/azurerm",
+										AttributeValues: map[string]any{
+											"id": "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
+										},
+									},
+									// resource with id value not in the ARM resource format
+									{
+										ProviderName: "registry.terraform.io/hashicorp/azurerm",
 										AttributeValues: map[string]any{
 											"id": "outputResourceId2",
+										},
+									},
+									{
+										Type:         "kubernetes_deployment",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": []any{
+												map[string]any{
+													"name":      "test-redis",
+													"namespace": "default",
+												},
+											},
+										},
+									},
+									{
+										Type:         "kubernetes_service_account",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": []any{
+												map[string]any{
+													"name":      "test-service-account",
+													"namespace": "default",
+												},
+											},
+										},
+									},
+									{
+										Type:         "kubernetes_manifest",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"manifest": map[string]any{
+												"apiVersion": "dapr.io/v1alpha1",
+												"kind":       "Component",
+												"metadata": map[string]any{
+													"name":      "test-dapr",
+													"namespace": "test-namespace",
+												},
+											},
 										},
 									},
 								},
@@ -525,8 +584,116 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				Secrets: map[string]any{
 					"connectionString": "testConnectionString",
 				},
-				Resources: []string{"outputResourceId1"},
+				Resources: []string{"outputResourceId1",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
+					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
+					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
+					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
+					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
+				},
 			},
+		},
+		{
+			desc: "invalid AWS ARN",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
+		},
+		{
+			desc: "kubernetes manifest type with no apiVersion information",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										Type:         "kubernetes_manifest",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"manifest": map[string]any{
+												"kind": "Component",
+												"metadata": map[string]any{
+													"name":      "test-dapr",
+													"namespace": "test-namespace",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("unable to get apiVersion information from the resource"),
+		},
+		{
+			desc: "kubernetes resource with no resource name",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										Type:         "kubernetes_deployment",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": []any{
+												map[string]any{
+													"namespace": "default",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("resourceType or resourceName is empty"),
 		},
 		{
 			desc: "invalid state",
@@ -581,7 +748,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

@@ -17,6 +17,8 @@ limitations under the License.
 package kubernetes
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -36,6 +38,18 @@ const (
 	// ScopeTypeNamespaces defines the type name of the Kubernetes namespace scope.
 	ScopeNamespaces = "namespaces"
 )
+
+// Lookup map to get the group/Kind information from kubernetes resource kind.
+var providerLookup map[string]string = map[string]string{
+	strings.ToLower(KindDeployment):          ResourceTypeDeployment,
+	strings.ToLower(KindService):             ResourceTypeService,
+	strings.ToLower(KindSecret):              ResourceTypeSecret,
+	strings.ToLower(KindServiceAccount):      ResourceTypeServiceAccount,
+	strings.ToLower(KindRole):                ResourceTypeRole,
+	strings.ToLower(KindRoleBinding):         ResourceTypeRoleBinding,
+	strings.ToLower(KindSecretProviderClass): ResourceTypeSecretProviderClass,
+	strings.ToLower(KindContourHTTPProxy):    ResourceTypeContourHTTPProxy,
+}
 
 // ToParts returns the component parts of the given UCP resource ID.
 func ToParts(id resources.ID) (group, kind, namespace, name string) {
@@ -83,4 +97,26 @@ func IDFromParts(planeName string, group string, kind string, namespace string, 
 	}
 
 	return resources.MustParse(resources.MakeUCPID(scopes, types, nil))
+}
+
+// ToUCPResourceID takes namespace, resourceType, resourceName, provider information and returns string representing UCP qualified resource ID.
+func ToUCPResourceID(namespace, resourceType, resourceName, provider string) (string, error) {
+	if resourceType == "" || resourceName == "" {
+		return "", errors.New("resourceType or resourceName is empty")
+	}
+	ucpID := "/planes/kubernetes/local/"
+	if namespace != "" {
+		ucpID += fmt.Sprintf("namespaces/%s/", namespace)
+	}
+	if provider != "" {
+		ucpID += fmt.Sprintf("providers/%s/%s/", provider, resourceType)
+	} else {
+		if group, ok := providerLookup[strings.ToLower(resourceType)]; ok {
+			ucpID += fmt.Sprintf("providers/%s/", group)
+		} else {
+			ucpID += fmt.Sprintf("providers/%s/%s/", "core", resourceType)
+		}
+	}
+	ucpID += resourceName
+	return ucpID, nil
 }
