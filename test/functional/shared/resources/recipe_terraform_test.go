@@ -140,6 +140,10 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					{
 						Name: name,
 						Type: validation.ExtendersResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-context-app/providers/core/Secret/corerp-resources-terraform-context"},
+						},
 					},
 				},
 			},
