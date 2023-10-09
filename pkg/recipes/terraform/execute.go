@@ -38,7 +38,6 @@ import (
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -46,9 +45,6 @@ import (
 const (
 	executionSubDir                = "deploy"
 	workingDirFileMode fs.FileMode = 0700
-	// Default prefix string added to secret suffix by terraform while creating kubernetes secret.
-	// Kubernetes secrets to store terraform state files are named in the format: tfstate-{workspace}-{secret_suffix}. And we always use "default" workspace for terraform operations.
-	terraformStateKubernetesPrefix = "tfstate-default-"
 )
 
 var (
@@ -100,7 +96,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Create Terraform config in the working directory
-	secretSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +107,13 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// verifying if kubernetes secret is created as part of terraform init
-	// this is valid only for the backend of type kubernetes
-	err = verifyKubernetesSecret(ctx, options, e.k8sClientSet, secretSuffix)
+	// Validate that the terraform state file backend source exists.
+	// Currently only Kubernetes secret backend is supported, which is created by Terraform as a part of Terraform apply.
+	backendExists, err := backends.NewKubernetesBackend(e.k8sClientSet).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("expected kubernetes secret for terraform state is not found : %w", err)
-		}
-		return nil, fmt.Errorf("error retrieving Kubernetes secret for Terraform state : %w", err)
+		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
+	} else if !backendExists {
+		return nil, errors.New("expected kubernetes secret for terraform state is not found")
 	}
 
 	return state, nil
@@ -150,21 +145,40 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Create Terraform config in the working directory
-	secretSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
 	if err != nil {
 		return err
 	}
 
-	// Run TF Destroy in the working directory
+	// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
+	// If the state file source has been deleted or wasn't created due to a failure during apply then
+	// terraform initialization will fail due to missing backend source.
+	backendExists, err := backends.NewKubernetesBackend(e.k8sClientSet).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	if err != nil {
+		// Continue with the delete flow for all errors other than backend not found.
+		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
+		logger.Info(fmt.Sprintf("Error retrieving Terraform state file backend: %s", err.Error()))
+	} else if !backendExists {
+		// Skip deletion if the backend does not exist. Delete can't be performed without Terraform state file.
+		logger.Info("Skipping deletion of recipe resources: Terraform state file backend does not exist.")
+		return nil
+	}
+
+	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
 	err = initAndDestroy(ctx, workingDir, execPath)
 	if err != nil {
 		return err
 	}
 
-	// Delete the kubernetes secret created as part of `terraform apply` in the execute flow.
-	return e.k8sClientSet.CoreV1().
+	// Delete the kubernetes secret created for terraform state file.
+	err = e.k8sClientSet.CoreV1().
 		Secrets(backends.RadiusNamespace).
-		Delete(ctx, terraformStateKubernetesPrefix+secretSuffix, metav1.DeleteOptions{})
+		Delete(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix, metav1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("error deleting kubernetes secret for terraform state: %w", err)
+	}
+
+	return nil
 }
 
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {
@@ -238,7 +252,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return "", err
 	}
 
-	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend())
+	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(e.k8sClientSet))
 	if err != nil {
 		return "", err
 	}
@@ -364,17 +378,6 @@ func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.Sta
 	// Load Terraform state to retrieve the outputs
 	logger.Info("Fetching Terraform state")
 	return tf.Show(ctx)
-}
-
-// verifyKubernetesSecret is used to verify if the secret is created as part of terraform backend initialization.
-// It takes secret_suffix created during AddBackend as input and looks for the secret in radius-system namespace
-func verifyKubernetesSecret(ctx context.Context, options Options, k8s kubernetes.Interface, secretSuffix string) error {
-	_, err := k8s.CoreV1().Secrets(backends.RadiusNamespace).Get(ctx, terraformStateKubernetesPrefix+secretSuffix, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // initAndDestroy runs Terraform init and destroy in the provided working directory.

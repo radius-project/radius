@@ -36,8 +36,6 @@ const (
 	modeConfigFile fs.FileMode = 0600
 )
 
-var ErrModuleNotFound = errors.New("module not found in Terraform config")
-
 // New creates TerraformConfig with the given module name and its inputs (module source, version, parameters)
 // Parameters are populated from environment recipe and resource recipe metadata.
 func New(moduleName string, envRecipe *recipes.EnvironmentDefinition, resourceRecipe *recipes.ResourceMetadata) *TerraformConfig {
@@ -104,12 +102,14 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {
 	mod, ok := cfg.Module[moduleName]
 	if !ok {
-		// must not happen because module key is set in New().
-		panic(ErrModuleNotFound)
+		// must not happen because module key is set when the config is initialized in New().
+		return fmt.Errorf("module %q not found in the initialized terraform config", moduleName)
 	}
+
 	if recipeCtx != nil {
 		mod.SetParams(RecipeParams{recipecontext.RecipeContextParamKey: recipeCtx})
 	}
+
 	return nil
 }
 

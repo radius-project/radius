@@ -17,6 +17,7 @@ limitations under the License.
 package backends
 
 import (
+	"context"
 	"crypto/sha1"
 	"errors"
 	"fmt"
@@ -24,21 +25,36 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	k8s_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var _ Backend = (*kubernetesBackend)(nil)
 
-type kubernetesBackend struct{}
-
 const (
 	RadiusNamespace   = "radius-system"
 	BackendKubernetes = "kubernetes"
+
+	// KubernetesBackendNamePrefix is the default prefix added by Terraform to the generated Kubernetes secret name.
+	// Terraform generates the secret name in the format "tfstate-{workspace}-{secret_suffix}". Default terraform workspace
+	// is used for recipes deployment.
+	// https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
+	// https://developer.hashicorp.com/terraform/language/state/workspaces
+	KubernetesBackendNamePrefix = "tfstate-default-"
 )
 
-func NewKubernetesBackend() Backend {
-	return &kubernetesBackend{}
+var _ Backend = (*kubernetesBackend)(nil)
+
+type kubernetesBackend struct {
+	k8sClientSet kubernetes.Interface
+}
+
+func NewKubernetesBackend(k8sClientSet kubernetes.Interface) Backend {
+	return &kubernetesBackend{k8sClientSet: k8sClientSet}
 }
 
 // BuildBackend generates the Terraform backend configuration for Kubernetes backend.
@@ -50,7 +66,27 @@ func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadat
 	if err != nil {
 		return nil, err
 	}
+
 	return generateKubernetesBackendConfig(secretSuffix)
+}
+
+// ValidateBackendExists checks if the Kubernetes secret for Terraform state file exists.
+// name is the name of the backend Kubernetes secret resource that is created as a part of terraform apply
+// during recipe deployment.
+func (p *kubernetesBackend) ValidateBackendExists(ctx context.Context, name string) (bool, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	_, err := p.k8sClientSet.CoreV1().Secrets(RadiusNamespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if k8s_errors.IsNotFound(err) {
+			logger.Info(fmt.Sprintf("Kubernetes secret %q does not exist: %s", name, err.Error()))
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }
 
 // generateSecretSuffix returns a unique string from the resourceID, environmentID, and applicationID
