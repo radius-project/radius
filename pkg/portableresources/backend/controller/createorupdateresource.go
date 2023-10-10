@@ -76,6 +76,10 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	if data.ResourceMetadata().Status.Recipe == nil {
+		data.ResourceMetadata().Status.Recipe = &rpv1.RecipeStatus{}
+	}
+
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(data)
 
@@ -119,10 +123,10 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			return ctrl.Result{}, err
 		}
 	}
-
 	if recipeDataModel.Recipe() != nil {
 		recipeDataModel.Recipe().DeploymentStatus = util.Success
 	}
+
 	update := &store.Object{
 		Metadata: store.Metadata{
 			ID: req.ResourceID,

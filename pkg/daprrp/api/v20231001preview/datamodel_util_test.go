@@ -22,6 +22,8 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/portableresources"
+	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
@@ -209,6 +211,41 @@ func TestFromResourceProvisiongDataModel(t *testing.T) {
 	for _, testCase := range testCases {
 		sc := fromResourceProvisioningDataModel(testCase.datamodel)
 		require.Equal(t, testCase.versioned, *sc)
+	}
+}
+
+func Test_fromRecipeStatus(t *testing.T) {
+	testCases := []struct {
+		recipeStatus *rpv1.RecipeStatus
+		expected     *RecipeStatus
+	}{
+		{&rpv1.RecipeStatus{
+			TemplateKind:    recipes.TemplateKindTerraform,
+			TemplatePath:    "/path/to/template.tf",
+			TemplateVersion: "1.0",
+		}, &RecipeStatus{
+			TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
+			TemplatePath:    to.Ptr("/path/to/template.tf"),
+			TemplateVersion: to.Ptr("1.0"),
+		}},
+		{nil, nil},
+		{&rpv1.RecipeStatus{
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "/path/to/template.bicep",
+		}, &RecipeStatus{
+			TemplateKind:    to.Ptr(recipes.TemplateKindBicep),
+			TemplatePath:    to.Ptr("/path/to/template.bicep"),
+			TemplateVersion: nil,
+		}},
+	}
+
+	for _, tt := range testCases {
+		status := fromRecipeStatus(tt.recipeStatus)
+		if tt.expected == nil {
+			require.Nil(t, status)
+		} else {
+			require.Equal(t, *tt.expected, *status)
+		}
 	}
 }
 

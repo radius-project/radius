@@ -142,13 +142,14 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 			// Validate expected output resources are present in the response
 			if len(expectedResource.OutputResources) > 0 {
 				t.Log("validating output resources")
-				bytes, err := json.Marshal(res.Properties["status"])
+				status := res.Properties["status"].(map[string]interface{})
+				or := status["outputResources"].([]interface{})
+				bytes, err := json.Marshal(or)
 				require.NoError(t, err)
 
-				var outputResourcesMap map[string][]OutputResourceResponse
-				err = json.Unmarshal(bytes, &outputResourcesMap)
+				var outputResources []OutputResourceResponse
+				err = json.Unmarshal(bytes, &outputResources)
 				require.NoError(t, err)
-				outputResources := outputResourcesMap["outputResources"]
 				for _, outputResource := range outputResources {
 					t.Logf("Found output resource: %+v", outputResource)
 				}
