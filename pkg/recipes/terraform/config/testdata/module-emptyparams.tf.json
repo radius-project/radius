@@ -1,0 +1,9 @@
+{
+  "terraform": null,
+  "module": {
+    "redis-azure": {
+      "source": "Azure/redis/azurerm",
+      "version": "1.1.0"
+    }
+  }
+}
