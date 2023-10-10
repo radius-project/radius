@@ -19,9 +19,37 @@ package reconciler
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 )
+
+// resourceToConnectionValues converts a resource to a map of connection values. This will filter out any
+// properties that should not be considered as env-vars or secrets.
+func resourceToConnectionEnvVars(name string, resource generated.GenericResource, secrets generated.GenericResourcesClientListSecretsResponse) (map[string]string, error) {
+	values, err := resourceToConnectionValues(name, resource)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range secrets.Value {
+		values[k] = *v
+	}
+
+	results := map[string]string{}
+
+	for k, v := range values {
+		key := fmt.Sprintf("CONNECTION_%s_%s", strings.ToUpper(name), strings.ToUpper(k))
+		results[key] = v
+	}
+
+	for k, v := range secrets.Value {
+		key := fmt.Sprintf("CONNECTION_%s_%s", strings.ToUpper(name), strings.ToUpper(k))
+		results[key] = *v
+	}
+
+	return results, nil
+}
 
 // resourceToConnectionValues converts a resource to a map of connection values. This will filter out any
 // properties that should not be considered as env-vars or secrets.

@@ -22,6 +22,21 @@ const (
 	// PollingDelay is the amount of time to wait between polling for the status of a resource.
 	PollingDelay time.Duration = 5 * time.Second
 
+	// AnnotationRadiusEnabled is the name of the annotation that indicates if a Deployment has Radius enabled.
+	AnnotationRadiusEnabled = "radapp.io/enabled"
+
+	// AnnotationRadiusConnectionPrefix is the name of the annotation that indicates the name of the connection to use.
+	AnnotationRadiusConnectionPrefix = "radapp.io/connection-"
+
+	// AnnotationRadiusStatus is the name of the annotation that indicates the status of a Deployment.
+	AnnotationRadiusStatus = "radapp.io/status"
+
+	// AnnotationRadiusConfigurationHash is the name of the annotation that indicates the hash of the configuration.
+	AnnotationRadiusConfigurationHash = "radapp.io/configuration-hash"
+
+	// DeploymentFinalizer is the name of the finalizer added to Deployments.
+	DeploymentFinalizer = "radapp.io/deployment-finalizer"
+
 	// RecipeFinalizer is the name of the finalizer added to Recipes.
 	RecipeFinalizer = "radapp.io/recipe-finalizer"
 )

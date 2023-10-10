@@ -22,11 +22,8 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,13 +93,7 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	radius.Update(func() {
-		radius.environments["/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"] = v20231001preview.EnvironmentResource{
-			ID:       to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-			Name:     to.Ptr("default"),
-			Location: to.Ptr(v1.LocationGlobal),
-		}
-	})
+	createEnvironment(radius)
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -149,13 +140,7 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	radius.Update(func() {
-		radius.environments["/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"] = v20231001preview.EnvironmentResource{
-			ID:       to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-			Name:     to.Ptr("default"),
-			Location: to.Ptr(v1.LocationGlobal),
-		}
-	})
+	createEnvironment(radius)
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -221,13 +206,7 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	radius.Update(func() {
-		radius.environments["/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"] = v20231001preview.EnvironmentResource{
-			ID:       to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-			Name:     to.Ptr("default"),
-			Location: to.Ptr(v1.LocationGlobal),
-		}
-	})
+	createEnvironment(radius)
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -298,18 +277,6 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	err = client.Get(ctx, name, &secret)
 	require.Error(t, err)
 	require.True(t, apierrors.IsNotFound(err))
-}
-
-func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha3.Recipe {
-	return &radappiov1alpha3.Recipe{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
-		Spec: radappiov1alpha3.RecipeSpec{
-			Type: resourceType,
-		},
-	}
 }
 
 func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
