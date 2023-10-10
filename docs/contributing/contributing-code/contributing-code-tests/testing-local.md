@@ -31,7 +31,7 @@ Note, this only applies when we want to update the app core image, if we need to
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
 ## To deploy azure resources
-The above steps will not configure the ability for Rto talk with azure resource. In order to do that, run everything above till Step 4 above and then:
+The above steps will not configure the ability for Radius to talk with azure resource. In order to do that, run everything above till Step 4 above and then:
 
 1. Create Service Principal
     ```
