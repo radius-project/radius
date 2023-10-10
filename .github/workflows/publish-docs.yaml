@@ -20,7 +20,7 @@ jobs:
       GOVER: '^1.21'
       GOPRIVATE: github.com/radius-project
     steps:
-      - name: Checkout Radius repository
+      - name: Checkout radius repository
         uses: actions/checkout@v3
         with:
           repository: radius-project/radius

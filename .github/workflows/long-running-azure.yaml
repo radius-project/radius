@@ -59,7 +59,7 @@ env:
   CACHE_REGISTRY: radiusdev.azurecr.io
   # Container registry for storing recipe artifacts
   BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
-  # The Radius functional test timeout
+  # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
   AZURE_LOCATION: westus3
@@ -72,7 +72,7 @@ env:
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
-  # The valid Radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
+  # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
   VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The AKS cluster name
@@ -181,7 +181,6 @@ jobs:
           * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
           * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
           * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
-          * controller test image location: `${{ env.CACHE_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`
           * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
 
           </details>
@@ -357,7 +356,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes --reinstall \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CACHE_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
       - name: Configure Radius test workspace
         run: |
           set -x
@@ -389,7 +388,7 @@ jobs:
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           
           az acr login -n ${{ env.CACHE_REGISTRY }}
-      - name: Log Radius installation status (failure)
+      - name: Log radius installation status (failure)
         if: failure()
         run: |
           echo ":x: Failed to install Radius for functional test." >> $GITHUB_STEP_SUMMARY
@@ -429,11 +428,11 @@ jobs:
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
-      - name: Log Radius e2e test status (success)
+      - name: Log radius e2e test status (success)
         if: success()
         run: |
           echo ":white_check_mark: functional tests succeeded" >> $GITHUB_STEP_SUMMARY
-      - name: Log Radius e2e test status (failure)
+      - name: Log radius e2e test status (failure)
         if: failure()
         run: |
           echo ":x: functional test failed." >> $GITHUB_STEP_SUMMARY
