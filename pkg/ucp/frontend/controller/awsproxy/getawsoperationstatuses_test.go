@@ -114,3 +114,38 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 
 	require.Equal(t, expectedResponse, actualResponse)
 }
+
+func Test_GetAWSOperationStatuses_Delete_NotFound(t *testing.T) {
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+
+	eventTime := time.Now()
+	testOptions := setupTest(t)
+	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceRequestStatusOutput{
+			ProgressEvent: &types.ProgressEvent{
+				EventTime:       aws.Time(eventTime),
+				OperationStatus: types.OperationStatusFailed,
+				RequestToken:    aws.String(testAWSRequestToken),
+				ErrorCode:       types.HandlerErrorCodeNotFound,
+				Operation:       types.OperationDelete,
+			},
+		}, nil)
+
+	awsClients := ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	}
+	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{StorageClient: testOptions.StorageClient}, awsClients)
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
+	require.NoError(t, err)
+
+	ctx := rpctest.NewARMRequestContext(request)
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	expectedResponse := armrpc_rest.NewNoContentResponse()
+
+	require.Equal(t, expectedResponse, actualResponse)
+}

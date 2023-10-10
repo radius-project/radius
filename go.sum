@@ -72,10 +72,6 @@ github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.3.0 
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.3.0/go.mod h1:+OgGVo0Httq7N5oayfvaLQ/Jq+2gJdqfp++Hyyl7Tws=
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 h1:UQHMgLO+TxOElx5B5HZ4hJQsoJ/PvUvKRhJHDQXO8P8=
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
-github.com/Azure/go-autorest v14.2.0+incompatible h1:V5VMDjClD3GiElqLWO7mz2MxNAK/vTfRHdAubSIPRgs=
-github.com/Azure/go-autorest v14.2.0+incompatible/go.mod h1:r+4oMnoxhatjLLJ6zxSWATqVooLgysK6ZNox3g/xq24=
-github.com/Azure/go-autorest/autorest/to v0.4.0 h1:oXVqrxakqqV1UZdSazDOPOLvOIz+XA683u8EctwboHk=
-github.com/Azure/go-autorest/autorest/to v0.4.0/go.mod h1:fE8iZBn7LQR7zH/9XU2NcPR4o9jEImooCeWJcYV/zLE=
 github.com/Azure/secrets-store-csi-driver-provider-azure v1.4.1 h1:24/mZ06Uzu8EkdgJj8zcy5C3Ipsg1doM62hx0WPscNU=
 github.com/Azure/secrets-store-csi-driver-provider-azure v1.4.1/go.mod h1:xUXKV8vOut59vIrFhyEY+4PgiK2LXkP10BtI+2y8VXM=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 h1:OBhqkivkhkMqLPymWEppkm7vgPQY2XsHoEkaMQ0AdZY=

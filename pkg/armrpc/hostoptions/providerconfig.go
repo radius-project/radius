@@ -41,6 +41,7 @@ type ProviderConfig struct {
 	ProfilerProvider profilerprovider.ProfilerProviderOptions `yaml:"profilerProvider"`
 	UCP              config.UCPOptions                        `yaml:"ucp"`
 	Logging          ucplog.LoggingOptions                    `yaml:"logging"`
+	Bicep            BicepOptions                             `yaml:"bicep,omitempty"`
 	Terraform        TerraformOptions                         `yaml:"terraform,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
@@ -68,6 +69,14 @@ type WorkerServerOptions struct {
 	MaxOperationConcurrency *int `yaml:"maxOperationConcurrency,omitempty"`
 	// MaxOperationRetryCount is the maximum retry count to process async request operation.
 	MaxOperationRetryCount *int `yaml:"maxOperationRetryCount,omitempty"`
+}
+
+// BicepOptions includes options required for bicep execution.
+type BicepOptions struct {
+	// DeleteRetryCount is the number of times to retry the request.
+	DeleteRetryCount string `yaml:"deleteRetryCount,omitempty"`
+	// DeleteRetryDelaySeconds is the delay between retries in seconds.
+	DeleteRetryDelaySeconds string `yaml:"deleteRetryDelaySeconds,omitempty"`
 }
 
 // TerraformOptions includes options required for terraform execution.

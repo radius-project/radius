@@ -80,10 +80,13 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:            name,
-						Type:            validation.ExtendersResource,
-						App:             appName,
-						OutputResources: []validation.OutputResourceResponse{}, // No output resources because Terraform Recipe outputs aren't integreted yet.
+						Name: name,
+						Type: validation.ExtendersResource,
+						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-redis-app/providers/apps/Deployment/tf-redis-cache"},
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-redis-app/providers/core/Service/tf-redis-cache"},
+						},
 					},
 				},
 			},
@@ -137,6 +140,10 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 					{
 						Name: name,
 						Type: validation.ExtendersResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{ID: "/planes/kubernetes/local/namespaces/corerp-resources-terraform-context-app/providers/core/Secret/corerp-resources-terraform-context"},
+						},
 					},
 				},
 			},
@@ -392,7 +399,7 @@ func getSecretSuffix(resourceID, envName, appName string) (string, error) {
 		Parameters:    nil,
 	}
 
-	backend := backends.NewKubernetesBackend()
+	backend := backends.NewKubernetesBackend(nil)
 	secretMap, err := backend.BuildBackend(&resourceRecipe)
 	if err != nil {
 		return "", err

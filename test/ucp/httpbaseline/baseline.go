@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -202,7 +203,11 @@ func (rt *RoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	w.WriteHeader(w.Code)
-	_, err = w.WriteString(rt.Request.Body)
+
+	// We need to escape/sanitize the content to prevent XSS attacks.
+	// Please see: https://github.com/radius-project/radius/security/code-scanning/2
+	safeContent := html.EscapeString(rt.Request.Body)
+	_, err = w.WriteString(safeContent)
 	if err != nil {
 		return nil, err
 	}

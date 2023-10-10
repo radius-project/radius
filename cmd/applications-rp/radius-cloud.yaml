@@ -34,7 +34,7 @@ server:
   enableArmAuth: true
   armMetadataEndpoint: "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
 workerServer:
-  maxOperationConcurrency: 3
+  maxOperationConcurrency: 10
   maxOperationRetryCount: 2
 metricsProvider:
   prometheus:
@@ -49,5 +49,8 @@ ucp:
 logging:
   level: "info"
   json: false
+bicep:
+  deleteRetryCount: 20
+  deleteRetryDelaySeconds: 60
 terraform:
   path: "/terraform"

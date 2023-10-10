@@ -70,11 +70,11 @@ const (
 	nameVal         = "test-route"
 	partofKey       = "app.kubernetes.io/part-of"
 	partofVal       = "test-application"
-	appKey          = "radius.dev/application"
+	appKey          = "radapp.io/application"
 	appVal          = "test-application"
-	resourceKey     = "radius.dev/resource"
+	resourceKey     = "radapp.io/resource"
 	resourceVal     = "test-route"
-	resourcetypeKey = "radius.dev/resource-type"
+	resourcetypeKey = "radapp.io/resource-type"
 	resourcetypeVal = "applications.core-httproutes"
 )
 

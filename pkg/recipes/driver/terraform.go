@@ -22,18 +22,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"golang.org/x/exp/slices"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/radius-project/radius/pkg/recipes"
 
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
+	resources "github.com/radius-project/radius/pkg/ucp/resources"
+	awsresources "github.com/radius-project/radius/pkg/ucp/resources/aws"
+	kubernetesresources "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	ucp_provider "github.com/radius-project/radius/pkg/ucp/secret/provider"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util"
-	"k8s.io/client-go/kubernetes"
 
 	tfjson "github.com/hashicorp/terraform-json"
 )
@@ -88,7 +94,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
 
-	recipeOutputs, err := d.prepareRecipeResponse(tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(ctx, tfState)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetRecipeErrorDetails(err))
 	}
@@ -125,7 +131,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
-func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	if tfState == nil || (*tfState == tfjson.State{}) {
 		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
 	}
@@ -139,6 +145,22 @@ func (d *terraformDriver) prepareRecipeResponse(tfState *tfjson.State) (*recipes
 			if err != nil {
 				return &recipes.RecipeOutput{}, err
 			}
+		}
+	}
+
+	deployedResources, err := d.getDeployedOutputResources(ctx, tfState.Values.RootModule)
+	if err != nil {
+		return &recipes.RecipeOutput{}, err
+	}
+
+	uniqueResourceIDs := []string{}
+	for _, val := range recipeResponse.Resources {
+		uniqueResourceIDs = append(uniqueResourceIDs, strings.ToLower(val))
+	}
+
+	for _, val := range deployedResources {
+		if !slices.Contains(uniqueResourceIDs, strings.ToLower(val)) {
+			recipeResponse.Resources = append(recipeResponse.Resources, val)
 		}
 	}
 
@@ -199,4 +221,108 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 	}
 
 	return recipeData, nil
+}
+
+// getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
+// Currently only Azure, AWS and Kubernetes providers are supported by output resources.
+func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule) ([]string, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	recipeResources := []string{}
+	if module == nil {
+		return recipeResources, nil
+	}
+
+	for _, resource := range module.Resources {
+		switch resource.ProviderName {
+		case TerraformKubernetesProvider:
+			var resourceType, resourceName, namespace, provider string
+			// For resource type "kubernetes_manifest" get the required details from the manifest property.
+			// https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest
+			if resource.Type == "kubernetes_manifest" {
+				if manifest, ok := resource.AttributeValues["manifest"].(map[string]interface{}); ok {
+					if metadata, ok := manifest["metadata"].(map[string]interface{}); ok {
+						if name, ok := metadata["name"].(string); ok {
+							resourceName = name
+						}
+						if ns, ok := metadata["namespace"].(string); ok {
+							namespace = ns
+						}
+					}
+
+					if apiVersion, ok := manifest["apiVersion"].(string); ok {
+						providerVersion := strings.Split(apiVersion, "/")
+						if len(providerVersion) == 0 {
+							return []string{}, errors.New("apiVersion is empty")
+						}
+						provider = providerVersion[0]
+					} else {
+						return []string{}, errors.New("unable to get apiVersion information from the resource")
+					}
+
+					if kind, ok := manifest["kind"].(string); ok {
+						resourceType = kind
+					}
+				}
+			} else {
+				// Kubernetes resource types are prefixed with "kubernetes_" keyword, remove the prefix
+				// Removing the "_" separator from the resource type. Ex: kubernetes_service_account -> serviceaccount
+				resourceType = strings.Join(strings.Split(resource.Type, "_")[1:], "")
+
+				if resource.AttributeValues != nil {
+					if metadataList, ok := resource.AttributeValues["metadata"].([]interface{}); ok {
+						if len(metadataList) == 0 {
+							return []string{}, errors.New("")
+						}
+						metadata := metadataList[0].(map[string]interface{})
+						if name, ok := metadata["name"].(string); ok {
+							resourceName = name
+						}
+						if ns, ok := metadata["namespace"].(string); ok {
+							namespace = ns
+						}
+					}
+
+				}
+			}
+			kubernetesResourceID, err := kubernetesresources.ToUCPResourceID(namespace, resourceType, resourceName, provider)
+			if err != nil {
+				return []string{}, err
+			}
+			recipeResources = append(recipeResources, kubernetesResourceID)
+		case TerraformAzureProvider:
+			if resource.AttributeValues != nil {
+				if id, ok := resource.AttributeValues["id"].(string); ok {
+					_, err := resources.ParseResource(id)
+					if err != nil {
+						// The Azure resources Ids that doesnt not follow relative ID format are mostly Non ARM resources and not added to the recipe output.
+						logger.Info("Resource ID %s does not represent ARM resource and is not added to recipe output", id)
+					} else {
+						recipeResources = append(recipeResources, id)
+					}
+				}
+			}
+		case TerraformAWSProvider:
+			if resource.AttributeValues != nil {
+				if arn, ok := resource.AttributeValues["arn"].(string); ok {
+					awsResourceID, err := awsresources.ToUCPResourceID(arn)
+					if err != nil {
+						return []string{}, err
+					}
+					recipeResources = append(recipeResources, awsResourceID)
+				}
+			}
+		default:
+			continue
+		}
+	}
+
+	for _, childModule := range module.ChildModules {
+		modResources, err := d.getDeployedOutputResources(ctx, childModule)
+		if err != nil {
+			return []string{}, err
+		}
+		recipeResources = append(recipeResources, modResources...)
+	}
+
+	return recipeResources, nil
 }

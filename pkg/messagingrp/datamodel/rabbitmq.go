@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -55,7 +56,7 @@ func (r *RabbitMQQueue) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
 func (r *RabbitMQQueue) ResourceTypeName() string {
-	return portableresources.RabbitMQQueuesResourceType
+	return msg_ctrl.RabbitMQQueuesResourceType
 }
 
 // RabbitMQQueueProperties represents the properties of RabbitMQQueue response resource.
@@ -81,7 +82,7 @@ type RabbitMQSecrets struct {
 
 // ResourceTypeName returns the resource type name for RabbitMQ queues.
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return portableresources.RabbitMQQueuesResourceType
+	return msg_ctrl.RabbitMQQueuesResourceType
 }
 
 // Recipe returns the recipe for the RabbitMQQueue. It gets the ResourceRecipe associated with the RabbitMQQueue instance

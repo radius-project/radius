@@ -78,6 +78,11 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 			continue
 		}
 
+		// This can be nil for a 'manual' model container.
+		if output.Resources[i].CreateResource == nil {
+			continue
+		}
+
 		o, ok := output.Resources[i].CreateResource.Data.(runtime.Object)
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")

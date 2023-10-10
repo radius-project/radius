@@ -1,5 +1,6 @@
 import aws as aws
 
+param creationTimestamp string
 param bucketName string
 
 resource bucket 'AWS.S3/Bucket@default' = {
@@ -10,6 +11,10 @@ resource bucket 'AWS.S3/Bucket@default' = {
       {
         Key: 'testKey'
         Value: 'testValue'
+      }
+      {
+        Key: 'RadiusCreationTimestamp'
+        Value: creationTimestamp
       }
     ]
   }

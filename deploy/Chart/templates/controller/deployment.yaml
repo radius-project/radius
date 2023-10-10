@@ -1,0 +1,68 @@
+{{- $appversion := include "radius.versiontag" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: controller
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/part-of: radius
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+  template:
+    metadata:
+      labels:
+        control-plane: controller
+        app.kubernetes.io/name: controller
+        app.kubernetes.io/part-of: radius
+      {{- if eq .Values.global.prometheus.enabled true }}
+      annotations:
+        prometheus.io/path: "{{ .Values.global.prometheus.path }}"
+        prometheus.io/port: "{{ .Values.global.prometheus.port }}"
+        prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+      {{- end }}
+    spec:
+      serviceAccountName: controller
+      containers:
+      - name: controller
+        image: "{{ .Values.controller.image }}:{{ .Values.controller.tag | default $appversion }}"
+        imagePullPolicy: 'Always'
+        args: 
+        - '--config-file'
+        - '/etc/config/controller-config.yaml'
+        env:
+        - name: TLS_CERT_DIR
+          value: '/var/tls/cert'
+        - name: PORT
+          value: '9443'
+        ports:
+        - containerPort: 9443
+          name: controller
+          protocol: TCP
+        {{- if eq .Values.global.prometheus.enabled true }}
+        - containerPort: {{ .Values.global.prometheus.port }}
+          name: metrics
+          protocol: TCP
+        {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+        {{- if .Values.controller.resources }}
+        resources:{{ toYaml .Values.controller.resources | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+        - name: cert
+          mountPath: '/var/tls/cert'
+          readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: controller-config
+        - name: cert
+          secret:
+            secretName: controller-cert

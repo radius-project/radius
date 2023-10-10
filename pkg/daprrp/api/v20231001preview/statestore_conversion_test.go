@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -53,7 +54,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/stateStore0",
 						Name:     "stateStore0",
-						Type:     portableresources.DaprStateStoresResourceType,
+						Type:     dapr_ctrl.DaprStateStoresResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -144,7 +145,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			expected := &DaprStateStoreResource{
 				ID:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/stateStores/stateStore0"),
 				Name:     to.Ptr("stateStore0"),
-				Type:     to.Ptr(portableresources.DaprStateStoresResourceType),
+				Type:     to.Ptr(dapr_ctrl.DaprStateStoresResourceType),
 				Location: to.Ptr(v1.LocationGlobal),
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

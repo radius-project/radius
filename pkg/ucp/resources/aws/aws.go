@@ -17,6 +17,7 @@ limitations under the License.
 package aws
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -42,4 +43,15 @@ func ToAWSResourceType(id resources.ID) string {
 	}
 	resourceType := strings.Join(parts, "::")
 	return resourceType
+}
+
+// ToUCPResourceID takes AWS resource ARN and returns string representing UCP qualified resource ID.
+// General formats for ARNs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+func ToUCPResourceID(arn string) (string, error) {
+	arnSegments := strings.Split(arn, ":")
+	if len(arnSegments) < 6 {
+		return "", fmt.Errorf("\"%s\" is not a valid ARN", arn)
+	}
+	ucpId := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], arnSegments[4], arnSegments[3], arnSegments[2], strings.Join(arnSegments[5:], "/"))
+	return ucpId, nil
 }

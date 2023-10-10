@@ -40,5 +40,5 @@ enum Versions {
   @doc("2023-10-01-preview")
   @useDependency(Azure.Core.Versions.v1_0_Preview_2)
   @useDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
-  v2022_09_01_privatepreview: "2023-10-01-preview",
+  v2023_10_01_preview: "2023-10-01-preview",
 }

@@ -24,11 +24,11 @@ import (
 
 func Test_ExtractPlanesPrefixFromURLPath_Invalid(t *testing.T) {
 	data := []string{
-		"planes/radius", // Not long enough
-
-		"planes//foo", // Empty segment
-
+		"planes/radius",                      // Not long enough
+		"planes//foo",                        // Empty segment
 		"/subscriptions/test/anotherone/bar", // missing planes
+		"//planes/radius",                    // Empty segment
+		"/",                                  // Empty segment
 	}
 	for _, datum := range data {
 		planeType, planeName, remainder, err := ExtractPlanesPrefixFromURLPath(datum)

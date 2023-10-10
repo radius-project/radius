@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -161,7 +162,7 @@ func GetHTTPProxyMetadata(ctx context.Context, client runtime_client.Client, nam
 func GetHTTPProxyList(ctx context.Context, client runtime_client.Client, namespace, application string) (*contourv1.HTTPProxyList, error) {
 	var httpproxies contourv1.HTTPProxyList
 
-	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	label, err := labels.Parse(fmt.Sprintf("radapp.io/application=%s", application))
 	if err != nil {
 		return nil, err
 	}
@@ -316,4 +317,14 @@ func WriteBicepParameterFile(t *testing.T, data map[string]any) string {
 	err = os.WriteFile(file, []byte(text), os.FileMode(0755))
 	require.NoError(t, err)
 	return file
+}
+
+// GetCreationTimestamp returns the elapsed time since the Unix epoch in seconds.
+func GetCreationTimestamp() string {
+	return fmt.Sprintf("%d", time.Now().Unix())
+}
+
+// GenerateS3BucketName generates a unique S3 bucket name.
+func GenerateS3BucketName() string {
+	return "radiusfunctionaltestbucket-" + uuid.New().String()
 }

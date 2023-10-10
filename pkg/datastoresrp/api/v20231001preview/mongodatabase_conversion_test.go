@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -45,7 +46,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: portableresources.MongoDatabasesResourceType,
+						Type: ds_ctrl.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -76,7 +77,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: portableresources.MongoDatabasesResourceType,
+						Type: ds_ctrl.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -107,7 +108,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: portableresources.MongoDatabasesResourceType,
+						Type: ds_ctrl.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -137,7 +138,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
 						Name: "mongo0",
-						Type: portableresources.MongoDatabasesResourceType,
+						Type: ds_ctrl.MongoDatabasesResourceType,
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
@@ -246,7 +247,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
 				Name: to.Ptr("mongo0"),
-				Type: to.Ptr(portableresources.MongoDatabasesResourceType),
+				Type: to.Ptr(ds_ctrl.MongoDatabasesResourceType),
 			},
 		},
 		{
@@ -274,7 +275,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
 				Name: to.Ptr("mongo0"),
-				Type: to.Ptr(portableresources.MongoDatabasesResourceType),
+				Type: to.Ptr(ds_ctrl.MongoDatabasesResourceType),
 			},
 		},
 		{
@@ -302,7 +303,7 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0"),
 				Name: to.Ptr("mongo0"),
-				Type: to.Ptr(portableresources.MongoDatabasesResourceType),
+				Type: to.Ptr(ds_ctrl.MongoDatabasesResourceType),
 			},
 		},
 	}

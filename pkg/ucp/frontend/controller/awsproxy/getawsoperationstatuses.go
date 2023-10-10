@@ -62,6 +62,15 @@ func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter
 	response, err := p.awsClients.CloudControl.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
 	}, cloudControlOpts...)
+
+	// If the resource is not found and the operation is delete,
+	// return a 204 No Content response.
+	if response.ProgressEvent != nil &&
+		response.ProgressEvent.Operation == types.OperationDelete &&
+		response.ProgressEvent.ErrorCode == types.HandlerErrorCodeNotFound {
+		return armrpc_rest.NewNoContentResponse(), nil
+	}
+
 	if awsclient.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {

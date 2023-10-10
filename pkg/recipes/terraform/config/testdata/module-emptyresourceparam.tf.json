@@ -1,0 +1,11 @@
+{
+  "terraform": null,
+  "module": {
+    "redis-azure": {
+      "resource_group_name": "test-rg",
+      "sku": "C",
+      "source": "Azure/redis/azurerm",
+      "version": "1.1.0"
+    }
+  }
+}

@@ -135,14 +135,14 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 type Versions string
 
 const (
-	// VersionsV20220901Privatepreview - 2023-10-01-preview
-	VersionsV20220901Privatepreview Versions = "2023-10-01-preview"
+	// VersionsV20231001Preview - 2023-10-01-preview
+	VersionsV20231001Preview Versions = "2023-10-01-preview"
 )
 
 // PossibleVersionsValues returns the possible values for the Versions const type.
 func PossibleVersionsValues() []Versions {
 	return []Versions{	
-		VersionsV20220901Privatepreview,
+		VersionsV20231001Preview,
 	}
 }
 

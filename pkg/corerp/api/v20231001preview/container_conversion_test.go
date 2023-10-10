@@ -56,6 +56,11 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 			err:      nil,
 			emptyExt: true,
 		},
+		{
+			filename: "containerresource-manual.json",
+			err:      nil,
+			emptyExt: true,
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -79,6 +84,13 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "container0", ct.Name)
 				require.Equal(t, "Applications.Core/containers", ct.Type)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", ct.Properties.Application)
+
+				if tt.filename == "containerresource-manual.json" {
+					require.Equal(t, datamodel.ContainerResourceProvisioningManual, ct.Properties.ResourceProvisioning)
+					require.Equal(t, []datamodel.ResourceReference{{ID: "/planes/test/local/providers/Test.Namespace/testResources/test-resource"}}, ct.Properties.Resources)
+					return
+				}
+
 				val, ok := ct.Properties.Connections["inventory"]
 				require.True(t, ok)
 				require.Equal(t, "inventory_route_id", val.Source)
@@ -109,6 +121,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 					require.Equal(t, *r.Properties.Runtimes.Kubernetes.Base, ct.Properties.Runtimes.Kubernetes.Base)
 					require.Equal(t, "{\"containers\":[{\"name\":\"sidecar\"}],\"hostNetwork\":true}", ct.Properties.Runtimes.Kubernetes.Pod)
 				}
+
 			}
 		})
 	}
@@ -118,22 +131,21 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	conversionTests := []struct {
 		filename string
 		err      error
-		emptyExt bool
 	}{
 		{
 			filename: "containerresourcedatamodel.json",
 			err:      nil,
-			emptyExt: false,
 		},
 		{
 			filename: "containerresourcedatamodel-runtime.json",
 			err:      nil,
-			emptyExt: false,
 		},
 		{
 			filename: "containerresourcedatamodelemptyext.json",
 			err:      nil,
-			emptyExt: true,
+		},
+		{
+			filename: "containerresourcedatamodel-manual.json",
 		},
 	}
 
@@ -151,18 +163,24 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)
 			} else {
-				// assert
 				require.NoError(t, err)
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0", r.ID)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/container0", *versioned.ID)
 				require.Equal(t, "container0", r.Name)
 				require.Equal(t, "Applications.Core/containers", r.Type)
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", r.Properties.Application)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0", *versioned.Properties.Application)
+
+				if tt.filename == "containerresourcedatamodel-manual.json" {
+					require.Equal(t, ContainerResourceProvisioning("manual"), *versioned.Properties.ResourceProvisioning)
+					require.Equal(t, []*ResourceReference{{ID: to.Ptr("/planes/test/local/providers/Test.Namespace/testResources/test-resource")}}, versioned.Properties.Resources)
+					return
+				}
+
 				val, ok := r.Properties.Connections["inventory"]
 				require.True(t, ok)
 				require.Equal(t, "inventory_route_id", val.Source)
 				require.Equal(t, "azure", string(val.IAM.Kind))
 				require.Equal(t, "read", val.IAM.Roles[0])
-				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", r.Properties.Container.Image)
+				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", *versioned.Properties.Container.Image)
 				require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
 				require.Equal(t, 3, len(versioned.Properties.Extensions))

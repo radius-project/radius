@@ -43,7 +43,7 @@ As a member of the triage team you are responsible for keeping the issue reposit
 
 ### Responsibilities of user
 
-As an issue creator, you are responsible for creating an issue using the [appropriate template](https://github.com/radius-project/radius/issues/new/choose) and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue must be included so we can verify the product behavior. You will also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
+As an issue creator, you are responsible for creating an issue using the [appropriate template](https://github.com/radius-project/radius/issues/new/choose) and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue should be included so we can verify the product behavior. You will also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
 
 ## When Do We Triage?
 
@@ -66,7 +66,7 @@ Issues are closed for the following reasons:
 | It's a duplicate of another issue| `duplicate` |
 | Behavior is as designed| `by-design` |
 | Issue is a question &#185; | `question` |
-| Issue is not related to the goals of the project so is unactionable | `off-topic` ||
+| Issue is not related to the goals of the project so is unactionable | `off-topic` |
 | Issue cannot be reproduced based on information given | `not-reproducible` |
 | Feature request is out of scope | `out-of-scope` |
 
@@ -114,7 +114,7 @@ If you are the author of a feature request you might not like that we close or d
 
 This is our decision making tree.
 
-![Radius Issue Review Flow](./images/radius_review_new.jpg "Radius Issue Review Flow")
+![Radius Issue Review Flow](./images/triage_review.jpg "Radius Issue Review Flow")
 
 ## Won't Fix Bugs
 
@@ -124,7 +124,7 @@ Bugs will be closed as `wont-fix` if there is a negative cost-benefit to the fix
 
 If you want to grow in your open source journey, you might find that a good milestone is becoming a part of a triage team for an open source project. Here are some tips to follow that path:
 
-* Ensure you are willing to commit to for an extended period.
+* Ensure you are willing to commit to it for an extended period.
 
 * Check out the Radius Project's [documentation](https://github.com/radius-project/docs/), [repositories](https://github.com/radius-project/), and [issue tracker](https://github.com/radius-project/radius/issues) to understand its goals and contribution processes.
 

@@ -28,7 +28,7 @@ server:
   port: 8080
   enableArmAuth: false
 workerServer:
-  maxOperationConcurrency: 3
+  maxOperationConcurrency: 10
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
@@ -36,5 +36,8 @@ ucp:
 logging:
   level: "info"
   json: false
+bicep:
+  deleteRetryCount: 20
+  deleteRetryDelaySeconds: 60
 terraform:
   path: "/terraform"

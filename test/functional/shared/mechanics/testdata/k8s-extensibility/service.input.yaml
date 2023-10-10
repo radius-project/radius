@@ -5,4 +5,4 @@ metadata:
   namespace: corerp-mechanics-k8s-extensibility
 spec:
   type: ExternalName
-  externalName: redis.radius.dev
+  externalName: redis.radapp.io

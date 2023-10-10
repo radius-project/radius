@@ -37,6 +37,22 @@
             }
         },
         {
+            "name": "Launch Controller",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "preLaunchTask": "Build Radius (all)",
+            "program": "${workspaceFolder}/cmd/controller/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--config-file",
+                "${workspaceFolder}/cmd/controller/controller-self-hosted.yaml",
+            ],
+            "env": {
+                "RADIUS_ENV": "self-hosted"
+            }
+        },
+        {
             "name": "Launch rad CLI",
             "type": "go",
             "request": "launch",
@@ -68,7 +84,8 @@
             "name": "Launch Control Plane (all)",
             "configurations": [
                 "Launch UCP", 
-                "Launch Applications RP", 
+                "Launch Applications RP",
+                "Launch Controller",
                 "Launch Deployment Engine"],
             "stopAll": true
           }

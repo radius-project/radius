@@ -17,6 +17,8 @@ limitations under the License.
 package backends
 
 import (
+	"context"
+
 	"github.com/radius-project/radius/pkg/recipes"
 )
 
@@ -28,4 +30,9 @@ type Backend interface {
 	// Returns a map of Terraform backend name to values representing the backend configuration.
 	// Returns an error if the backend configuration cannot be generated.
 	BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error)
+
+	// ValidateBackendExists checks if the Terraform state file backend source exists.
+	// For example, for Kubernetes backend, it checks if the Kubernetes secret for Terraform state file exists.
+	// returns true if backend is found, false otherwise.
+	ValidateBackendExists(ctx context.Context, name string) (bool, error)
 }

@@ -29,7 +29,7 @@ const (
 	objMetaVal1  = "obj.annval1"
 	specKey1     = "spec.ann1"
 	specVal1     = "spec.val1"
-	reservedKey1 = "radius.dev/input1"
+	reservedKey1 = "radapp.io/input1"
 	reservedVal1 = "reserved.val1"
 	appKey1      = "app.lbl1"
 	appVal1      = "env.lblval1"

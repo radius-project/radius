@@ -22,7 +22,10 @@ import (
 	"strings"
 
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/portableresources"
+	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	recipe_types "github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
@@ -155,21 +158,21 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 func getPortableResourceType(resourceType string) string {
 	switch resourceType {
 	case "mongodatabases":
-		return portableresources.MongoDatabasesResourceType
+		return ds_ctrl.MongoDatabasesResourceType
 	case "rediscaches":
-		return portableresources.RedisCachesResourceType
+		return ds_ctrl.RedisCachesResourceType
 	case "sqldatabases":
-		return portableresources.SqlDatabasesResourceType
+		return ds_ctrl.SqlDatabasesResourceType
 	case "rabbitmqqueues":
-		return portableresources.RabbitMQQueuesResourceType
+		return msg_ctrl.RabbitMQQueuesResourceType
 	case "pubsubbrokers":
-		return portableresources.DaprPubSubBrokersResourceType
+		return dapr_ctrl.DaprPubSubBrokersResourceType
 	case "secretstores":
-		return portableresources.DaprSecretStoresResourceType
+		return dapr_ctrl.DaprSecretStoresResourceType
 	case "statestores":
-		return portableresources.DaprStateStoresResourceType
+		return dapr_ctrl.DaprStateStoresResourceType
 	case "extenders":
-		return portableresources.ExtendersResourceType
+		return ext_ctrl.ResourceTypeName
 	default:
 		return ""
 	}

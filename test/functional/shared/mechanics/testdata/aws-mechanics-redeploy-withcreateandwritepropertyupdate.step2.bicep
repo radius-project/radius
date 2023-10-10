@@ -1,15 +1,23 @@
 import aws as aws
 
-param dbSubnetGroupName string = 'willsmith-rds-mssql-subnet-group-3'
+param creationTimestamp string
+param dbSubnetGroupName string
+param dbName string
+
 resource subnetGroup 'AWS.RDS/DBSubnetGroup@default' = {
   alias: dbSubnetGroupName
   properties: {
     DBSubnetGroupDescription: dbSubnetGroupName
     SubnetIds: ['']
+    Tags: [
+      {
+        Key: 'RadiusCreationTimestamp'
+        Value: creationTimestamp
+      }
+    ]
   }
 }
 
-param dbName string = 'willsmith-rds-mssql-3'
 resource db 'AWS.RDS/DBInstance@default' = {
   alias: dbName
   properties: {
@@ -30,5 +38,11 @@ resource db 'AWS.RDS/DBInstance@default' = {
     LicenseModel: 'license-included'
     Timezone: 'GMT Standard Time'
     CharacterSetName: 'Latin1_General_CI_AS'
+    Tags: [
+      {
+        Key: 'RadiusCreationTimestamp'
+        Value: creationTimestamp
+      }
+    ]
   }
 }
