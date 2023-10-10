@@ -34,21 +34,21 @@ import (
 
 const (
 	deleteConfirmation = "Are you sure you want to delete application '%v' from '%v'?"
-	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius application. Specify the name of a valid application and try again"
+	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius Application. Specify the name of a valid application and try again"
 )
 
 // NewCommand creates an instance of the `rad app delete` command and runner.
 //
 
-// NewCommand creates a new Cobra command for deleting a Radius application, with flags for workspace, resource group,
+// NewCommand creates a new Cobra command for deleting a Radius Application, with flags for workspace, resource group,
 // application name and confirmation, and returns the command and a Runner object.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "delete",
-		Short: "Delete Radius application",
-		Long:  "Delete the specified Radius application deployed in the default environment",
+		Short: "Delete Radius Application",
+		Long:  "Delete the specified Radius Application deployed in the default environment",
 		Example: `
 # Delete current application
 rad app delete

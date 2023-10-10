@@ -38,7 +38,7 @@ type BasicDaprResourceProperties struct {
 	ComponentName string `json:"componentName,omitempty"`
 }
 
-// BasicResourceProperties is the basic resource model for radius resources.
+// BasicResourceProperties is the basic resource model for Radius resources.
 type BasicResourceProperties struct {
 	// Environment represents the id of environment resource.
 	Environment string `json:"environment,omitempty"`

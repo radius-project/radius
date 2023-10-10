@@ -48,9 +48,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "create [envName]",
-		Short: "Create a new Radius environment",
-		Long: `Create a new Radius environment
-Radius environments are prepared "landing zones" for Radius applications.
+		Short: "Create a new Radius Environment",
+		Long: `Create a new Radius Environment
+Radius Environments are prepared "landing zones" for Radius Applications.
 Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
 		Args:    cobra.MinimumNArgs(1),
 		Example: `rad env create myenv`,

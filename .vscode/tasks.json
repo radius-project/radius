@@ -3,11 +3,11 @@
 	"tasks": [
 		{
 			"label": "Check for Deployment Engine",
-			"detail": "Checks if the Deployment Engine is cloned as a sibling to the radius repo",
+			"detail": "Checks if the Deployment Engine is cloned as a sibling to the Radius repo",
 			"command": "bash",
 			"args": [
 				"-c",
-				"(test -d ../deployment-engine/src && test -d ../deployment-engine/submodules/bicep-extensibility/src) || { echo >&1 \"The radius-project/deployment-engine is not cloned as a sibling to the radius repo or is missing submodules. Please clone the radius-project/deployment-engine repo next to the Radius repo and run git submodule update --init and try again.\"; exit 1; }"
+				"(test -d ../deployment-engine/src && test -d ../deployment-engine/submodules/bicep-extensibility/src) || { echo >&1 \"The radius-project/deployment-engine is not cloned as a sibling to the Radius repo or is missing submodules. Please clone the radius-project/deployment-engine repo next to the Radius repo and run git submodule update --init and try again.\"; exit 1; }"
 			],
 			"type": "shell",
 			"options": {
