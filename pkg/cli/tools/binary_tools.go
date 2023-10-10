@@ -32,9 +32,8 @@ import (
 	retry_lib "oras.land/oras-go/v2/registry/remote/retry"
 )
 
-// binaryName is the name of the bicep binary.
 const (
-	binaryName = "rad-bicep"
+	// binaryRepo is the name of the remote bicep binary repository
 	binaryRepo = "ghcr.io/radius-project/radius/bicep/rad-bicep/"
 )
 
@@ -127,19 +126,8 @@ func GetValidPlatform(currentOS, currentArch string) (string, error) {
 	return platform, nil
 }
 
-// GetDownloadURI takes in a download URI format string and a binary name, and returns a download URI
-// string based on the runtime OS and architecture, or an error if the platform is not valid.
-func GetDownloadURI(downloadURIFmt string) (string, error) {
-	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(downloadURIFmt, platform, version.Channel()), nil
-}
-
-// DownloadToFolder creates a folder and a file, writes the response body to the file, and makes the file executable by
-// everyone. An error is returned if any of these steps fail.
+// DownloadToFolder creates a folder and a file, uses the ORAS client to copy from the remote repository to the file,
+// and makes the file executable by everyone. An error is returned if any of these steps fail.
 func DownloadToFolder(filepath string) error {
 	// create folders
 	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)

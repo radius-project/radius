@@ -18,25 +18,10 @@ package tools
 
 import (
 	"errors"
-	"fmt"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/radius-project/radius/pkg/version"
 )
-
-func TestGetDownloadURI(t *testing.T) {
-	got, err := GetDownloadURI("%s:%s")
-	require.NoError(t, err)
-
-	platform, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
-	require.NoError(t, err, "GetValidPlatform() error = %v", err)
-	want := fmt.Sprintf("%s:%s", platform, version.Channel())
-
-	require.Equal(t, want, got, "GetDownloadURI() got = %v, want %v", got, want)
-}
 
 func TestGetValidPlatform(t *testing.T) {
 	osArchTests := []struct {

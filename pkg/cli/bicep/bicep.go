@@ -27,7 +27,6 @@ import (
 const (
 	radBicepEnvVar = "RAD_BICEP"
 	binaryName     = "rad-bicep"
-	binaryRepo     = "ghcr.io/radius-project/radius/bicep/rad-bicep/%s:%s"
 	retryAttempts  = 10
 	retryDelaySecs = 5
 )
@@ -73,12 +72,6 @@ func DeleteBicep() error {
 // DownloadBicep() attempts to download a file from a given URI and save it to a local filepath, retrying up to 10 times if
 // the download fails. If an error occurs, an error is returned.
 func DownloadBicep() error {
-	// Placeholders in repo are for: platform, channel
-	uri, err := tools.GetDownloadURI(binaryRepo)
-	if err != nil {
-		return err
-	}
-
 	filepath, err := tools.GetLocalFilepath(radBicepEnvVar, binaryName)
 	if err != nil {
 		return err
@@ -86,7 +79,7 @@ func DownloadBicep() error {
 
 	retryAttempts := 10
 	for attempt := 1; attempt <= retryAttempts; attempt++ {
-		success, err := retry(uri, filepath, attempt, retryAttempts)
+		success, err := retry(filepath, attempt, retryAttempts)
 		if err != nil {
 			return err
 		}
@@ -98,7 +91,7 @@ func DownloadBicep() error {
 	return nil
 }
 
-func retry(uri, filepath string, attempt, retryAttempts int) (bool, error) {
+func retry(filepath string, attempt, retryAttempts int) (bool, error) {
 	err := tools.DownloadToFolder(filepath)
 	if err != nil {
 		if attempt == retryAttempts {
