@@ -549,7 +549,8 @@ func RequireRecipeNameArgs(cmd *cobra.Command, args []string) (string, error) {
 func GetResourceType(cmd *cobra.Command) (string, error) {
 	resourceType, err := cmd.Flags().GetString(ResourceTypeFlag)
 	if err != nil {
-		return resourceType, err
+		return "", err
 	}
+
 	return resourceType, nil
 }
