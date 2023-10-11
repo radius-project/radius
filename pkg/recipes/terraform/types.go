@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -59,12 +60,12 @@ type Options struct {
 func NewTerraform(ctx context.Context, workingDir, execPath string) (*tfexec.Terraform, error) {
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize Terraform: %w", err)
 	}
 
 	configureTerraformLogs(ctx, tf)
 
-	return tf, err
+	return tf, nil
 }
 
 // tfLogWrapper is a wrapper around the Terraform logger to stream the logs to the Radius logger.
