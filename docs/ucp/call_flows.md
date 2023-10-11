@@ -2,11 +2,11 @@
 
 ![Radius Resource](images/env-deploy.png)
 
-* In this example, CLI issues a deploy command to deploy a Radius environment
+* In this example, CLI issues a deploy command to deploy a Radius Environment
 * Bicep converts the bicep file into a JSON template
 * CLI sends a PUT deployment request to UCP with the JSON template in the request body. Note that the request uses UCP addressing
 * UCP checks the plane ID in the request and proxies the request to the Deployment Engine
-* Deployment Engine reads the deployment template, orders the resources and orchestrates the deployment. It sends a series of PUT requests to deploy the different resources. In this example, we are deploying a Radius environment resource and it therefore sends a PUT resource request to UCP with the UCP resource ID of the environment in the request.
+* Deployment Engine reads the deployment template, orders the resources and orchestrates the deployment. It sends a series of PUT requests to deploy the different resources. In this example, we are deploying a Radius Environment resource and it therefore sends a PUT resource request to UCP with the UCP resource ID of the environment in the request.
 * Deployment Engine starts monitoring the completion of the PUT operation
 * UCP again checks the plane ID in the incoming request and proxies the request to the Radius RP.
 * Radius RP creates the environment resource and sends a success message to UCP

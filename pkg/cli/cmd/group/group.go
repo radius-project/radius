@@ -40,7 +40,7 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 		
 Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
 
-A Radius application and its resources can span one or more resource groups, and do not have to be in the same resource group as the Radius environment into which it's being deployed into.
+A Radius Application and its resources can span one or more resource groups, and do not have to be in the same resource group as the Radius Environment into which it's being deployed into.
 
 Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.
 `,

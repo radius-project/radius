@@ -141,7 +141,7 @@ Now you can launch the Radius locally through the VSCode menu.
 
 ### I got an error saying I need to clone the deployment engine
 
-> The radius-project/deployment-engine is not cloned as a sibling to the radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
+> The radius-project/deployment-engine is not cloned as a sibling to the Radius repo. Please clone the radius-project/deployment-engine repo next to the Radius repo and try again.
 
 You should be to successfully the following commands from the Radius repository root:
 

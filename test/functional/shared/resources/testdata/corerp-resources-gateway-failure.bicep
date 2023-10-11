@@ -1,6 +1,6 @@
 import radius as radius
 
-@description('ID of the Radius environment. Passed in automatically via the rad CLI')
+@description('ID of the Radius Environment. Passed in automatically via the rad CLI')
 param environment string
 
 resource demoApplication 'Applications.Core/applications@2023-10-01-preview' = {

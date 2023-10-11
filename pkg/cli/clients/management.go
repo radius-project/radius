@@ -358,7 +358,7 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 	return nil
 }
 
-// Creates a radius environment resource
+// Creates a Radius Environment resource
 //
 
 // CreateEnvironment creates or updates an environment with the given name, location and

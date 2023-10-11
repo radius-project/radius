@@ -10,10 +10,10 @@ As the pace of innovation increases for cloud-native technologies, so does the n
 
 Key features of the Radius platform include: 
 
-- *Radius application graph*: Developers can model their entire application, including the connections and dependencies between services. 
+- *Radius Application graph*: Developers can model their entire application, including the connections and dependencies between services. 
 - *Swappable infrastructure*: Radius resources are platform-agnostic, allowing applications to be written once and deployed to any platform, such as Kubernetes, Microsoft Azure, Amazon Web Services (AWS), or on-premises hardware. 
 - Recipes for infrastructure Provisioning: Radius Recipes automate infrastructure provisioning using infrastructure-as-code templates, ensuring all deployments meet organizational requirements and policies. 
-- *Radius environments*: IT operators can define policies, security configurations, Recipes, and diagnostics required by their organization, ensuring secure and repeatable infrastructure across local development, testing, and production environments. 
+- *Radius Environments*: IT operators can define policies, security configurations, Recipes, and diagnostics required by their organization, ensuring secure and repeatable infrastructure across local development, testing, and production environments. 
 - *Consistent tooling and experiences*: Radius offers a consistent set of APIs, tools, and experiences that span any cloud or on-premises environment, simplifying and standardizing cloud-native application teams' toolchains and processes.
 
 ## Release status
@@ -64,7 +64,7 @@ In addition, we have the below repositories.
 |:-----|:------------|
 | [Docs](https://github.com/radius-project/docs) | This repository contains the Radius documentation source for Radius.
 | [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius environments.
+| [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius Environments.
 | [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
 | [Bicep](https://github.com/radius-project/bicep) | This repository contains source code for Bicep, which is a DSL for deploying cloud resources types. 
 | [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.

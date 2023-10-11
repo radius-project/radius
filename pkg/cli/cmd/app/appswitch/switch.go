@@ -34,14 +34,14 @@ import (
 // NewCommand creates an instance of the command and runner for the `rad app switch` command.
 //
 
-// NewCommand creates a new cobra command for switching the default Radius application, which takes in a factory and
+// NewCommand creates a new cobra command for switching the default Radius Application, which takes in a factory and
 // returns a cobra command and a runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
 		Use:     "switch",
-		Short:   "Switch the default Radius application",
-		Long:    "Switches the default Radius application",
+		Short:   "Switch the default Radius Application",
+		Long:    "Switches the default Radius Application",
 		Args:    cobra.MaximumNArgs(1),
 		Example: `rad app switch newApplication`,
 		RunE:    framework.RunCommand(runner),

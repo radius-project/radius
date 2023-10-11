@@ -15,7 +15,7 @@ Note, this only applies when we want to update the app core image, if we need to
     az acr login -n <registry>
     az acr update --name <registry> --anonymous-pull-enabled
     ```
-1. Build and push an initial version of all images in the radius repo. This should push images for the applications-rp, the ucpd, etc that are required to run radius.
+1. Build and push an initial version of all images in the Radius repo. This should push images for the applications-rp, the ucpd, etc that are required to run radius.
     ```
     make docker-build && make docker-push
     ```
@@ -31,7 +31,7 @@ Note, this only applies when we want to update the app core image, if we need to
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
 ## To deploy azure resources
-The above steps will not configure the ability for radius to talk with azure resource. In order to do that, run everything above till Step 4 above and then:
+The above steps will not configure the ability for Radius to talk with azure resource. In order to do that, run everything above till Step 4 above and then:
 
 1. Create Service Principal
     ```
