@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Radius Authors.
+Copyright 2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,21 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cmd
+package reconciler
 
-import (
-	"github.com/spf13/cobra"
+import "time"
+
+const (
+	// PollingDelay is the amount of time to wait between polling for the status of a resource.
+	PollingDelay time.Duration = 5 * time.Second
+
+	// RecipeFinalizer is the name of the finalizer added to Recipes.
+	RecipeFinalizer = "radapp.io/recipe-finalizer"
 )
-
-func init() {
-	RootCmd.AddCommand(applicationCmd)
-}
-
-func NewAppCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:     "application",
-		Aliases: []string{"app"},
-		Short:   "Manage Radius Applications",
-		Long:    `Manage Radius Applications`,
-	}
-}

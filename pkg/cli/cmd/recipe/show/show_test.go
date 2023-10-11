@@ -30,7 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
+	datastorerp "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
@@ -46,7 +46,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Show Command",
-			Input:         []string{"recipeName", "--resource-type", "resource-type"},
+			Input:         []string{"recipeName", "--resource-type", datastorerp.RedisCachesResourceType},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -55,7 +55,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with incorrect fallback workspace",
-			Input:         []string{"-e", "my-env", "-g", "my-env", "recipeName", "--resource-type", "resource-type"},
+			Input:         []string{"-e", "my-env", "-g", "my-env", "recipeName", "--resource-type", datastorerp.RedisCachesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -64,7 +64,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with too many positional args",
-			Input:         []string{"recipeName", "arg2", "--resource-type", "resource-type"},
+			Input:         []string{"recipeName", "arg2", "--resource-type", datastorerp.RedisCachesResourceType},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -73,7 +73,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with fallback workspace",
-			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName", "--resource-type", "resource-type"},
+			Input:         []string{"-e", "my-env", "-w", "test-workspace", "recipeName", "--resource-type", datastorerp.RedisCachesResourceType},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -111,7 +111,7 @@ func Test_Run(t *testing.T) {
 		}
 		recipe := types.EnvironmentRecipe{
 			Name:         "cosmosDB",
-			ResourceType: ds_ctrl.MongoDatabasesResourceType,
+			ResourceType: datastorerp.MongoDatabasesResourceType,
 			TemplateKind: recipes.TemplateKindBicep,
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 		}
@@ -145,7 +145,7 @@ func Test_Run(t *testing.T) {
 			Workspace:         &workspaces.Workspace{},
 			Format:            "table",
 			RecipeName:        "cosmosDB",
-			ResourceType:      ds_ctrl.MongoDatabasesResourceType,
+			ResourceType:      datastorerp.MongoDatabasesResourceType,
 		}
 
 		err := runner.Run(context.Background())
@@ -187,7 +187,7 @@ func Test_Run(t *testing.T) {
 		}
 		recipe := types.EnvironmentRecipe{
 			Name:            "cosmosDB",
-			ResourceType:    ds_ctrl.MongoDatabasesResourceType,
+			ResourceType:    datastorerp.MongoDatabasesResourceType,
 			TemplateKind:    recipes.TemplateKindTerraform,
 			TemplatePath:    "Azure/cosmosdb/azurerm",
 			TemplateVersion: "1.1.0",
@@ -222,7 +222,7 @@ func Test_Run(t *testing.T) {
 			Workspace:         &workspaces.Workspace{},
 			Format:            "table",
 			RecipeName:        "cosmosDB",
-			ResourceType:      ds_ctrl.MongoDatabasesResourceType,
+			ResourceType:      datastorerp.MongoDatabasesResourceType,
 		}
 
 		err := runner.Run(context.Background())

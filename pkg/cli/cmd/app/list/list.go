@@ -33,14 +33,14 @@ import (
 //
 
 // NewCommand creates a new Cobra command and a new Runner, and configures the command with flags and usage information
-// to list Radius applications in a resource group associated with the default environment.
+// to list Radius Applications in a resource group associated with the default environment.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List Radius applications",
-		Long:  `Lists Radius applications deployed in the resource group associated with the default environment`,
+		Short: "List Radius Applications",
+		Long:  `Lists Radius Applications deployed in the resource group associated with the default environment`,
 		Args:  cobra.NoArgs,
 		Example: `
 # List applications

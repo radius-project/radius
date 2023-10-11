@@ -1,4 +1,4 @@
-Deploying Radius environment resource
+Deploying Radius Environment resource
 
 participant CLI
 participant Bicep

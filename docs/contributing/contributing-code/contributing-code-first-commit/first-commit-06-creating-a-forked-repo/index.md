@@ -4,7 +4,7 @@ In order to limit the branches on the main repo, Radius enforces code contributi
 
 ## Creating a forked repo
 
-In order to fork a repo, go to the main radius repo page in GitHub and select the "fork" option:
+In order to fork a repo, go to the main Radius repo page in GitHub and select the "fork" option:
 
 <img width="800px" src="fork.png" alt="Creating a fork of the main repo">
 
@@ -24,7 +24,7 @@ Configure the remote repositories, referring to the forked repo as `origin` and 
 
 ```
 git remote add origin <url of the forked repo>
-git remote add upstream <url of the radius main repo>
+git remote add upstream <url of the Radius main repo>
 ```
 
 ### Verify new remote
@@ -39,7 +39,7 @@ git remote -v
     git push origin <local branch>
     ```
 
-2. Go to the main radius repo and create a pull request using the _compare against forks_ option:
+2. Go to the main Radius repo and create a pull request using the _compare against forks_ option:
 
     <img width="800px" src="compare.png" alt="Creating a pull request across forks">
 

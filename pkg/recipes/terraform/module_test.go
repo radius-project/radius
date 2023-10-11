@@ -95,7 +95,7 @@ func Test_DownloadModule_EmptyWorkingDirPath_Error(t *testing.T) {
 	testDir := t.TempDir()
 	execPath := filepath.Join(testDir, "terraform")
 
-	err := downloadModule(testcontext.New(t), "", execPath)
+	err := downloadModule(testcontext.New(t), "", execPath, "test/module/source")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
 }

@@ -17,10 +17,11 @@ limitations under the License.
 package driver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	gomock "github.com/golang/mock/gomock"
@@ -74,6 +75,16 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	return envConfig, recipeMetadata, envRecipe
 }
 
+func verifyDirectoryCleanup(t *testing.T, tfRootDirPath string, armOperationID string) {
+	directories, err := os.ReadDir(tfRootDirPath)
+	require.NoError(t, err)
+	for _, dir := range directories {
+		if dir.IsDir() {
+			require.False(t, strings.HasPrefix(dir.Name(), armOperationID), "Expected directory %s to be removed, but it still exists", dir.Name())
+		}
+	}
+}
+
 func Test_Terraform_Execute_Success(t *testing.T) {
 	ctx := testcontext.New(t)
 	armCtx := &v1.ARMRequestContext{
@@ -83,13 +94,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
-	options := terraform.Options{
-		RootDir:        tfDir,
-		EnvConfig:      &envConfig,
-		ResourceRecipe: &recipeMetadata,
-		EnvRecipe:      &envRecipe,
-	}
+
 	expectedOutput := &recipes.RecipeOutput{
 		Values: map[string]any{
 			"host": "myrediscache.redis.cache.windows.net",
@@ -114,7 +119,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 		},
 	}
 
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := driver.Execute(ctx, ExecuteOptions{
 		BaseOptions: BaseOptions{
@@ -125,9 +130,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
-	// Verify directory cleanup
-	_, err = os.Stat(tfDir)
-	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
@@ -139,13 +142,6 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
-	options := terraform.Options{
-		RootDir:        tfDir,
-		EnvConfig:      &envConfig,
-		ResourceRecipe: &recipeMetadata,
-		EnvRecipe:      &envRecipe,
-	}
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeploymentFailed,
@@ -153,7 +149,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 		},
 		DeploymentStatus: "executionError",
 	}
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
 	_, err := driver.Execute(ctx, ExecuteOptions{
 		BaseOptions: BaseOptions{
@@ -164,9 +160,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
-	// Verify directory cleanup
-	_, err = os.Stat(tfDir)
-	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
@@ -178,13 +172,6 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
-	options := terraform.Options{
-		RootDir:        tfDir,
-		EnvConfig:      &envConfig,
-		ResourceRecipe: &recipeMetadata,
-		EnvRecipe:      &envRecipe,
-	}
 
 	expectedTFState := &tfjson.State{
 		Values: &tfjson.StateValues{
@@ -208,7 +195,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 		},
 		DeploymentStatus: "executionError",
 	}
-	tfExecutor.EXPECT().Deploy(ctx, options).Times(1).Return(expectedTFState, nil)
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	_, err := driver.Execute(ctx, ExecuteOptions{
 		BaseOptions: BaseOptions{
@@ -219,9 +206,7 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
-	// Verify directory cleanup
-	_, err = os.Stat(tfDir)
-	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_EmptyPath(t *testing.T) {
@@ -235,6 +220,7 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 		},
 		DeploymentStatus: "setupError",
 	}
+
 	_, err := driver.Execute(testcontext.New(t), ExecuteOptions{
 		BaseOptions: BaseOptions{
 			Configuration: envConfig,
@@ -244,7 +230,6 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &expErr)
-
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
@@ -343,18 +328,12 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	tfExecutor, driver := setup(t)
 	_, _, envRecipe := buildTestInputs()
 
-	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
 	expectedOutput := map[string]any{
 		"parameters": map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
-	options := terraform.Options{
-		RootDir:        tfDir,
-		ResourceRecipe: &recipes.ResourceMetadata{},
-		EnvRecipe:      &envRecipe,
-	}
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
 
 	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
@@ -362,9 +341,7 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
-	// Verify directory cleanup
-	_, err = os.Stat(tfDir)
-	require.True(t, os.IsNotExist(err), "Expected directory %s to be removed, but it still exists", tfDir)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
@@ -397,20 +374,13 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 	tfExecutor, driver := setup(t)
 	_, _, envRecipe := buildTestInputs()
 
-	tfDir := filepath.Join(driver.options.Path, armCtx.OperationID.String())
-	options := terraform.Options{
-		RootDir:        tfDir,
-		ResourceRecipe: &recipes.ResourceMetadata{},
-		EnvRecipe:      &envRecipe,
-	}
-
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeGetMetadataFailed,
 			Message: "Failed to download module",
 		},
 	}
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, options).Times(1).Return(nil, errors.New("Failed to download module"))
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to download module"))
 
 	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
@@ -418,19 +388,20 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
 	ctx := testcontext.New(t)
-	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
-	tfExecutor.EXPECT().
-		Delete(ctx, gomock.Any()).
-		Times(1).
-		Return(nil)
+	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
 
 	err := driver.Delete(ctx, DeleteOptions{
 		BaseOptions: BaseOptions{
@@ -441,6 +412,7 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Delete_EmptyPath(t *testing.T) {
@@ -469,14 +441,15 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 
 func Test_Terraform_Delete_Failure(t *testing.T) {
 	ctx := testcontext.New(t)
-	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, driver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
 
-	tfExecutor.EXPECT().
-		Delete(ctx, gomock.Any()).
-		Times(1).
+	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).
 		Return(errors.New("Failed to delete terraform module"))
 
 	expErr := recipes.RecipeError{
@@ -496,6 +469,7 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
+	verifyDirectoryCleanup(t, driver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
@@ -520,7 +494,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 								"secrets": map[string]any{
 									"connectionString": "testConnectionString",
 								},
-								"resources": []any{"outputResourceId1"},
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
 							},
 						},
 					},
@@ -529,8 +503,66 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
+										},
+									},
+									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019:Subnet/Subnet-0ddfaa93733f98002",
+										},
+									},
+									{
+										ProviderName: "registry.terraform.io/hashicorp/azurerm",
+										AttributeValues: map[string]any{
+											"id": "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
+										},
+									},
+									// resource with id value not in the ARM resource format
+									{
+										ProviderName: "registry.terraform.io/hashicorp/azurerm",
 										AttributeValues: map[string]any{
 											"id": "outputResourceId2",
+										},
+									},
+									{
+										Type:         "kubernetes_deployment",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": []any{
+												map[string]any{
+													"name":      "test-redis",
+													"namespace": "default",
+												},
+											},
+										},
+									},
+									{
+										Type:         "kubernetes_service_account",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": []any{
+												map[string]any{
+													"name":      "test-service-account",
+													"namespace": "default",
+												},
+											},
+										},
+									},
+									{
+										Type:         "kubernetes_manifest",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"manifest": map[string]any{
+												"apiVersion": "dapr.io/v1alpha1",
+												"kind":       "Component",
+												"metadata": map[string]any{
+													"name":      "test-dapr",
+													"namespace": "test-namespace",
+												},
+											},
 										},
 									},
 								},
@@ -547,8 +579,116 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				Secrets: map[string]any{
 					"connectionString": "testConnectionString",
 				},
-				Resources: []string{"outputResourceId1"},
+				Resources: []string{"outputResourceId1",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
+					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
+					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
+					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
+					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
+				},
 			},
+		},
+		{
+			desc: "invalid AWS ARN",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"arn": "arn:aws:ec2:us-east-2:179022619019",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
+		},
+		{
+			desc: "kubernetes manifest type with no apiVersion information",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										Type:         "kubernetes_manifest",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"manifest": map[string]any{
+												"kind": "Component",
+												"metadata": map[string]any{
+													"name":      "test-dapr",
+													"namespace": "test-namespace",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("unable to get apiVersion information from the resource"),
+		},
+		{
+			desc: "kubernetes resource with no resource name",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"outputResourceId1", "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										Type:         "kubernetes_deployment",
+										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+										AttributeValues: map[string]any{
+											"metadata": []any{
+												map[string]any{
+													"namespace": "default",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("resourceType or resourceName is empty"),
 		},
 		{
 			desc: "invalid state",
@@ -603,7 +743,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
