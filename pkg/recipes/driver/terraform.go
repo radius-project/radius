@@ -176,16 +176,16 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	}
 
 	// We need a unique directory per execution of terraform. We generate this using the unique operation id of the async request so that names are always unique,
-	// but we can also trace them to the resource we were working on through operationID.
+	// but we can also trace them to the resource we were working on through operationID. UUID is added to the path to prevent overwrite across retries for same ARM request.
 	dirID := ""
 	armCtx := v1.ARMRequestContextFromContext(ctx)
 	if armCtx.OperationID != uuid.Nil {
-		dirID = armCtx.OperationID.String()
+		dirID = armCtx.OperationID.String() + "-" + uuid.NewString()
 	} else {
 		// If the operationID is nil, we generate a new UUID for unique directory name combined with resource id so that we can trace it to the resource.
 		// Ideally operationID should not be nil.
 		logger.Info("Empty operation ID provided in the request context, using uuid to generate a unique directory name")
-		dirID = util.NormalizeStringToLower(recipe.ResourceID) + "/" + uuid.NewString()
+		dirID = util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.NewString()
 	}
 	requestDirPath := filepath.Join(d.options.Path, dirID)
 
