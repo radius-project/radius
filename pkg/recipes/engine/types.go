@@ -48,6 +48,8 @@ type ExecuteOptions struct {
 	BaseOptions
 	// PreviousState represents previously deployed state of output resource IDs.
 	PreviousState []string
+	// Simulated is the flag to indicate if the execution is a simulation.
+	Simulated bool
 }
 
 // DeleteOptions is the options for the Delete method.

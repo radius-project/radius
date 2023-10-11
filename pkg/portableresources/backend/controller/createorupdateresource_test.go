@@ -341,29 +341,6 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				oldOutputResourceResourceID,
 			}
 
-			if stillPassing && tt.recipeErr != nil {
-				stillPassing = false
-				eng.EXPECT().
-					Execute(gomock.Any(), engine.ExecuteOptions{
-						BaseOptions: engine.BaseOptions{
-							Recipe: recipeMetadata,
-						},
-						PreviousState: prevState,
-					}).
-					Return(&recipes.RecipeOutput{}, tt.recipeErr).
-					Times(1)
-			} else if stillPassing {
-				eng.EXPECT().
-					Execute(gomock.Any(), engine.ExecuteOptions{
-						BaseOptions: engine.BaseOptions{
-							Recipe: recipeMetadata,
-						},
-						PreviousState: prevState,
-					}).
-					Return(&recipes.RecipeOutput{}, nil).
-					Times(1)
-			}
-
 			if stillPassing && tt.runtimeConfigurationErr != nil {
 				stillPassing = false
 				cfg.EXPECT().
@@ -390,6 +367,29 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 						ResourceID:    TestResourceID,
 					}).
 					Return(configuration, nil).
+					Times(1)
+			}
+
+			if stillPassing && tt.recipeErr != nil {
+				stillPassing = false
+				eng.EXPECT().
+					Execute(gomock.Any(), engine.ExecuteOptions{
+						BaseOptions: engine.BaseOptions{
+							Recipe: recipeMetadata,
+						},
+						PreviousState: prevState,
+					}).
+					Return(&recipes.RecipeOutput{}, tt.recipeErr).
+					Times(1)
+			} else if stillPassing {
+				eng.EXPECT().
+					Execute(gomock.Any(), engine.ExecuteOptions{
+						BaseOptions: engine.BaseOptions{
+							Recipe: recipeMetadata,
+						},
+						PreviousState: prevState,
+					}).
+					Return(&recipes.RecipeOutput{}, nil).
 					Times(1)
 			}
 

@@ -42,6 +42,7 @@ type EnvironmentProperties struct {
 	Recipes    map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 	Providers  Providers                                         `json:"providers,omitempty"`
 	Extensions []Extension                                       `json:"extensions,omitempty"`
+	Simulated  bool                                              `json:"simulated,omitempty"`
 }
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.

@@ -63,6 +63,7 @@ func NewCreateOrUpdateResource[P interface {
 // Run retrieves an existing resource, executes a recipe if needed, loads runtime configuration,
 // processes the resource, cleans up any obsolete output resources, and saves the updated resource.
 func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Request) (ctrl.Result, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 	obj, err := c.StorageClient().Get(ctx, req.ResourceID)
 	if errors.Is(&store.ErrNotFound{ID: req.ResourceID}, err) {
 		return ctrl.Result{}, err
@@ -78,12 +79,18 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(data)
 
+	// Load configuration
+	metadata := recipes.ResourceMetadata{EnvironmentID: data.ResourceMetadata().Environment, ApplicationID: data.ResourceMetadata().Application, ResourceID: data.GetBaseResource().ID}
+	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// Now we're ready to process recipes (if needed).
 	recipeDataModel := any(data).(datamodel.RecipeDataModel)
-	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources)
+	recipeOutput, err := c.executeRecipeIfNeeded(ctx, data, previousOutputResources, config.Simulated)
 	if err != nil {
 		if recipeError, ok := err.(*recipes.RecipeError); ok {
-			logger := ucplog.FromContextOrDiscard(ctx)
 			logger.Error(err, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeError.ErrorDetails.Target))
 			// Set the deployment status to the recipe error code.
 			recipeDataModel.Recipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeError.DeploymentStatus)
@@ -103,16 +110,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	// Load details about the runtime for the processor to access.
-	runtimeConfiguration, err := c.loadRuntimeConfiguration(ctx, data.ResourceMetadata().Environment, data.ResourceMetadata().Application, data.GetBaseResource().ID)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Now we're ready to process the resource. This will handle the updates to any user-visible state.
-	err = c.processor.Process(ctx, data, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: *runtimeConfiguration})
-	if err != nil {
-		return ctrl.Result{}, err
+	if config.Simulated {
+		logger.Info("The recipe was executed in simulation mode. No resources were deployed.")
+	} else {
+		// Now we're ready to process the resource. This will handle the updates to any user-visible state.
+		err = c.processor.Process(ctx, data, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: config.Runtime})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if recipeDataModel.Recipe() != nil {
@@ -140,7 +145,7 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(data P) []string {
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P, prevState []string) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, data P, prevState []string, simulated bool) (*recipes.RecipeOutput, error) {
 	// 'any' is required here to convert to an interface type, only then can we use a type assertion.
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
 	if !supportsRecipes {
@@ -164,15 +169,6 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 			Recipe: request,
 		},
 		PreviousState: prevState,
+		Simulated:     simulated,
 	})
-}
-
-func (c *CreateOrUpdateResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {
-	metadata := recipes.ResourceMetadata{EnvironmentID: environmentID, ApplicationID: applicationID, ResourceID: resourceID}
-	config, err := c.configurationLoader.LoadConfiguration(ctx, metadata)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config.Runtime, nil
 }

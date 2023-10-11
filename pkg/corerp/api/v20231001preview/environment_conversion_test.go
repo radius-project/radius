@@ -240,6 +240,35 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 			err: nil,
 		},
 		{
+			filename: "environmentresource-with-simulated-enabled.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2023-10-01-preview",
+						UpdatedAPIVersion:      "2023-10-01-preview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: rpv1.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: rpv1.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
+						},
+					},
+					Simulated: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			filename: "environmentresource-invalid-missing-namespace.json",
 			err:      &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},

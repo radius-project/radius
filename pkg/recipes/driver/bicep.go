@@ -122,6 +122,11 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		logger.Info("using Azure provider", "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope)
 	}
 
+	if opts.Configuration.Simulated {
+		logger.Info("simulated environment enabled, skipping deployment")
+		return nil, nil
+	}
+
 	poller, err := d.DeploymentClient.CreateOrUpdate(
 		ctx,
 		clients.Deployment{

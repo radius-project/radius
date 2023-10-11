@@ -96,22 +96,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	// get namespace for deploying the resource
-	// 1. fetch the resource from the DB and get the application info
-	res, err := dp.getResourceDataByID(ctx, resourceID)
-	if err != nil {
-		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
-		return renderers.RendererOutput{}, err
-	}
-	// 2. fetch the application properties from the DB
-	app := &corerp_dm.Application{}
-	err = rp_util.FetchScopeResource(ctx, dp.sp, res.AppID.String(), app)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-	// 3. fetch the environment resource from the db to get the Namespace
-	env := &corerp_dm.Environment{}
-	err = rp_util.FetchScopeResource(ctx, dp.sp, app.Properties.Environment, env)
+	app, env, err := dp.getApplicationAndEnvironmentForResourceID(ctx, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -230,11 +215,55 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return nil
 }
 
+func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx context.Context, id resources.ID) (*corerp_dm.Application, *corerp_dm.Environment, error) {
+	// get namespace for deploying the resource
+	// 1. fetch the resource from the DB and get the application info
+	res, err := dp.getResourceDataByID(ctx, id)
+	if err != nil {
+		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
+		return nil, nil, err
+	}
+
+	// 2. fetch the application properties from the DB
+	app := &corerp_dm.Application{}
+	err = rp_util.FetchScopeResource(ctx, dp.sp, res.AppID.String(), app)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 3. fetch the environment resource from the db to get the Namespace
+	env := &corerp_dm.Environment{}
+	err = rp_util.FetchScopeResource(ctx, dp.sp, app.Properties.Environment, env)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return app, env, nil
+}
+
 // Deploy deploys the given radius resource by ordering the output resources in deployment dependency order, deploying each
 // output resource, updating static values for connections, and transforming the radius resource with computed values. It
 // returns a DeploymentOutput and an error if one occurs.
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	_, env, err := dp.getApplicationAndEnvironmentForResourceID(ctx, id)
+	if err != nil {
+		return rpv1.DeploymentOutput{}, err
+	}
+
+	envOpts, err := dp.getEnvOptions(ctx, env)
+	if err != nil {
+		return rpv1.DeploymentOutput{}, err
+	}
+
+	if envOpts.Simulated {
+		// Simulated environments do not actually deploy resources
+		return rpv1.DeploymentOutput{
+			SecretValues:            rendererOutput.SecretValues,
+			DeployedOutputResources: rendererOutput.Resources,
+		}, nil
+	}
 
 	// Deploy
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
@@ -376,6 +405,11 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	envOpts.Identity = env.Properties.Compute.Identity
 	if envOpts.Identity == nil {
 		logger.V(ucplog.LevelDebug).Info("environment identity is not specified.")
+	}
+
+	envOpts.Simulated = env.Properties.Simulated
+	if envOpts.Simulated {
+		logger.V(ucplog.LevelDebug).Info("environment is a simulated environment.")
 	}
 
 	// Get Environment KubernetesMetadata Info
