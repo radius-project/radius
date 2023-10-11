@@ -304,7 +304,7 @@ func downloadAndInspect(ctx context.Context, workingDir string, execPath string,
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
-	if err := downloadModule(ctx, workingDir, execPath); err != nil {
+	if err := downloadModule(ctx, workingDir, execPath, options.EnvRecipe.TemplatePath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, recipes.RecipeDownloadFailed))
@@ -325,7 +325,7 @@ func downloadAndInspect(ctx context.Context, workingDir string, execPath string,
 	return loadedModule, nil
 }
 
-// getTerraformConfig generates the Terraform json config and saves it
+// getTerraformConfig initializes the Terraform json config with provided module source and saves it
 func getTerraformConfig(ctx context.Context, workingDir string, options Options) (*config.TerraformConfig, error) {
 	// Generate Terraform json config in the working directory
 	// Use recipe name as a local reference to the module.
@@ -345,6 +345,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
 		return nil, err
 	}
+
 	return tfConfig, nil
 }
 
