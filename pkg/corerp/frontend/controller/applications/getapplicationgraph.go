@@ -19,7 +19,6 @@ package applications
 import (
 	"context"
 	"net/http"
-	"net/url"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -27,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
@@ -41,10 +39,11 @@ var _ ctrl.Controller = (*GetApplicationGraph)(nil)
 // GetApplicationGraph is the controller implementation to get application graph.
 type GetApplicationGraph struct {
 	ctrl.Operation[*datamodel.Application, datamodel.Application]
+	conn sdk.Connection
 }
 
 // NewGetApplicationGraph creates a new instance of the GetApplicationGraph controller.
-func NewGetApplicationGraph(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetApplicationGraph(opts ctrl.Options, conn sdk.Connection) (ctrl.Controller, error) {
 	return &GetApplicationGraph{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Application]{
@@ -52,6 +51,7 @@ func NewGetApplicationGraph(opts ctrl.Options) (ctrl.Controller, error) {
 				ResponseConverter: converter.ApplicationDataModelToVersioned,
 			},
 		),
+		conn,
 	}, nil
 }
 
@@ -74,14 +74,7 @@ func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter,
 		return nil, err
 	}
 
-	if req.URL.Scheme != "" {
-		schemePrefix = req.URL.Scheme + "://"
-	}
-
-	clientOptions, err := constructClientOptions(req.Host)
-	if err != nil {
-		return nil, err
-	}
+	clientOptions := sdk.NewClientOptions(ctrl.conn)
 
 	// get all resources in application scope
 	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, clientOptions)
@@ -100,20 +93,4 @@ func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter,
 		return nil, err
 	}
 	return rest.NewOKResponse(graph), nil
-}
-
-// Construct client options from the request
-func constructClientOptions(host string) (*policy.ClientOptions, error) {
-	baseUrl := schemePrefix + host
-	_, err := url.ParseRequestURI(baseUrl)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := sdk.NewDirectConnection(baseUrl)
-	if err != nil {
-		return nil, err
-	}
-	clientOptions := sdk.NewClientOptions(conn)
-
-	return clientOptions, nil
 }
