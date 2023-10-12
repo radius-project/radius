@@ -129,14 +129,20 @@ func Test_isResourceInApplication(t *testing.T) {
 }
 
 func Test_compute(t *testing.T) {
-	gatewayID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/gateways/http-gtwy-gtwy"
-	gatewayName := "http-gtwy-gtwy"
-	gatewayType := "Applications.Core/gateways"
 
-	httpRouteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-route-http-route"
-	httpRouteName := "http-route-http-route"
-	httpRouteType := "Applications.Core/httpRoutes"
+	sqlRteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
+	sqlRteType := "Applications.Core/httpRoutes"
+	sqlRteName := "sql-rte"
 
+	sqlAppCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr"
+	sqlAppCntrName := "sql-app-ctnr"
+	sqlAppCntrType := "Applications.Core/containers"
+
+	sqlCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-ctnr"
+	sqlCntrName := "sql-ctnr"
+	sqlCntrType := "Applications.Core/containers"
+
+	sqlDbID := "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db"
 
 	type args struct {
 		applicationName      string
@@ -154,30 +160,96 @@ func Test_compute(t *testing.T) {
 				applicationName: "myapp",
 				applicationResources: []generated.GenericResource{
 					{
-						ID: &gatewayID,
+						ID: &sqlRteID,
 						Properties: map[string]interface{}{
-							"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+							"application":       "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
 							"provisioningState": "Succeeded",
 						},
-						Name: &gatewayName,
-						Type: &gatewayType,
-
+						Name: &sqlRteName,
+						Type: &sqlRteType,
 					},
 					{
-						ID: &httpRouteID,
+						ID: &sqlAppCntrID,
 						Properties: map[string]interface{}{
-							"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+							"connections": map[string]interface{}{
+								"sql": map[string]interface{}{
+									"source": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
+								},
+							},
+							"application":       "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
 							"provisioningState": "Succeeded",
+							"status": map[string]interface{}{
+								"outputResources": map[string]interface{}{
+									"localId": "something",
+									"id":      "/some/thing/else",
+								},
+							},
 						},
-						Name: &httpRouteName,
-						Type: &httpRouteType,
+						Name: &sqlAppCntrName,
+						Type: &sqlAppCntrType,
 					},
-					
-
+					{
+						ID: &sqlCntrID,
+						Properties: map[string]interface{}{
+							"container": map[string]interface{}{
+								"ports": []interface{}{
+									map[string]interface{}{
+										"port":     8080,
+										"protocol": "TCP",
+										"provides": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte",
+									},
+								},
+							},
+							"application":       "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+							"provisioningState": "Succeeded",
+							"status": map[string]interface{}{
+								"outputResources": map[string]interface{}{
+									"localId": "something",
+									"id":      "/some/thing/else",
+								},
+							},
+						},
+						Name: &sqlCntrName,
+						Type: &sqlCntrType,
+					},
 				},
 				environmentResources: []generated.GenericResource{},
-		}
+			},
+			want: &ApplicationGraphResponse{
+				Resources: []*ApplicationGraphResource{
+					&ApplicationGraphResource{
+						ID:                sqlRteID,
+						Name:              sqlRteName,
+						Type:              sqlRteType,
+						ProvisioningState: "Succeeded",
+						Resources:         []ApplicationGraphOutputResource{},
+						Connections: []ApplicationGraphConnection{
+							{
+								ID:        sqlCntrID,
+								Direction: "Inbound",
+							},
+						},
+					},
+					&ApplicationGraphResource{
+						ID:                sqlAppCntrID,
+						Name:              sqlAppCntrName,
+						Type:              sqlAppCntrType,
+						ProvisioningState: "Succeeded",
+						Resources: []ApplicationGraphOutputResource{
+							{},
+						},
+						Connections: []ApplicationGraphConnection{
+							ApplicationGraphConnection{
+								Direction: "Inbound",
+								ID:        sqlDbID,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := computeGraph(tt.args.applicationName, tt.args.applicationResources, tt.args.environmentResources); !reflect.DeepEqual(got, tt.want) {
