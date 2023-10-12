@@ -43,7 +43,7 @@ type GetApplicationGraph struct {
 	ctrl.Operation[*datamodel.Application, datamodel.Application]
 }
 
-// NewGetRecipeMetadata creates a new controller for retrieving recipe metadata from an environment.
+// NewGetApplicationGraph creates a new instance of the GetApplicationGraph controller.
 func NewGetApplicationGraph(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetApplicationGraph{
 		ctrl.NewOperation(opts,
@@ -56,7 +56,6 @@ func NewGetApplicationGraph(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Request route for getGraph has name of the operation as suffix which should be removed to get the resource id.
@@ -69,7 +68,7 @@ func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter,
 	if applicationResource == nil {
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
-	//Application MUST have an environment id
+	// An application **MUST** have an environment id
 	environmentID, err := resources.Parse(applicationResource.Properties.Environment)
 	if err != nil {
 		return nil, err
@@ -96,19 +95,11 @@ func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter,
 		return nil, err
 	}
 
-	graph := compute(applicationID.Name(), applicationResources, environmentResources)
+	graph := computeGraph(applicationID.Name(), applicationResources, environmentResources)
 	if err != nil {
-		response := rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
-			Error: v1.ErrorDetails{
-				Code:    v1.CodeInternal,
-				Message: err.Error(),
-			},
-		})
-		return response, nil
-	} else {
-		return rest.NewOKResponse(graph), nil
+		return nil, err
 	}
-
+	return rest.NewOKResponse(graph), nil
 }
 
 // Construct client options from the request

@@ -173,13 +173,13 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-// compute constructs an application graph from the given application and environment resources.
+// computeGraph constructs an application graph from the given application and environment resources.
 //
 // This function does not return errors and will ignore missing or corrupted data. It is expected that the caller
-// will display the results to a human user, so rather than failing to compute the graph, we will return partial
+// will display the results to a human user, so rather than failing to computeGraph the graph, we will return partial
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
-func compute(applicationName string, applicationResources []generated.GenericResource, environmentResources []generated.GenericResource) *ApplicationGraphResponse {
+func computeGraph(applicationName string, applicationResources []generated.GenericResource, environmentResources []generated.GenericResource) *ApplicationGraphResponse {
 	// The first step is to figure out what resources are part of the application.
 	//
 	// Since Radius has both application-scoped and environment-scoped resources we need to merge the two lists
@@ -309,7 +309,7 @@ func compute(applicationName string, applicationResources []generated.GenericRes
 			}
 
 			// Note the connection in both directions.
-			//id is thes source from which the connections in connectionsBySource go out
+			//id is the source from which the connections in connectionsBySource go out
 			if direction == DirectionOutbound { // we are dealing with a relation formed by "connection"
 				connectionsBySource[id] = append(connectionsBySource[id], connection)
 				//otherID is the destination to the connections in connectionsByDestination
@@ -349,12 +349,10 @@ func compute(applicationName string, applicationResources []generated.GenericRes
 
 		graph.Resources = append(graph.Resources, &entry)
 	}
-
 	return &graph
-
 }
 
-// resourceEntryFromID creates a resourceEntry from a resource ID.
+// applicationGraphResourceFromID creates a applicationGraphResource from a resource ID.
 func applicationGraphResourceFromID(id string) *ApplicationGraphResource {
 	application, err := resources.ParseResource(id)
 	if err != nil {

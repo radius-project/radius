@@ -18,6 +18,7 @@ package applications
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -122,6 +123,65 @@ func Test_isResourceInApplication(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := isResourceInApplication(tt.args.ctx, tt.args.resource, tt.args.applicationName); got != tt.want {
 				t.Errorf("isResourceInApplication() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_compute(t *testing.T) {
+	gatewayID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/gateways/http-gtwy-gtwy"
+	gatewayName := "http-gtwy-gtwy"
+	gatewayType := "Applications.Core/gateways"
+
+	httpRouteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-route-http-route"
+	httpRouteName := "http-route-http-route"
+	httpRouteType := "Applications.Core/httpRoutes"
+
+
+	type args struct {
+		applicationName      string
+		applicationResources []generated.GenericResource
+		environmentResources []generated.GenericResource
+	}
+	tests := []struct {
+		name string
+		args args
+		want *ApplicationGraphResponse
+	}{
+		{
+			name: "compute graph",
+			args: args{
+				applicationName: "myapp",
+				applicationResources: []generated.GenericResource{
+					{
+						ID: &gatewayID,
+						Properties: map[string]interface{}{
+							"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+							"provisioningState": "Succeeded",
+						},
+						Name: &gatewayName,
+						Type: &gatewayType,
+
+					},
+					{
+						ID: &httpRouteID,
+						Properties: map[string]interface{}{
+							"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+							"provisioningState": "Succeeded",
+						},
+						Name: &httpRouteName,
+						Type: &httpRouteType,
+					},
+					
+
+				},
+				environmentResources: []generated.GenericResource{},
+		}
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := computeGraph(tt.args.applicationName, tt.args.applicationResources, tt.args.environmentResources); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("compute() = %v, want %v", got, tt.want)
 			}
 		})
 	}
