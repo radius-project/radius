@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
+	"github.com/radius-project/radius/pkg/sdk"
 
 	backend_ctrl "github.com/radius-project/radius/pkg/corerp/backend/controller"
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
@@ -44,6 +45,12 @@ const (
 	// AsyncOperationRetryAfter is polling interval for async create/update or delete resource operations.
 	AsyncOperationRetryAfter = time.Duration(5) * time.Second
 )
+
+func SetupConnection(opt apictrl.Options) sdk.Connection {
+	host := "http://" + opt.Address
+	conn, _ := sdk.NewDirectConnection(host)
+	return conn
+}
 
 // SetupNamespace builds the namespace for core resource provider.
 func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerConfig) *builder.Namespace {
@@ -87,7 +94,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		Custom: map[string]builder.Operation[datamodel.Application]{
 			"getGraph": {
 				APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
-					return app_ctrl.NewGetApplicationGraph(opt)
+					return app_ctrl.NewGetApplicationGraph(opt, SetupConnection(opt))
 				},
 			},
 		},
