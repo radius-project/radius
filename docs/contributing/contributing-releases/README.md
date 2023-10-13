@@ -88,17 +88,21 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    
    Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.21) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to `<major>.<minor>` (eg. 0.21) for downloading the `rad-bicep-corerp`.
 
-1. Push the commit to the remote and create a pull request targeting the release branch.
+1. Update the `versions.yaml` file with the new patch version (eg. 0.21.1)
+
+1. Push the commits to the remote and create a pull request targeting the release branch.
    ```bash
    git push origin <USERNAME>/<BRANCHNAME>
    ```
 
-1. After pull request is approved, merge into the release branch and tag!
+1. After pull request is approved, merge into the release branch and tag! 
    ```bash
    # replace v0.21.X with the version we want to patch (if we release 0.21.1 already, we would then release 0.21.2, etc.)
    git tag v0.21.X
    git push --tags
    ```
+
+1. In the `main` branch, update the `versions.yaml` file with the patch version that was specified in the release branch (eg. 0.21.1). This will kick off a new patch release. The release branch must be merged before this change is merged into main. 
 
 ## Cadence
 
