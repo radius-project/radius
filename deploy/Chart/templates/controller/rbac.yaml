@@ -33,7 +33,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - rad.app
+  - radapp.io
   resources:
   - recipes
   - recipes/status
