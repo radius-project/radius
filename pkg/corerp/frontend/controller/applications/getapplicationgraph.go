@@ -88,6 +88,10 @@ func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter,
 		return nil, err
 	}
 
+	if applicationResources == nil && environmentResources == nil {
+		return rest.NewOKResponse(nil), err
+	}
+
 	graph := computeGraph(applicationID.Name(), applicationResources, environmentResources)
 	if err != nil {
 		return nil, err

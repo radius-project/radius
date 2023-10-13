@@ -532,6 +532,9 @@ func providesFromAPIData(resource generated.GenericResource) []ApplicationGraphC
 		data := ContainerPortProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {
+			if *data.Provides == "" {
+				continue
+			}
 			entries = append(entries, ApplicationGraphConnection{
 				ID:        *data.Provides,
 				Direction: dir,
