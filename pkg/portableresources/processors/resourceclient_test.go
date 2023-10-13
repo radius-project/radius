@@ -126,6 +126,33 @@ func Test_Delete_ARM(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("success - deletion returns 404", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(ARMResourceID, handleNotFound(t))
+		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: to.Ptr("Microsoft.Compute"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType: to.Ptr("anotherType"),
+					APIVersions:  []*string{},
+				},
+				{
+					ResourceType:      to.Ptr("virtualMachines"),
+					DefaultAPIVersion: to.Ptr(ARMAPIVersion),
+				},
+			},
+		}, 200))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(context.Background(), ARMResourceID)
+		require.NoError(t, err)
+	})
+
 	t.Run("failure - lookup API Version - provider not found", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(ARMProviderPath, handleNotFound(t))
