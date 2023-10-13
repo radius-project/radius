@@ -199,3 +199,42 @@ func fetchResource(ctx context.Context, radius RadiusClient, resourceID string) 
 
 	return radius.Resources(id.RootScope(), id.Type()).Get(ctx, id.Name())
 }
+
+func deleteContainer(ctx context.Context, radius RadiusClient, containerID string) (Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
+	id, err := resources.Parse(containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("scope", id.RootScope(), "resourceType", id.Type())
+	logger.Info("Deleting container.")
+
+	poller, err := radius.Containers(id.RootScope()).BeginDelete(ctx, id.Name(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return poller, nil
+}
+
+func createOrUpdateContainer(ctx context.Context, radius RadiusClient, containerID string, properties *corerpv20231001preview.ContainerProperties) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
+	id, err := resources.Parse(containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues("scope", id.RootScope(), "resourceType", id.Type())
+	logger.Info("Creating or updating container.")
+
+	body := corerpv20231001preview.ContainerResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Name:       to.Ptr(id.Name()),
+		Properties: properties,
+	}
+	poller, err := radius.Containers(id.RootScope()).BeginCreateOrUpdate(ctx, id.Name(), body, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return poller, nil
+}
