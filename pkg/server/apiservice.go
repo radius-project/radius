@@ -65,7 +65,6 @@ func (s *APIService) Run(ctx context.Context) error {
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{
-					Address:       s.Service.Options.Config.Server.Host + ":" + fmt.Sprint(s.Service.Options.Config.Server.Port),
 					PathBase:      s.Options.Config.Server.PathBase,
 					DataProvider:  s.StorageProvider,
 					KubeClient:    s.KubeClient,

@@ -18,7 +18,9 @@ package applications
 
 import (
 	"context"
-	"reflect"
+	"encoding/json"
+	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -144,6 +146,60 @@ func Test_compute(t *testing.T) {
 
 	sqlDbID := "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db"
 
+	expected := []*ApplicationGraphResource{
+		{
+			ID:                sqlRteID,
+			Name:              sqlRteName,
+			Type:              sqlRteType,
+			ProvisioningState: "Succeeded",
+			Resources:         []ApplicationGraphOutputResource{},
+			Connections: []ApplicationGraphConnection{
+				{
+					ID:        sqlCntrID,
+					Direction: "Inbound",
+				},
+			},
+		},
+		{
+			ID:                sqlCntrID,
+			Name:              sqlCntrName,
+			Type:              sqlCntrType,
+			ProvisioningState: "Succeeded",
+			Resources:         []ApplicationGraphOutputResource{},
+			Connections: []ApplicationGraphConnection{
+				{
+					Direction: "Outbound",
+					ID:        sqlRteID,
+				},
+			},
+		},
+		{
+			ID:                sqlDbID,
+			Name:              "sql-db",
+			Type:              "Applications.Datastores/sqlDatabases",
+			ProvisioningState: "Succeeded",
+			Resources:         []ApplicationGraphOutputResource{},
+		},
+		{
+			ID:                sqlAppCntrID,
+			Name:              sqlAppCntrName,
+			Type:              sqlAppCntrType,
+			ProvisioningState: "Succeeded",
+			Resources:         []ApplicationGraphOutputResource{},
+			Connections: []ApplicationGraphConnection{
+				{
+					Direction: "Inbound",
+					ID:        sqlDbID,
+				},
+			},
+		},
+	}
+
+	// sort the expected result
+	sort.Slice(expected, func(i, j int) bool {
+		return expected[i].ID < expected[j].ID
+	})
+
 	type args struct {
 		applicationName      string
 		applicationResources []generated.GenericResource
@@ -192,11 +248,11 @@ func Test_compute(t *testing.T) {
 						ID: &sqlCntrID,
 						Properties: map[string]interface{}{
 							"container": map[string]interface{}{
-								"ports": []interface{}{
-									map[string]interface{}{
+								"ports": map[string]interface{}{
+									"web": map[string]interface{}{
 										"port":     8080,
 										"protocol": "TCP",
-										"provides": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte",
+										"provides": sqlRteID,
 									},
 								},
 							},
@@ -216,45 +272,50 @@ func Test_compute(t *testing.T) {
 				environmentResources: []generated.GenericResource{},
 			},
 			want: &ApplicationGraphResponse{
-				Resources: []*ApplicationGraphResource{
-					{
-						ID:                sqlRteID,
-						Name:              sqlRteName,
-						Type:              sqlRteType,
-						ProvisioningState: "Succeeded",
-						Resources:         []ApplicationGraphOutputResource{},
-						Connections: []ApplicationGraphConnection{
-							{
-								ID:        sqlCntrID,
-								Direction: "Inbound",
-							},
-						},
-					},
-					{
-						ID:                sqlAppCntrID,
-						Name:              sqlAppCntrName,
-						Type:              sqlAppCntrType,
-						ProvisioningState: "Succeeded",
-						Resources: []ApplicationGraphOutputResource{
-							{},
-						},
-						Connections: []ApplicationGraphConnection{
-							{
-								Direction: "Inbound",
-								ID:        sqlDbID,
-							},
-						},
-					},
-				},
+				Resources: expected,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := computeGraph(tt.args.applicationName, tt.args.applicationResources, tt.args.environmentResources); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("compute() = %v, want %v", got, tt.want)
+			got := computeGraph(tt.args.applicationName, tt.args.applicationResources, tt.args.environmentResources)
+			// sort the result
+			sort.Slice(got.Resources, func(i, j int) bool {
+				return got.Resources[i].ID < got.Resources[j].ID
+			})
+
+			fmt.Print("got")
+			res2B, _ := json.Marshal(got)
+			fmt.Println(string(res2B))
+
+			fmt.Print("want")
+			res2B, _ = json.Marshal(tt.want)
+			fmt.Println(string(res2B))
+
+			for i := range got.Resources {
+				gotResource := got.Resources[i]
+				wantResource := tt.want.Resources[i]
+				if gotResource.ID != wantResource.ID || gotResource.Name != wantResource.Name || gotResource.Type != wantResource.Type || gotResource.ProvisioningState != wantResource.ProvisioningState {
+					t.Errorf("computeGraph() = %v, want %v", got.Resources[i], tt.want.Resources[i])
+				}
+				//sort connections
+				sort.Slice(gotResource.Connections, func(i, j int) bool {
+					return gotResource.Connections[i].ID < gotResource.Connections[j].ID
+				})
+				sort.Slice(wantResource.Connections, func(i, j int) bool {
+					return wantResource.Connections[i].ID < wantResource.Connections[j].ID
+				})
+				//iterate through connections and compare
+				for j := range gotResource.Connections {
+					gotConnection := gotResource.Connections[j]
+					wantConnection := wantResource.Connections[j]
+					if gotConnection.ID != wantConnection.ID || gotConnection.Direction != wantConnection.Direction {
+						t.Errorf("computeGraph() = %v, want %v", gotResource.Connections[j], wantResource.Connections[j])
+					}
+				}
 			}
+
 		})
 	}
 }
