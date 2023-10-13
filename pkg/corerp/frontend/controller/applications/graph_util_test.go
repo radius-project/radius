@@ -217,7 +217,7 @@ func Test_compute(t *testing.T) {
 			},
 			want: &ApplicationGraphResponse{
 				Resources: []*ApplicationGraphResource{
-					&ApplicationGraphResource{
+					{
 						ID:                sqlRteID,
 						Name:              sqlRteName,
 						Type:              sqlRteType,
@@ -230,7 +230,7 @@ func Test_compute(t *testing.T) {
 							},
 						},
 					},
-					&ApplicationGraphResource{
+					{
 						ID:                sqlAppCntrID,
 						Name:              sqlAppCntrName,
 						Type:              sqlAppCntrType,
@@ -239,7 +239,7 @@ func Test_compute(t *testing.T) {
 							{},
 						},
 						Connections: []ApplicationGraphConnection{
-							ApplicationGraphConnection{
+							{
 								Direction: "Inbound",
 								ID:        sqlDbID,
 							},

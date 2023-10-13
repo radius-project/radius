@@ -43,9 +43,7 @@ type GetApplicationGraph struct {
 }
 
 // NewGetApplicationGraph creates a new instance of the GetApplicationGraph controller.
-func NewGetApplicationGraph(opts ctrl.Options) (ctrl.Controller, error) {
-	host := "http://" + opts.Address
-	conn, _ := sdk.NewDirectConnection(host)
+func NewGetApplicationGraph(opts ctrl.Options, UCPConn sdk.Connection) (ctrl.Controller, error) {
 	return &GetApplicationGraph{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Application]{
@@ -53,7 +51,7 @@ func NewGetApplicationGraph(opts ctrl.Options) (ctrl.Controller, error) {
 				ResponseConverter: converter.ApplicationDataModelToVersioned,
 			},
 		),
-		conn,
+		UCPConn,
 	}, nil
 }
 

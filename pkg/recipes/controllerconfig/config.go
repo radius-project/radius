@@ -48,6 +48,9 @@ type RecipeControllerConfig struct {
 
 	// Engine is the engine for executing recipes.
 	Engine engine.Engine
+
+	// UCP connection
+	UCPConnection *sdk.Connection
 }
 
 // New creates a new RecipeControllerConfig instance with the given host options.
@@ -58,6 +61,8 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	cfg.UCPConnection = &options.UCPConnection
 
 	cfg.ResourceClient = processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.K8sClients.RuntimeClient, cfg.K8sClients.DiscoveryClient)
 	clientOptions := sdk.NewClientOptions(options.UCPConnection)
