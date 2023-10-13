@@ -92,6 +92,15 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "Recipe", err)
 	}
+	err = (&reconciler.DeploymentReconciler{
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("radius-deployment-controller"),
+		Radius:        reconciler.NewClient(s.Options.UCPConnection),
+	}).SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("failed to setup %s controller: %w", "Deployment", err)
+	}
 
 	if s.TLSCertDir == "" {
 		logger.Info("Webhooks will be skipped. TLS certificates not present.")
