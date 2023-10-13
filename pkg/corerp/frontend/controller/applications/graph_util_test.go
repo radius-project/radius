@@ -130,7 +130,7 @@ func Test_isResourceInApplication(t *testing.T) {
 	}
 }
 
-func Test_compute(t *testing.T) {
+func Test_computeGraph(t *testing.T) {
 
 	sqlRteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
 	sqlRteType := "Applications.Core/httpRoutes"
