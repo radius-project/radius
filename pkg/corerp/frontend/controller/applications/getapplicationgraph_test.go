@@ -25,6 +25,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +51,10 @@ func TestGetApplicationGraphRun_20231001Preview(t *testing.T) {
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
 		}
-		ctl, err := NewGetApplicationGraph(opts)
+
+		conn, _ := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+
+		ctl, err := NewGetApplicationGraph(opts, conn)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()
