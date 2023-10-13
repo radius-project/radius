@@ -309,6 +309,22 @@ func Test_Delete_UCP(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("success - delete returns 404", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(AWSResourceID, handleNotFound(t))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+
+		c := NewResourceClient(nil, connection, nil, nil)
+
+		err = c.Delete(context.Background(), AWSResourceID)
+		require.NoError(t, err)
+	})
+
 	t.Run("failure - delete fails", func(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc(AWSResourceID, handleJSONResponse(t, v1.ErrorResponse{

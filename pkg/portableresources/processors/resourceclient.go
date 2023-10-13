@@ -122,6 +122,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			// If the resource that we want to delete doesn't exist, we don't need to delete it.
 			return nil
 		}
+
 		return err
 	}
 
@@ -185,11 +186,21 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 
 	poller, err := client.BeginDelete(ctx, id.Name(), nil)
 	if err != nil {
+		if clients.Is404Error(err) {
+			// If the resource that we want to delete doesn't exist, we don't need to delete it.
+			return nil
+		}
+
 		return err
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
+		if clients.Is404Error(err) {
+			// If the resource that we want to delete doesn't exist, we don't need to delete it.
+			return nil
+		}
+
 		return err
 	}
 
