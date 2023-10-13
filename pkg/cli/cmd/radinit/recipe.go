@@ -63,11 +63,19 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 		tag = "latest"
 	}
 
+	// Temporary solution to get all repositories.
+	// The issue is that if RepositoryListPageSize is not specified the default is 100.
+	// We have 104 repositories in the registry as of 12 Oct 2023. That is why processRepositories
+	// function was being called twice and the second call was overwriting all the recipes.
+	// TODO: Remove this once we have a better solution.
+	reg.RepositoryListPageSize = 1000
+
 	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
 	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
-	err = reg.Repositories(ctx, "", func(repos []string) error {
+	// The start parameter is set to "radius-rp" because our recipes are after that repository.
+	err = reg.Repositories(ctx, "radius-rp", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.
 		validRepos := []string{}
 		for _, repo := range repos {

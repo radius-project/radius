@@ -14,7 +14,7 @@ Radius consists of a few processes that get deployed inside a Kubernetes cluster
 
 The easiest way to get started is to launch Radius using VS Code. This will give you the ability to debug all of the processes. This workflow will run all of the Radius processes locally on your computer without containerizing them.
 
-> ⚠️ The debugging setup provided by these instructions **does NOT** share its database with an installed copy of Radius. It will use a separate namespace to store data. 
+> ⚠️ The debugging setup provided by these instructions **does NOT** share its database with an installed copy of Radius. It will use a separate namespace to store data.
 
 ## Endpoints
 
@@ -27,15 +27,14 @@ If you need to manually test APIs you can reach them at the following endpoints 
 
 ## Prerequisites
 
-1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data. 
-2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other. 
-3. Run `git submodule update --init` in the `deployment-engine` repo
-4. Install .NET 6.0 SDK - https://dotnet.microsoft.com/en-us/download/dotnet/6.0
-5. Install C# VS Code extension - https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp
-6. (Optional) Configure any cloud provider credentials you want to use for developing Radius. 
+1. Create a Kubernetes cluster, or set your current context to a cluster you want to use. The debug configuration will use your current cluster for storing data.
+2. Clone the `radius-project/radius` and `radius-project/deployment-engine` repo next to each other.
+3. Run `git submodule update --init` in the `deployment-engine` repo.
+4. Install .NET 6.0 SDK - <https://dotnet.microsoft.com/en-us/download/dotnet/6.0>.
+5. Install C# VS Code extension - <https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp>.
+6. (Optional) Configure any cloud provider credentials you want to use for developing Radius.
   
 > 💡 The Bicep deployment engine uses .NET. However you don't need to know C# or .NET to develop locally with Radius.
-
 > 💡 Radius will use your locally configured Azure or AWS credentials. If you are able to use the `az` or `aws` CLI then you don't need to do any additional setup.
 
 ## Setup Step 1: Run `rad init`

@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/trace"
@@ -117,11 +118,21 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 
 	poller, err := client.BeginDeleteByID(ctx, id.String(), apiVersion, &armresources.ClientBeginDeleteByIDOptions{})
 	if err != nil {
+		if clients.Is404Error(err) {
+			// If the resource that we want to delete doesn't exist, we don't need to delete it.
+			return nil
+		}
+
 		return err
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
+		if clients.Is404Error(err) {
+			// If the resource that we want to delete doesn't exist, we don't need to delete it.
+			return nil
+		}
+
 		return err
 	}
 
@@ -175,11 +186,21 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 
 	poller, err := client.BeginDelete(ctx, id.Name(), nil)
 	if err != nil {
+		if clients.Is404Error(err) {
+			// If the resource that we want to delete doesn't exist, we don't need to delete it.
+			return nil
+		}
+
 		return err
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
+		if clients.Is404Error(err) {
+			// If the resource that we want to delete doesn't exist, we don't need to delete it.
+			return nil
+		}
+
 		return err
 	}
 
