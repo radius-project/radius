@@ -86,7 +86,7 @@ Let's say we have a bug in a release which needs to be patched for an already cr
 
 1. If breaking changes have been made to our Bicep fork: 
    
-   Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.21) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to `<major>.<minor>` (eg. 0.21) for downloading the `rad-bicep-corerp`.
+   Update the file radius/.github/workflows/validate-bicep.yaml to use the release version (eg. v0.21) instead of edge for validating the biceps in the docs and samples repositories. Also modify the version from `env.REL_CHANNEL` to `<major>.<minor>` (eg. `0.21`) for downloading the `rad-bicep-corerp`.
 
 1. Update the `versions.yaml` file with the new patch version (eg. replace `0.21.0` with `0.21.1` for the first patch, `0.21.1` with `0.21.2` for the second patch, etc)
 
@@ -94,8 +94,8 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    ```bash
    git push origin <USERNAME>/<BRANCHNAME>
    ```
-   
-1. In the `main` branch, update the `versions.yaml` file with the patch version that was specified in the release branch (eg. 0.21.1). This will kick off a new patch release. The release branch must be merged before this change is merged into main. 
+
+1. In the `main` branch, update the `versions.yaml` file with the patch version that was specified in the release branch (eg. `0.21.1`). This will kick off a new patch release. The release branch must be merged before this change is merged into main. 
 
 ## Cadence
 
