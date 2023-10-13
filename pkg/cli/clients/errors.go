@@ -19,6 +19,7 @@ package clients
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -28,8 +29,10 @@ import (
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
 //
 
-// "Is404Error" checks if the given error is a 404 error by checking if it is a ResponseError with an ErrorCode of
-// "NotFound" or an ErrorResponse with an Error Code of "NotFound".
+// "Is404Error" checks if the given error is a 404 error by checking if it is one of:
+// a ResponseError with an ErrorCode of "NotFound", or
+// a ResponseError with a StatusCode of 404, or
+// an ErrorResponse with an Error Code of "NotFound".
 func Is404Error(err error) bool {
 	if err == nil {
 		return false
@@ -37,7 +40,7 @@ func Is404Error(err error) bool {
 
 	// The error might already be an ResponseError
 	responseError := &azcore.ResponseError{}
-	if errors.As(err, &responseError) && responseError.ErrorCode == v1.CodeNotFound {
+	if errors.As(err, &responseError) && responseError.ErrorCode == v1.CodeNotFound || responseError.StatusCode == http.StatusNotFound {
 		return true
 	} else if errors.As(err, &responseError) {
 		return false
