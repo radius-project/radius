@@ -4,7 +4,6 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "name": "Launch Applications RP",
             "type": "go",
@@ -83,11 +82,12 @@
         {
             "name": "Launch Control Plane (all)",
             "configurations": [
-                "Launch UCP", 
+                "Launch UCP",
                 "Launch Applications RP",
                 "Launch Controller",
-                "Launch Deployment Engine"],
+                "Launch Deployment Engine",
+            ],
             "stopAll": true
-          }
-      ]
+        }
+    ]
 }
