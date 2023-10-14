@@ -53,8 +53,7 @@ env:
   # Container registry for storing test images and recipes
   CACHE_REGISTRY: ghcr.io/radius-project/dev
   # Container registry for storing recipe artifacts
-  # TODO_LAUNCH: Change it to ghcr.io/radius-project/dev - https://github.com/radius-project/radius/issues/5892
-  BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
+  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -79,6 +78,7 @@ jobs:
     name: Build Radius for test
     runs-on: ubuntu-latest
     env:
+      # TODO_LAUNCH: this points to ACR. need to change to GHCR
       DE_IMAGE: 'radius.azurecr.io/deployment-engine'
       DE_TAG: 'latest'
     outputs:
@@ -483,9 +483,6 @@ jobs:
           rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
-          
-          # TODO_LAUNCH: Remove this login once we move recipe to GHCR - https://github.com/radius-project/radius/issues/5892
-          az acr login -n ${{ env.BICEP_RECIPE_REGISTRY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
