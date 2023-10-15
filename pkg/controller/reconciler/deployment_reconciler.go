@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -248,11 +249,15 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 		}
 	}
 
-	// For now the environment name is hardcoded to default.
 	environmentName := "default"
+	if annotations.Configuration.Environment != "" {
+		environmentName = annotations.Configuration.Environment
+	}
 
-	// For now the application name is hardcoded to the namespace.
 	applicationName := deployment.Namespace
+	if annotations.Configuration.Application != "" {
+		applicationName = annotations.Configuration.Application
+	}
 
 	resourceGroupID, environmentID, applicationID, err := resolveDependencies(ctx, r.Radius, "/planes/radius/local", environmentName, applicationName)
 	if err != nil {
@@ -269,8 +274,9 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 	//
 	// 1) err != nil - an error happened, this will be retried next reconcile.
 	// 2) waiting == true - we're waiting on dependencies, this will be retried next reconcile.
-	// 3) poller != nil - we've started an operation, this will be checked next reconcile.
-	poller, waiting, err := r.startPutOperationIfNeeded(ctx, deployment, annotations)
+	// 3) updatePoller != nil - we've started a PUT operation, this will be checked next reconcile.
+	// 4) deletePoller != nil - we've started a DELETE operation, this will be checked next reconcile.
+	updatePoller, deletePoller, waiting, err := r.startPutOrDeleteOperationIfNeeded(ctx, deployment, annotations)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "ResourceError", err.Error())
@@ -288,15 +294,30 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 		// We don't need to requeue here because we watch Recipes and will be notified when
 		// the state changes.
 		return ctrl.Result{}, nil
-	} else if poller != nil {
+	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
-		token, err := poller.ResumeToken()
+		token, err := updatePoller.ResumeToken()
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
 		}
 
 		annotations.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
 		annotations.Status.Phrase = deploymentPhraseUpdating
+		err = r.saveState(ctx, deployment, annotations)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	} else if deletePoller != nil {
+		// We've successfully started an operation. Update the status and requeue.
+		token, err := deletePoller.ResumeToken()
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
+		}
+
+		annotations.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+		annotations.Status.Phrase = deploymentPhraseDeleting
 		err = r.saveState(ctx, deployment, annotations)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -366,15 +387,29 @@ func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *
 	return ctrl.Result{}, nil
 }
 
-func (r *DeploymentReconciler) startPutOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientCreateOrUpdateResponse], bool, error) {
+func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientCreateOrUpdateResponse], Poller[v20231001preview.ContainersClientDeleteResponse], bool, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	resourceID := annotations.Status.Scope + "/providers/Applications.Core/containers/" + deployment.Name
+
 	// Check the annotations first to see how the current configuration compares to the desired configuration.
-	if !annotations.IsUpToDate() {
+	if annotations.Status.Container != "" && !strings.EqualFold(annotations.Status.Container, resourceID) {
+		// If we get here it means that the environment or application changed, so we should delete
+		// the old resource and create a new one.
+		logger.Info("Container is already created but is out-of-date")
+
+		logger.Info("Starting DELETE operation.")
+		poller, err := deleteContainer(ctx, r.Radius, annotations.Status.Container)
+		if err != nil {
+			return nil, nil, false, err
+		}
+
+		return nil, poller, false, err
+	} else if !annotations.IsUpToDate() {
 		logger.Info("Container configuration is out-of-date.")
 	} else if annotations.Status.Container != "" {
 		logger.Info("Container is already created and is up-to-date.")
-		return nil, false, nil
+		return nil, nil, false, nil
 	}
 
 	logger.Info("Starting PUT operation.")
@@ -397,12 +432,12 @@ func (r *DeploymentReconciler) startPutOperationIfNeeded(ctx context.Context, de
 		err := r.Client.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: source}, &recipe)
 		if apierrors.IsNotFound(err) {
 			logger.Info("Recipe does not exist.", "recipe", source)
-			return nil, true, nil
+			return nil, nil, true, nil
 		} else if err != nil {
-			return nil, false, fmt.Errorf("failed to fetch recipe %s: %w", source, err)
+			return nil, nil, false, fmt.Errorf("failed to fetch recipe %s: %w", source, err)
 		} else if recipe.Status.Resource == "" {
 			logger.Info("Recipe is not ready.", "recipe", source)
-			return nil, true, nil
+			return nil, nil, true, nil
 		}
 
 		properties.Connections[name] = &v20231001preview.ConnectionProperties{
@@ -410,13 +445,12 @@ func (r *DeploymentReconciler) startPutOperationIfNeeded(ctx context.Context, de
 		}
 	}
 
-	resourceID := annotations.Status.Scope + "/providers/Applications.Core/containers/" + deployment.Name
 	poller, err := createOrUpdateContainer(ctx, r.Radius, resourceID, &properties)
 	if err != nil {
-		return nil, false, err
+		return nil, nil, false, err
 	}
 
-	return poller, false, nil
+	return poller, nil, false, nil
 }
 
 func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) (Poller[v20231001preview.ContainersClientDeleteResponse], error) {

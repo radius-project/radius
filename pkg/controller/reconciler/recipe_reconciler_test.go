@@ -93,7 +93,7 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius)
+	createEnvironment(radius, "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -122,6 +122,78 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 	waitForRecipeDeleted(t, client, name)
 }
 
+func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
+	ctx := testcontext.New(t)
+	radius, client := SetupRecipeTest(t)
+
+	name := types.NamespacedName{Namespace: "recipe-change-envapp", Name: "test-recipe-change-envapp"}
+	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	require.NoError(t, err)
+
+	recipe := makeRecipe(name, "Applications.Core/extenders")
+	err = client.Create(ctx, recipe)
+	require.NoError(t, err)
+
+	// Recipe will be waiting for environment to be created.
+	createEnvironment(radius, "default")
+
+	// Recipe will be waiting for extender to complete provisioning.
+	status := waitForRecipeStateUpdating(t, client, name, nil)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-change-envapp", status.Scope)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default", status.Environment)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-change-envapp/providers/Applications.Core/applications/recipe-change-envapp", status.Application)
+
+	radius.CompleteOperation(status.Operation.ResumeToken, nil)
+
+	// Recipe will update after operation completes
+	status = waitForRecipeStateReady(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-change-envapp/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
+
+	createEnvironment(radius, "new-environment")
+
+	// Now update the recipe to change the environment and application.
+	err = client.Get(ctx, name, recipe)
+	require.NoError(t, err)
+
+	recipe.Spec.Environment = "new-environment"
+	recipe.Spec.Application = "new-application"
+
+	err = client.Update(ctx, recipe)
+	require.NoError(t, err)
+
+	// Now the recipe will delete and re-create the resource.
+
+	// Deletion of the resource is in progress.
+	status = waitForRecipeStateDeleting(t, client, name, nil)
+	radius.CompleteOperation(status.Operation.ResumeToken, nil)
+
+	// Resource should be gone.
+	_, err = radius.Resources(status.Scope, "Applications.Core/extenders").Get(ctx, name.Name)
+	require.Error(t, err)
+
+	// Recipe will be waiting for extender to complete provisioning.
+	status = waitForRecipeStateUpdating(t, client, name, nil)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application", status.Scope)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment/providers/Applications.Core/environments/new-environment", status.Environment)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/applications/new-application", status.Application)
+	radius.CompleteOperation(status.Operation.ResumeToken, nil)
+
+	// Recipe will update after operation completes
+	status = waitForRecipeStateReady(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
+
+	// Now delete the recipe.
+	err = client.Delete(ctx, recipe)
+	require.NoError(t, err)
+
+	// Deletion of the resource is in progress.
+	status = waitForRecipeStateDeleting(t, client, name, nil)
+	radius.CompleteOperation(status.Operation.ResumeToken, nil)
+
+	// Now deleting of the deployment object can complete.
+	waitForRecipeDeleted(t, client, name)
+}
+
 func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	// This test tests our ability to recover from failed operations inside Radius.
 	//
@@ -140,7 +212,7 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius)
+	createEnvironment(radius, "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
@@ -206,7 +278,7 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Recipe will be waiting for environment to be created.
-	createEnvironment(radius)
+	createEnvironment(radius, "default")
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
