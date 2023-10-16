@@ -180,9 +180,9 @@ jobs:
           * gotestsum ${{ env.GOTESTSUM_VER }}
           * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
           * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
-          * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
-          * controller test image location: `${{ env.CACHE_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`
-          * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * ucp test image location: `${{ env.CONTAINER_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
 
           </details>
           
@@ -202,7 +202,7 @@ jobs:
         run: |
           make build && make docker-build && make docker-push
         env:
-          DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
@@ -353,7 +353,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes --reinstall \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CACHE_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
       - name: Configure Radius test workspace
         run: |
           set -x
