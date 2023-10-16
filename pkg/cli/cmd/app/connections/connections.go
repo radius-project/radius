@@ -24,7 +24,8 @@ import (
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
-		Use:     "connections",
+		Use: "connections",
+		// TODO: Add alias for this command until we completely rename
 		Aliases: []string{"graph"},
 		Short:   "Shows the connections for an application.",
 		Long:    `Shows the connections for an application`,
