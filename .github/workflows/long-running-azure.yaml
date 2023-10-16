@@ -178,7 +178,7 @@ jobs:
           <summary> Click here to see the list of tools in the current test run</summary>
 
           * gotestsum ${{ env.GOTESTSUM_VER }}
-          * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
           * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
           * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
           * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`
@@ -197,6 +197,12 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push container images
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         run: |

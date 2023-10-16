@@ -188,7 +188,7 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * Bicep recipe location `${{ env.CONTAINER_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
             * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
             * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
             * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ env.REL_VERSION }}`
@@ -256,7 +256,7 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
