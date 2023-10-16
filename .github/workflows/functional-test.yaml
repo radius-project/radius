@@ -21,14 +21,9 @@ on:
     - cron: "30 0,4,8,12,16,20 * * 1-5"
     # Run every 12 hours on weekends.
     - cron: "30 0,12 * * 0,6"
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests, de-functional-test]
+    types: [functional-tests, de-functional-test, ok-to-test]
 
 env:
   # Go version
