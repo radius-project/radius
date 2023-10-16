@@ -34,6 +34,14 @@ const (
 	// AnnotationRadiusConfigurationHash is the name of the annotation that indicates the hash of the configuration.
 	AnnotationRadiusConfigurationHash = "radapp.io/configuration-hash"
 
+	// AnnotationRadiusEnvionment is the name of the annotation that indicates the name of the environment. If unset,
+	// the value 'default' will be used as the environment name.
+	AnnotationRadiusEnvironment = "radapp.io/environment"
+
+	// AnnotationRadiusApplication is the name of the annotation that indicates the name of the application. If unset,
+	// the namespace of the Deployment will be used as the application name.
+	AnnotationRadiusApplication = "radapp.io/application"
+
 	// DeploymentFinalizer is the name of the finalizer added to Deployments.
 	DeploymentFinalizer = "radapp.io/deployment-finalizer"
 

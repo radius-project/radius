@@ -32,6 +32,14 @@ type RecipeSpec struct {
 	// SecretName is the name of a Kubernetes secret to create once the resource is created.
 	// +kubebuilder:validation:Optional
 	SecretName string `json:"secretName,omitempty"`
+
+	// Environment is the name of the Radius environment to use. If unset the value 'default' will be
+	// used as the environment name.
+	Environment string `json:"environment,omitempty"`
+
+	// Application is the name of the Radius application to use. If unset the namespace of the
+	// Recipe will be used as the application name.
+	Application string `json:"application,omitempty"`
 }
 
 // RecipePhrase is a string representation of the current status of a Recipe.

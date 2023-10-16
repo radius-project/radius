@@ -51,6 +51,16 @@ spec:
           spec:
             description: RecipeSpec defines the desired state of Recipe
             properties:
+              application:
+                description: Application is the name of the Radius application to
+                  use. If unset the namespace of the Recipe will be used as the application
+                  name.
+                type: string
+              environment:
+                description: Environment is the name of the Radius environment to
+                  use. If unset the value 'default' will be used as the environment
+                  name.
+                type: string
               secretName:
                 description: SecretName is the name of a Kubernetes secret to create
                   once the resource is created.

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -232,11 +233,15 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 	// fully processed any status changes until the async operation completes.
 	recipe.Status.ObservedGeneration = recipe.Generation
 
-	// For now the environment name is hardcoded to default.
 	environmentName := "default"
+	if recipe.Spec.Environment != "" {
+		environmentName = recipe.Spec.Environment
+	}
 
-	// For now the application name is hardcoded to the namespace.
 	applicationName := recipe.Namespace
+	if recipe.Spec.Application != "" {
+		applicationName = recipe.Spec.Application
+	}
 
 	resourceGroupID, environmentID, applicationID, err := resolveDependencies(ctx, r.Radius, "/planes/radius/local", environmentName, applicationName)
 	if err != nil {
@@ -249,14 +254,14 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 	recipe.Status.Environment = environmentID
 	recipe.Status.Application = applicationID
 
-	poller, err := r.startPutOperationIfNeeded(ctx, recipe)
+	updatePoller, deletePoller, err := r.startPutOrDeleteOperationIfNeeded(ctx, recipe)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
 		r.EventRecorder.Event(recipe, corev1.EventTypeWarning, "ResourceError", err.Error())
 		return ctrl.Result{}, err
-	} else if poller != nil {
+	} else if updatePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
-		token, err := poller.ResumeToken()
+		token, err := updatePoller.ResumeToken()
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
 		}
@@ -269,12 +274,27 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 		}
 
 		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+	} else if deletePoller != nil {
+		// We've successfully started an operation. Update the status and requeue.
+		token, err := deletePoller.ResumeToken()
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
+		}
+
+		recipe.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+		recipe.Status.Phrase = radappiov1alpha3.PhraseDeleting
+		err = r.Client.Status().Update(ctx, recipe)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	// If we get here then it means we can process the result of the operation.
 	logger.Info("Resource is in desired state.", "resourceId", recipe.Status.Resource)
 
-	err = r.updateSecret(ctx, recipe, poller)
+	err = r.updateSecret(ctx, recipe)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to process secret %s: %w", recipe.Spec.SecretName, err)
 	}
@@ -348,11 +368,25 @@ func (r *RecipeReconciler) reconcileDelete(ctx context.Context, recipe *radappio
 	return ctrl.Result{}, nil
 }
 
-func (r *RecipeReconciler) startPutOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
+func (r *RecipeReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], Poller[generated.GenericResourcesClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	if recipe.Status.Resource != "" {
-		logger.Info("Resource is already created.")
-		return nil, nil
+
+	resourceID := recipe.Status.Scope + "/providers/" + recipe.Spec.Type + "/" + recipe.Name
+	if recipe.Status.Resource != "" && !strings.EqualFold(recipe.Status.Resource, resourceID) {
+		// If we get here it means that the environment or application changed, so we should delete
+		// the old resource and create a new one.
+		logger.Info("Resource is already created but is out-of-date")
+
+		logger.Info("Starting DELETE operation.")
+		poller, err := deleteResource(ctx, r.Radius, recipe.Status.Resource)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return nil, poller, err
+	} else if recipe.Status.Resource != "" {
+		logger.Info("Resource is already created and is up-to-date.")
+		return nil, nil, nil
 	}
 
 	logger.Info("Starting PUT operation.")
@@ -362,8 +396,12 @@ func (r *RecipeReconciler) startPutOperationIfNeeded(ctx context.Context, recipe
 		"resourceProvisioning": "recipe",
 	}
 
-	resourceID := recipe.Status.Scope + "/providers/" + recipe.Spec.Type + "/" + recipe.Name
-	return createOrUpdateResource(ctx, r.Radius, resourceID, properties)
+	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return poller, nil, nil
 }
 
 func (r *RecipeReconciler) startDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
@@ -377,7 +415,7 @@ func (r *RecipeReconciler) startDeleteOperationIfNeeded(ctx context.Context, rec
 	return deleteResource(ctx, r.Radius, recipe.Status.Resource)
 }
 
-func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1alpha3.Recipe, poller Poller[generated.GenericResourcesClientCreateOrUpdateResponse]) error {
+func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1alpha3.Recipe) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// If the secret name changed, delete the old secret.

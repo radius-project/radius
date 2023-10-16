@@ -54,7 +54,9 @@ type deploymentAnnotations struct {
 
 // deploymentConfiguration is the configuration of the Deployment provided by the user via annotations.
 type deploymentConfiguration struct {
-	Connections map[string]string
+	Application string            `json:"application,omitempty"`
+	Environment string            `json:"environment,omitempty"`
+	Connections map[string]string `json:"connections,omitempty"`
 }
 
 func (c *deploymentConfiguration) computeHash() (string, error) {
@@ -107,7 +109,11 @@ func readAnnotations(deployment *appsv1.Deployment) (*deploymentAnnotations, err
 		return &result, nil
 	}
 
-	result.Configuration = &deploymentConfiguration{Connections: map[string]string{}}
+	result.Configuration = &deploymentConfiguration{
+		Environment: deployment.Annotations[AnnotationRadiusEnvironment],
+		Application: deployment.Annotations[AnnotationRadiusApplication],
+		Connections: map[string]string{},
+	}
 
 	for k, v := range deployment.Annotations {
 		if strings.HasPrefix(k, AnnotationRadiusConnectionPrefix) {
