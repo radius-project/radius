@@ -17,6 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"fmt"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -25,11 +27,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func createEnvironment(radius *mockRadiusClient) {
+func createEnvironment(radius *mockRadiusClient, name string) {
+	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", name, name)
 	radius.Update(func() {
-		radius.environments["/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"] = v20231001preview.EnvironmentResource{
-			ID:       to.Ptr("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-			Name:     to.Ptr("default"),
+		radius.environments[id] = v20231001preview.EnvironmentResource{
+			ID:       to.Ptr(id),
+			Name:     to.Ptr(name),
 			Location: to.Ptr(v1.LocationGlobal),
 		}
 	})

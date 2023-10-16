@@ -101,7 +101,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius)
+	createEnvironment(radius, "default")
 
 	// Deployment will be waiting for container to complete deployment.
 	annotations := waitForStateUpdating(t, client, name)
@@ -115,6 +115,77 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 	require.NoError(t, err)
 	require.Equal(t, "manual", string(*container.Properties.ResourceProvisioning))
 	require.Equal(t, []*v20231001preview.ResourceReference{{ID: to.Ptr("/planes/kubernetes/local/namespaces/deployment-enabled-deleted/providers/apps/Deployment/" + deployment.Name)}}, container.Properties.Resources)
+
+	err = client.Delete(ctx, deployment)
+	require.NoError(t, err)
+
+	// Deletion of the container is in progress.
+	annotations = waitForStateDeleting(t, client, name)
+	radius.CompleteOperation(annotations.Status.Operation.ResumeToken, nil)
+
+	// Now deleting of the deployment object can complete.
+	waitForDeploymentDeleted(t, client, name)
+}
+
+func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
+	ctx := testcontext.New(t)
+	radius, client := SetupDeploymentTest(t)
+
+	name := types.NamespacedName{Namespace: "deployment-change-envapp", Name: "test-deployment-change-envapp"}
+	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	require.NoError(t, err)
+
+	deployment := makeDeployment(name)
+	deployment.Annotations[AnnotationRadiusEnabled] = "true"
+	err = client.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	// Deployment will be waiting for environment to be created.
+	createEnvironment(radius, "default")
+
+	// Deployment will be waiting for container to complete deployment.
+	annotations := waitForStateUpdating(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default-deployment-change-envapp", annotations.Status.Scope)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default", annotations.Status.Environment)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default-deployment-change-envapp/providers/Applications.Core/applications/deployment-change-envapp", annotations.Status.Application)
+	radius.CompleteOperation(annotations.Status.Operation.ResumeToken, nil)
+
+	// Deployment will update after operation completes
+	annotations = waitForStateReady(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/default-deployment-change-envapp/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
+
+	createEnvironment(radius, "new-environment")
+
+	// Now update the deployment to change the environment and application.
+	err = client.Get(ctx, name, deployment)
+	require.NoError(t, err)
+
+	deployment.Annotations[AnnotationRadiusEnvironment] = "new-environment"
+	deployment.Annotations[AnnotationRadiusApplication] = "new-application"
+
+	err = client.Update(ctx, deployment)
+	require.NoError(t, err)
+
+	// Now the deployment will delete and re-create the resource.
+
+	// Deletion of the container is in progress.
+	annotations = waitForStateDeleting(t, client, name)
+	radius.CompleteOperation(annotations.Status.Operation.ResumeToken, nil)
+
+	// Resource should be gone.
+	_, err = radius.Containers(annotations.Status.Scope).Get(ctx, name.Name, nil)
+	require.Error(t, err)
+
+	// Recipe will be waiting for extender to complete provisioning.
+	annotations = waitForStateUpdating(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application", annotations.Status.Scope)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment/providers/Applications.Core/environments/new-environment", annotations.Status.Environment)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/applications/new-application", annotations.Status.Application)
+	radius.CompleteOperation(annotations.Status.Operation.ResumeToken, nil)
+
+	// Recipe will update after operation completes
+	annotations = waitForStateReady(t, client, name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
 
 	err = client.Delete(ctx, deployment)
 	require.NoError(t, err)
@@ -144,7 +215,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenRadiusDisabled(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius)
+	createEnvironment(radius, "default")
 
 	// Deployment will be waiting for container to complete deployment.
 	annotations := waitForStateUpdating(t, client, name)
@@ -199,7 +270,7 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	require.NoError(t, err)
 
 	// Deployment will be waiting for environment to be created.
-	createEnvironment(radius)
+	createEnvironment(radius, "default")
 
 	// Deployment will be waiting for recipe resources to be created
 	_ = waitForStateWaiting(t, client, name)
