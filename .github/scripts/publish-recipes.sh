@@ -65,5 +65,5 @@ do
 
     echo "Publishing $RECIPE to $PUBLISH_REF"
     echo "- $PUBLISH_REF" >> $GITHUB_STEP_SUMMARY
-    rad bicep publish $RECIPE --target "br:$PUBLISH_REF"
+    rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
 done
