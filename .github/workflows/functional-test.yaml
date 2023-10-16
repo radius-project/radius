@@ -50,9 +50,9 @@ env:
   AZURE_KEYVAULT_CSI_DRIVER_VER: '1.4.2'
   # Azure workload identity webhook chart version
   AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER: '1.1.0'
-  # Container registry for storing test images and recipes
-  CACHE_REGISTRY: ghcr.io/radius-project/dev
-  # Container registry for storing recipe artifacts
+  # Container registry for storing container images
+  CONTAINER_REGISTRY: ghcr.io/radius-project/dev
+  # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
@@ -71,15 +71,12 @@ env:
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
 
-  # GitHub Actor for pushing images to GHCR
-  GHCR_ACTOR: rad-ci-bot
 jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
     env:
-      # TODO_LAUNCH: this points to ACR. need to change to GHCR
-      DE_IMAGE: 'radius.azurecr.io/deployment-engine'
+      DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
@@ -189,28 +186,22 @@ jobs:
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
-            * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
+            * Bicep recipe location `${{ env.CONTAINER_REGISTRY}}/test/functional/shared/recipes/<name>:${{ env.REL_VERSION }}`
             * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
-            * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
-            * controller test image location: `${{ env.CACHE_REGISTRY }}/controller:${{ env.REL_VERSION }}`
-            * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
+            * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ env.REL_VERSION }}`
+            * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ env.REL_VERSION }}`
+            * ucp test image location: `${{ env.CONTAINER_REGISTRY }}/ucpd:${{ env.REL_VERSION }}`
             * deployment-engine test image location: `${{ env.DE_IMAGE }}:${{ env.DE_TAG }}`
 
             </details>
             
             ## Test Status
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ env.GHCR_ACTOR }}
-          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: env.PR_NUMBER != ''
         continue-on-error: true
@@ -224,7 +215,7 @@ jobs:
         run: |
           make build && make docker-build && make docker-push
         env:
-          DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
@@ -268,7 +259,7 @@ jobs:
         run: |
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          CONTAINER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           RAD_BICEP_PATH: dist
       - uses: marocchino/sticky-pull-request-comment@v2
@@ -432,8 +423,8 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ env.GHCR_ACTOR }}
-          password: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Download Bicep
         run: |
           chmod +x ./bin/rad
@@ -461,7 +452,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CACHE_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }},de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes
@@ -516,7 +507,7 @@ jobs:
 
           make test-functional-${{ matrix.name }}
         env:
-          DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
@@ -525,7 +516,7 @@ jobs:
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          CONTAINER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
       - uses: azure/setup-kubectl@v3
         if: always()

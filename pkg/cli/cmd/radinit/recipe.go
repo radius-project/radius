@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	DevRecipesRegistry = "radius.azurecr.io"
+	DevRecipesRegistry = "ghcr.io/radius-project"
 )
 
 //go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
@@ -73,7 +73,7 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
-	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
+	// Ex: ghcr.io/radius-project/recipes/local-dev/rediscaches:0.20
 	// The start parameter is set to "radius-rp" because our recipes are after that repository.
 	err = reg.Repositories(ctx, "radius-rp", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.

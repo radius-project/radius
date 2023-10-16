@@ -25,7 +25,7 @@
       }
     },
     "container": {
-      "image": "radius.azurecr.io/webapptutorial-todoapp",
+      "image": "ghcr.io/radius-project/webapptutorial-todoapp",
       "livenessProbe": {
         "kind": "tcp",
         "failureThreshold": 5,

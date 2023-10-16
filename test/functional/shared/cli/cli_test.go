@@ -63,7 +63,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	templateKind := "bicep"
 	resourceType := "Applications.Datastores/mongoDatabases"
 	file := "testdata/corerp-redis-recipe.bicep"
-	target := fmt.Sprintf("br:radiusdev.azurecr.io/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
+	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
 		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType)
@@ -87,7 +87,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 	t.Run("Validate rad recipe show", func(t *testing.T) {
 		showRecipeName := "mongodbtest"
-		showRecipeTemplate := "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+		showRecipeTemplate := "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
 		showRecipeResourceType := "Applications.Datastores/mongoDatabases"
 		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeResourceType)
 		require.NoError(t, err)
@@ -588,8 +588,8 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	registry, _ := functional.SetDefault()
 	parameterFilePath := functional.WriteBicepParameterFile(t, map[string]any{"registry": registry})
 
-	// corerp-kubernetes-cli-parameters.parameters.json uses radiusdev.azurecr.io as a registry parameter.
-	// Use the specified tag only if the test uses radiusdev.azurecr.io registry. Otherwise, use latest tag.
+	// corerp-kubernetes-cli-parameters.parameters.json uses ghcr.io/radius-project/dev as a registry parameter.
+	// Use the specified tag only if the test uses ghcr.io/radius-project/dev registry. Otherwise, use latest tag.
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
 		{
