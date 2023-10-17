@@ -568,11 +568,11 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Update summary if success
-        if: success()&& env.PR_NUMBER != ''
+        if: success() && env.PR_NUMBER != ''
         run: |
             echo '### Functional Tests for ${{ github.sha }}": Passed ✅' >> $GITHUB_STEP_SUMMARY
       - name: Update summary if failure
-        if: success()&& env.PR_NUMBER != ''
+        if: failure() && env.PR_NUMBER != ''
         run: |
             echo '### Functional Tests for ${{ github.sha }}": Failed ❌' >> $GITHUB_STEP_SUMMARY
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
