@@ -44,7 +44,7 @@ env:
   GHCR_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
-  CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/radius-project/dev' || 'ghcr.io/radius-project/radius' }}
+  CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/radius-project/dev' || 'ghcr.io/radius-project' }}
 
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
@@ -127,7 +127,6 @@ jobs:
         with:
           name: rad_cli_release
           path: ${{ env.RELEASE_PATH }}
-      # TOOD_LAUNCH: Remove this step when we opensource the repo - https://github.com/radius-project/radius/issues/5892
       - name: Upload CLI binary
         uses: actions/upload-artifact@v3
         with:
