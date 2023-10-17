@@ -71,7 +71,7 @@ For more information on Bicep modules visit https://learn.microsoft.com/azure/az
 		`,
 		Example: `
 # Publish a Bicep file to an Azure container registry
-rad bicep publish --file ./redis-test.bicep --target br:myregistry.azurecr.io/redis-test:v1
+rad bicep publish --file ./redis-test.bicep --target br:ghcr.io/myregistry/redis-test:v1
 		`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),

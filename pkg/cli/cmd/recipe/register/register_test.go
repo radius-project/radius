@@ -138,7 +138,7 @@ func Test_Run(t *testing.T) {
 			ds_ctrl.MongoDatabasesResourceType: {
 				"cosmosDB": &v20231001preview.BicepRecipeProperties{
 					TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+					TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 				},
 			},
 		}
@@ -200,7 +200,7 @@ func Test_Run(t *testing.T) {
 		testRecipes := map[string]map[string]v20231001preview.RecipePropertiesClassification{
 			ds_ctrl.MongoDatabasesResourceType: {
 				"cosmosDB": &v20231001preview.BicepRecipeProperties{
-					TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+					TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 				},
 			},
 		}
@@ -243,7 +243,7 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplatePath:      "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 			ResourceType:      ds_ctrl.MongoDatabasesResourceType,
 			RecipeName:        "cosmosDB_new",
 		}
@@ -270,7 +270,7 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplatePath:      "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 			ResourceType:      ds_ctrl.MongoDatabasesResourceType,
 			RecipeName:        "cosmosDB_new",
 		}
@@ -288,7 +288,7 @@ func Test_Run(t *testing.T) {
 				ds_ctrl.MongoDatabasesResourceType: {
 					"cosmosDB": &v20231001preview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						Parameters:   map[string]any{"throughput": 400},
 					},
 				},
@@ -323,7 +323,7 @@ func Test_Run(t *testing.T) {
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 			TemplateKind:      recipes.TemplateKindBicep,
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
+			TemplatePath:      "ghcr.io/testpublicrecipe/bicep/modules/rediscaches:v1",
 			ResourceType:      ds_ctrl.RedisCachesResourceType,
 			RecipeName:        "redis",
 			Parameters:        map[string]map[string]any{},
@@ -351,7 +351,7 @@ func Test_Run(t *testing.T) {
 				ds_ctrl.MongoDatabasesResourceType: {
 					"cosmosDB": &v20231001preview.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 					},
 				},
 			},
@@ -379,7 +379,7 @@ func Test_Run(t *testing.T) {
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 			TemplateKind:      recipes.TemplateKindBicep,
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplatePath:      "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 			ResourceType:      ds_ctrl.MongoDatabasesResourceType,
 			RecipeName:        "cosmosDB_no_namespace",
 		}
@@ -431,7 +431,7 @@ func Test_Run(t *testing.T) {
 			Output:            outputSink,
 			Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 			TemplateKind:      recipes.TemplateKindBicep,
-			TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/rediscaches:v1",
+			TemplatePath:      "ghcr.io/testpublicrecipe/bicep/modules/rediscaches:v1",
 			ResourceType:      ds_ctrl.RedisCachesResourceType,
 			RecipeName:        "redis",
 		}

@@ -20,7 +20,7 @@
       "Applications.Datastores/mongoDatabases":{
         "cosmos-recipe": {
           "templateKind": "bicep",
-          "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
+          "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/mongodatabases",
           "parameters":{
             "throughput": 400
           }
@@ -38,7 +38,7 @@
       "Applications.Datastores/redisCaches":{
         "redis-recipe": {
           "templateKind": "bicep",
-          "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscaches"
+          "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscaches"
         }
       },
       "Applications.Dapr/stateStores":{

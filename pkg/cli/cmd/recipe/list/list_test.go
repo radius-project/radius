@@ -89,7 +89,7 @@ func Test_Run(t *testing.T) {
 					ds_ctrl.MongoDatabasesResourceType: {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						},
 						"cosmosDB-terraform": &v20231001preview.TerraformRecipeProperties{
 							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
@@ -105,7 +105,7 @@ func Test_Run(t *testing.T) {
 				Name:         "cosmosDB",
 				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
-				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 			},
 			{
 				Name:            "cosmosDB-terraform",

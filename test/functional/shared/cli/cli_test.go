@@ -59,7 +59,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	// for AWS test and has the AWS scope which the environment created in this does not.
 	envName := test.Steps[0].RPResources.Resources[0].Name
 	recipeName := "recipeName"
-	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
+	recipeTemplate := "ghcr.io/testpublicrecipe/bicep/modules/testTemplate:v1"
 	templateKind := "bicep"
 	resourceType := "Applications.Datastores/mongoDatabases"
 	file := "testdata/corerp-redis-recipe.bicep"
