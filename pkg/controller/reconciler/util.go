@@ -163,7 +163,17 @@ func deleteResource(ctx context.Context, radius RadiusClient, resourceID string)
 		return nil, err
 	}
 
-	return poller, nil
+	if !poller.Done() {
+		return poller, nil
+	}
+
+	// Handle synchronous completion
+	_, err = poller.Result(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func createOrUpdateResource(ctx context.Context, radius RadiusClient, resourceID string, properties map[string]any) (Poller[generated.GenericResourcesClientCreateOrUpdateResponse], error) {
@@ -185,7 +195,17 @@ func createOrUpdateResource(ctx context.Context, radius RadiusClient, resourceID
 		return nil, err
 	}
 
-	return poller, nil
+	if !poller.Done() {
+		return poller, nil
+	}
+
+	// Handle synchronous completion
+	_, err = poller.Result(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func fetchResource(ctx context.Context, radius RadiusClient, resourceID string) (generated.GenericResourcesClientGetResponse, error) {
@@ -214,7 +234,17 @@ func deleteContainer(ctx context.Context, radius RadiusClient, containerID strin
 		return nil, err
 	}
 
-	return poller, nil
+	if !poller.Done() {
+		return poller, nil
+	}
+
+	// Handle synchronous completion
+	_, err = poller.Result(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func createOrUpdateContainer(ctx context.Context, radius RadiusClient, containerID string, properties *corerpv20231001preview.ContainerProperties) (Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
@@ -236,5 +266,15 @@ func createOrUpdateContainer(ctx context.Context, radius RadiusClient, container
 		return nil, err
 	}
 
-	return poller, nil
+	if !poller.Done() {
+		return poller, nil
+	}
+
+	// Handle synchronous completion
+	_, err = poller.Result(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
