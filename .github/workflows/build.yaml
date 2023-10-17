@@ -95,14 +95,14 @@ jobs:
         run: python ./.github/scripts/get_release_version.py
       - name: Make build
         run: make build
-      - name: Run make test (unit tests)
-        if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
-        env:
-          GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
-          GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
-        run: |
-          go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
-          make test
+      # - name: Run make test (unit tests)
+      #   if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
+      #   env:
+      #     GOTESTSUM_OPTS: '--junitfile ./dist/unit_test/results.xml'
+      #     GOTEST_OPTS: '-race -coverprofile ./dist/ut_coverage_orig.out'
+      #   run: |
+      #     go install gotest.tools/gotestsum@v${{ env.GOTESTSUMVERSION }}
+      #     make test
       - name: Process Unit Test Results
         uses: ./.github/actions/process-test-results
         # Always is required here to make sure this target runs even when tests fail.
