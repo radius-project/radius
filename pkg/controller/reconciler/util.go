@@ -41,7 +41,9 @@ func resolveDependencies(ctx context.Context, radius RadiusClient, scope string,
 
 	environmentID = *found
 
-	resourceGroupID = fmt.Sprintf("/planes/radius/local/resourceGroups/%s-%s", environmentName, applicationName)
+	// NOTE: using resource groups with lowercase here is a workaround for a casing bug in `rad app graph`.
+	// When https://github.com/radius-project/radius/issues/6422 is fixed we can use the more correct casing.
+	resourceGroupID = fmt.Sprintf("/planes/radius/local/resourcegroups/%s-%s", environmentName, applicationName)
 	err = createResourceGroupIfNotExists(ctx, radius, resourceGroupID)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to create resource group: %w", err)
