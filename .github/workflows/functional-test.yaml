@@ -294,7 +294,7 @@ jobs:
         name: [ucp,shared,msgrp,daprrp,samples]
         include:
           # datastorerp functional tests need the larger VM.
-          - os: ubuntu-latest
+          - os: ubuntu-latest-m
             name: datastoresrp
     runs-on: ${{ matrix.os }}
     env:
