@@ -22,7 +22,7 @@ This is an early release of Radius which enables the community to learn about an
 ## Getting started
 
 1. Follow the [getting started guide](https://docs.radapp.dev/getting-started/) to install and try out Radius
-1. Visit the [Tutorials](https://docs.radapp.dev/tutorials) and [User Guides](https://docs.radapp.dev/guides) to get up and running with Radius.
+1. Visit the [Tutorials](https://docs.radapp.dev/tutorials) and [User Guides](https://docs.radapp.dev/guides) to learn more about Radius and start radifying your apps
 
 ## Getting help
 
