@@ -69,7 +69,6 @@ runAsRoot() {
     local CMD="$*"
 
     if [ $EUID -ne 0 -a $USE_SUDO = "true" ]; then
-        echo "Additional permission needed. Please enter your sudo password if prompted..."
         CMD="sudo $CMD"
     fi
 
@@ -90,10 +89,10 @@ checkHttpRequestCLI() {
 checkExistingRadius() {
     if [ -f "$RADIUS_CLI_FILE" ]; then
         version=$($RADIUS_CLI_FILE version --cli)
-        echo -e "Radius CLI is detected. Current version: ${version}"
-        echo -e "Reinstalling Radius CLI - ${RADIUS_CLI_FILE}...\n"
+        echo "\nRadius CLI is detected. Current version: ${version}"
+        echo "Reinstalling Radius CLI - ${RADIUS_CLI_FILE}...\n"
     else
-        echo -e "Installing Radius CLI...\n"
+        echo "Installing Radius CLI...\n"
     fi
 }
 
@@ -171,8 +170,9 @@ installFile() {
     chmod o+x $tmp_root_radius_cli
     mkdir -p $RADIUS_INSTALL_DIR
     runAsRoot cp "$tmp_root_radius_cli" "$RADIUS_INSTALL_DIR"
+    runAsRoot mv "${RADIUS_INSTALL_DIR}/${RADIUS_CLI_ARTIFACT}" "${RADIUS_INSTALL_DIR}/${RADIUS_CLI_FILENAME}"
 
-    if [ -f "$RADIUS_CLI_ARTIFACT" ]; then
+    if [ -f "$RADIUS_CLI_FILE" ]; then
         echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully."
 
         echo "Installing rad-bicep (\"rad bicep download\")..."
@@ -185,7 +185,7 @@ installFile() {
            exit 1
         fi
 
-        $RADIUS_CLI_FILE --version
+        # TODO: $RADIUS_CLI_FILE --version
     else 
         echo "Failed to install $RADIUS_CLI_FILENAME"
         exit 1
@@ -209,7 +209,7 @@ cleanup() {
 }
 
 installCompleted() {
-    echo -e "\nTo get started with Radius, please visit https://radapp.dev/getting-started/"
+    echo "\nTo get started with Radius, please visit https://radapp.dev/getting-started/"
 }
 
 # -----------------------------------------------------------------------------
