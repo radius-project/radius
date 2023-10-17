@@ -97,15 +97,15 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-without-secret", status.Scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-without-secret", status.Scope)
 	require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default", status.Environment)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-without-secret/providers/Applications.Core/applications/recipe-without-secret", status.Application)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-without-secret/providers/Applications.Core/applications/recipe-without-secret", status.Application)
 
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Recipe will update after operation completes
 	status = waitForRecipeStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-without-secret/providers/Applications.Core/extenders/test-recipe-withoutsecret", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-without-secret/providers/Applications.Core/extenders/test-recipe-withoutsecret", status.Resource)
 
 	extender, err := radius.Resources(status.Scope, "Applications.Core/extenders").Get(ctx, name.Name)
 	require.NoError(t, err)
@@ -139,15 +139,15 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status := waitForRecipeStateUpdating(t, client, name, nil)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-change-envapp", status.Scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-change-envapp", status.Scope)
 	require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default", status.Environment)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-change-envapp/providers/Applications.Core/applications/recipe-change-envapp", status.Application)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-change-envapp/providers/Applications.Core/applications/recipe-change-envapp", status.Application)
 
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Recipe will update after operation completes
 	status = waitForRecipeStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-recipe-change-envapp/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-recipe-change-envapp/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
 
 	createEnvironment(radius, "new-environment")
 
@@ -173,14 +173,14 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 
 	// Recipe will be waiting for extender to complete provisioning.
 	status = waitForRecipeStateUpdating(t, client, name, nil)
-	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application", status.Scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application", status.Scope)
 	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment/providers/Applications.Core/environments/new-environment", status.Environment)
-	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/applications/new-application", status.Application)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application/providers/Applications.Core/applications/new-application", status.Application)
 	radius.CompleteOperation(status.Operation.ResumeToken, nil)
 
 	// Recipe will update after operation completes
 	status = waitForRecipeStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application/providers/Applications.Core/extenders/test-recipe-change-envapp", status.Resource)
 
 	// Now delete the recipe.
 	err = client.Delete(ctx, recipe)
