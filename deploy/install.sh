@@ -19,11 +19,15 @@
 # Radius CLI location
 : ${RADIUS_INSTALL_DIR:="/usr/local/bin"}
 
-# sudo is required to copy binary to RADIUS_INSTALL_DIR for linux and M1 macs
+# sudo is required to copy binary to RADIUS_INSTALL_DIR for linux
 : ${USE_SUDO:="false"}
 
 # Http request CLI
 RADIUS_HTTP_REQUEST_CLI=curl
+
+# GitHub Organization and repo name to download release
+GITHUB_ORG=radius-project
+GITHUB_REPO=radius
 
 # Radius CLI filename
 RADIUS_CLI_FILENAME=rad
@@ -40,20 +44,14 @@ getSystemInfo() {
 
     OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
 
-    if [ "$OS" == "darwin" ]; then
-        OS="macos"
-    fi
-
     # Most linux distro needs root permission to copy the file to /usr/local/bin
-    # Also, for M1 macs, we also need sudo permission for /usr/local/bin
-    if [[ ("$OS" == "linux" || ( "$OS" == "macos" && ( "$ARCH" == "arm" || "$ARCH" == "arm64" ))) && "$RADIUS_INSTALL_DIR" == "/usr/local/bin"  ]];
-    then
+    if [[ "$OS" == "linux" || "$OS" == "darwin" ]] && [ "$RADIUS_INSTALL_DIR" == "/usr/local/bin" ]; then
         USE_SUDO="true"
     fi
 }
 
 verifySupported() {
-    local supported=(macos-x64 macos-arm64 linux-x64 linux-arm linux-arm64)
+    local supported=(darwin-arm64 darwin-amd64 macos-x64 macos-arm64 linux-x64 linux-arm linux-arm64)
     local current_osarch="${OS}-${ARCH}"
 
     for osarch in "${supported[@]}"; do
@@ -92,7 +90,7 @@ checkHttpRequestCLI() {
 checkExistingRadius() {
     if [ -f "$RADIUS_CLI_FILE" ]; then
         version=$($RADIUS_CLI_FILE version --cli)
-        echo -e "\nRadius CLI is detected. Current version: ${version}"
+        echo -e "Radius CLI is detected. Current version: ${version}"
         echo -e "Reinstalling Radius CLI - ${RADIUS_CLI_FILE}...\n"
     else
         echo -e "Installing Radius CLI...\n"
@@ -100,13 +98,13 @@ checkExistingRadius() {
 }
 
 getLatestRelease() {
-    local releaseUrl="https://get.radapp.dev/version/stable.txt"
+    local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
     local latest_release=""
 
     if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
-        latest_release=$(curl -s $releaseUrl)
+        latest_release=$(curl -s $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
     else
-        latest_release=$(wget -q -O - $releaseUrl)
+        latest_release=$(wget -q --header="Accept: application/json" -O - $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
     fi
 
     ret_val=$latest_release
@@ -115,29 +113,15 @@ getLatestRelease() {
 downloadFile() {
     LATEST_RELEASE_TAG=$1
 
-    OS_ARCH="${OS}-${ARCH}"
-    RADIUS_CLI_ARTIFACT="rad"
-    DOWNLOAD_BASE="https://get.radapp.dev/tools/rad"
-    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${OS_ARCH}/${RADIUS_CLI_ARTIFACT}"
+    RADIUS_CLI_ARTIFACT="${RADIUS_CLI_FILENAME}_${OS}_${ARCH}"
+    DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
+    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${RADIUS_CLI_ARTIFACT}"
 
     # Create the temp directory
-    RADIUS_TMP_ROOT=$(mktemp -dt Radius-install-XXXXXX)
+    RADIUS_TMP_ROOT=$(mktemp -dt radius-install-XXXXXX)
     ARTIFACT_TMP_FILE="$RADIUS_TMP_ROOT/$RADIUS_CLI_ARTIFACT"
 
-    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
-        if ! curl --output /dev/null --silent --head --fail "$DOWNLOAD_URL"; then
-            echo "ERROR: The specified release version: $LATEST_RELEASE_TAG does not exist."
-            exit 1
-        fi
-    else
-        if ! wget --spider "$DOWNLOAD_URL" 2>/dev/null; then
-            echo "ERROR: The specified release version: $LATEST_RELEASE_TAG does not exist."
-            exit 1
-        fi
-    fi
-
-
-    echo "Downloading ${DOWNLOAD_URL}..."
+    echo "Downloading $DOWNLOAD_URL ..."
     if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
         curl -SsL "$DOWNLOAD_URL" -o "$ARTIFACT_TMP_FILE"
     else
@@ -145,25 +129,52 @@ downloadFile() {
     fi
 
     if [ ! -f "$ARTIFACT_TMP_FILE" ]; then
-        echo "failed to download ${DOWNLOAD_URL}..."
+        echo "failed to download $DOWNLOAD_URL ..."
         exit 1
     fi
 }
 
-installFile() {
-    local tmp_root_Radius_cli="$RADIUS_TMP_ROOT/$RADIUS_CLI_FILENAME"
+isReleaseAvailable() {
+    LATEST_RELEASE_TAG=$1
 
-    if [ ! -f "$tmp_root_Radius_cli" ]; then
-        echo "Failed to download Radius CLI executable."
+    RADIUS_CLI_ARTIFACT="${RADIUS_CLI_FILENAME}_${OS}_${ARCH}"
+    DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
+    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${RADIUS_CLI_ARTIFACT}"
+
+    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
+        httpstatus=$(curl -sSLI -o /dev/null -w "%{http_code}" "$DOWNLOAD_URL")
+        if [ "$httpstatus" == "200" ]; then
+            return 0
+        fi
+    else
+        wget -q --spider "$DOWNLOAD_URL"
+        exitstatus=$?
+        if [ $exitstatus -eq 0 ]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+installFile() {
+    RADIUS_CLI_ARTIFACT="${RADIUS_CLI_FILENAME}_${OS}_${ARCH}"
+    local tmp_root_radius_cli="$RADIUS_TMP_ROOT/$RADIUS_CLI_ARTIFACT"
+
+    if [ ! -f "$tmp_root_radius_cli" ]; then
+        echo "Failed to unpack Radius CLI executable."
         exit 1
     fi
 
-    chmod a+x $tmp_root_Radius_cli
-    runAsRoot cp "$tmp_root_Radius_cli" "$RADIUS_INSTALL_DIR"
-
     if [ -f "$RADIUS_CLI_FILE" ]; then
+        runAsRoot rm "$RADIUS_CLI_FILE"
+    fi
+    chmod o+x $tmp_root_radius_cli
+    mkdir -p $RADIUS_INSTALL_DIR
+    runAsRoot cp "$tmp_root_radius_cli" "$RADIUS_INSTALL_DIR"
+
+    if [ -f "$RADIUS_CLI_ARTIFACT" ]; then
         echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully."
-        
+
         echo "Installing rad-bicep (\"rad bicep download\")..."
         $RADIUS_CLI_FILE bicep download
         result=$?
@@ -174,7 +185,7 @@ installFile() {
            exit 1
         fi
 
-        # TODO: $RADIUS_CLI_FILE --version
+        $RADIUS_CLI_FILE --version
     else 
         echo "Failed to install $RADIUS_CLI_FILENAME"
         exit 1
@@ -207,18 +218,17 @@ installCompleted() {
 trap "fail_trap" EXIT
 
 getSystemInfo
-verifySupported
-checkExistingRadius
 checkHttpRequestCLI
-
 
 if [ -z "$1" ]; then
     echo "Getting the latest Radius CLI..."
     getLatestRelease
 else
-    ret_val=$1
-    echo "Getting the Radius CLI release version: $1..."
+    ret_val=v$1
 fi
+
+verifySupported $ret_val
+checkExistingRadius
 
 echo "Installing $ret_val Radius CLI..."
 
