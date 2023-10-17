@@ -29,8 +29,48 @@ $RadiusRoot = $RadiusRoot -replace ' ', '` '
 $RadiusCliFileName = "rad.exe"
 $RadiusCliFilePath = "${RadiusRoot}\${RadiusCliFileName}"
 $OsArch = "windows-x64"
-$BaseDownloadUrl = "https://get.radapp.dev/tools/rad"
-$StableVersionUrl = "https://get.radapp.dev/version/stable.txt"
+$GitHubOrg = "radius-project"
+$GitHubRepo = "radius"
+$GitHubReleaseJsonUrl = "https://api.github.com/repos/${GitHubOrg}/${GitHubRepo}/releases"
+
+function GetVersionInfo {
+    param (
+        [string]$Version,
+        $Releases
+    )
+    # Filter windows binary and download archive
+    if (!$Version) {
+        $release = $Releases | Where-Object { $_.tag_name -notlike "*rc*" } | Select-Object -First 1
+    }
+    else {
+        $release = $Releases | Where-Object { $_.tag_name -eq "v$Version" } | Select-Object -First 1
+    }
+
+    return $release
+}
+
+function GetWindowsAsset {
+    param (
+        $Release
+    )
+    $windowsAsset = $Release | Select-Object -ExpandProperty assets | Where-Object { $_.name -Like "*windows_amd64.exe" }
+    if (!$windowsAsset) {
+        throw "Cannot find the Windows rad CLI binary"
+    }
+    [hashtable]$return = @{}
+    $return.url = $windowsAsset.url
+    $return.name = $windowsAsset.name
+    return $return
+}
+
+# Set Github request authentication for basic authentication.
+if ($Env:GITHUB_USER) {
+    $basicAuth = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($Env:GITHUB_USER + ":" + $Env:GITHUB_TOKEN));
+    $githubHeader = @{"Authorization" = "Basic $basicAuth" }
+}
+else {
+    $githubHeader = @{}
+}
 
 if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPass') {
     Write-Output "PowerShell requires an execution policy of 'RemoteSigned'."
@@ -72,31 +112,47 @@ if (-Not (Test-Path $RadiusRoot -PathType Container)) {
     }
 }
 
-if ($Version -eq "") {
-    $Version = Invoke-WebRequest $StableVersionUrl -UseBasicParsing
-    $Version = $Version.Trim()
+# Get the list of releases from GitHub
+$releases = Invoke-RestMethod -Headers $githubHeader -Uri $GitHubReleaseJsonUrl -Method Get
+if ($releases.Count -eq 0) {
+    throw "No releases from github.com/${GitHubOrg}/${GitHubRepo}"
 }
-$urlParts = @(
-    $BaseDownloadUrl,
-    $Version,
-    $OsArch,
-    $RadiusCliFileName
-)
-$binaryUrl = $urlParts -join "/"
 
-$binaryFilePath = $RadiusRoot + "\" + $RadiusCliFileName
-Write-Output "Downloading $binaryUrl..."
+$release = GetVersionInfo -Version $Version -Releases $releases
+if (!$release) {
+    throw "Cannot find the specified rad CLI binary version"
+}
+$asset = GetWindowsAsset -Release $release
+$assetName = $asset.name
+$exeFileUrl = $asset.url
+$exeFilePath = $RadiusRoot + "\" + $assetName
 
+# Download rad CLI
 try {
+    Write-Output "Downloading $exeFileUrl..."
+    $githubHeader.Accept = "application/octet-stream"
+    $oldProgressPreference = $ProgressPreference
     $ProgressPreference = "SilentlyContinue" # Do not show progress bar
-    Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
-    if (!(Test-Path $binaryFilePath -PathType Leaf)) {
-        throw "Failed to download Radius Cli binary - $binaryFilePath"
-    }
+    Invoke-WebRequest -Headers $githubHeader -Uri $exeFileUrl -OutFile $exeFilePath
 }
 catch [Net.WebException] {
     throw "ERROR: The specified release version: $Version does not exist."
 }
+finally {
+    $ProgressPreference = $oldProgressPreference;
+}
+
+if (!(Test-Path $exeFilePath -PathType Leaf)) {
+    throw "Failed to download rad Cli binary - $exeFilePath"
+}
+
+# Remove old rad CLI if exists
+if (Test-Path $RadiusCliFilePath -PathType Leaf) {
+    Remove-Item -Recurse -Force $RadiusCliFilePath
+}
+
+# Rename the downloaded rad CLI binary
+Rename-Item -Path $exeFilePath -NewName $RadiusCliFileName -Force
 
 # Print the version string of the installed CLI
 Write-Output "rad CLI version: $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version")"
@@ -133,4 +189,4 @@ else {
     Write-Output "Bicep has been successfully installed"
 }
 
-Write-Output "`r`nTo get started with Radius, please visit https://docs.radapp.dev/getting-started/"
+Write-Output "`r`nTo get started with Radius, please visit https://docs.radapp.io/getting-started/"
