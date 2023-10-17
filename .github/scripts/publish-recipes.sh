@@ -28,7 +28,7 @@ RECIPE_VERSION=$3
 function print_usage() {
     echo "Usage: $0 <DIRECTORY> <REGISTRY_PATH> <RECIPE_VERSION>"
     echo ""
-    echo "  Publishes all recipes in the repository to the GitHub Container Registry. Requires you to be logged into GitHub."
+    echo "  Publishes all recipes in the repository to a container registry."
     echo ""
     echo "  DIRECTORY: Directory containing the recipes to publish. For example, ./test/functional/testdata/recipes"
     echo "  REGISTRY_PATH: Registry hostname and path prefix. For example, ghcr.io/radius-project/dev/test/recipes"

@@ -75,7 +75,7 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
 	// Ex: ghcr.io/radius-project/recipes/local-dev/rediscaches:0.20
 	// The start parameter is set to "radius-rp" because our recipes are after that repository.
-	err = reg.Repositories(ctx, "radius-rp", func(repos []string) error {
+	err = reg.Repositories(ctx, "", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.
 		validRepos := []string{}
 		for _, repo := range repos {
