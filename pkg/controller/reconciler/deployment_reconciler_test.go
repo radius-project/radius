@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
@@ -111,6 +112,12 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 	// Deployment will update after operation completes
 	annotations = waitForStateReady(t, client, name)
 
+	err = client.Get(ctx, name, deployment)
+	require.NoError(t, err)
+
+	// We should not have created a secret reference since there are no connections.
+	require.False(t, removeSecretReference(deployment, deployment.Name+"-connections"))
+
 	container, err := radius.Containers(annotations.Status.Scope).Get(ctx, deployment.Name, nil)
 	require.NoError(t, err)
 	require.Equal(t, "manual", string(*container.Properties.ResourceProvisioning))
@@ -145,14 +152,14 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 
 	// Deployment will be waiting for container to complete deployment.
 	annotations := waitForStateUpdating(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-deployment-change-envapp", annotations.Status.Scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-deployment-change-envapp", annotations.Status.Scope)
 	require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default", annotations.Status.Environment)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-deployment-change-envapp/providers/Applications.Core/applications/deployment-change-envapp", annotations.Status.Application)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-deployment-change-envapp/providers/Applications.Core/applications/deployment-change-envapp", annotations.Status.Application)
 	radius.CompleteOperation(annotations.Status.Operation.ResumeToken, nil)
 
 	// Deployment will update after operation completes
 	annotations = waitForStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/default-deployment-change-envapp/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
+	require.Equal(t, "/planes/radius/local/resourcegroups/default-deployment-change-envapp/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
 
 	createEnvironment(radius, "new-environment")
 
@@ -178,14 +185,14 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 
 	// Recipe will be waiting for extender to complete provisioning.
 	annotations = waitForStateUpdating(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application", annotations.Status.Scope)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application", annotations.Status.Scope)
 	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment/providers/Applications.Core/environments/new-environment", annotations.Status.Environment)
-	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/applications/new-application", annotations.Status.Application)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application/providers/Applications.Core/applications/new-application", annotations.Status.Application)
 	radius.CompleteOperation(annotations.Status.Operation.ResumeToken, nil)
 
 	// Recipe will update after operation completes
 	annotations = waitForStateReady(t, client, name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/new-environment-new-application/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
+	require.Equal(t, "/planes/radius/local/resourcegroups/new-environment-new-application/providers/Applications.Core/containers/test-deployment-change-envapp", annotations.Status.Container)
 
 	err = client.Delete(ctx, deployment)
 	require.NoError(t, err)
@@ -378,6 +385,10 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 
 	require.Equal(t, expectedEnvFrom, deployment.Spec.Template.Spec.Containers[0].EnvFrom)
 
+	// Deployment should have the hash of the secret data.
+	hash := deployment.Spec.Template.Annotations[kubernetes.AnnotationSecretHash]
+	require.NotEmpty(t, hash)
+
 	// Trigger a change by removing one of the connections.
 	err = client.Get(ctx, name, deployment)
 	require.NoError(t, err)
@@ -393,6 +404,9 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	// Deployment will update after operation completes
 	_ = waitForStateReady(t, client, name)
 
+	err = client.Get(ctx, name, deployment)
+	require.NoError(t, err)
+
 	// Secret should have been updated.
 	err = client.Get(ctx, secretName, &secret)
 	require.NoError(t, err)
@@ -405,6 +419,9 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 
 	// Secret should be mapped as env-vars
 	require.Equal(t, expectedEnvFrom, deployment.Spec.Template.Spec.Containers[0].EnvFrom)
+
+	// Deployment should have a DIFFERENT hash of the secret data.
+	require.NotEqual(t, hash, deployment.Spec.Template.Annotations[kubernetes.AnnotationSecretHash])
 
 	// Trigger cleanup by disabling Radius.
 	err = client.Get(ctx, name, deployment)

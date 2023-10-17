@@ -43,6 +43,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -487,6 +488,19 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 	// We store the connection values in a Kubernetes secret and then use the secret to populate environment variables.
 	secretName := client.ObjectKey{Namespace: deployment.Namespace, Name: fmt.Sprintf("%s-connections", deployment.Name)}
 
+	if len(annotations.Configuration.Connections) == 0 {
+		// No need for a secret if there are no connections.
+		removeSecretReference(deployment, fmt.Sprintf("%s-connections", deployment.Name))
+		delete(deployment.Spec.Template.ObjectMeta.Annotations, kubernetes.AnnotationSecretHash)
+
+		err := r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretName.Namespace, Name: secretName.Name}})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete secret %s: %w", secretName.Name, err)
+		}
+
+		return nil
+	}
+
 	// First retrieve the secret.
 	createSecret := false
 	secret := corev1.Secret{}
@@ -546,6 +560,14 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 		}
 	}
 
+	// Add the hash of the secret data to the Pod definition. This will force a rollout when the secrets
+	// change.
+	hash := kubernetes.HashSecretData(secret.Data)
+	if deployment.Spec.Template.ObjectMeta.Annotations == nil {
+		deployment.Spec.Template.ObjectMeta.Annotations = map[string]string{}
+	}
+	deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
+
 	addSecretReference(deployment, secretName.Name)
 
 	if createSecret {
@@ -566,6 +588,7 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 func (r *DeploymentReconciler) cleanupDeployment(ctx context.Context, deployment *appsv1.Deployment) error {
 	delete(deployment.Annotations, AnnotationRadiusStatus)
 	delete(deployment.Annotations, AnnotationRadiusConfigurationHash)
+	delete(deployment.Spec.Template.ObjectMeta.Annotations, kubernetes.AnnotationSecretHash)
 
 	secretName := client.ObjectKey{Namespace: deployment.Namespace, Name: fmt.Sprintf("%s-connections", deployment.Name)}
 	err := r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretName.Namespace, Name: secretName.Name}})
