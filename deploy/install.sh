@@ -173,7 +173,7 @@ installFile() {
     runAsRoot mv "${RADIUS_INSTALL_DIR}/${RADIUS_CLI_ARTIFACT}" "${RADIUS_INSTALL_DIR}/${RADIUS_CLI_FILENAME}"
 
     if [ -f "$RADIUS_CLI_FILE" ]; then
-        echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully."
+        echo "$RADIUS_CLI_FILENAME installed into $RADIUS_INSTALL_DIR successfully"
 
         echo "Installing rad-bicep (\"rad bicep download\")..."
         $RADIUS_CLI_FILE bicep download
@@ -209,7 +209,7 @@ cleanup() {
 }
 
 installCompleted() {
-    echo -e "\nTo get started with Radius, please visit https://radapp.io/getting-started/"
+    echo -e "\nTo get started with Radius, please visit https://docs.radapp.io/getting-started/"
 }
 
 # -----------------------------------------------------------------------------
