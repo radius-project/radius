@@ -34,7 +34,7 @@ type TestOptions struct {
 	K8sClient      *k8s.Clientset
 	K8sConfig      *rest.Config
 	DynamicClient  dynamic.Interface
-	Client         client.Client
+	Client         client.WithWatch
 }
 
 // NewTestOptions creates a TestOptions struct with the necessary clients and configs for testing.

@@ -84,6 +84,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 		CustomAction:     customAction,
 		ManagementClient: client,
 		AWSClient:        awsClient,
+		Connection:       connection,
 	}
 }
 
@@ -92,4 +93,7 @@ type RPTestOptions struct {
 	CustomAction     *clientv2.CustomActionClient
 	ManagementClient clients.ApplicationsManagementClient
 	AWSClient        aws.AWSCloudControlClient
+
+	// Connection gets access to the Radius connection which can be used to create API clients.
+	Connection sdk.Connection
 }
