@@ -121,6 +121,13 @@ func processRepositories(repos []string, tag string) map[string]map[string]corer
 	name := "default"
 
 	for _, repo := range repos {
+		// Skip dev environment recipes.
+		// dev repositories is in the form of ghcr.io/radius-project/dev/recipes/local-dev/secretstores:latest
+		// We should skip the dev repositories.
+		if isDevRepository(repo) {
+			continue
+		}
+
 		resourceType := getResourceTypeFromPath(repo)
 		// If the resource type is empty, it means we don't support the repository.
 		if resourceType == "" {
@@ -184,4 +191,9 @@ func getPortableResourceType(resourceType string) string {
 	default:
 		return ""
 	}
+}
+
+func isDevRepository(repo string) bool {
+	_, found := strings.CutPrefix(repo, "dev/")
+	return found
 }
