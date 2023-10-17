@@ -17,7 +17,7 @@ Key features of the Radius platform include:
 
 ## Release status
 
-This is the first public release of Radius, which enables the community to learn about and experiment with the platform.  Radius is not yet ready for production workloads.
+This is an early release of Radius which enables the community to learn about and experiment with the platform. Please let us know what you think and open Issues when you find bugs or want to request a new feature. Radius is not yet ready for production workloads.
 
 ## Getting started
 
