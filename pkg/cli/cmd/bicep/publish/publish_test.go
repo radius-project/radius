@@ -48,13 +48,13 @@ func TestRunner_extractDestination(t *testing.T) {
 		},
 		{
 			name:    "no tag",
-			target:  "test.azurecr.io/test/repo",
+			target:  "ghcr.io/test-registry/test/repo",
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name:    "no repo",
-			target:  "test.azurecr.io",
+			target:  "ghcr.io/test-registry",
 			want:    nil,
 			wantErr: true,
 		},
@@ -268,7 +268,7 @@ func TestRunner_Validate(t *testing.T) {
 				"--file",
 				"redis.recipe.bicep",
 				"--target",
-				"br:test.azurecr.io/test/repo:tag",
+				"br:ghcr.io/test-registry/test/repo:tag",
 			},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -281,7 +281,7 @@ func TestRunner_Validate(t *testing.T) {
 				"--file",
 				"redis.recipe.bicep",
 				"--target",
-				"test.azurecr.io/test/repo:tag",
+				"ghcr.io/test-registry/test/repo:tag",
 			},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{

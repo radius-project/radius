@@ -20,7 +20,7 @@
         "Applications.Dapr/pubsub":{
           "cosmos-recipe": {
             "templateKind": "bicep",
-            "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/pubsub"
+            "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/pubsub"
           }
         }
       }

@@ -62,7 +62,7 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 		recipeDefinition := recipes.EnvironmentDefinition{
 			Name:            *envInput.Name,
 			Parameters:      nil,
-			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			TemplatePath:    "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 			TemplateVersion: "",
 			Driver:          "bicep",
 			ResourceType:    *envInput.ResourceType,
@@ -234,7 +234,7 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 		recipeDefinition := recipes.EnvironmentDefinition{
 			Name:            *envInput.Name,
 			Parameters:      nil,
-			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			TemplatePath:    "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 			TemplateVersion: "",
 			Driver:          "bicep",
 			ResourceType:    *envInput.ResourceType,

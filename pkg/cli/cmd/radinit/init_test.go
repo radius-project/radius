@@ -595,7 +595,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				"Applications.Datastores/redisCaches": {
 					"default": &corerp.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("radiusdev.azurecr.io/redis:latest"),
+						TemplatePath: to.Ptr("ghcr.io/radius-project/dev/redis:latest"),
 					},
 				},
 			},

@@ -16,7 +16,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Datastores/mongoDatabases':{
         recipe1: {
           templateKind: 'bicep'
-          templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 
+          templatePath: 'ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1' 
         }
         recipe2: {
           templateKind: 'terraform'

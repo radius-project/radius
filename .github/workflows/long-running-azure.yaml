@@ -41,9 +41,9 @@ on:
   schedule:
     # Run every 2 hours
     - cron: "0 */2 * * *"
-  pull_request:
-    branches:
-      - main
+  # pull_request:
+  #   branches:
+  #     - main
     paths:
       - '.github/workflows/long-running-azure.yaml'
 
@@ -55,10 +55,10 @@ env:
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
   GOTESTSUM_VER: 1.10.0
 
-  # ACR for storing test images and recipes
-  CACHE_REGISTRY: radiusdev.azurecr.io
-  # Container registry for storing recipe artifacts
-  BICEP_RECIPE_REGISTRY: radiusdev.azurecr.io
+  # Container registry for storing container images
+  CONTAINER_REGISTRY: ghcr.io/radius-project/dev
+  # Container registry for storing Bicep recipe artifacts
+  BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
   # The Azure Location to store test resources
@@ -178,11 +178,11 @@ jobs:
           <summary> Click here to see the list of tools in the current test run</summary>
 
           * gotestsum ${{ env.GOTESTSUM_VER }}
-          * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY}}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * Bicep recipe location `${{ env.BICEP_RECIPE_REGISTRY }}/test/functional/shared/recipes/<name>:${{ steps.gen-id.outputs.REL_VERSION }}`
           * Terraform recipe location `${{ env.TF_RECIPE_MODULE_SERVER_URL }}/<name>.zip` (in cluster)
-          * applications-rp test image location: `${{ env.CACHE_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
-          * controller test image location: `${{ env.CACHE_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`
-          * ucp test image location: `${{ env.CACHE_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * applications-rp test image location: `${{ env.CONTAINER_REGISTRY }}/applications-rp:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * controller test image location: `${{ env.CONTAINER_REGISTRY }}/controller:${{ steps.gen-id.outputs.REL_VERSION }}`
+          * ucp test image location: `${{ env.CONTAINER_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
 
           </details>
           
@@ -197,16 +197,18 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
-      - name: Login ACR - ${{ env.CACHE_REGISTRY }}
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
-        run: |
-          az acr login -n ${{ env.CACHE_REGISTRY }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push container images
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
         run: |
           make build && make docker-build && make docker-push
         env:
-          DOCKER_REGISTRY: ${{ env.CACHE_REGISTRY }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
@@ -230,17 +232,11 @@ jobs:
         continue-on-error: true
         run: |
           echo ":hourglass: Publishing Bicep Recipes for functional tests..." >> $GITHUB_STEP_SUMMARY
-      - name: Download rad-bicep
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
-        run: |
-          mkdir -p dist
-          ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/edge/linux-x64/rad-bicep --output dist/rad-bicep
-          chmod +x dist/rad-bicep
       - name: Move the latest binaries to cache
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
           mkdir -p ./dist/cache
-          mv ./dist/linux_amd64/release/rad ./dist/cache
+          cp ./dist/linux_amd64/release/rad ./dist/cache
           echo $(date +%s) > ./dist/cache/.lastbuildtime
           echo "UNIQUE_ID=${{ steps.gen-id.outputs.UNIQUE_ID }}" >> ./dist/cache/.buildenv
           echo "REL_VERSION=${{ steps.gen-id.outputs.REL_VERSION }}" >> ./dist/cache/.buildenv
@@ -257,11 +253,16 @@ jobs:
       - name: Publish Bicep Test Recipes
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
-          make publish-test-bicep-recipes
+          mkdir ./bin
+          cp ./dist/linux_amd64/release/rad ./bin/rad
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+          rad version
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-          RAD_BICEP_PATH: dist
       - name: Log Bicep recipe publish status (success)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         run: |
@@ -357,7 +358,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes --reinstall \
             --chart ${{ env.RADIUS_CHART_LOCATION }} \
-            --set rp.image=${{ env.CACHE_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CACHE_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CACHE_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
+            --set rp.image=${{ env.CONTAINER_REGISTRY }}/applications-rp,rp.tag=${{ env.REL_VERSION }},controller.image=${{ env.CONTAINER_REGISTRY }}/controller,controller.tag=${{ env.REL_VERSION }},ucp.image=${{ env.CONTAINER_REGISTRY }}/ucpd,ucp.tag=${{ env.REL_VERSION }}
       - name: Configure Radius test workspace
         run: |
           set -x
@@ -387,8 +388,6 @@ jobs:
           rad env update radius-e2e --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
-          
-          az acr login -n ${{ env.CACHE_REGISTRY }}
       - name: Log radius installation status (failure)
         if: failure()
         run: |
