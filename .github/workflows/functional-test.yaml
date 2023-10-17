@@ -23,7 +23,7 @@ on:
     - cron: "30 0,12 * * 0,6"
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests, de-functional-test, ok-to-test]
+    types: [functional-tests, de-functional-test]
 
 env:
   # Go version
