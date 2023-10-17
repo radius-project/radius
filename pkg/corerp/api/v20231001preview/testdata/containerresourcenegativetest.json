@@ -24,7 +24,7 @@
       }
     },
     "container": {
-      "image": "radius.azurecr.io/webapptutorial-todoapp",
+      "image": "ghcr.io/radius-project/webapptutorial-todoapp",
       "ports": {
         "web": {
           "containerPort": 8080

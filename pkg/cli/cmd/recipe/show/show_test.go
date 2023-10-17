@@ -98,7 +98,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		envRecipe := v20231001preview.RecipeGetMetadataResponse{
 			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-			TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+			TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 			Parameters: map[string]any{
 				"throughput": map[string]any{
 					"type":     "float64",
@@ -113,7 +113,7 @@ func Test_Run(t *testing.T) {
 			Name:         "cosmosDB",
 			ResourceType: datastorerp.MongoDatabasesResourceType,
 			TemplateKind: recipes.TemplateKindBicep,
-			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 		}
 		recipeParams := []RecipeParameter{
 			{

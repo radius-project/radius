@@ -29,7 +29,6 @@ publish-test-bicep-recipes: ## Publishes test recipes to <BICEP_RECIPE_REGISTRY>
 	
 	@echo "$(ARROW) Publishing Bicep test recipes from ./test/functional/shared/resources/testdata/recipes/test-bicep-recipes..."
 	./.github/scripts/publish-recipes.sh \
-		${RAD_BICEP_PATH} \
 		./test/functional/shared/resources/testdata/recipes/test-bicep-recipes \
 		${BICEP_RECIPE_REGISTRY}/test/functional/shared/recipes \
 		${BICEP_RECIPE_TAG_VERSION}

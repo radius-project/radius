@@ -24,7 +24,7 @@
             "Applications.Datastores/mongoDatabases":{
                 "mongo-parameters": {
                     "templateKind": "bicep",                  
-                    "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
+                    "templatePath": "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
                 },
                 "mongo-terraform": {
                     "templateKind":"terraform",
@@ -35,7 +35,7 @@
             "Applications.Datastores/redisCache":{
                 "redis": {
                     "templateKind": "bicep",
-                    "templatePath": "radiusdev.azurecr.io/redis:1.0"
+                    "templatePath": "ghcr.io/radius-project/dev/redis:1.0"
                   }
             }
         },

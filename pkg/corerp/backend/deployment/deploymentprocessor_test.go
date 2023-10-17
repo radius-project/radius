@@ -220,7 +220,7 @@ func buildMongoDBWithRecipe() dsrp_dm.MongoDatabase {
 							"Subscription":  "Radius-Test",
 						},
 					},
-					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+					TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 				},
 				APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
 				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",

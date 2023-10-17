@@ -97,7 +97,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, true, *val.DisableDefaultEnvVars)
 				require.Equal(t, "azure", string(val.IAM.Kind))
 				require.Equal(t, "read", val.IAM.Roles[0])
-				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
+				require.Equal(t, "ghcr.io/radius-project/webapptutorial-todoapp", ct.Properties.Container.Image)
 				tcpProbe := ct.Properties.Container.LivenessProbe
 				require.Equal(t, datamodel.TCPHealthProbe, tcpProbe.Kind)
 				require.Equal(t, to.Ptr[float32](5), tcpProbe.TCP.InitialDelaySeconds)
@@ -180,7 +180,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "inventory_route_id", val.Source)
 				require.Equal(t, "azure", string(val.IAM.Kind))
 				require.Equal(t, "read", val.IAM.Roles[0])
-				require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", *versioned.Properties.Container.Image)
+				require.Equal(t, "ghcr.io/radius-project/webapptutorial-todoapp", *versioned.Properties.Container.Image)
 				require.Equal(t, resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}), versioned.Properties.Status)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[2].GetExtension().Kind)
 				require.Equal(t, 3, len(versioned.Properties.Extensions))
@@ -230,7 +230,7 @@ func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	require.Equal(t, "azure", string(val.IAM.Kind))
 	require.Equal(t, false, *val.DisableDefaultEnvVars)
 	require.Equal(t, "read", val.IAM.Roles[0])
-	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
+	require.Equal(t, "ghcr.io/radius-project/webapptutorial-todoapp", ct.Properties.Container.Image)
 	require.Equal(t, []rpv1.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2023-10-01-preview", ct.InternalMetadata.UpdatedAPIVersion)
 

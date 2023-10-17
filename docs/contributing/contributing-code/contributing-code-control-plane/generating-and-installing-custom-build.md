@@ -16,7 +16,7 @@ Note that installing a custom build could corrupt existing data or installation.
 
 1. Set environment variables for your docker registry and docker tag version. 
     ```
-    export DOCKER_REGISTRY=your-registry.azurecr.io
+    export DOCKER_REGISTRY=ghcr.io/your-registry
     export DOCKER_IMAGE_TAG=latest
     ```
 
@@ -29,7 +29,7 @@ Note that installing a custom build could corrupt existing data or installation.
 
 4. Use the image from your container registry to install the Radius control plane.
     ```
-    rad install kubernetes --chart deploy/Chart/ --set rp.image=your-registry.azurecr.io/appcore-rp,rp.tag=latest,ucp.image=your-registry.azurecr.io/ucpd,ucp.tag=latest
+    rad install kubernetes --chart deploy/Chart/ --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
     ```
 
 5. Use `rad init` command to set up the Radius workspace, environment, credentials, and provider as needed.

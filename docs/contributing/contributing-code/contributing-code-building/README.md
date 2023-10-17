@@ -31,7 +31,7 @@ These commands assume you are already logged-in to the registry you are using. I
 Here's an example command that will push and push images to a specified registry:
 
 ```sh
-DOCKER_REGISTRY=myregistry.ghcr.io make docker-push docker-build
+DOCKER_REGISTRY=ghcr.io/my-registry make docker-push docker-build
 ```
 
 If you work with Radius frequently, you may want to define a shell variable as part of your profile to set your registry.

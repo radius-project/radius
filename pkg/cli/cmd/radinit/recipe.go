@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	DevRecipesRegistry = "radius.azurecr.io"
+	DevRecipesRegistry = "ghcr.io/radius-project"
 )
 
 //go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
@@ -73,9 +73,9 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
-	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
+	// Ex: ghcr.io/radius-project/recipes/local-dev/rediscaches:0.20
 	// The start parameter is set to "radius-rp" because our recipes are after that repository.
-	err = reg.Repositories(ctx, "radius-rp", func(repos []string) error {
+	err = reg.Repositories(ctx, "", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.
 		validRepos := []string{}
 		for _, repo := range repos {
@@ -121,6 +121,13 @@ func processRepositories(repos []string, tag string) map[string]map[string]corer
 	name := "default"
 
 	for _, repo := range repos {
+		// Skip dev environment recipes.
+		// dev repositories is in the form of ghcr.io/radius-project/dev/recipes/local-dev/secretstores:latest
+		// We should skip the dev repositories.
+		if isDevRepository(repo) {
+			continue
+		}
+
 		resourceType := getResourceTypeFromPath(repo)
 		// If the resource type is empty, it means we don't support the repository.
 		if resourceType == "" {
@@ -184,4 +191,9 @@ func getPortableResourceType(resourceType string) string {
 	default:
 		return ""
 	}
+}
+
+func isDevRepository(repo string) bool {
+	_, found := strings.CutPrefix(repo, "dev/")
+	return found
 }
