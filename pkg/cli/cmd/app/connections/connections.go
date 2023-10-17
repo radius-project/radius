@@ -24,10 +24,11 @@ import (
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
-		Use:   "connections",
-		Short: "Shows the connections for an application.",
-		Long:  `Shows the connections for an application`,
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "connections",
+		Aliases: []string{"graph"},
+		Short:   "Shows the connections for an application.",
+		Long:    `Shows the connections for an application`,
+		Args:    cobra.MaximumNArgs(1),
 		Example: `
 # Show connections for current application
 rad app connections
