@@ -381,10 +381,16 @@ func (r *RecipeReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context
 		poller, err := deleteResource(ctx, r.Radius, recipe.Status.Resource)
 		if err != nil {
 			return nil, nil, err
+		} else if poller != nil {
+			return nil, poller, nil
 		}
 
-		return nil, poller, err
-	} else if recipe.Status.Resource != "" {
+		// Deletion was synchronous
+		recipe.Status.Resource = ""
+	}
+
+	// Note: we separate this check from the previous block, because it could complete synchronously.
+	if recipe.Status.Resource != "" {
 		logger.Info("Resource is already created and is up-to-date.")
 		return nil, nil, nil
 	}
@@ -399,9 +405,13 @@ func (r *RecipeReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Context
 	poller, err := createOrUpdateResource(ctx, r.Radius, resourceID, properties)
 	if err != nil {
 		return nil, nil, err
+	} else if poller != nil {
+		return poller, nil, nil
 	}
 
-	return poller, nil, nil
+	// Update was synchronous
+	recipe.Status.Resource = resourceID
+	return nil, nil, nil
 }
 
 func (r *RecipeReconciler) startDeleteOperationIfNeeded(ctx context.Context, recipe *radappiov1alpha3.Recipe) (Poller[generated.GenericResourcesClientDeleteResponse], error) {
@@ -412,7 +422,17 @@ func (r *RecipeReconciler) startDeleteOperationIfNeeded(ctx context.Context, rec
 	}
 
 	logger.Info("Starting DELETE operation.")
-	return deleteResource(ctx, r.Radius, recipe.Status.Resource)
+	poller, err := deleteResource(ctx, r.Radius, recipe.Status.Resource)
+	if err != nil {
+		return nil, err
+	} else if poller != nil {
+		return poller, err
+	}
+
+	// Deletion was synchronous
+
+	recipe.Status.Resource = ""
+	return nil, nil
 }
 
 func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1alpha3.Recipe) error {
