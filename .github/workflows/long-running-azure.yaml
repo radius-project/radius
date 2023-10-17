@@ -217,6 +217,16 @@ jobs:
           name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
+      - name: Download Bicep
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
+        run: |
+          mkdir ./bin
+          cp ./dist/linux_amd64/release/rad ./bin/rad
+          chmod +x ./bin/rad
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep download
+          rad version
       - name: Log the build result (success)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         continue-on-error: true
@@ -232,12 +242,6 @@ jobs:
         continue-on-error: true
         run: |
           echo ":hourglass: Publishing Bicep Recipes for functional tests..." >> $GITHUB_STEP_SUMMARY
-      - name: Download rad-bicep
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
-        run: |
-          mkdir -p dist
-          ./.github/scripts/curl-with-retries.sh https://get.radapp.dev/tools/bicep-extensibility/edge/linux-x64/rad-bicep --output dist/rad-bicep
-          chmod +x dist/rad-bicep
       - name: Move the latest binaries to cache
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
@@ -263,7 +267,6 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-          RAD_BICEP_PATH: dist
       - name: Log Bicep recipe publish status (success)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && success()
         run: |
