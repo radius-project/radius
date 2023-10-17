@@ -33,21 +33,21 @@
                 "Applications.Datastores/mongoDatabases":{
                   "cosmos-recipe": {
                     "templateKind": "bicep",
-                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                    "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
                   },
                   "default":{
                     "templateKind": "bicep",
-                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/mongo"
+                    "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/mongo"
                   }
                 },
                 "Applications.Datastores/redisCaches":{
                   "redis-recipe": {
                     "templateKind": "bicep",
-                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscache"
+                    "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscache"
                   },
                   "default":{
                     "templateKind": "bicep",
-                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/redis"
+                    "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/redis"
                   }
                 }
               },
@@ -111,7 +111,7 @@
               "recipes": {
                 "Applications.Datastores/mongoDatabases":{
                   "cosmos-recipe": {
-                    "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+                    "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb"
                   } 
                 }
               }

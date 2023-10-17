@@ -10,7 +10,7 @@ global:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
 controller:
-  image: radius.azurecr.io/controller
+  image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -20,7 +20,7 @@ controller:
       memory: "300Mi"
 
 de:
-  image: radius.azurecr.io/deployment-engine
+  image: ghcr.io/radius-project/deployment-engine
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -31,7 +31,7 @@ de:
       memory: "300Mi"
 
 ucp:
-  image: radius.azurecr.io/ucpd
+  image: ghcr.io/radius-project/ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:
@@ -42,7 +42,7 @@ ucp:
       memory: "300Mi"
 
 rp:
-  image: radius.azurecr.io/applications-rp
+  image: ghcr.io/radius-project/applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
   publicEndpointOverride: ""

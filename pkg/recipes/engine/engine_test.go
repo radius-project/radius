@@ -86,7 +86,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 	}
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
@@ -149,7 +149,7 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 	}
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	ctx := testcontext.New(t)
@@ -266,7 +266,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       "invalid",
-		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
@@ -342,7 +342,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 	}
 	recipeDefinition := &recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 	configLoader.EXPECT().
@@ -561,7 +561,7 @@ func getRecipeInputs() (recipes.ResourceMetadata, recipes.EnvironmentDefinition,
 
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 

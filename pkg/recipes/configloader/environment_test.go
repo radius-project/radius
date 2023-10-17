@@ -224,7 +224,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 				"Applications.Datastores/mongoDatabases": {
 					recipeName: &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr("radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"),
+						TemplatePath: to.Ptr("ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0"),
 						Parameters: map[string]any{
 							"foo": "bar",
 						},
@@ -265,7 +265,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 			Name:         recipeName,
 			Driver:       recipes.TemplateKindBicep,
 			ResourceType: "Applications.Datastores/mongoDatabases",
-			TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+			TemplatePath: "ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0",
 			Parameters: map[string]any{
 				"foo": "bar",
 			},

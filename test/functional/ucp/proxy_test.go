@@ -249,7 +249,7 @@ func getTestRPImage() string {
 	dockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
 	if dockerReg == "" {
-		dockerReg = "radiusdev.azurecr.io"
+		dockerReg = "ghcr.io/radius-project/dev"
 	}
 	if imageTag == "" {
 		imageTag = "latest"

@@ -1,5 +1,5 @@
 {
-  "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+  "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb",
   "parameters": {
     "throughput": {
       "maxValue": 400,

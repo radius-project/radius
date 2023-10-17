@@ -15,7 +15,7 @@
           }
         },
         "container": {
-          "image": "radius.azurecr.io/webapptutorial-todoapp",
+          "image": "ghcr.io/radius-project/webapptutorial-todoapp",
           "command": [
             "/bin/sh"
           ],
@@ -49,7 +49,7 @@
             }
           },
           "container": {
-            "image": "radius.azurecr.io/webapptutorial-todoapp",
+            "image": "ghcr.io/radius-project/webapptutorial-todoapp",
             "command": [
               "/bin/sh"
             ],

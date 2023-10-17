@@ -38,8 +38,6 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
 
-	// get the data from ACR
-	// client to the ACR repository in the path
 	repo, err := remote.NewRepository(registryRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create client to registry %s", err.Error())
