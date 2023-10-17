@@ -209,7 +209,7 @@ cleanup() {
 }
 
 installCompleted() {
-    echo "\nTo get started with Radius, please visit https://radapp.dev/getting-started/"
+    echo "\nTo get started with Radius, please visit https://radapp.io/getting-started/"
 }
 
 # -----------------------------------------------------------------------------
