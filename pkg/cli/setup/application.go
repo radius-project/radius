@@ -31,7 +31,7 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
   properties: {
     application: application
     container: {
-      image: 'radius.azurecr.io/tutorial/webapp:edge'
+      image: 'ghcr.io/radius-project/tutorial/webapp:edge'
       ports: {
         web: {
           containerPort: 3000

@@ -59,9 +59,9 @@ fi
 kind create cluster
 ./rad install kubernetes
 
-EXPECTED_APPCORE_RP_IMAGE="radius.azurecr.io/applications-rp:${EXPECTED_TAG_VERSION}"
-EXPECTED_UCP_IMAGE="radius.azurecr.io/ucpd:${EXPECTED_TAG_VERSION}"
-EXPECTED_DE_IMAGE="radius.azurecr.io/deployment-engine:${EXPECTED_TAG_VERSION}"
+EXPECTED_APPCORE_RP_IMAGE="ghcr.io/radius-project/applications-rp:${EXPECTED_TAG_VERSION}"
+EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
+EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
 
 APPCORE_RP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=applications-rp | awk '/^.*Image:/ {print $2}')
 UCP_IMAGE=$(kubectl describe pods -n radius-system -l control-plane=ucp | awk '/^.*Image:/ {print $2}')

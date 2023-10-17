@@ -8,7 +8,7 @@ Note, this only applies when we want to update the app core image, if we need to
 
 1. Set the environment variable DOCKER_REGISTRY set to the container registry
     ```
-    export DOCKER_REGISTRY=<registry>.azurecr.io
+    export DOCKER_REGISTRY=ghcr.io/your-registry
     ```
 1. Ensure you login to your container registry AND enable anonymous pull. The login command will need to be called every 3 hours as needed as it does log the user out frequently.
     ```
@@ -21,7 +21,7 @@ Note, this only applies when we want to update the app core image, if we need to
     ```
 1. Deploy an environment with command on kubernetes
     ```
-    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=<registry>.azurecr.io/applications-rp,rp.tag=latest,ucp.image=<registry>.azurecr.io/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
     go run ./cmd/rad/main.go workspace create kubernetes
     go run ./cmd/rad/main.go group create radius-rg
     go run ./cmd/rad/main.go switch radius-rg
@@ -48,7 +48,7 @@ The above steps will not configure the ability for Radius to talk with azure res
     ```
 1. Use these values in the following command:
     ```
-    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=<registry>.azurecr.io/applications-rp,rp.tag=latest,ucp.image=<registry>.azurecr.io/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
     go run ./cmd/rad/main.go workspace create kubernetes
     go run ./cmd/rad/main.go group create radius-rg
     go run ./cmd/rad/main.go switch radius-rg
