@@ -46,7 +46,7 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
           containers: [
             {
               name: 'log-collector'
-              image: 'ghcr.io/radius-project/dev/fluent/fluent-bit:2.1.8'
+              image: 'ghcr.io/radius-project/fluent-bit:2.1.8'
             }
           ]
           hostNetwork: true
@@ -55,4 +55,3 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
     }
   }
 }
-
