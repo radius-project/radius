@@ -26,7 +26,7 @@ RECIPE_VERSION=$3
 
 # Print usage information
 function print_usage() {
-    echo "Usage: $0 <BICEP_PATH> <DIRECTORY> <REGISTRY_PATH> <RECIPE_VERSION>"
+    echo "Usage: $0 <DIRECTORY> <REGISTRY_PATH> <RECIPE_VERSION>"
     echo ""
     echo "  Publishes all recipes in the repository to the GitHub Container Registry. Requires you to be logged into GitHub."
     echo ""
@@ -37,7 +37,7 @@ function print_usage() {
 }
 
 # Verify that the required arguments are present
-if [[ $# -ne 4 ]]; then
+if [[ $# -ne 3 ]]; then
     echo "Error: Missing required arguments"
     echo ""
     print_usage
