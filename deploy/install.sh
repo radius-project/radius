@@ -89,10 +89,10 @@ checkHttpRequestCLI() {
 checkExistingRadius() {
     if [ -f "$RADIUS_CLI_FILE" ]; then
         version=$($RADIUS_CLI_FILE version --cli)
-        echo "\nRadius CLI is detected. Current version: ${version}"
-        echo "Reinstalling Radius CLI - ${RADIUS_CLI_FILE}...\n"
+        echo -e "\nRadius CLI is detected. Current version: ${version}"
+        echo -e "Reinstalling Radius CLI - ${RADIUS_CLI_FILE}...\n"
     else
-        echo "Installing Radius CLI...\n"
+        echo -e "Installing Radius CLI...\n"
     fi
 }
 
@@ -209,7 +209,7 @@ cleanup() {
 }
 
 installCompleted() {
-    echo "\nTo get started with Radius, please visit https://radapp.io/getting-started/"
+    echo -e "\nTo get started with Radius, please visit https://radapp.io/getting-started/"
 }
 
 # -----------------------------------------------------------------------------
