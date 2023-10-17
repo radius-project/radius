@@ -39,7 +39,7 @@ getSystemInfo() {
     case $ARCH in
         armv7*) ARCH="arm";;
         aarch64) ARCH="arm64";;
-        x86_64) ARCH="x64";;
+        x86_64) ARCH="amd64";;
     esac
 
     OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
