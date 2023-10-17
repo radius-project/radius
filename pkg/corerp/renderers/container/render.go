@@ -18,7 +18,6 @@ package container
 
 import (
 	"context"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"net"
@@ -653,7 +652,7 @@ func (r Renderer) makeDeployment(
 	// secret changes we also change the content of the deployment and thus trigger a new revision. This is a very
 	// common solution to this problem, and not a bizzare workaround that we invented.
 	if len(secretData) > 0 {
-		hash := r.hashSecretData(secretData)
+		hash := kubernetes.HashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
 		deps = append(deps, rpv1.LocalIDSecret)
 	}
@@ -840,26 +839,6 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 
 	output := rpv1.NewKubernetesOutputResource(rpv1.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
-}
-
-func (r Renderer) hashSecretData(secretData map[string][]byte) string {
-	// Sort keys so we can hash deterministically
-	keys := []string{}
-	for k := range secretData {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	hash := sha1.New()
-
-	for _, k := range keys {
-		// Using | as a delimiter
-		_, _ = hash.Write([]byte("|" + k + "|"))
-		_, _ = hash.Write(secretData[k])
-	}
-
-	sum := hash.Sum(nil)
-	return fmt.Sprintf("%x", sum)
 }
 
 func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
