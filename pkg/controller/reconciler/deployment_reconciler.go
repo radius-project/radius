@@ -124,9 +124,9 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	// If the Deployment is being deleted **or** if Radius is not enabled, then we should
+	// If the Deployment is being deleted **or** if Radius is no longer enabled, then we should
 	// clean up any Radius state.
-	if deployment.DeletionTimestamp != nil || annotations.Configuration == nil {
+	if deployment.DeletionTimestamp != nil || (annotations.Configuration == nil && annotations.Status != nil) {
 		return r.reconcileDelete(ctx, &deployment, annotations)
 	}
 
@@ -402,10 +402,16 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 		poller, err := deleteContainer(ctx, r.Radius, annotations.Status.Container)
 		if err != nil {
 			return nil, nil, false, err
+		} else if poller != nil {
+			return nil, poller, false, nil
 		}
 
-		return nil, poller, false, err
-	} else if !annotations.IsUpToDate() {
+		// Deletion completed synchronously.
+		annotations.Status.Container = ""
+	}
+
+	// Note: we separate this check from the previous block, because it could complete synchronously.
+	if !annotations.IsUpToDate() {
 		logger.Info("Container configuration is out-of-date.")
 	} else if annotations.Status.Container != "" {
 		logger.Info("Container is already created and is up-to-date.")
@@ -448,8 +454,12 @@ func (r *DeploymentReconciler) startPutOrDeleteOperationIfNeeded(ctx context.Con
 	poller, err := createOrUpdateContainer(ctx, r.Radius, resourceID, &properties)
 	if err != nil {
 		return nil, nil, false, err
+	} else if poller != nil {
+		return poller, nil, false, nil
 	}
 
+	// Update completed synchronously
+	annotations.Status.Container = resourceID
 	return poller, nil, false, nil
 }
 
@@ -461,7 +471,16 @@ func (r *DeploymentReconciler) startDeleteOperationIfNeeded(ctx context.Context,
 	}
 
 	logger.Info("Starting DELETE operation.")
-	return deleteContainer(ctx, r.Radius, annotations.Status.Container)
+	poller, err := deleteContainer(ctx, r.Radius, annotations.Status.Container)
+	if err != nil {
+		return nil, err
+	} else if poller != nil {
+		return poller, nil
+	}
+
+	// Deletion completed synchronously.
+	annotations.Status.Container = ""
+	return nil, nil
 }
 
 func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment *appsv1.Deployment, annotations *deploymentAnnotations) error {
@@ -550,7 +569,7 @@ func (r *DeploymentReconciler) cleanupDeployment(ctx context.Context, deployment
 
 	secretName := client.ObjectKey{Namespace: deployment.Namespace, Name: fmt.Sprintf("%s-connections", deployment.Name)}
 	err := r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretName.Namespace, Name: secretName.Name}})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete secret %s: %w", secretName.Name, err)
 	}
 
@@ -614,7 +633,7 @@ func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		annotations, err := readAnnotations(deployment)
 		if err != nil {
 			return []string{}
-		} else if annotations.Configuration == nil {
+		} else if annotations == nil || annotations.Configuration == nil {
 			return []string{}
 		}
 
