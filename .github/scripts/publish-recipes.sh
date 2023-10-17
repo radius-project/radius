@@ -16,7 +16,7 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-# Fail immedietly if any command fails
+# Fail immediately if any command fails
 set -e
 
 # Get command line arguments
@@ -31,7 +31,7 @@ function print_usage() {
     echo "  Publishes all recipes in the repository to the GitHub Container Registry. Requires you to be logged into GitHub."
     echo ""
     echo "  DIRECTORY: Directory containing the recipes to publish. For example, ./test/functional/testdata/recipes"
-    echo "  REGISTRY_PATH: Registry hostname and path prefix. For example, ghcr.io/radius-project/dev/tests/recipes"
+    echo "  REGISTRY_PATH: Registry hostname and path prefix. For example, ghcr.io/radius-project/dev/test/recipes"
     echo "  RECIPE_VERSION: Version of the recipe to publish. For example, pr-19293"
     echo ""
 }
