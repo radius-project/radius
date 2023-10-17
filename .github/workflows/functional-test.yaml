@@ -70,8 +70,6 @@ env:
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
   # Server where terraform test modules are deployed
   TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
-  # The rad CLI download URL
-  RAD_CLI_URL: https://get.radapp.dev/tools/rad/install.sh
 
 jobs:
   build:
