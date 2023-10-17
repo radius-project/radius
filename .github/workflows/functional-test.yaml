@@ -347,12 +347,6 @@ jobs:
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
-      - name: Login to GitHub Container Registry TODO WILLSMITH delete this
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
