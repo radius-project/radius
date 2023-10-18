@@ -320,6 +320,8 @@ jobs:
     name: Publish GitHub Release
     needs: ['build-and-push-cli']
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
