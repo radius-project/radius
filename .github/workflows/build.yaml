@@ -340,7 +340,7 @@ jobs:
         run: |
           gh release create v${{ env.REL_VERSION }} \
             ${{ env.RELEASE_PATH }}/* \
-            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --title "Radius v${{ env.REL_VERSION }}" \
             --generate-notes \
             --verify-tag \
             --prerelease
@@ -349,7 +349,7 @@ jobs:
         run: |
           gh release create v${{ env.REL_VERSION }} \
             ${{ env.RELEASE_PATH }}/* \
-            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --title "Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
             --verify-tag
 
