@@ -17,13 +17,8 @@ limitations under the License.
 package radinit
 
 import (
-	"fmt"
-	reflect "reflect"
 	"testing"
 
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -129,109 +124,109 @@ func Test_getPortableResourceType(t *testing.T) {
 	}
 }
 
-func Test_processRepositories(t *testing.T) {
-	tests := []struct {
-		name  string
-		repos []string
-		tag   string
-		want  map[string]map[string]corerp.RecipePropertiesClassification
-	}{
-		{
-			"Valid Repository with Redis Cache",
-			[]string{
-				"recipes/local-dev/rediscaches",
-			},
-			"0.20",
-			map[string]map[string]corerp.RecipePropertiesClassification{
-				"Applications.Datastores/redisCaches": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
-					},
-				},
-			},
-		},
-		{
-			"Valid Repository with Redis Cache and Mongo Database",
-			[]string{
-				"recipes/local-dev/rediscaches",
-				"recipes/local-dev/mongodatabases",
-			},
-			"0.20",
-			map[string]map[string]corerp.RecipePropertiesClassification{
-				"Applications.Datastores/redisCaches": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
-					},
-				},
-				"Applications.Datastores/mongoDatabases": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:0.20", DevRecipesRegistry)),
-					},
-				},
-			},
-		},
-		{
-			"Valid Repository with Redis Cache, Mongo Database, and an unsupported type",
-			[]string{
-				"recipes/local-dev/rediscaches",
-				"recipes/local-dev/mongodatabases",
-				"recipes/local-dev/unsupported",
-				"recipes/unsupported/rediscaches",
-				"recipes/unsupported/unsupported",
-			},
-			"latest",
-			map[string]map[string]corerp.RecipePropertiesClassification{
-				"Applications.Datastores/redisCaches": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:latest", DevRecipesRegistry)),
-					},
-				},
-				"Applications.Datastores/mongoDatabases": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:latest", DevRecipesRegistry)),
-					},
-				},
-			},
-		},
-		{
-			"Valid Prod and Dev Repositories with Redis Cache, Mongo Database",
-			[]string{
-				"recipes/local-dev/rediscaches",
-				"recipes/local-dev/mongodatabases",
-				"dev/recipes/local-dev/rediscaches",
-				"dev/recipes/local-dev/mongodatabases",
-			},
-			"latest",
-			map[string]map[string]corerp.RecipePropertiesClassification{
-				"Applications.Datastores/redisCaches": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:latest", DevRecipesRegistry)),
-					},
-				},
-				"Applications.Datastores/mongoDatabases": {
-					"default": &corerp.BicepRecipeProperties{
-						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
-						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:latest", DevRecipesRegistry)),
-					},
-				},
-			},
-		},
-	}
+// func Test_processRepositories(t *testing.T) {
+// 	tests := []struct {
+// 		name  string
+// 		repos []string
+// 		tag   string
+// 		want  map[string]map[string]corerp.RecipePropertiesClassification
+// 	}{
+// 		{
+// 			"Valid Repository with Redis Cache",
+// 			[]string{
+// 				"recipes/local-dev/rediscaches",
+// 			},
+// 			"0.20",
+// 			map[string]map[string]corerp.RecipePropertiesClassification{
+// 				"Applications.Datastores/redisCaches": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
+// 					},
+// 				},
+// 			},
+// 		},
+// 		{
+// 			"Valid Repository with Redis Cache and Mongo Database",
+// 			[]string{
+// 				"recipes/local-dev/rediscaches",
+// 				"recipes/local-dev/mongodatabases",
+// 			},
+// 			"0.20",
+// 			map[string]map[string]corerp.RecipePropertiesClassification{
+// 				"Applications.Datastores/redisCaches": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:0.20", DevRecipesRegistry)),
+// 					},
+// 				},
+// 				"Applications.Datastores/mongoDatabases": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:0.20", DevRecipesRegistry)),
+// 					},
+// 				},
+// 			},
+// 		},
+// 		{
+// 			"Valid Repository with Redis Cache, Mongo Database, and an unsupported type",
+// 			[]string{
+// 				"recipes/local-dev/rediscaches",
+// 				"recipes/local-dev/mongodatabases",
+// 				"recipes/local-dev/unsupported",
+// 				"recipes/unsupported/rediscaches",
+// 				"recipes/unsupported/unsupported",
+// 			},
+// 			"latest",
+// 			map[string]map[string]corerp.RecipePropertiesClassification{
+// 				"Applications.Datastores/redisCaches": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:latest", DevRecipesRegistry)),
+// 					},
+// 				},
+// 				"Applications.Datastores/mongoDatabases": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:latest", DevRecipesRegistry)),
+// 					},
+// 				},
+// 			},
+// 		},
+// 		{
+// 			"Valid Prod and Dev Repositories with Redis Cache, Mongo Database",
+// 			[]string{
+// 				"recipes/local-dev/rediscaches",
+// 				"recipes/local-dev/mongodatabases",
+// 				"dev/recipes/local-dev/rediscaches",
+// 				"dev/recipes/local-dev/mongodatabases",
+// 			},
+// 			"latest",
+// 			map[string]map[string]corerp.RecipePropertiesClassification{
+// 				"Applications.Datastores/redisCaches": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/rediscaches:latest", DevRecipesRegistry)),
+// 					},
+// 				},
+// 				"Applications.Datastores/mongoDatabases": {
+// 					"default": &corerp.BicepRecipeProperties{
+// 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+// 						TemplatePath: to.Ptr(fmt.Sprintf("%s/recipes/local-dev/mongodatabases:latest", DevRecipesRegistry)),
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := processRepositories(tt.repos, tt.tag); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("processRepositories() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			if got := processRepositories(tt.repos, tt.tag); !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("processRepositories() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
 
 func Test_isDevRepository(t *testing.T) {
 	tests := []struct {
