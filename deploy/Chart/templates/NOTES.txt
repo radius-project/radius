@@ -6,4 +6,4 @@ APP VERSION: {{ .Chart.AppVersion }}
 
   kubectl --namespace {{ $.Release.Namespace }} get pods -l "app.kubernetes.io/part-of=radius"
 
-Visit https://docs.radapp.dev to start Radius.
+Visit https://docs.radapp.io to start Radius.

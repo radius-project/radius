@@ -8,7 +8,7 @@ We would like to extend our thanks to all the [new](#new-contributors) and exist
 
 ## Intro to Radius
 
-If you're new to Radius, check out our website, [radapp.dev](https://radapp.dev), for more information. Also visit our [getting started guide](https://docs.radapp.dev/getting-started/) to learn how to install Radius and create your first app.
+If you're new to Radius, check out our website, [radapp.io](https://radapp.io), for more information. Also visit our [getting started guide](https://docs.radapp.io/getting-started/) to learn how to install Radius and create your first app.
 
 ## Highlights
 
@@ -38,7 +38,7 @@ During our preview stage, an upgrade to Radius vX.Y.Z requires a full reinstalla
    ```bash
    rad uninstall kubernetes
    ```
-1. Visit the [Radius installation guide](https://docs.radapp.dev/getting-started/install/) to install the latest CLI, or download a binary below
+1. Visit the [Radius installation guide](https://docs.radapp.io/getting-started/install/) to install the latest CLI, or download a binary below
 1. Install the latest version of the Radius control-plane:
    ```bash
    rad install kubernetes

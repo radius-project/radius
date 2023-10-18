@@ -21,8 +21,8 @@ This is an early release of Radius which enables the community to learn about an
 
 ## Getting started
 
-1. Follow the [getting started guide](https://docs.radapp.dev/getting-started/) to install and try out Radius
-1. Visit the [Tutorials](https://docs.radapp.dev/tutorials) and [User Guides](https://docs.radapp.dev/guides) to learn more about Radius and start radifying your apps
+1. Follow the [getting started guide](https://docs.radapp.io/getting-started/) to install and try out Radius
+1. Visit the [Tutorials](https://docs.radapp.io/tutorials) and [User Guides](https://docs.radapp.io/guides) to learn more about Radius and start radifying your apps
 
 ## Getting help
 
@@ -47,8 +47,8 @@ Every month we host a community call to showcase new features, review upcoming m
 ## Contributing to Radius
 
 Visit [Contributing](./CONTRIBUTING.md) for more information on how to contribute to Radius.
-To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.dev/operations/custom-recipes/).
-To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.dev/contributing/docs/)
+To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.io/guides/recipes/howto-author-recipes/).
+To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.io/contributing/docs/)
 
 ## Repositories
 
