@@ -42,7 +42,7 @@ func TestGetApplicationGraphRun_20231001Preview(t *testing.T) {
 
 	require.NoError(t, err)
 
-	t.Run("not found the resource", func(t *testing.T) {
+	t.Run("resource not found", func(t *testing.T) {
 		mStorageClient.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
