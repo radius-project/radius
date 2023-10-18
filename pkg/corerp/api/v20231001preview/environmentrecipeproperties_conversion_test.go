@@ -21,10 +21,9 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	types "github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/test/testutil"
-
 	"github.com/stretchr/testify/require"
 )
 
@@ -89,7 +88,7 @@ func TestRecipeConvertVersionedToDataModel(t *testing.T) {
 	t.Run("Convert to Data Model", func(t *testing.T) {
 		filename := "reciperesource.json"
 		expected := &datamodel.Recipe{
-			ResourceType: portableresources.MongoDatabasesResourceType,
+			ResourceType: ds_ctrl.MongoDatabasesResourceType,
 			Name:         "mongo-azure",
 		}
 		rawPayload := testutil.ReadFixture(filename)

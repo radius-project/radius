@@ -23,8 +23,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/pkg/portableresources"
 	types "github.com/radius-project/radius/pkg/recipes"
+
+	rp_util "github.com/radius-project/radius/pkg/rp/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
@@ -65,7 +66,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
 		for resourceType, recipes := range src.Properties.Recipes {
-			if !portableresources.IsValidPortableResourceType(resourceType) {
+			if !rp_util.IsValidPortableResourceType(resourceType) {
 				return &datamodel.Environment{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid resource type: %q", resourceType))
 			}
 			envRecipes[resourceType] = map[string]datamodel.EnvironmentRecipeProperties{}
@@ -100,6 +101,10 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 				Scope: to.String(src.Properties.Providers.Aws.Scope),
 			}
 		}
+	}
+
+	if src.Properties.Simulated != nil && *src.Properties.Simulated {
+		converted.Properties.Simulated = true
 	}
 
 	var extensions []datamodel.Extension
@@ -160,6 +165,10 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 	}
 
+	if env.Properties.Simulated {
+		dst.Properties.Simulated = to.Ptr(env.Properties.Simulated)
+	}
+
 	var extensions []ExtensionClassification
 	if env.Properties.Extensions != nil {
 		for _, e := range env.Properties.Extensions {
@@ -186,7 +195,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rpv1.En
 		var identity *rpv1.IdentitySettings
 		if v.Identity != nil {
 			identity = &rpv1.IdentitySettings{
-				Kind:       toIdentityKind(v.Identity.Kind),
+				Kind:       toIdentityKindDataModel(v.Identity.Kind),
 				Resource:   to.String(v.Identity.Resource),
 				OIDCIssuer: to.String(v.Identity.OidcIssuer),
 			}

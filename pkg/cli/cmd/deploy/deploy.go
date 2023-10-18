@@ -175,7 +175,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate that the environment exists.
-	// Right now we assume that every deployment uses a Radius environment.
+	// Right now we assume that every deployment uses a Radius Environment.
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err

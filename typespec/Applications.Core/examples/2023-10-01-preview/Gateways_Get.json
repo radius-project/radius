@@ -22,7 +22,7 @@
           ],    
           "tls":{
             "sslPassthrough": false,
-            "hostname": "myapp.radapp.dev",
+            "hostname": "myapp.radapp.io",
             "minimumProtocolVersion": "1.2",
             "certificateFrom": "myapp-tls-cert"
           }

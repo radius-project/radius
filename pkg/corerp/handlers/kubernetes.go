@@ -78,6 +78,12 @@ type kubernetesHandler struct {
 // deployment, it also waits until the deployment is ready.
 func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// If CreateResource is nil, then we don't need to create a resource.
+	if options.Resource.CreateResource == nil {
+		return map[string]string{}, nil
+	}
+
 	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
 		return nil, err

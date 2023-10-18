@@ -62,8 +62,23 @@ model ContainerProperties {
   @extension("x-ms-identifiers", [])
   extensions?: Extension[];
 
+  @doc("Specifies how the underlying container resource is provisioned and managed.")
+  resourceProvisioning?: ContainerResourceProvisioning;
+
+  @doc("A collection of references to resources associated with the container")
+  resources?: ResourceReference[];
+
   @doc("Specifies Runtime-specific functionality")
   runtimes?: RuntimesProperties;
+}
+
+@doc("Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource.")
+enum ContainerResourceProvisioning {
+  @doc("The resource lifecycle will be managed internally by Radius")
+  internal,
+
+  @doc("The resource lifecycle will be managed by the user")
+  manual,
 }
 
 @doc("The properties for runtime configuration")

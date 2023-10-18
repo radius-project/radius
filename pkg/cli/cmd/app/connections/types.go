@@ -16,7 +16,7 @@ limitations under the License.
 
 package connections
 
-// applicationGraph represnts the Radius application graph, a directed graph of interconnected
+// applicationGraph represnts the Radius Application graph, a directed graph of interconnected
 // resources that describe the application architecture and patterns of communication.
 //
 // The application graph supports serialization from and to JSON.

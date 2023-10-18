@@ -4,8 +4,8 @@ You can find the functional tests under `./test/functional`. A functional test (
 
 These tests verify whether:
 
-- That Radius environment can be created successfully.
-- That Bicep templates of sample applications ca be deployed to the Radius environment. 
+- That Radius Environment can be created successfully.
+- That Bicep templates of sample applications ca be deployed to the Radius Environment. 
 
 
 ## Running via GitHub workflow
@@ -28,7 +28,7 @@ We have a separate scheduled job (`purge-test-resources.yaml`) that will delete 
 
 ## Configuration
 
-These tests use your local Kubernetes credentials, and Radius environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a real user scenario. This way we test a setup that is close to what users will have in the real world.
+These tests use your local Kubernetes credentials, and Radius Environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a real user scenario. This way we test a setup that is close to what users will have in the real world.
 
 As much as possible, the tests use product functionality such as the Radius CLI configuration and local KubeConfig to detect settings.
 
@@ -38,11 +38,11 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 
 1. Place `rad` on your path
 2. Make sure `rad-bicep` is downloaded (`rad bicep download`)
-3. Create a container registry (must be Azure Container Registry for now)
-4. Log-in to the container registry `az acr login -n <registry-name>`
-5. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name>.azurecr.io make publish-test-bicep-recipes`
+3. Create a container registry
+4. Log-in to the container registry
+5. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
 6. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
-7. Create a Radius environment with `rad init` and specify the default namespace
+7. Create a Radius Environment with `rad init` and specify the default namespace
 
 > ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
 > test failures.
@@ -57,7 +57,7 @@ As much as possible, the tests use product functionality such as the Radius CLI 
         .{workspace}/radius/test/executeFunctionalTest.sh
     ```
 
-When you're running locally with this configuration, the tests will use your locally selected Radius environment and your local copy of `rad`. The executeFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
+When you're running locally with this configuration, the tests will use your locally selected Radius Environment and your local copy of `rad`. The executeFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
  ```sh
     make test-functional-shared
     make test-functional-msgrp

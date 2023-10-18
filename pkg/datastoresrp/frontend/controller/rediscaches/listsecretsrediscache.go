@@ -74,6 +74,9 @@ func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWrite
 	if connectionString, ok := resource.SecretValues[renderers.ConnectionStringValue]; ok {
 		redisSecrets.ConnectionString = connectionString.Value
 	}
+	if url, ok := resource.SecretValues[renderers.ConnectionURIValue]; ok {
+		redisSecrets.URL = url.Value
+	}
 
 	versioned, err := converter.RedisCacheSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)
 	if err != nil {

@@ -20,7 +20,7 @@
 TEST_TIMEOUT ?=1h
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest
-DOCKER_REGISTRY ?=radiusdev.azurecr.io
+DOCKER_REGISTRY ?=ghcr.io/radius-project/dev
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.23.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
@@ -48,13 +48,17 @@ test: test-get-envtools ## Runs unit tests, excluding kubernetes controller test
 
 .PHONY: test-get-envtools
 test-get-envtools:
+	@echo "$(ARROW) Installing Kubebuilder test tools..."
 	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
+	@echo "$(ARROW) Instructions:"
+	@echo "$(ARROW) Set environment variable KUBEBUILDER_ASSETS for tests."
+	@echo "$(ARROW) KUBEBUILDER_ASSETS=\"$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)\""
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-all: test-functional-ucp test-functional-shared test-functional-msgrp test-functional-daprrp ## Runs all functional tests
+test-functional-all: test-functional-ucp test-functional-kubernetes test-functional-shared test-functional-msgrp test-functional-daprrp ## Runs all functional tests
 
 test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)

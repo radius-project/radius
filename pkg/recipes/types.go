@@ -29,6 +29,8 @@ type Configuration struct {
 	Runtime RuntimeConfiguration
 	// Cloud providers configuration for the environment
 	Providers datamodel.Providers
+	// Simulated represents whether the environment is simulated or not.
+	Simulated bool
 }
 
 // RuntimeConfiguration represents Kubernetes Runtime configuration for the environment.

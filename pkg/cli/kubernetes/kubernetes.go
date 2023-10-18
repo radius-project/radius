@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/radius-project/radius/pkg/cli/output"
+	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/kubeutil"
 )
 
@@ -49,6 +50,7 @@ func init() {
 	_ = apiextv1.AddToScheme(Scheme)
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = contourv1.AddToScheme(Scheme)
+	_ = radappiov1alpha3.AddToScheme(Scheme)
 }
 
 // NewDynamicClient creates a new dynamic client by context name, otherwise returns an error.
@@ -82,13 +84,13 @@ func NewClientset(context string) (*k8s.Clientset, *rest.Config, error) {
 }
 
 // NewRuntimeClient creates a kubernetes client using a given context and scheme.
-func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
+func NewRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.WithWatch, error) {
 	merged, err := NewCLIClientConfig(context)
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := client.New(merged, client.Options{Scheme: scheme})
+	c, err := client.NewWithWatch(merged, client.Options{Scheme: scheme})
 	if err != nil {
 		output.LogInfo("failed to create runtime client due to error: %v", err)
 		return nil, err

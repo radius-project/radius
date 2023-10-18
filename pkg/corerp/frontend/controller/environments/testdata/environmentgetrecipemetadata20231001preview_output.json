@@ -1,6 +1,6 @@
 {
   "templateKind": "bicep",
-  "templatePath": "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+  "templatePath": "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
   "parameters": {
     "mongodbName": {
       "type" : "string"

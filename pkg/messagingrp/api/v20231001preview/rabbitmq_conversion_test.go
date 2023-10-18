@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -44,7 +45,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
 						Name:     "rabbitmq0",
-						Type:     portableresources.RabbitMQQueuesResourceType,
+						Type:     msg_ctrl.RabbitMQQueuesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -84,7 +85,7 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 					TrackedResource: v1.TrackedResource{
 						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
 						Name:     "rabbitmq0",
-						Type:     portableresources.RabbitMQQueuesResourceType,
+						Type:     msg_ctrl.RabbitMQQueuesResourceType,
 						Location: v1.LocationGlobal,
 						Tags: map[string]string{
 							"env": "dev",
@@ -163,7 +164,7 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0"),
 				Name: to.Ptr("rabbitmq0"),
-				Type: to.Ptr(portableresources.RabbitMQQueuesResourceType),
+				Type: to.Ptr(msg_ctrl.RabbitMQQueuesResourceType),
 			},
 		},
 		{
@@ -195,7 +196,7 @@ func TestRabbitMQQueue_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0"),
 				Name: to.Ptr("rabbitmq0"),
-				Type: to.Ptr(portableresources.RabbitMQQueuesResourceType),
+				Type: to.Ptr(msg_ctrl.RabbitMQQueuesResourceType),
 			},
 		},
 	}

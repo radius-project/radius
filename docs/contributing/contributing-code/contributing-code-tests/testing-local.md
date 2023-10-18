@@ -8,20 +8,20 @@ Note, this only applies when we want to update the app core image, if we need to
 
 1. Set the environment variable DOCKER_REGISTRY set to the container registry
     ```
-    export DOCKER_REGISTRY=<registry>.azurecr.io
+    export DOCKER_REGISTRY=ghcr.io/your-registry
     ```
 1. Ensure you login to your container registry AND enable anonymous pull. The login command will need to be called every 3 hours as needed as it does log the user out frequently.
     ```
     az acr login -n <registry>
     az acr update --name <registry> --anonymous-pull-enabled
     ```
-1. Build and push an initial version of all images in the radius repo. This should push images for the applications-rp, the ucpd, etc that are required to run radius.
+1. Build and push an initial version of all images in the Radius repo. This should push images for the applications-rp, the ucpd, etc that are required to run radius.
     ```
     make docker-build && make docker-push
     ```
 1. Deploy an environment with command on kubernetes
     ```
-    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=<registry>.azurecr.io/applications-rp,rp.tag=latest,ucp.image=<registry>.azurecr.io/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
     go run ./cmd/rad/main.go workspace create kubernetes
     go run ./cmd/rad/main.go group create radius-rg
     go run ./cmd/rad/main.go switch radius-rg
@@ -31,7 +31,7 @@ Note, this only applies when we want to update the app core image, if we need to
 1. Run a deployment. Executing `go run \cmd\rad\main.go deploy <bicep>` will deploy your file to the cluster.
 
 ## To deploy azure resources
-The above steps will not configure the ability for radius to talk with azure resource. In order to do that, run everything above till Step 4 above and then:
+The above steps will not configure the ability for Radius to talk with azure resource. In order to do that, run everything above till Step 4 above and then:
 
 1. Create Service Principal
     ```
@@ -48,7 +48,7 @@ The above steps will not configure the ability for radius to talk with azure res
     ```
 1. Use these values in the following command:
     ```
-    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=<registry>.azurecr.io/applications-rp,rp.tag=latest,ucp.image=<registry>.azurecr.io/ucpd,ucp.tag=latest
+    go run ./cmd/rad/main.go install kubernetes --chart deploy/Chart --set rp.image=ghcr.io/your-registry/applications-rp,rp.tag=latest,ucp.image=ghcr.io/your-registry/ucpd,ucp.tag=latest
     go run ./cmd/rad/main.go workspace create kubernetes
     go run ./cmd/rad/main.go group create radius-rg
     go run ./cmd/rad/main.go switch radius-rg

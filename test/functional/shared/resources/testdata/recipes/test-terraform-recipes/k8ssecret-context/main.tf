@@ -14,8 +14,8 @@ resource "kubernetes_secret" "recipe-context" {
 
     # Add labels to enable functional test recognize the created resource.
     labels = {
-      "radius.dev/application" = var.context.application.name
-      "radius.dev/resource" =  var.context.resource.name
+      "radapp.io/application" = var.context.application.name
+      "radapp.io/resource" =  var.context.resource.name
     }
   }
 

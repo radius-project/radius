@@ -320,7 +320,7 @@ func (ct RPTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
-		// Delete AWS resources if they were created. This delete logic is here because deleting a Radius application
+		// Delete AWS resources if they were created. This delete logic is here because deleting a Radius Application
 		// will not delete the AWS resources that were created as part of the Bicep deployment.
 		if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
 			for _, resource := range step.AWSResources.Resources {

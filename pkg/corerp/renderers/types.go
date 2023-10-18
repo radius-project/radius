@@ -72,6 +72,8 @@ type EnvironmentOptions struct {
 	Identity *rpv1.IdentitySettings
 	// KubernetesMetadata represents the Environment KubernetesMetadata extension.
 	KubernetesMetadata *datamodel.KubeMetadataExtension
+	// Simulated represents whether the environment is a simulated environment.
+	Simulated bool
 }
 
 // ApplicationOptions represents the options for the linked application resource.

@@ -23,9 +23,9 @@ import (
 )
 
 func Test_PathParser(t *testing.T) {
-	repository, tag, err := parsePath("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
+	repository, tag, err := parsePath("ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
 	require.NoError(t, err)
-	require.Equal(t, "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure", repository)
+	require.Equal(t, "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure", repository)
 	require.Equal(t, "1.0", tag)
 }
 

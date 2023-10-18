@@ -111,6 +111,10 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 		}
 	}
 
+	if environment.Properties.Simulated != nil && *environment.Properties.Simulated {
+		config.Simulated = true
+	}
+
 	return &config, nil
 }
 
@@ -120,7 +124,13 @@ func (e *environmentLoader) LoadRecipe(ctx context.Context, recipe *recipes.Reso
 	if err != nil {
 		return nil, err
 	}
-	return getRecipeDefinition(environment, recipe)
+
+	envDefinition, err := getRecipeDefinition(environment, recipe)
+	if err != nil {
+		return nil, err
+	}
+
+	return envDefinition, err
 }
 
 func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, recipe *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {

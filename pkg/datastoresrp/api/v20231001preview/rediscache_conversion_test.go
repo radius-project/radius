@@ -22,13 +22,13 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
+	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/testutil/resourcetypeutil"
-
-	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
-	"github.com/radius-project/radius/pkg/portableresources"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -178,7 +178,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(portableresources.RedisCachesResourceType),
+				Type: to.Ptr(ds_ctrl.RedisCachesResourceType),
 			},
 		},
 		{
@@ -203,7 +203,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(portableresources.RedisCachesResourceType),
+				Type: to.Ptr(ds_ctrl.RedisCachesResourceType),
 			},
 		},
 		{
@@ -228,7 +228,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(portableresources.RedisCachesResourceType),
+				Type: to.Ptr(ds_ctrl.RedisCachesResourceType),
 			},
 		},
 		{
@@ -259,7 +259,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				},
 				ID:   to.Ptr(RedisID),
 				Name: to.Ptr("redis0"),
-				Type: to.Ptr(portableresources.RedisCachesResourceType),
+				Type: to.Ptr(ds_ctrl.RedisCachesResourceType),
 			},
 		},
 	}
@@ -377,7 +377,7 @@ func createBaseResource() v1.BaseResource {
 		TrackedResource: v1.TrackedResource{
 			ID:   RedisID,
 			Name: "redis0",
-			Type: portableresources.RedisCachesResourceType,
+			Type: ds_ctrl.RedisCachesResourceType,
 			Tags: map[string]string{},
 		},
 		InternalMetadata: v1.InternalMetadata{

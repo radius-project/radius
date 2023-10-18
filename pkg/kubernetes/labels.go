@@ -23,11 +23,11 @@ import (
 
 // Commonly-used and Radius-Specific labels for Kubernetes
 const (
-	LabelRadiusApplication  = "radius.dev/application"
-	LabelRadiusResource     = "radius.dev/resource"
-	LabelRadiusDeployment   = "radius.dev/deployment"
-	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
-	LabelRadiusResourceType = "radius.dev/resource-type"
+	LabelRadiusApplication  = "radapp.io/application"
+	LabelRadiusResource     = "radapp.io/resource"
+	LabelRadiusDeployment   = "radapp.io/deployment"
+	LabelRadiusRouteFmt     = "radapp.io/route-%s-%s"
+	LabelRadiusResourceType = "radapp.io/resource-type"
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
@@ -40,11 +40,11 @@ const (
 	// This value can be used to query all of the pods that make up the control plane (for example).
 	ControlPlanePartOfLabelValue = "radius"
 
-	AnnotationSecretHash = "radius.dev/secret-hash"
-	RadiusDevPrefix      = "radius.dev/"
+	AnnotationSecretHash = "radapp.io/secret-hash"
+	RadiusDevPrefix      = "radapp.io/"
 
 	// AnnotationIdentityType is the annotation for supported identity.
-	AnnotationIdentityType = "radius.dev/identity-type"
+	AnnotationIdentityType = "radapp.io/identity-type"
 )
 
 // NOTE: the difference between descriptive labels and selector labels

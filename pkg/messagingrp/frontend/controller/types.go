@@ -20,9 +20,16 @@ import (
 	"time"
 )
 
-var (
+const (
+	// User defined operation names
+	OperationListSecret = "LISTSECRETS"
+
+	// RabbitMQQueuesResourceType represents the resource type for RabbitMQ queue.
+	RabbitMQQueuesResourceType = "Applications.Messaging/rabbitMQQueues"
+
 	// AsyncCreateOrUpdateRabbitMQTimeout is the timeout for async create or update rabbitMQ
 	AsyncCreateOrUpdateRabbitMQTimeout = time.Duration(60) * time.Minute
+
 	// AsyncDeleteRabbitMQTimeout is the timeout for async delete rabbitMQ
 	AsyncDeleteRabbitMQTimeout = time.Duration(30) * time.Minute
 )

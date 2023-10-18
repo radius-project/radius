@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -64,7 +65,7 @@ func (r *SqlDatabase) ResourceMetadata() *rpv1.BasicResourceProperties {
 
 // ResourceTypeName returns the resource type of the SQL database resource.
 func (r *SqlDatabase) ResourceTypeName() string {
-	return portableresources.SqlDatabasesResourceType
+	return ds_ctrl.SqlDatabasesResourceType
 }
 
 // SqlDatabaseProperties represents the properties of SQL database resource.
@@ -135,5 +136,5 @@ func (sqlSecrets SqlDatabaseSecrets) IsEmpty() bool {
 
 // ResourceTypeName returns the resource type of the SQL database resource.
 func (sqlSecrets *SqlDatabaseSecrets) ResourceTypeName() string {
-	return portableresources.SqlDatabasesResourceType
+	return ds_ctrl.SqlDatabasesResourceType
 }

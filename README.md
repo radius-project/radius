@@ -1,33 +1,28 @@
 # Radius
 
-Radius is a platform for developers and IT operators building cloud-native applications. With Radius, teams can model, deploy, manage, and troubleshoot entire applications across on-premises and multi-cloud environments, with a consistent set of tools and a common experience across it all.
+Radius is a cloud-native application platform that enables developers and the platform engineers that support them to collaborate on delivering and managing cloud-native applications that follow organizational best practices for cost, operations and security, by default. Radius is an open-source project that supports deploying applications across private cloud, Microsoft Azure, and Amazon Web Services, with more cloud providers to come.
 
 ## Overview
 
-Application teams today struggle to build, deploy, and scale cloud-native applications. Not only do developers and IT operators need to model and manage complex app architectures, but they need to do so while balancing portability, organizational best-practices, regulatory requirements, and complex platform requirements. Even after figuring out all this and an app is deployed, teams struggle to communicate, visualize, and troubleshoot their app, often dealing with flat lists of resources that span every layer of the stack. 
+The evolution of cloud computing has increased the speed of innovation for many companies, whether they are building 2 and 3-tier applications, or complex microservice-based applications. Cloud native technologies like Kubernetes have made it easier to build applications that can run anywhere. At the same time, many applications have become more complex, and managing them in the cloud increasingly difficult, as companies build cloud-native applications composed of interconnected services and deploy them to multiple public clouds and their private infrastructure. While Kubernetes is a key enabler, we see many organizations building abstractions over Kubernetes, usually focused on compute, to work around its limitations:  Kubernetes has no formal definition of an application, it mingles infrastructure and application concepts and it is overwhelmingly complex.  Developers also inevitably realize their applications require much more than Kubernetes, including support for dependencies like application programming interface (API) front ends, key/value stores, caches, and observability systems.  Amidst these challenges for developers, their corporate IT counterparts also must enforce an ever-growing matrix of corporate standards, compliance, and security requirements, while enabling rapid application innovation. 
 
-As the pace of innovation increases for cloud-native technologies, so does the need for rapid progress within application teams. Application teams need a platform that can let developers and operators work together, while still maintaining the agility their users and applications require. These are the challenges that Radius is designed to solve.
+Radius was designed to address these distinct but related challenges that arise across development and operations as companies continue their journey to cloud.  Radius meets application teams where they are by supporting proven technologies like Kubernetes, existing infrastructure tools including Terraform and Bicep and by integrating with existing CI/CD systems like GitHub Actions. Radius supports multi-tier web-plus-data to complex microservice applications like eShop, a popular cloud reference application from Microsoft.
 
 Key features of the Radius platform include: 
-
-- *Radius application graph*: Developers can model their entire application, including the connections and dependencies between services. 
-- *Swappable infrastructure*: Radius resources are platform-agnostic, allowing applications to be written once and deployed to any platform, such as Kubernetes, Microsoft Azure, Amazon Web Services (AWS), or on-premises hardware. 
-- Recipes for infrastructure Provisioning: Radius Recipes automate infrastructure provisioning using infrastructure-as-code templates, ensuring all deployments meet organizational requirements and policies. 
-- *Radius environments*: IT operators can define policies, security configurations, Recipes, and diagnostics required by their organization, ensuring secure and repeatable infrastructure across local development, testing, and production environments. 
-- *Consistent tooling and experiences*: Radius offers a consistent set of APIs, tools, and experiences that span any cloud or on-premises environment, simplifying and standardizing cloud-native application teams' toolchains and processes.
+- *Team Collaboration*: Radius Applications and Environments allow developers to work with Operations on application definition and delivery.
+- *Infrastructure Recipes*: Swappable infrastructure that complies with organization best practicies and IT policy be default.
+- *Application Graph*: Understand how services and infrastructure in an application are interconnected.
+- *Cloud Neutral*: Deploy across development, on-premises and cloud environments with a consistent experience.
+- *Incremental Adoption*: Integrate Radius into existing workflows and existing catalogs of Infrastructure-as-Code templates.
 
 ## Release status
 
-Radius is currently in an invitation-only private release and we are working hard to get Radius ready for public release in the near future.
+This is an early release of Radius which enables the community to learn about and experiment with the platform. Please let us know what you think and open Issues when you find bugs or want to request a new feature. Radius is not yet ready for production workloads.
 
 ## Getting started
 
-1. Follow the [installation guide](https://docs.radapp.dev/getting-started/install/) to install Radius if you have not done so already.
-1. Then, follow the [first app guide](https://docs.radapp.dev/getting-started/first-app/) to take a tour of Radius by running your first app.
-
-## Quickstarts and samples
-
-See the [Radius quickstarts](https://docs.radapp.dev/getting-started/quickstarts/) and [samples repository](https://github.com/radius-project/samples) for tutorials and code examples that can help you get started with Radius.
+1. Follow the [getting started guide](https://docs.radapp.io/getting-started/) to install and try out Radius
+1. Visit the [Tutorials](https://docs.radapp.io/tutorials) and [User Guides](https://docs.radapp.io/guides) to learn more about Radius and start radifying your apps
 
 ## Getting help
 
@@ -52,8 +47,8 @@ Every month we host a community call to showcase new features, review upcoming m
 ## Contributing to Radius
 
 Visit [Contributing](./CONTRIBUTING.md) for more information on how to contribute to Radius.
-To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.dev/operations/custom-recipes/).
-To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.dev/contributing/docs/)
+To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.io/guides/recipes/howto-author-recipes/).
+To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.io/contributing/docs/)
 
 ## Repositories
 
@@ -64,7 +59,7 @@ In addition, we have the below repositories.
 |:-----|:------------|
 | [Docs](https://github.com/radius-project/docs) | This repository contains the Radius documentation source for Radius.
 | [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius environments.
+| [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius Environments.
 | [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
 | [Bicep](https://github.com/radius-project/bicep) | This repository contains source code for Bicep, which is a DSL for deploying cloud resources types. 
 | [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.

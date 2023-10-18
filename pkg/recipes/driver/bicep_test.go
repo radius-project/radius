@@ -352,6 +352,38 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
+func Test_Bicep_Execute_SimulatedEnvironment(t *testing.T) {
+	t.Skip("This test makes outbound calls. #6490")
+	opts := ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Configuration: recipes.Configuration{
+				Runtime: recipes.RuntimeConfiguration{
+					Kubernetes: &recipes.KubernetesRuntime{
+						Namespace: "test-namespace",
+					},
+				},
+				Simulated: true,
+			},
+			Recipe: recipes.ResourceMetadata{
+				EnvironmentID: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+				Name:          "test-recipe",
+				ResourceID:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Datastores/mongoDatabases/test-db",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "test-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+				ResourceType: "Applications.Datastores/mongoDatabases",
+			},
+		},
+	}
+	ctx := testcontext.New(t)
+	d := &bicepDriver{}
+	recipesOutput, err := d.Execute(ctx, opts)
+	require.NoError(t, err)
+	require.Nil(t, recipesOutput)
+}
+
 func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient) {
 	ctrl := gomock.NewController(t)
 	client := processors.NewMockResourceClient(ctrl)
@@ -434,12 +466,13 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 }
 
 func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
+	t.Skip("This test makes outbound calls. #6490")
 	ctx := testcontext.New(t)
 	driver := bicepDriver{}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
@@ -459,12 +492,13 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 }
 
 func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
+	t.Skip("This test makes outbound calls. #6490")
 	ctx := testcontext.New(t)
 	driver := bicepDriver{}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "radiusdev.azurecr.io/test-non-existent-recipe",
+		TemplatePath: "ghcr.io/radius-project/dev/test-non-existent-recipe",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
@@ -475,7 +509,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeLanguageFailure,
-			Message: "failed to fetch repository from the path \"radiusdev.azurecr.io/test-non-existent-recipe\": radiusdev.azurecr.io/test-non-existent-recipe:latest: not found",
+			Message: "failed to fetch repository from the path \"ghcr.io/radius-project/dev/test-non-existent-recipe\": ghcr.io/radius-project/dev/test-non-existent-recipe:latest: not found",
 		},
 		DeploymentStatus: "setupError",
 	}

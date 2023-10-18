@@ -9,6 +9,52 @@ package v20231001preview
 
 import "time"
 
+// ApplicationGraphConnection - Describes the connection between two resources.
+type ApplicationGraphConnection struct {
+	// REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
+// 'Inbound' indicates indicates this connection specifies the ID of the source.
+	Direction *Direction
+
+	// REQUIRED; The resource ID
+	ID *string
+}
+
+// ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.
+type ApplicationGraphOutputResource struct {
+	// REQUIRED; The resource ID.
+	ID *string
+
+	// REQUIRED; The resource name.
+	Name *string
+
+	// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResource - Describes a resource in the application graph.
+type ApplicationGraphResource struct {
+	// REQUIRED; The connections between resources in the application graph.
+	Connections []*ApplicationGraphConnection
+
+	// REQUIRED; The resource ID.
+	ID *string
+
+	// REQUIRED; The resource name.
+	Name *string
+
+	// REQUIRED; The resources that comprise this resource.
+	Resources []*ApplicationGraphOutputResource
+
+	// REQUIRED; The resource type.
+	Type *string
+}
+
+// ApplicationGraphResponse - Describes the application architecture and its dependencies.
+type ApplicationGraphResponse struct {
+	// REQUIRED; The resources in the application graph.
+	Resources []*ApplicationGraphResource
+}
+
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
@@ -79,6 +125,9 @@ type ApplicationResourceUpdateProperties struct {
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
+
+	// Simulated environment.
+	Simulated *bool
 }
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
@@ -300,6 +349,12 @@ type ContainerProperties struct {
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
 
+	// Specifies how the underlying container resource is provisioned and managed.
+	ResourceProvisioning *ContainerResourceProvisioning
+
+	// A collection of references to resources associated with the container
+	Resources []*ResourceReference
+
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
 
@@ -371,6 +426,12 @@ type ContainerResourceUpdateProperties struct {
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettingsUpdate
+
+	// Specifies how the underlying container resource is provisioned and managed.
+	ResourceProvisioning *ContainerResourceProvisioning
+
+	// A collection of references to resources associated with the container
+	Resources []*ResourceReference
 
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
@@ -478,6 +539,9 @@ type EnvironmentProperties struct {
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
+	// Simulated environment.
+	Simulated *bool
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
@@ -537,6 +601,9 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
+
+	// Simulated environment.
+	Simulated *bool
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container
@@ -1370,6 +1437,12 @@ type Resource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// ResourceReference - Describes a reference to an existing resource
+type ResourceReference struct {
+	// REQUIRED; Resource id of an existing resource
+	ID *string
 }
 
 // ResourceStatus - Status of a resource.

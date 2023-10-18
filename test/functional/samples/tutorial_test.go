@@ -60,7 +60,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 	require.NoError(t, err)
 	relPathSamplesRepo, err := filepath.Rel(cwd, samplesRepoAbsPath)
 	require.NoError(t, err)
-	template := filepath.Join(relPathSamplesRepo, "demo/app.bicep")
+	template := filepath.Join(relPathSamplesRepo, "samples/demo/app.bicep")
 	appName := "demo"
 	appNamespace := "tutorial-demo"
 

@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rp_pr "github.com/radius-project/radius/pkg/rp/portableresources"
 	rp_util "github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
@@ -32,10 +33,12 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/model"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
-
 	dapr_dm "github.com/radius-project/radius/pkg/daprrp/datamodel"
-	datastores_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	dsrp_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -93,22 +96,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	// get namespace for deploying the resource
-	// 1. fetch the resource from the DB and get the application info
-	res, err := dp.getResourceDataByID(ctx, resourceID)
-	if err != nil {
-		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
-		return renderers.RendererOutput{}, err
-	}
-	// 2. fetch the application properties from the DB
-	app := &corerp_dm.Application{}
-	err = rp_util.FetchScopeResource(ctx, dp.sp, res.AppID.String(), app)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-	// 3. fetch the environment resource from the db to get the Namespace
-	env := &corerp_dm.Environment{}
-	err = rp_util.FetchScopeResource(ctx, dp.sp, app.Properties.Environment, env)
+	app, env, err := dp.getApplicationAndEnvironmentForResourceID(ctx, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -227,11 +215,55 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return nil
 }
 
+func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx context.Context, id resources.ID) (*corerp_dm.Application, *corerp_dm.Environment, error) {
+	// get namespace for deploying the resource
+	// 1. fetch the resource from the DB and get the application info
+	res, err := dp.getResourceDataByID(ctx, id)
+	if err != nil {
+		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
+		return nil, nil, err
+	}
+
+	// 2. fetch the application properties from the DB
+	app := &corerp_dm.Application{}
+	err = rp_util.FetchScopeResource(ctx, dp.sp, res.AppID.String(), app)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// 3. fetch the environment resource from the db to get the Namespace
+	env := &corerp_dm.Environment{}
+	err = rp_util.FetchScopeResource(ctx, dp.sp, app.Properties.Environment, env)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return app, env, nil
+}
+
 // Deploy deploys the given radius resource by ordering the output resources in deployment dependency order, deploying each
 // output resource, updating static values for connections, and transforming the radius resource with computed values. It
 // returns a DeploymentOutput and an error if one occurs.
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	_, env, err := dp.getApplicationAndEnvironmentForResourceID(ctx, id)
+	if err != nil {
+		return rpv1.DeploymentOutput{}, err
+	}
+
+	envOpts, err := dp.getEnvOptions(ctx, env)
+	if err != nil {
+		return rpv1.DeploymentOutput{}, err
+	}
+
+	if envOpts.Simulated {
+		// Simulated environments do not actually deploy resources
+		return rpv1.DeploymentOutput{
+			SecretValues:            rendererOutput.SecretValues,
+			DeployedOutputResources: rendererOutput.Resources,
+		}, nil
+	}
 
 	// Deploy
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
@@ -375,6 +407,11 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 		logger.V(ucplog.LevelDebug).Info("environment identity is not specified.")
 	}
 
+	envOpts.Simulated = env.Properties.Simulated
+	if envOpts.Simulated {
+		logger.V(ucplog.LevelDebug).Info("environment is a simulated environment.")
+	}
+
 	// Get Environment KubernetesMetadata Info
 	if envExt := corerp_dm.FindExtension(env.Properties.Extensions, corerp_dm.KubernetesMetadata); envExt != nil && envExt.KubernetesMetadata != nil {
 		envOpts.KubernetesMetadata = envExt.KubernetesMetadata
@@ -489,25 +526,25 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.MongoDatabasesResourceType):
-		obj := &datastores_dm.MongoDatabase{}
+	case strings.ToLower(ds_ctrl.MongoDatabasesResourceType):
+		obj := &dsrp_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.SqlDatabasesResourceType):
-		obj := &datastores_dm.SqlDatabase{}
+	case strings.ToLower(ds_ctrl.SqlDatabasesResourceType):
+		obj := &dsrp_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.RedisCachesResourceType):
-		obj := &datastores_dm.RedisCache{}
+	case strings.ToLower(ds_ctrl.RedisCachesResourceType):
+		obj := &dsrp_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.RabbitMQQueuesResourceType):
+	case strings.ToLower(msg_ctrl.RabbitMQQueuesResourceType):
 		obj := &msg_dm.RabbitMQQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
@@ -519,19 +556,19 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.DaprStateStoresResourceType):
+	case strings.ToLower(dapr_ctrl.DaprStateStoresResourceType):
 		obj := &dapr_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.DaprSecretStoresResourceType):
+	case strings.ToLower(dapr_ctrl.DaprSecretStoresResourceType):
 		obj := &dapr_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, portableresources.RecipeData{})
-	case strings.ToLower(portableresources.DaprPubSubBrokersResourceType):
+	case strings.ToLower(dapr_ctrl.DaprPubSubBrokersResourceType):
 		obj := &dapr_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
@@ -550,7 +587,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = &parsedID
-	} else if portableresources.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
+	} else if rp_pr.IsValidPortableResourceType(resourceID.TypeSegments()[0].Type) {
 		// Application id is optional for portable resource types
 		appID = nil
 	} else {

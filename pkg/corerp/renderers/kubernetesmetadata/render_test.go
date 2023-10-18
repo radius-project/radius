@@ -216,8 +216,8 @@ func makeProperties(t *testing.T, isEmpty bool, hasReservedKey bool) datamodel.C
 	}
 
 	if hasReservedKey {
-		properties.Extensions[0].KubernetesMetadata.Annotations["radius.dev/testannkey"] = "radius.dev/testannval"
-		properties.Extensions[0].KubernetesMetadata.Labels["radius.dev/testlblkey"] = "radius.dev/testlblval"
+		properties.Extensions[0].KubernetesMetadata.Annotations["radapp.io/testannkey"] = "radapp.io/testannval"
+		properties.Extensions[0].KubernetesMetadata.Labels["radapp.io/testlblkey"] = "radapp.io/testlblval"
 	}
 
 	return properties

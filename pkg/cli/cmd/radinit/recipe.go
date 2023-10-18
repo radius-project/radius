@@ -22,7 +22,10 @@ import (
 	"strings"
 
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/portableresources"
+	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
+	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	recipe_types "github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
@@ -30,7 +33,7 @@ import (
 )
 
 const (
-	DevRecipesRegistry = "radius.azurecr.io"
+	DevRecipesRegistry = "ghcr.io/radius-project"
 )
 
 //go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
@@ -60,10 +63,18 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 		tag = "latest"
 	}
 
+	// Temporary solution to get all repositories.
+	// The issue is that if RepositoryListPageSize is not specified the default is 100.
+	// We have 104 repositories in the registry as of 12 Oct 2023. That is why processRepositories
+	// function was being called twice and the second call was overwriting all the recipes.
+	// TODO: Remove this once we have a better solution.
+	reg.RepositoryListPageSize = 1000
+
 	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
 
 	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
-	// Ex: radius.azurecr.io/recipes/local-dev/rediscaches:0.20
+	// Ex: ghcr.io/radius-project/recipes/local-dev/rediscaches:0.20
+	// The start parameter is set to "radius-rp" because our recipes are after that repository.
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		// validRepos will contain the repositories that have the requested tag.
 		validRepos := []string{}
@@ -110,6 +121,13 @@ func processRepositories(repos []string, tag string) map[string]map[string]corer
 	name := "default"
 
 	for _, repo := range repos {
+		// Skip dev environment recipes.
+		// dev repositories is in the form of ghcr.io/radius-project/dev/recipes/local-dev/secretstores:latest
+		// We should skip the dev repositories.
+		if isDevRepository(repo) {
+			continue
+		}
+
 		resourceType := getResourceTypeFromPath(repo)
 		// If the resource type is empty, it means we don't support the repository.
 		if resourceType == "" {
@@ -155,22 +173,27 @@ func getResourceTypeFromPath(repo string) (resourceType string) {
 func getPortableResourceType(resourceType string) string {
 	switch resourceType {
 	case "mongodatabases":
-		return portableresources.MongoDatabasesResourceType
+		return ds_ctrl.MongoDatabasesResourceType
 	case "rediscaches":
-		return portableresources.RedisCachesResourceType
+		return ds_ctrl.RedisCachesResourceType
 	case "sqldatabases":
-		return portableresources.SqlDatabasesResourceType
+		return ds_ctrl.SqlDatabasesResourceType
 	case "rabbitmqqueues":
-		return portableresources.RabbitMQQueuesResourceType
+		return msg_ctrl.RabbitMQQueuesResourceType
 	case "pubsubbrokers":
-		return portableresources.DaprPubSubBrokersResourceType
+		return dapr_ctrl.DaprPubSubBrokersResourceType
 	case "secretstores":
-		return portableresources.DaprSecretStoresResourceType
+		return dapr_ctrl.DaprSecretStoresResourceType
 	case "statestores":
-		return portableresources.DaprStateStoresResourceType
+		return dapr_ctrl.DaprStateStoresResourceType
 	case "extenders":
-		return portableresources.ExtendersResourceType
+		return ext_ctrl.ResourceTypeName
 	default:
 		return ""
 	}
+}
+
+func isDevRepository(repo string) bool {
+	_, found := strings.CutPrefix(repo, "dev/")
+	return found
 }

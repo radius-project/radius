@@ -160,7 +160,7 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 					// validate that this matches one of our expected deployment
 					index := matchesExpectedLabels(remaining, actualDeployment.Labels)
 					if index == nil {
-						// this is not a match, check if it has a radius application label
+						// this is not a match, check if it has a Radius Application label
 						t.Log(t,
 							"unrecognized deployment, could not find a match for Deployment with namespace: %v name: %v labels: %v",
 							actualDeployment.Namespace,
@@ -207,7 +207,7 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 
 	podClient := k8s.CoreV1().Pods(namespace)
 
-	// Filter only radius applications for a pod
+	// Filter only Radius Applications for a pod
 	podList, err := podClient.Watch(ctx, metav1.ListOptions{
 		Watch:         true,
 		LabelSelector: labelSelector,

@@ -79,7 +79,7 @@ type StatusMessage struct {
 // Interface is the interface type for port-forwarding.
 type Interface interface {
 	// Run will establish port-forward connections to every Kubernetes pod that
-	// is labeled as being part of the Radius application. Basing the logic on Kubernetes deployments rather
+	// is labeled as being part of the Radius Application. Basing the logic on Kubernetes deployments rather
 	// than Radius containers allows us to support resources created in recipes.
 	//
 	// Run will block until the provided context is cancelled.

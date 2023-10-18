@@ -108,9 +108,9 @@ func getExpectedLabels(t *testing.T, resourceName string) map[string]string {
 		"app.kubernetes.io/managed-by": "radius-rp",
 		"app.kubernetes.io/name":       resourceName,
 		"app.kubernetes.io/part-of":    "corerp-resources-gateway-kme",
-		"radius.dev/application":       "corerp-resources-gateway-kme",
-		"radius.dev/resource":          resourceName,
-		"radius.dev/resource-type":     "applications.core-gateways",
+		"radapp.io/application":        "corerp-resources-gateway-kme",
+		"radapp.io/resource":           resourceName,
+		"radapp.io/resource-type":      "applications.core-gateways",
 		"user.lbl.1":                   "user.lbl.val.1",
 		"user.lbl.2":                   "user.lbl.val.2",
 	}

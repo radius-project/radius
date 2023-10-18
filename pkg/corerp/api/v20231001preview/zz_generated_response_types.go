@@ -18,6 +18,12 @@ type ApplicationsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
+// ApplicationsClientGetGraphResponse contains the response from method ApplicationsClient.GetGraph.
+type ApplicationsClientGetGraphResponse struct {
+	// Describes the application architecture and its dependencies.
+	ApplicationGraphResponse
+}
+
 // ApplicationsClientGetResponse contains the response from method ApplicationsClient.Get.
 type ApplicationsClientGetResponse struct {
 	// Radius Application resource

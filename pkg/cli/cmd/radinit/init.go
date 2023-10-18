@@ -189,7 +189,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad init` command.
-// Creates radius resources, azure resources if required based on the user input, command flags
+// Creates Radius resources, azure resources if required based on the user input, command flags
 //
 
 // Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud

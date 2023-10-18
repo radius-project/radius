@@ -17,6 +17,11 @@ type ApplicationsClientDeleteOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ApplicationsClientGetGraphOptions contains the optional parameters for the ApplicationsClient.GetGraph method.
+type ApplicationsClientGetGraphOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ApplicationsClientGetOptions contains the optional parameters for the ApplicationsClient.Get method.
 type ApplicationsClientGetOptions struct {
 	// placeholder for future optional parameters

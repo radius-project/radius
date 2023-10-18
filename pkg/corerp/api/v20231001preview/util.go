@@ -89,7 +89,7 @@ func fromIdentityKind(kind rpv1.IdentitySettingKind) *IdentitySettingKind {
 	}
 }
 
-func toIdentityKind(kind *IdentitySettingKind) rpv1.IdentitySettingKind {
+func toIdentityKindDataModel(kind *IdentitySettingKind) rpv1.IdentitySettingKind {
 	if kind == nil {
 		return rpv1.IdentityNone
 	}
@@ -117,7 +117,7 @@ func isValidTemplateKind(templateKind string) bool {
 	return slices.Contains(recipes.SupportedTemplateKind, templateKind)
 }
 
-func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource {
+func toOutputResourcesDataModel(outputResources []rpv1.OutputResource) []*OutputResource {
 	var outResources []*OutputResource
 	for _, or := range outputResources {
 		r := &OutputResource{

@@ -96,7 +96,7 @@ The following are properties that can be specified for UCP:
 | Key | Description | Example |
 |-----|-------------|---------|
 | port | the localhost port which provides system-level info | `2222` |
-| maxOperationConcurrency | The maximum concurrency to process async request operations | `3` |
+| maxOperationConcurrency | The maximum concurrency to process async request operations | `10` |
 | maxOperationRetryCount | The maximum retry count to process async request operation | `2` |
 
 ### metricsProvider
@@ -210,7 +210,7 @@ server:
   host: "0.0.0.0"
   port: 5443
 workerServer:
-  maxOperationConcurrency: 3
+  maxOperationConcurrency: 10
   maxOperationRetryCount: 2
 ucp:
   kind: kubernetes
