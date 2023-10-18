@@ -205,7 +205,7 @@
 * **environment**: string: Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings): IdentitySettings is the external identity setting.
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (read-only): Provisioning state of the portable resource at the time the operation was called
 * **resourceProvisioning**: 'internal' | 'manual': Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource.
 * **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the container
 * **runtimes**: [RuntimesProperties](#runtimesproperties): The properties for runtime configuration
@@ -313,7 +313,7 @@
 
 ## ResourceReference
 ### Properties
-* **id**: string (Required): Resource id of an existing resource
+* **id**: string (required): Resource id of an existing resource
 
 ## RuntimesProperties
 ### Properties

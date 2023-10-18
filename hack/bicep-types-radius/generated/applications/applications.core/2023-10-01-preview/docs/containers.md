@@ -26,6 +26,8 @@
 | **extensions** | [Extension](#extension)[] | Extensions spec of the resource |
 | **identity** | [IdentitySettings](#identitysettings) | IdentitySettings is the external identity setting. |
 | **provisioningState** | 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' | Provisioning state of the portable resource at the time the operation was called <br />_(read-only)_ |
+| **resourceProvisioning** | 'internal' | 'manual' | Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource. |
+| **resources** | [ResourceReference](#resourcereference)[] | A collection of references to resources associated with the container |
 | **runtimes** | [RuntimesProperties](#runtimesproperties) | The properties for runtime configuration |
 | **status** | [ResourceStatus](#resourcestatus) | Status of a resource. <br />_(read-only)_ |
 
@@ -279,6 +281,14 @@
 | **kind** | 'azure.com.workload' | 'undefined' | IdentitySettingKind is the kind of supported external identity setting <br />_(required)_ |
 | **oidcIssuer** | string | The URI for your compute platform's OIDC issuer |
 | **resource** | string | The resource ID of the provisioned identity |
+
+### ResourceReference
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **id** | string | Resource id of an existing resource <br />_(required)_ |
 
 ### RuntimesProperties
 
