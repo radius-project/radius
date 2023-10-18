@@ -320,6 +320,8 @@ jobs:
     name: Publish GitHub Release
     needs: ['build-and-push-cli']
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
@@ -338,7 +340,7 @@ jobs:
         run: |
           gh release create v${{ env.REL_VERSION }} \
             ${{ env.RELEASE_PATH }}/* \
-            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --title "Radius v${{ env.REL_VERSION }}" \
             --generate-notes \
             --verify-tag \
             --prerelease
@@ -347,7 +349,7 @@ jobs:
         run: |
           gh release create v${{ env.REL_VERSION }} \
             ${{ env.RELEASE_PATH }}/* \
-            --title "Project Radius v${{ env.REL_VERSION }}" \
+            --title "Radius v${{ env.REL_VERSION }}" \
             --notes-file docs/release-notes/v${{ env.REL_VERSION }}.md \
             --verify-tag
 
