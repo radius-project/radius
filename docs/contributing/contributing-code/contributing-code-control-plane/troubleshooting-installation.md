@@ -33,7 +33,7 @@ Logs with `severity` set to `error` or `warn` could point to why the pods are no
 
 Every rad CLI command outputs a `traceId` in the event of an error. These identifiers correspond to the `traceId` field that appears in the log messages produced by Radius.
 By searching the logs for the `traceId` value, you can find the logs associated with a request that failed.
-You can learn more about observability and logging in Radius in our [observability docs](https://docs.radapp.dev/operations/control-plane/observability/logging/logs/).
+You can learn more about observability and logging in Radius in our [observability docs](https://docs.radapp.io/guides/operations/control-plane/logs/).
 ```json
 {
   "severity": "info",

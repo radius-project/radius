@@ -9,7 +9,7 @@ by creating a Radius installation with your code changes. For this, you need to:
 
 ## Instructions
 
-Prerequisite: [Supported Kubernetes cluster](https://docs.radapp.dev/operations/platforms/kubernetes-platform/supported-clusters/)
+Prerequisite: [Supported Kubernetes cluster](https://docs.radapp.io/guides/operations/kubernetes/overview)
 
 Note that installing a custom build could corrupt existing data or installation. For these reasons, it might be useful to install the custom build on a clean test cluster.  
 

@@ -21,4 +21,4 @@ jobs:
             - Swagger changes require reference edge docs to be updated [here](https://github.com/radius-project/docs/tree/edge/docs/content/reference/resource-schema)
             - Make sure to create a branch and submit a PR into the edge branch instead of the default latest branch, as the swagger changes will not be available until the next release.
             
-            For more information on contributing to docs please visit https://docs.radapp.dev/contributing/docs/.
+            For more information on contributing to docs please visit https://docs.radapp.io/contributing/docs/.
