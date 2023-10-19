@@ -13,15 +13,49 @@ param port int = 3000
 param magpieimage string
 
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'corerp-simple'
+  name: 'corerp-resources-gateway'
   location: location
   properties: {
     environment: environment
   }
 }
 
+resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
+  name: 'http-gtwy-gtwy'
+  location: location
+  properties: {
+    application: app.id
+    routes: [
+      {
+        path: '/'
+        destination: frontendRoute.id
+      }
+      {
+        path: '/backend1'
+        destination: backendRoute.id
+      }
+      {
+        // Route /backend2 requests to the backend, and
+        // transform the request to /
+        path: '/backend2'
+        destination: backendRoute.id
+        replacePrefix: '/'
+      }
+    ]
+  }
+}
+
+resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
+  name: 'http-gtwy-front-rte'
+  location: location
+  properties: {
+    application: app.id
+    port: 81
+  }
+}
+
 resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'http-front-ctnr-simple'
+  name: 'http-gtwy-front-ctnr'
   location: location
   properties: {
     application: app.id
@@ -30,6 +64,7 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
+          provides: frontendRoute.id
         }
       }
       readinessProbe: {
@@ -47,7 +82,7 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
 }
 
 resource backendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'http-back-rte-simple'
+  name: 'http-gtwy-back-rte'
   location: location
   properties: {
     application: app.id
@@ -55,13 +90,15 @@ resource backendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
 }
 
 resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'http-back-ctnr-simple'
+  name: 'http-gtwy-back-ctnr'
   location: location
   properties: {
     application: app.id
     container: {
       image: magpieimage
-     
+      env: {
+        gatewayUrl: gateway.properties.url
+      }
       ports: {
         web: {
           containerPort: port
