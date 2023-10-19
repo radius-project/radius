@@ -258,7 +258,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}
 
 	if envOpts.Simulated {
-		// Simulated environments do not actually deploy resources.
+		// Simulated environments do not actually deploy resources
 		return rpv1.DeploymentOutput{
 			SecretValues:            rendererOutput.SecretValues,
 			DeployedOutputResources: rendererOutput.Resources,
