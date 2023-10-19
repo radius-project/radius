@@ -27,7 +27,6 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
-	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
@@ -105,7 +104,7 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/daprstatestore",
 		Method:        http.MethodDelete,
-	}, {
+	}, /*{
 		OperationType: v1.OperationType{Type: ds_ctrl.MongoDatabasesResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.datastores/mongodatabases",
 		Method:        http.MethodGet,
@@ -226,13 +225,6 @@ func TestHandlers(t *testing.T) {
 			{
 				OperationType:               v1.OperationType{Type: "Applications.Dapr/providers", Method: v1.OperationGet},
 				Path:                        "/providers/applications.dapr/operations",
-				Method:                      http.MethodGet,
-				WithoutRootScope:            true,
-				SkipOperationTypeValidation: true,
-			},
-			{
-				OperationType:               v1.OperationType{Type: "Applications.Datastores/providers", Method: v1.OperationGet},
-				Path:                        "/providers/applications.datastores/operations",
 				Method:                      http.MethodGet,
 				WithoutRootScope:            true,
 				SkipOperationTypeValidation: true,

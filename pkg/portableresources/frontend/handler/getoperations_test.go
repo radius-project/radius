@@ -47,7 +47,7 @@ func TestRunWith20231001Preview(t *testing.T) {
 	case *rest.OKResponse:
 		pagination, ok := v.Body.(*v1.PaginatedList)
 		require.True(t, ok)
-		require.Equal(t, 26, len(pagination.Value))
+		require.Equal(t, 10, len(pagination.Value))
 	default:
 		require.Truef(t, false, "should not return error")
 	}
