@@ -35,6 +35,12 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
+	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
+	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
+	gtwy_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
+	hrt_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/httproutes"
+	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
+	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{
@@ -224,7 +230,7 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		Method:        http.MethodGet,
 	}, {
 		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: "ACTIONGETGRAPH"},
-		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0/getgraph",
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0/getraph",
 		Method:        http.MethodPost,
 	},
 }
