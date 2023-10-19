@@ -17,14 +17,19 @@ limitations under the License.
 package shared
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/test/functional"
+	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -86,4 +91,69 @@ func Test_ResourceList(t *testing.T) {
 			listResources(t, planeScope, resourceType)
 		})
 	}
+}
+
+// Test_ApplicationGraph covers the application graph API.
+
+// This test exists as a smoke test that this API can be called safely.
+
+func Test_ApplicationGraph(t *testing.T) {
+	// Deploy a simple app
+	template := "testdata/corerp-resources-application-graph.bicep"
+	name := "corerp-application-simple"
+	appNamespace := "corerp-application-simple"
+
+	test := NewRPTest(t, name, []TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "http-front-ctnr-simple",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "http-back-rte-simple",
+						Type: validation.HttpRoutesResource,
+						App:  name,
+					},
+					{
+						Name: "http-back-ctnr-simple",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "http-front-ctnr-simple"),
+						validation.NewK8sPodForResource(name, "http-back-ctnr-simple"),
+						validation.NewK8sServiceForResource(name, "http-back-rte-simple"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct RPTest) {
+				// Verify the application graph
+				options := NewRPTestOptions(t)
+				client := options.ManagementClient
+				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
+				appManagementClient := client.(*clients.UCPApplicationsManagementClient)
+				appGraphClient, err := v20231001preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+				_, err = appGraphClient.GetGraph(ctx, "corerp-application-simple", map[string]any{}, nil)
+				//require(res, )
+				require.NoError(t, err)
+
+			},
+		},
+	})
+
+	test.Test(t)
+
+	// getGraph on the app and verify it's what we expect
 }
