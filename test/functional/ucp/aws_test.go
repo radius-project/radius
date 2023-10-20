@@ -44,7 +44,7 @@ var (
 )
 
 func Test_AWS_DeleteResource(t *testing.T) {
-	t.Skip("https://github.com/radius-project/radius/issues/5967")
+	t.Skip("Skipping until we resolve https://github.com/radius-project/radius/issues/6535")
 	ctx := context.Background()
 
 	bucketName := generateS3BucketName()
@@ -106,7 +106,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 }
 
 func Test_AWS_ListResources(t *testing.T) {
-	t.Skip("https://github.com/radius-project/radius/issues/5967")
+	t.Skip("Skipping until we resolve https://github.com/radius-project/radius/issues/6535")
 	ctx := context.Background()
 
 	var bucketName = generateS3BucketName()
