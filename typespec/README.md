@@ -66,7 +66,7 @@ tsp format **/*.tsp
 
 You can manage multiple API versions with the decorator of [TypeSpec.Versioning](https://microsoft.github.io/typespec/standard-library/versioning/reference) library.
 
-1. Describe the supported version in `enum Verisons` of `main.tsp`. For example, [Test.Resource/main.tsp](./Test.Resource/main.tsp) supports two API verisons, `2022-08-19-preview` and `2023-08-19`.
+1. Describe the supported version in `enum Versions` of `main.tsp`. For example, [Test.Resource/main.tsp](./Test.Resource/main.tsp) supports two API versions, `2022-08-19-preview` and `2023-08-19`.
 1. Use [the versioning decorators](https://microsoft.github.io/typespec/standard-library/versioning/reference#decorators) for model and property. [Test.Resource/typesyncresources.tsp](./Test.Resource/testsyncresources.tsp) includes the example to use `@added` decorator to add new resource type in `v2023-08-19` API version.
 
 ### Link API operation to example files with `x-ms-examples` custom property
