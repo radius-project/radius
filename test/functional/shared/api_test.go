@@ -99,7 +99,7 @@ func Test_ResourceList(t *testing.T) {
 
 func Test_ApplicationGraph(t *testing.T) {
 	// Deploy a simple app
-	template := "testdata/corerp-resources-application-graph.bicep"
+	template := "resources/testdata/corerp-resources-application-graph.bicep"
 	name := "corerp-application-simple"
 	appNamespace := "corerp-application-simple"
 	expectedGraphResp := v20231001preview.ApplicationsClientGetGraphResponse{}
