@@ -708,10 +708,6 @@ func GetAvailablePort() (int, error) {
 // DeleteAppWithoutDeletingResources creates a client to delete an application without deleting its resources and returns
 // an error if one occurs.
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options shared.RPTestOptions, applicationName string) error {
-	ctx, cancel := testcontext.NewWithCancel(t)
-	t.Cleanup(cancel)
-
-	options := shared.NewRPTestOptions(t)
 	client := options.ManagementClient
 	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 	appManagementClient := client.(*clients.UCPApplicationsManagementClient)
