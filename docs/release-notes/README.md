@@ -39,3 +39,9 @@ To generate the release notes:
 4. Click `Generate release notes` to generate the markdown for the release notes.
 5. Copy both the contents of `## What's Changed` and `## New Contributors` into their respective sections in the template (_make sure not to copy the headers, as they already exist in the template_).
 6. Exit out of the window without publishing the release or saving a draft.
+
+## Patch releases
+
+Patch releases will be uploaded to Github Releases and require patch release notes for the release workflow to execute. The patch release notes follow the same formatting as the original release notes, but only contain info about the changelog.
+
+Refer to [template_patch.md](./template_patch.md) for the template to use when creating a new patch release note.
