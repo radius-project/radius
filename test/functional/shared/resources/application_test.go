@@ -20,10 +20,14 @@ import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -53,4 +57,68 @@ func Test_Application(t *testing.T) {
 		},
 	})
 	test.Test(t)
+}
+
+func Test_ApplicationGraph(t *testing.T) {
+	// Deploy a simple app
+	template := "testdata/corerp-resources-application-graph.bicep"
+	name := "corerp-application-simple"
+	appNamespace := "corerp-application-simple"
+	expectedGraphResp := v20231001preview.ApplicationsClientGetGraphResponse{}
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "http-front-ctnr-simple",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "http-back-rte-simple",
+						Type: validation.HttpRoutesResource,
+						App:  name,
+					},
+					{
+						Name: "http-back-ctnr-simple",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "http-front-ctnr-simple"),
+						validation.NewK8sPodForResource(name, "http-back-ctnr-simple"),
+						validation.NewK8sServiceForResource(name, "http-back-rte-simple"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
+				// Verify the application graph
+				options := shared.NewRPTestOptions(t)
+				client := options.ManagementClient
+				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
+				appManagementClient := client.(*clients.UCPApplicationsManagementClient)
+				appGraphClient, err := v20231001preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+				require.NoError(t, err)
+				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple", map[string]any{}, nil)
+				//require(res, )
+				require.NoError(t, err)
+				require.Equal(t, expectedGraphResp, res)
+
+			},
+		},
+	})
+
+	test.Test(t)
+
+	// getGraph on the app and verify it's what we expect
 }
