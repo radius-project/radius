@@ -30,10 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
-var (
-	schemePrefix = "http://"
-)
-
 var _ ctrl.Controller = (*GetApplicationGraph)(nil)
 
 // GetApplicationGraph is the controller implementation to get application graph.
