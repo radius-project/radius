@@ -230,7 +230,7 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		Method:        http.MethodGet,
 	}, {
 		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: "ACTIONGETGRAPH"},
-		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0/getraph",
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0/getgraph",
 		Method:        http.MethodPost,
 	},
 }
