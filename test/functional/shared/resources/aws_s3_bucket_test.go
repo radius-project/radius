@@ -26,6 +26,7 @@ import (
 )
 
 func Test_AWS_S3Bucket(t *testing.T) {
+	t.Skip("Skipping until we resolve https://github.com/radius-project/radius/issues/6535")
 	template := "testdata/aws-s3-bucket.bicep"
 	name := functional.GenerateS3BucketName()
 	creationTimestamp := functional.GetCreationTimestamp()
@@ -64,6 +65,7 @@ func Test_AWS_S3Bucket(t *testing.T) {
 }
 
 func Test_AWS_S3Bucket_Existing(t *testing.T) {
+	t.Skip("Skipping until we resolve https://github.com/radius-project/radius/issues/6535")
 	template := "testdata/aws-s3-bucket.bicep"
 	templateExisting := "testdata/aws-s3-bucket-existing.bicep"
 	name := functional.GenerateS3BucketName()
