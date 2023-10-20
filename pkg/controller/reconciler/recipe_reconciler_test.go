@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
@@ -303,8 +302,8 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedData := map[string][]byte{
-		"a-value":  []byte(base64.RawStdEncoding.EncodeToString([]byte("a"))),
-		"b-secret": []byte(base64.RawStdEncoding.EncodeToString([]byte("b"))),
+		"a-value":  []byte("a"),
+		"b-secret": []byte("b"),
 	}
 
 	require.Equal(t, expectedData, secret.Data)

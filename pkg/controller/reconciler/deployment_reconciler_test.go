@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"encoding/base64"
 	"fmt"
 	"testing"
 	"time"
@@ -366,10 +365,10 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedSecretData := map[string][]byte{
-		"CONNECTION_A_A-SECRET": []byte(base64.RawStdEncoding.EncodeToString([]byte("a"))),
-		"CONNECTION_A_A-VALUE":  []byte(base64.RawStdEncoding.EncodeToString([]byte("a"))),
-		"CONNECTION_B_B-SECRET": []byte(base64.RawStdEncoding.EncodeToString([]byte("b"))),
-		"CONNECTION_B_B-VALUE":  []byte(base64.RawStdEncoding.EncodeToString([]byte("b"))),
+		"CONNECTION_A_A-SECRET": []byte("a"),
+		"CONNECTION_A_A-VALUE":  []byte("a"),
+		"CONNECTION_B_B-SECRET": []byte("b"),
+		"CONNECTION_B_B-VALUE":  []byte("b"),
 	}
 	require.Equal(t, expectedSecretData, secret.Data)
 
@@ -412,8 +411,8 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedSecretData = map[string][]byte{
-		"CONNECTION_B_B-SECRET": []byte(base64.RawStdEncoding.EncodeToString([]byte("b"))),
-		"CONNECTION_B_B-VALUE":  []byte(base64.RawStdEncoding.EncodeToString([]byte("b"))),
+		"CONNECTION_B_B-SECRET": []byte("b"),
+		"CONNECTION_B_B-VALUE":  []byte("b"),
 	}
 	require.Equal(t, expectedSecretData, secret.Data)
 
