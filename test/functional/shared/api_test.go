@@ -102,6 +102,7 @@ func Test_ApplicationGraph(t *testing.T) {
 	template := "testdata/corerp-resources-application-graph.bicep"
 	name := "corerp-application-simple"
 	appNamespace := "corerp-application-simple"
+	expectedGraphResp := v20231001preview.ApplicationsClientGetGraphResponse{}
 
 	test := NewRPTest(t, name, []TestStep{
 		{
@@ -145,9 +146,11 @@ func Test_ApplicationGraph(t *testing.T) {
 				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 				appManagementClient := client.(*clients.UCPApplicationsManagementClient)
 				appGraphClient, err := v20231001preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
-				_, err = appGraphClient.GetGraph(ctx, "corerp-application-simple", map[string]any{}, nil)
+				require.NoError(t, err)
+				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple", map[string]any{}, nil)
 				//require(res, )
 				require.NoError(t, err)
+				require.Equal(t, expectedGraphResp, res)
 
 			},
 		},
