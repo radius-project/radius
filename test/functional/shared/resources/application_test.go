@@ -18,6 +18,8 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/test/functional"
@@ -112,6 +114,8 @@ func Test_ApplicationGraph(t *testing.T) {
 				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple", map[string]any{}, nil)
 				//require(res, )
 				require.NoError(t, err)
+				s, _ := json.MarshalIndent(res, "", "\t")
+				fmt.Print(string(s))
 				require.Equal(t, expectedGraphResp, res)
 
 			},
