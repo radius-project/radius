@@ -27,7 +27,7 @@ In the project-radius/samples repo, run the [Test Quickstarts](https://github.co
 
 > For now, this is a manual task. Soon, this workflow will be triggered automatically.
 
-> There is a possiblity that the workflow run failed from flaky tests. Try re-running, and if the failure is persistent, then there should be further investigation.
+> There is a possibility that the workflow run failed from flaky tests. Try re-running, and if the failure is persistent, then there should be further investigation.
 
 If this workflow run fails, or if we encounter an issue with an RC release, please refer to "Patching" below.
 
