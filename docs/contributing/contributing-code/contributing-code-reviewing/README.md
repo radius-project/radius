@@ -73,7 +73,7 @@ Our expectations for code style and linting are described in our [coding documen
 
 Beyond this we value consistency with the decisions we've already made. Ideally the code we write is consistent everywhere. Failing that, it should be consistent with the surrounding components.
 
-Outside of these expectations, please feel free to make style suggestions if you think the code could be clearer. If the submitter has a good reason for doing it the way they are, and rejects your feedback then please consider: *"Is someone credibly going to make a mistake in the future based on this decision?"* before continuing to push the issue. We want the project to be approachable for new contributors (both new to Go and new to Radius). We do not want to frustrate people with unneccessary ceremony.
+Outside of these expectations, please feel free to make style suggestions if you think the code could be clearer. If the submitter has a good reason for doing it the way they are, and rejects your feedback then please consider: *"Is someone credibly going to make a mistake in the future based on this decision?"* before continuing to push the issue. We want the project to be approachable for new contributors (both new to Go and new to Radius). We do not want to frustrate people with unnecessary ceremony.
 
 The bar is **very high** for adopting new rules or changing style guidance for the project. Please start a discussion **outside** of the context of a pull-request if you think we need to adopt a new rule.
 
@@ -167,7 +167,7 @@ More details about those roles can be found in the [community repo](https://gith
 
 ### Responsibilities of an approver
 
-Approvers are expected to display good judgement, responsibility, and competance over the *top* of the code review pyramid (Style, Correctness, Design).
+Approvers are expected to display good judgement, responsibility, and competence over the *top* of the code review pyramid (Style, Correctness, Design).
 
 It's likely that for for small changes a maintainer will delegate responsibility for approval to a maintainer working in the relevant area.
 
@@ -175,7 +175,7 @@ Approvers are responsible for enforcing the **completeness** of a change. Each p
 
 ### Responsibilities of a maintainer
 
-Maintainers are expected to display good judgement, responsibility, and competance over **all** of the code review pyramid, with special emphasis on Behavior and Scope. Maintainers are responsible for the technical oversight of the project, and this often means saying **"no"** when a feature request is out of scope, or a change is too complex to maintain.
+Maintainers are expected to display good judgement, responsibility, and competence over **all** of the code review pyramid, with special emphasis on Behavior and Scope. Maintainers are responsible for the technical oversight of the project, and this often means saying **"no"** when a feature request is out of scope, or a change is too complex to maintain.
 
 Maintainers are explicitly required to review and approve new dependencies to the project.
 

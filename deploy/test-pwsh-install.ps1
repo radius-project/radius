@@ -42,7 +42,7 @@ if ($originalPathType -ne $afterInstallPathType) {
     exit 1
 }
 
-## Verify the original path is not overriden
+## Verify the original path is not overridden
 if (!$currentPath.StartsWith($originalPath)) {
     Write-Error "Path is not using original path as a prefix after installation. Expected: $originalPath, Actual: $currentPath"
     exit 1

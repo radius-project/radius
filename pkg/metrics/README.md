@@ -9,7 +9,7 @@
 
 	metric.Must(global.GetMeterProvider().Meter("radius-rp")).NewInt64Counter(metricName, metric.WithUnit(unit.millisecond)).Add(ctx, int64(val), labels...)
 
-3. To use a guage, define a call back function:
+3. To use a gauge, define a call back function:
 
 	callback := func(v int) metric.Int64ObserverFunc {
 		return metric.Int64ObserverFunc(func(_ context.Context, result metric.Int64ObserverResult) { result.Observe(int64(v), labels...) })
