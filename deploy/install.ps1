@@ -22,9 +22,6 @@ param (
 Write-Output ""
 $ErrorActionPreference = 'stop'
 
-# Escape space of RadiusRoot path
-$RadiusRoot = $RadiusRoot -replace ' ', '` '
-
 # Constants
 $RadiusCliFileName = "rad.exe"
 $RadiusCliFilePath = "${RadiusRoot}\${RadiusCliFileName}"
@@ -91,7 +88,7 @@ if (Test-Path "C:\radius\rad.exe" -PathType Leaf) {
 if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Output "Previous rad CLI detected: $RadiusCliFilePath"
     try {
-        $CurrentVersion = Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version"
+        $CurrentVersion = &$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version
         Write-Output "Previous version: $CurrentVersion`r`n"
     }
     catch {
@@ -155,7 +152,7 @@ if (Test-Path $RadiusCliFilePath -PathType Leaf) {
 Rename-Item -Path $exeFilePath -NewName $RadiusCliFileName -Force
 
 # Print the version string of the installed CLI
-Write-Output "rad CLI version: $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version")"
+Write-Output "rad CLI version: $(&$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version)"
 
 # Add RadiusRoot directory to User Path environment variable
 $UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(

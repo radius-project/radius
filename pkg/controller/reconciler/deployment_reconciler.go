@@ -18,7 +18,6 @@ package reconciler
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -517,6 +516,8 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 		return fmt.Errorf("failed to fetch secret %s: %w", secretName, err)
 	}
 
+	// envtest has some quirky behavior around StringData which makes it hard to test. So we're
+	// using Data directly.
 	secret.Data = map[string][]byte{}
 
 	for name, source := range annotations.Configuration.Connections {
@@ -553,10 +554,8 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 			return fmt.Errorf("failed to read values resource %s: %w", id, err)
 		}
 
-		// envtest has some quirky behavior around StringData which makes it hard to test. So we're
-		// using Data directly.
 		for k, v := range values {
-			secret.Data[k] = []byte(base64.RawStdEncoding.EncodeToString([]byte(v)))
+			secret.Data[k] = []byte(v)
 		}
 	}
 

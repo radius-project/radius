@@ -117,7 +117,7 @@ Review feedback for design should focus on the following points:
 
 ---
 
-Go is a pragmatic and simple language and our designs should leverage its simplicity. In general we want to avoid complex hierarchies or object-orientied abstractions where possible. The flip-side of this is that because Go is a simple language, the type system and what it can express is limited.
+Go is a pragmatic and simple language and our designs should leverage its simplicity. In general we want to avoid complex hierarchies or object-oriented abstractions where possible. The flip-side of this is that because Go is a simple language, the type system and what it can express is limited.
 
 Where possible we want to optimize for correctness, testability, and simplicity in that order. 
 

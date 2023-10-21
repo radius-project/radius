@@ -9,7 +9,7 @@ You can find our full **contributor documentation** including instructions at th
 - [How to contribute](./docs/contributing/how-to.md)
 - [See "good first issues"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) 
 - [Install prerequisites](./docs/contributing/contributing-code/contributing-code-prerequisites/)
-- [Create your first commit (full walkthrough)](./contributing-code-first-commit/first-commit-00-prerequisites.md)
+- [Create your first commit (full walkthrough)](./docs/contributing/contributing-code/contributing-code-first-commit/)
 - [Building the repo](./docs/contributing/contributing-code/contributing-code-building/)
 - [Understanding repo organization](./docs/contributing/contributing-code/contributing-code-organization/)
 - [Contribute to issues](./docs/contributing/contributing-issues/)
