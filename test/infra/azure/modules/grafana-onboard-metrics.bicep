@@ -27,7 +27,7 @@ param metricLabelsAllowlist string
 param metricAnnotationsAllowList string
 
 // This enables the Azure Monitor for Containers addon on the AKS cluster by patching the existing cluster
-// after deploying datacollection endpoint/rules and datacollection assocation on cluster resource.
+// after deploying datacollection endpoint/rules and datacollection association on cluster resource.
 resource enableMonitorAddon 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
   name: clusterName
   location: clusterLocation

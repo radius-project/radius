@@ -11,7 +11,7 @@ You can find our full **contributor documentation** including instructions at th
 - [Install prerequisites](./docs/contributing/contributing-code/contributing-code-prerequisites/)
 - [Create your first commit (full walkthrough)](./docs/contributing/contributing-code/contributing-code-first-commit/)
 - [Building the repo](./docs/contributing/contributing-code/contributing-code-building/)
-- [Understanding repo organiztion](./docs/contributing/contributing-code/contributing-code-organization/)
+- [Understanding repo organization](./docs/contributing/contributing-code/contributing-code-organization/)
 - [Contribute to issues](./docs/contributing/contributing-issues/)
 - [Create pull requests](./docs/contributing/contributing-pull-requests/)
 - [Contribute to documentation](https://github.com/radius-project/docs)
