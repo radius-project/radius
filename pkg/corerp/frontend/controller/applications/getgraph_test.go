@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetApplicationGraphRun_20231001Preview(t *testing.T) {
+func TestGetGraphRun_20231001Preview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -54,7 +54,7 @@ func TestGetApplicationGraphRun_20231001Preview(t *testing.T) {
 
 		conn, _ := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
 
-		ctl, err := NewGetApplicationGraph(opts, conn)
+		ctl, err := NewGetGraph(opts, conn)
 		require.NoError(t, err)
 
 		w := httptest.NewRecorder()

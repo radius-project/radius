@@ -30,28 +30,28 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 )
 
-var _ ctrl.Controller = (*GetApplicationGraph)(nil)
+var _ ctrl.Controller = (*GetGraph)(nil)
 
-// GetApplicationGraph is the controller implementation to get application graph.
-type GetApplicationGraph struct {
+// GetGraph is the controller implementation to get application graph.
+type GetGraph struct {
 	ctrl.Operation[*datamodel.Application, datamodel.Application]
-	conn sdk.Connection
+	connection sdk.Connection
 }
 
-// NewGetApplicationGraph creates a new instance of the GetApplicationGraph controller.
-func NewGetApplicationGraph(opts ctrl.Options, UCPConn sdk.Connection) (ctrl.Controller, error) {
-	return &GetApplicationGraph{
+// NewGetGraph creates a new instance of the GetGraph controller.
+func NewGetGraph(opts ctrl.Options, connection sdk.Connection) (ctrl.Controller, error) {
+	return &GetGraph{
 		ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Application]{
 				RequestConverter:  converter.ApplicationDataModelFromVersioned,
 				ResponseConverter: converter.ApplicationDataModelToVersioned,
 			},
 		),
-		UCPConn,
+		connection,
 	}, nil
 }
 
-func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (ctrl *GetGraph) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Request route for getGraph has name of the operation as suffix which should be removed to get the resource id.
@@ -70,22 +70,16 @@ func (ctrl *GetApplicationGraph) Run(ctx context.Context, w http.ResponseWriter,
 		return nil, err
 	}
 
-	clientOptions := sdk.NewClientOptions(ctrl.conn)
+	clientOptions := sdk.NewClientOptions(ctrl.connection)
 
-	// get all resources in application scope
 	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	// get all resources in environment scope
 	environmentResources, err := listAllResourcesByEnvironment(ctx, environmentID, clientOptions)
 	if err != nil {
 		return nil, err
-	}
-
-	if applicationResources == nil && environmentResources == nil {
-		return rest.NewOKResponse(nil), err
 	}
 
 	graph := computeGraph(applicationID.Name(), applicationResources, environmentResources)

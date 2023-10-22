@@ -87,7 +87,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		Custom: map[string]builder.Operation[datamodel.Application]{
 			"getGraph": {
 				APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
-					return app_ctrl.NewGetApplicationGraph(opt, *recipeControllerConfig.UCPConnection)
+					return app_ctrl.NewGetGraph(opt, *recipeControllerConfig.UCPConnection)
 				},
 			},
 		},

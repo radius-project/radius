@@ -32,7 +32,7 @@ const (
 )
 
 var (
-	ResourceTypesList = []string{
+	resourceTypesList = []string{
 		ds_ctrl.MongoDatabasesResourceType,
 		msg_ctrl.RabbitMQQueuesResourceType,
 		ds_ctrl.RedisCachesResourceType,

@@ -25,22 +25,24 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/go-openapi/jsonpointer"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-var (
-	ProvisioningStateSucceeded = "Succeeded"
+const (
+	connectionsPath = "/properties/connections"
+	portsPath       = "/properties/container/ports"
 )
 
-// listAllResourcesByApplication takes in a context, an application name and a
-// resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesByApplication(ctx context.Context, applicationId resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+// listAllResourcesByApplication takes a context, applicationID and clientOptions
+// and returns a slice of GenericResources in the application and also an error if one occurs.
+func listAllResourcesByApplication(ctx context.Context, applicationID resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	for _, resourceType := range ResourceTypesList {
-		resourceList, err := listAllResourcesOfTypeInApplication(ctx, applicationId, resourceType, clientOptions)
+	for _, resourceType := range resourceTypesList {
+		resourceList, err := listAllResourcesOfTypeInApplication(ctx, applicationID, resourceType, clientOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -49,17 +51,17 @@ func listAllResourcesByApplication(ctx context.Context, applicationId resources.
 	return results, nil
 }
 
-// listAllResourcesOfTypeInApplication takes in a context, an application name and a
-// resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesOfTypeInApplication(ctx context.Context, applicationId resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+// listAllResourcesOfTypeInApplication takes in a context, an application ID and a
+// resource type and returns a slice of GenericResources of that type in the application and an error if one occurs.
+func listAllResourcesOfTypeInApplication(ctx context.Context, applicationID resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	resourceList, err := listAllResourcesByType(ctx, applicationId.RootScope(), resourceType, clientOptions)
+	resourceList, err := listAllResourcesByType(ctx, applicationID.RootScope(), resourceType, clientOptions)
 	if err != nil {
 		return nil, err
 	}
-	appicationName := applicationId.Name()
+	applicationName := applicationID.Name()
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInApplication(ctx, resource, appicationName)
+		isResourceWithApplication := isResourceInApplication(ctx, resource, applicationName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -99,12 +101,12 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 		return false
 	}
 
-	associatedAppId, ok := obj.(string)
-	if !ok || associatedAppId == "" {
+	associatedAppID, ok := obj.(string)
+	if !ok || associatedAppID == "" {
 		return false
 	}
 
-	idParsed, err := resources.ParseResource(associatedAppId)
+	idParsed, err := resources.ParseResource(associatedAppID)
 	if err != nil {
 		return false
 	}
@@ -116,11 +118,11 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-// listAllResourcesByEnvironment takes in a context, an environment name and a
+// listAllResourcesByEnvironment takes in a context, an environment ID and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
 func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.ID, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	for _, resourceType := range ResourceTypesList {
+	for _, resourceType := range resourceTypesList {
 		resourceList, err := listAllResourcesOfTypeInEnvironment(ctx, environmentID, resourceType, clientOptions)
 		if err != nil {
 			return nil, err
@@ -131,7 +133,7 @@ func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.
 	return results, nil
 }
 
-// listAllResourcesOfTypeInEnvironment takes in a context, an environment name and a
+// listAllResourcesOfTypeInEnvironment takes in a context, an environment ID and a
 // resource type and returns a slice of GenericResources and an error if one occurs.
 func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
@@ -140,8 +142,8 @@ func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID reso
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInEnvironment(ctx, resource, environmentID.Name())
-		if isResourceWithApplication {
+		isResourceInEnvironment := isResourceInEnvironment(ctx, resource, environmentID.Name())
+		if isResourceInEnvironment {
 			results = append(results, resource)
 		}
 	}
@@ -157,12 +159,12 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 		return false
 	}
 
-	associatedEnvId, ok := obj.(string)
-	if !ok || associatedEnvId == "" {
+	associatedEnvID, ok := obj.(string)
+	if !ok || associatedEnvID == "" {
 		return false
 	}
 
-	idParsed, err := resources.ParseResource(associatedEnvId)
+	idParsed, err := resources.ParseResource(associatedEnvID)
 	if err != nil {
 		return false
 	}
@@ -181,6 +183,10 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
 func computeGraph(applicationName string, applicationResources []generated.GenericResource, environmentResources []generated.GenericResource) *corerpv20231001preview.ApplicationGraphResponse {
+	if applicationResources == nil && environmentResources == nil {
+		return &corerpv20231001preview.ApplicationGraphResponse{Resources: []*corerpv20231001preview.ApplicationGraphResource{}}
+	}
+
 	// The first step is to figure out what resources are part of the application.
 	//
 	// Since Radius has both application-scoped and environment-scoped resources we need to merge the two lists
@@ -227,8 +233,7 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		}
 
 		//update provisioning state
-		resourceProperties := resource.Properties
-		provisioningState, ok := resourceProperties["provisioningState"]
+		provisioningState, ok := resource.Properties["provisioningState"]
 		if ok {
 			// ignore err since in that case we just default to "succeeded"
 			state, _ := provisioningState.(string)
@@ -369,11 +374,12 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 
 	appName := application.Name()
 	appType := application.Type()
+	provisioningState := string(v1.ProvisioningStateSucceeded)
 
 	return &corerpv20231001preview.ApplicationGraphResource{ID: &id,
 		Name:              &appName,
 		Type:              &appType,
-		ProvisioningState: &ProvisioningStateSucceeded,
+		ProvisioningState: &provisioningState,
 	}
 
 }
@@ -430,7 +436,6 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 		data := outputResourceWireFormat{}
 		err = toStronglyTypedData(or, &data)
 		if err != nil {
-			//entries = append(entries, &corerpv20231001preview.ApplicationGraphOutputResource{})
 			continue
 		}
 
@@ -442,9 +447,6 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 
 	// Produce a stable output
 	sort.Slice(entries, func(i, j int) bool {
-		// //if entries[i].Provider != entries[j].Provider {
-		// 	return entries[i].Provider < entries[j].Provider
-		// }
 		if entries[i].Type != entries[j].Type {
 			return *entries[i].Type < *entries[j].Type
 		}
@@ -467,7 +469,7 @@ func connectionsFromAPIData(resource generated.GenericResource) []*corerpv202310
 	// working with is a property bag.
 	//
 	// Any Radius resource type that supports connections uses the following property path to return them.
-	p, err := jsonpointer.New("/properties/connections")
+	p, err := jsonpointer.New(connectionsPath)
 	if err != nil {
 		// This should never fail since we're hard-coding the path.
 		panic("parsing JSON pointer should not fail: " + err.Error())
@@ -510,12 +512,17 @@ func connectionsFromAPIData(resource generated.GenericResource) []*corerpv202310
 	return entries
 }
 
+// providesFromAPIData is specifically to suport HTTPRoute.
 func providesFromAPIData(resource generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
-	// We need to access the connections in a weakly-typed way since the data type we're
-	// working with is a property bag.
-	//
-	// Any Radius resource type that supports connections uses the following property path to return them.
-	p, err := jsonpointer.New("/properties/container/ports")
+	// Any Radius resource type that exposes a port uses the following property path to return them.
+	// The port may have a 'provides' attribute that specifies a httproute.
+	// This route should be parsed to find the connections between containers.
+	// For example, if container A provides a route and container B consumes it,
+	// then we have port.provides in container A and container.connection in container B.
+	// This gives us the connection: container A --> route R --> container B.
+	// Without parsing the 'provides' attribute, we would miss the connection between container A and route R.
+
+	p, err := jsonpointer.New(portsPath)
 	if err != nil {
 		// This should never fail since we're hard-coding the path.
 		panic("parsing JSON pointer should not fail: " + err.Error())

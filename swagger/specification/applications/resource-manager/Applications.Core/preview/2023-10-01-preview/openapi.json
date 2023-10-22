@@ -2596,7 +2596,7 @@
         },
         "provisioningState": {
           "type": "string",
-          "description": "provisioningState of this resource"
+          "description": "provisioningState of this resource."
         }
       },
       "required": [

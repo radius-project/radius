@@ -108,7 +108,7 @@ model ApplicationGraphResource {
   @extension("x-ms-identifiers",[])
   connections: Array<ApplicationGraphConnection>;
 
-  @doc("provisioningState of this resource") 
+  @doc("provisioningState of this resource.") 
   provisioningState: string
 }
 

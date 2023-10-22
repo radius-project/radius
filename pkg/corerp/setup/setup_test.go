@@ -245,7 +245,8 @@ func TestRouter(t *testing.T) {
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
 
-	conn, _ := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+	conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+	require.NoError(t, err)
 	cfg := &controllerconfig.RecipeControllerConfig{
 		UCPConnection: &conn,
 	}

@@ -49,7 +49,7 @@ type RecipeControllerConfig struct {
 	// Engine is the engine for executing recipes.
 	Engine engine.Engine
 
-	// UCP connection
+	// UCPConnection is the connection to UCP
 	UCPConnection *sdk.Connection
 }
 
