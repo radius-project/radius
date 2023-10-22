@@ -355,6 +355,9 @@ type ContainerProperties struct {
 	// A collection of references to resources associated with the container
 	Resources []*ResourceReference
 
+	// The restart policy for the underlying container
+	RestartPolicy *RestartPolicy
+
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
 
@@ -432,6 +435,9 @@ type ContainerResourceUpdateProperties struct {
 
 	// A collection of references to resources associated with the container
 	Resources []*ResourceReference
+
+	// The restart policy for the underlying container
+	RestartPolicy *RestartPolicy
 
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties

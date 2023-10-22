@@ -304,6 +304,27 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 	}
 }
 
+// RestartPolicy - The restart policy for the container
+type RestartPolicy string
+
+const (
+	// RestartPolicyAlways - Always
+	RestartPolicyAlways RestartPolicy = "Always"
+	// RestartPolicyNever - Never
+	RestartPolicyNever RestartPolicy = "Never"
+	// RestartPolicyOnFailure - OnFailure
+	RestartPolicyOnFailure RestartPolicy = "OnFailure"
+)
+
+// PossibleRestartPolicyValues returns the possible values for the RestartPolicy const type.
+func PossibleRestartPolicyValues() []RestartPolicy {
+	return []RestartPolicy{	
+		RestartPolicyAlways,
+		RestartPolicyNever,
+		RestartPolicyOnFailure,
+	}
+}
+
 // SecretStoreDataType - The type of SecretStore data
 type SecretStoreDataType string
 
