@@ -4864,7 +4864,7 @@
     },
     "RestartPolicy": {
       "type": "string",
-      "description": "The restart policy for the container",
+      "description": "Restart policy for the container",
       "enum": [
         "Always",
         "OnFailure",

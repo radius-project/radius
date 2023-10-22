@@ -208,6 +208,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called
 * **resourceProvisioning**: 'internal' | 'manual': Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource.
 * **resources**: [ResourceReference](#resourcereference)[]: A collection of references to resources associated with the container
+* **restartPolicy**: 'Always' | 'Never' | 'OnFailure': Restart policy for the container
 * **runtimes**: [RuntimesProperties](#runtimesproperties): The properties for runtime configuration
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 

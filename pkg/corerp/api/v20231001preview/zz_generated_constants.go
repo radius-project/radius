@@ -304,7 +304,7 @@ func PossibleResourceProvisioningValues() []ResourceProvisioning {
 	}
 }
 
-// RestartPolicy - The restart policy for the container
+// RestartPolicy - Restart policy for the container
 type RestartPolicy string
 
 const (
