@@ -642,6 +642,11 @@ func (r Renderer) makeDeployment(
 	// want to leak into Radius containers.
 	podSpec.EnableServiceLinks = to.Ptr(false)
 
+	// If the user has specified a restart policy, use it. Else, it will use the Kubernetes default.
+	if properties.RestartPolicy != "" {
+		podSpec.RestartPolicy = corev1.RestartPolicy(properties.RestartPolicy)
+	}
+
 	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
 	// when the secret changes. Normally referencing an environment variable from a secret will **NOT** cause
 	// a new revision when the secret changes.

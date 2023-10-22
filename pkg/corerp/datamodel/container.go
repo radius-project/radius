@@ -78,6 +78,7 @@ type ContainerProperties struct {
 	Runtimes             *RuntimeProperties              `json:"runtimes,omitempty"`
 	Resources            []ResourceReference             `json:"resources,omitempty"`
 	ResourceProvisioning ContainerResourceProvisioning   `json:"resourceProvisioning,omitempty"`
+	RestartPolicy        string                          `json:"restartPolicy,omitempty"`
 }
 
 // ContainerResourceProvisioning specifies how resources should be created for the container.
