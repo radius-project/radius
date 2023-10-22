@@ -236,7 +236,7 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		}
 
 		connections := connectionsFromAPIData(resource)                     // Outbound connections based on 'connections'
-		connections = append(connections, providesFromAPIData(resource)...) // Inbound connections based on 'provides'.
+		connections = append(connections, providesFromAPIData(resource)...) // Inbound connections based on 'provides'
 
 		sort.Slice(connections, func(i, j int) bool {
 			return *connections[i].ID < *connections[j].ID

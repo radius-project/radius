@@ -18,12 +18,11 @@ package applications
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"sort"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 )
 
 func Test_isResourceInEnvironment(t *testing.T) {
@@ -145,51 +144,57 @@ func Test_computeGraph(t *testing.T) {
 	sqlCntrType := "Applications.Core/containers"
 
 	sqlDbID := "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db"
+	sqlDbName := "sql-db"
+	sqlDbType := "Applications.Datastores/sqlDatabases"
 
-	expected := []*ApplicationGraphResource{
+	provisioningStateSuccess := "Succeeded"
+	dirInbound := corerpv20231001preview.DirectionInbound
+	dirOutbound := corerpv20231001preview.DirectionOutbound
+
+	expected := []*corerpv20231001preview.ApplicationGraphResource{
 		{
-			ID:                sqlRteID,
-			Name:              sqlRteName,
-			Type:              sqlRteType,
-			ProvisioningState: "Succeeded",
-			Resources:         []ApplicationGraphOutputResource{},
-			Connections: []ApplicationGraphConnection{
+			ID:                &sqlRteID,
+			Name:              &sqlRteName,
+			Type:              &sqlRteType,
+			ProvisioningState: &provisioningStateSuccess,
+			OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+			Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 				{
-					ID:        sqlCntrID,
-					Direction: "Inbound",
+					ID:        &sqlCntrID,
+					Direction: &dirInbound,
 				},
 			},
 		},
 		{
-			ID:                sqlCntrID,
-			Name:              sqlCntrName,
-			Type:              sqlCntrType,
-			ProvisioningState: "Succeeded",
-			Resources:         []ApplicationGraphOutputResource{},
-			Connections: []ApplicationGraphConnection{
+			ID:                &sqlCntrID,
+			Name:              &sqlCntrName,
+			Type:              &sqlCntrType,
+			ProvisioningState: &provisioningStateSuccess,
+			OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+			Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 				{
-					Direction: "Outbound",
-					ID:        sqlRteID,
+					Direction: &dirOutbound,
+					ID:        &sqlRteID,
 				},
 			},
 		},
 		{
-			ID:                sqlDbID,
-			Name:              "sql-db",
-			Type:              "Applications.Datastores/sqlDatabases",
-			ProvisioningState: "Succeeded",
-			Resources:         []ApplicationGraphOutputResource{},
+			ID:                &sqlDbID,
+			Name:              &sqlDbName,
+			Type:              &sqlDbType,
+			ProvisioningState: &provisioningStateSuccess,
+			OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
 		},
 		{
-			ID:                sqlAppCntrID,
-			Name:              sqlAppCntrName,
-			Type:              sqlAppCntrType,
-			ProvisioningState: "Succeeded",
-			Resources:         []ApplicationGraphOutputResource{},
-			Connections: []ApplicationGraphConnection{
+			ID:                &sqlAppCntrID,
+			Name:              &sqlAppCntrName,
+			Type:              &sqlAppCntrType,
+			ProvisioningState: &provisioningStateSuccess,
+			OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+			Connections: []*corerpv20231001preview.ApplicationGraphConnection{
 				{
-					Direction: "Inbound",
-					ID:        sqlDbID,
+					Direction: &dirInbound,
+					ID:        &sqlDbID,
 				},
 			},
 		},
@@ -197,7 +202,7 @@ func Test_computeGraph(t *testing.T) {
 
 	// sort the expected result
 	sort.Slice(expected, func(i, j int) bool {
-		return expected[i].ID < expected[j].ID
+		return *expected[i].ID < *expected[j].ID
 	})
 
 	type args struct {
@@ -208,7 +213,7 @@ func Test_computeGraph(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *ApplicationGraphResponse
+		want *corerpv20231001preview.ApplicationGraphResponse
 	}{
 		{
 			name: "compute graph",
@@ -271,7 +276,7 @@ func Test_computeGraph(t *testing.T) {
 				},
 				environmentResources: []generated.GenericResource{},
 			},
-			want: &ApplicationGraphResponse{
+			want: &corerpv20231001preview.ApplicationGraphResponse{
 				Resources: expected,
 			},
 		},
@@ -282,36 +287,28 @@ func Test_computeGraph(t *testing.T) {
 			got := computeGraph(tt.args.applicationName, tt.args.applicationResources, tt.args.environmentResources)
 			// sort the result
 			sort.Slice(got.Resources, func(i, j int) bool {
-				return got.Resources[i].ID < got.Resources[j].ID
+				return *got.Resources[i].ID < *got.Resources[j].ID
 			})
-
-			fmt.Print("got")
-			res2B, _ := json.Marshal(got)
-			fmt.Println(string(res2B))
-
-			fmt.Print("want")
-			res2B, _ = json.Marshal(tt.want)
-			fmt.Println(string(res2B))
 
 			for i := range got.Resources {
 				gotResource := got.Resources[i]
 				wantResource := tt.want.Resources[i]
-				if gotResource.ID != wantResource.ID || gotResource.Name != wantResource.Name || gotResource.Type != wantResource.Type || gotResource.ProvisioningState != wantResource.ProvisioningState {
-					t.Errorf("computeGraph() = %v, want %v", got.Resources[i], tt.want.Resources[i])
+				if *gotResource.ID != *wantResource.ID || *gotResource.Name != *wantResource.Name || *gotResource.Type != *wantResource.Type || *gotResource.ProvisioningState != *wantResource.ProvisioningState {
+					t.Errorf("computeGraph() = %v, want %v", *got.Resources[i], *tt.want.Resources[i])
 				}
 				//sort connections
 				sort.Slice(gotResource.Connections, func(i, j int) bool {
-					return gotResource.Connections[i].ID < gotResource.Connections[j].ID
+					return *gotResource.Connections[i].ID < *gotResource.Connections[j].ID
 				})
 				sort.Slice(wantResource.Connections, func(i, j int) bool {
-					return wantResource.Connections[i].ID < wantResource.Connections[j].ID
+					return *wantResource.Connections[i].ID < *wantResource.Connections[j].ID
 				})
 				//iterate through connections and compare
 				for j := range gotResource.Connections {
 					gotConnection := gotResource.Connections[j]
 					wantConnection := wantResource.Connections[j]
-					if gotConnection.ID != wantConnection.ID || gotConnection.Direction != wantConnection.Direction {
-						t.Errorf("computeGraph() = %v, want %v", gotResource.Connections[j], wantResource.Connections[j])
+					if *gotConnection.ID != *wantConnection.ID || *gotConnection.Direction != *wantConnection.Direction {
+						t.Errorf("computeGraph() = %v, want %v", *gotResource.Connections[j], *wantResource.Connections[j])
 					}
 				}
 			}
