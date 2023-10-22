@@ -44,7 +44,7 @@ env:
   GHCR_ACTOR: rad-ci-bot
 
   # Container registry url for GitHub container registry.
-  CONTAINER_REGISTRY: ${{ github.event_name == 'pull_request' && 'ghcr.io/radius-project/dev' || 'ghcr.io/radius-project' }}
+  CONTAINER_REGISTRY: 'ghcr.io/radius-project'
 
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
@@ -254,10 +254,10 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
-      - name: Push container images (PR)
+      - name: Build container images (PR) # Don't push on PR, agent will not have permission.
         run: |
-          make docker-test-image-build && make docker-test-image-push
-          make docker-multi-arch-push
+          make docker-test-image-build
+          make docker-multi-arch-build
         if: github.event_name == 'pull_request'
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
@@ -275,13 +275,16 @@ jobs:
     name: Helm chart build
     needs: ['build-and-push-images']
     runs-on: ubuntu-latest
+    # Don't push on PR, agent will not have permission.
+    if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
       HELM_CHARTS_DIR: deploy/Chart
       OCI_REGISTRY: ghcr.io
-      # If we are pushing from a tag or from the main branch, push to radius-project/helm-chart. Otherwise, push to radius-project/dev/helm-chart.
-      OCI_REPOSITORY: ${{ (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main') && 'radius-project/helm-chart' || 'radius-project/dev/helm-chart' }} 
+      # We only push the chart on pushes to main or to a tag. The versioning logic will select the right
+      # version for us.
+      OCI_REPOSITORY: 'radius-project/helm-chart' 
     steps:
       - name: Checkout
         uses: actions/checkout@v3

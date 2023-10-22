@@ -35,6 +35,7 @@ jobs:
     env:
       GOVER: '^1.21'
       GOPROXY: https://proxy.golang.org
+      HELM_CHARTS_DIR: deploy/Chart
     steps:
       - name: Check out repo
         uses: actions/checkout@v3
@@ -59,8 +60,13 @@ jobs:
         run: go install github.com/golang/mock/mockgen@v1.5.0
       - name: Install controller-gen
         run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: Install helm
+        uses: Azure/setup-helm@v3
+        with:
+          version: 'v3.11.1'
+      - name: Run Helm linter
+        run: |
+          helm lint ${{ env.HELM_CHARTS_DIR }}
       - name: Run linter
         uses: golangci/golangci-lint-action@v3
         with:
