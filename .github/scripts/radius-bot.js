@@ -41,6 +41,9 @@ async function handleIssueCommentCreate({ github, context }) {
     const command = commandParts.shift();
 
     switch (command) {
+        case '/assign':
+            await cmdAssign(github, issue, isFromPulls, username);
+            break;
         case '/ok-to-test':
             await cmdOkToTest(github, issue, isFromPulls, username);
             break;
@@ -48,6 +51,30 @@ async function handleIssueCommentCreate({ github, context }) {
             console.log(`[handleIssueCommentCreate] command ${command} not found, exiting.`);
             break;
     }
+}
+
+/**
+ * Assign issue to the user who commented.
+ * @param {*} github GitHub object reference
+ * @param {*} issue GitHub issue object
+ * @param {*} isFromPulls is the workflow triggered by a pull request?
+ * @param {*} username is the user who trigger the command
+ */
+async function cmdAssign(github, issue, isFromPulls, username) {
+    if (isFromPulls) {
+        console.log('[cmdAssign] pull requests not supported, skipping command execution.');
+        return;
+    } else if (issue.assignees && issue.assignees.length !== 0) {
+        console.log('[cmdAssign] issue already has assignees, skipping command execution.');
+        return;
+    }
+
+    await github.rest.issues.addAssignees({
+        owner: issue.owner,
+        repo: issue.repo,
+        issue_number: issue.number,
+        assignees: [username],
+    })
 }
 
 /**
