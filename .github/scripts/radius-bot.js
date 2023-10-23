@@ -74,7 +74,7 @@ async function cmdAssign(github, issue, isFromPulls, username) {
         repo: issue.repo,
         issue_number: issue.number,
         assignees: [username],
-    })
+    });
 }
 
 /**
