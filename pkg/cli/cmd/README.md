@@ -1,7 +1,7 @@
 # CLI Commands
 
 This package `pkg/cli/cmd` is the root for our CLI commands. Commands are organized
-according to their heirarchy of sub-commands. For example `rad resource show` would be
+according to their hierarchy of sub-commands. For example `rad resource show` would be
 located in `pkg/cli/cmd/resource/show/show.go`.
 
 Some of our command names are reserved words in Go and so they can't be used as package names.

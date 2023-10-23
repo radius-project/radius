@@ -113,7 +113,7 @@ jobs:
             1. Create ./docs/release-notes/${{ steps.get-version.outputs.release-version }}.md from [release note template](https://github.com/radius-project/radius/blob/main/docs/release-notes/template.md)
             2. Update the each section and add the above Change logs to the end of release note.
             3. Push release note changes to the PR branch.
-      - name: Stop the workflow if release is the offical and its release note is not found.
+      - name: Stop the workflow if release is the official and its release note is not found.
         if: ${{ !contains(steps.get-version.outputs.release-version, '-rc') && env.RELNOTE_FOUND == 'false' }}
         run: exit 1
   release:

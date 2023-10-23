@@ -10,7 +10,7 @@ For learning Go, we recommend the following resources:
 
 - [Tour of Go](https://go.dev/tour/welcome/1)
 - [Effective Go](https://go.dev/doc/effective_go)
-- [Offical tutorials](https://go.dev/doc/)
+- [Official tutorials](https://go.dev/doc/)
 
 We're happy to accept pull-requests and give code review feedback aimed at newbies. If you have programmed in other languages before, we are confident you can pick up Go and start contributing easily.
 
