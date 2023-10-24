@@ -111,7 +111,7 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 				status = dep.Status.Conditions[len(dep.Status.Conditions)-1]
 			}
 
-			fmt.Println("@@@@@ Marking deployment as timed out")
+			fmt.Println("@@@@@ Marking deployment as timed out, possibleFailureCauses: ", strings.Join(possibleFailureCauses, ", "))
 			// Return the error with the possible failure causes
 			errString := fmt.Sprintf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 
@@ -121,19 +121,23 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 			return errors.New(errString)
 
 		case status := <-doneCh:
+			fmt.Println("@@@@ Received status on doneCh: ", status.possibleFailureCause, status.err)
 			if status.err != nil {
 				logger.Info(fmt.Sprintf("Marking deployment %s in namespace %s as complete", item.GetName(), item.GetNamespace()))
 				return status.err
 			} else if status.possibleFailureCause != "" {
-				for _, cause := range possibleFailureCauses {
-					if strings.Contains(cause, status.possibleFailureCause) {
-						// Already added this possible failure cause. Do not add again
-						break
+				if len(possibleFailureCauses) > 0 {
+					for _, cause := range possibleFailureCauses {
+						if strings.Contains(cause, status.possibleFailureCause) {
+							// Already added this possible failure cause. Do not add again
+							break
+						}
+						possibleFailureCauses = append(possibleFailureCauses, status.possibleFailureCause)
 					}
+				} else {
 					possibleFailureCauses = append(possibleFailureCauses, status.possibleFailureCause)
-					fmt.Println("@@@@@ possibleFailureCauses", status.possibleFailureCause)
 				}
-				continue
+				fmt.Println("@@@@@ possibleFailureCauses: ", strings.Join(possibleFailureCauses, ", "))
 			} else {
 				// Deployment is ready
 				return nil
@@ -275,8 +279,9 @@ func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informer
 	allReady := true
 	for _, pod := range podsInDeployment {
 		podReady, status := handler.checkPodStatus(ctx, informerFactory, &pod)
-		if status != (deploymentStatus{}) {
-			doneCh <- status
+		if status != nil {
+			fmt.Println("@@@@@ Sent status to doneCh: ", status.possibleFailureCause)
+			doneCh <- *status
 			return false
 		}
 
@@ -314,7 +319,7 @@ func (handler *deploymentWaiter) getPodsInDeployment(ctx context.Context, inform
 	return pods, nil
 }
 
-func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, pod *corev1.Pod) (bool, deploymentStatus) {
+func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, pod *corev1.Pod) (bool, *deploymentStatus) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("podName", pod.Name, "namespace", pod.Namespace)
 
 	conditionPodReady := true
@@ -334,29 +339,33 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 
 	// Sometimes container statuses are not yet available and we do not want to falsely return that the containers are ready
 	if len(pod.Status.ContainerStatuses) <= 0 {
-		return false, deploymentStatus{}
+		return false, nil
 	}
 
+	fmt.Println("@@@@@ Checking container status")
 	for _, cs := range pod.Status.ContainerStatuses {
 		// Check if the container state is terminated or unable to start due to crash loop, image pull back off or error
 		// Note that sometimes a pod can go into running state but can crash later and can go undetected by this condition
 		// We will rely on the user defining a readiness probe to ensure that the pod is ready to serve traffic for those cases
 		if cs.State.Terminated != nil {
 			logger.Info(fmt.Sprintf("Container state is terminated Reason: %s, Message: %s", cs.State.Terminated.Reason, cs.State.Terminated.Message))
-			return false, deploymentStatus{possibleFailureCause: "", err: fmt.Errorf("Container state is 'Terminated' Reason: %s, Message: %s", cs.State.Terminated.Reason, cs.State.Terminated.Message)}
+			fmt.Println("@@@@ Container state is terminated")
+			return false, &deploymentStatus{possibleFailureCause: "", err: fmt.Errorf("Container state is 'Terminated' Reason: %s, Message: %s", cs.State.Terminated.Reason, cs.State.Terminated.Message)}
 		} else if cs.State.Waiting != nil {
+			fmt.Println("@@@@ Container state is waiting")
 			if cs.State.Waiting.Reason == "ErrImagePull" || cs.State.Waiting.Reason == "CrashLoopBackOff" || cs.State.Waiting.Reason == "ImagePullBackOff" {
 				message := cs.State.Waiting.Message
 				if cs.LastTerminationState.Terminated != nil {
 					message += " LastTerminationState: " + cs.LastTerminationState.Terminated.Message
 				}
-				return false, deploymentStatus{possibleFailureCause: "", err: fmt.Errorf("Container state is 'Waiting' Reason: %s, Message: %s", cs.State.Waiting.Reason, message)}
+				return false, &deploymentStatus{possibleFailureCause: "", err: fmt.Errorf("Container state is 'Waiting' Reason: %s, Message: %s", cs.State.Waiting.Reason, message)}
 			} else {
-				return false, deploymentStatus{}
+				return false, nil
 			}
 		} else if cs.State.Running == nil {
 			// The container is not yet running
-			return false, deploymentStatus{}
+			fmt.Println("@@@@ Container state is not running")
+			return false, nil
 		} else if !cs.Ready {
 			// The container is running but has not passed its readiness probe yet
 			// Check the pod events to see if the pod failed readiness probe
@@ -365,7 +374,7 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 			if err != nil {
 				fmt.Println("@@@@ Unable to get events for pod")
 				logger.Info("Unable to get events for pod")
-				return false, deploymentStatus{}
+				return false, nil
 			}
 			fmt.Println("@@@@@ len(events)", len(events))
 
@@ -377,12 +386,12 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 			for _, event := range events {
 				fmt.Println("@@@@@ event.Message", event.Message)
 				if strings.Contains(event.Message, "Readiness probe failed") {
-					return false, deploymentStatus{possibleFailureCause: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message), err: nil}
+					return false, &deploymentStatus{possibleFailureCause: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message), err: nil}
 				}
 			}
 
 			// The pod is not ready yet but has not failed readiness probe either. So continue waiting for the pod to be ready
-			return false, deploymentStatus{}
+			return false, nil
 		}
 	}
 
@@ -391,7 +400,7 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 	if err != nil {
 		fmt.Println("@@@@ Unable to get events for pod")
 		logger.Info("Unable to get events for pod")
-		return false, deploymentStatus{}
+		return false, nil
 	}
 	fmt.Println("@@@@@ len(events)", len(events))
 
@@ -403,13 +412,13 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 	for _, event := range events {
 		fmt.Println("@@@@@ event.Message", event.Message)
 		if strings.Contains(event.Message, "Readiness probe failed") {
-			return false, deploymentStatus{possibleFailureCause: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message), err: nil}
+			return false, &deploymentStatus{possibleFailureCause: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message), err: nil}
 		}
 	}
 
 	if !conditionPodReady {
-		return false, deploymentStatus{}
+		return false, nil
 	}
 	logger.Info("All containers for pod are ready")
-	return true, deploymentStatus{}
+	return true, nil
 }

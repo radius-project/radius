@@ -126,6 +126,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		// Monitor the deployment until it is ready.
 		err = handler.deploymentWaiter.waitUntilReady(ctx, &item)
 		if err != nil {
+			fmt.Println("@@@@@ deployment error: ", err.Error())
 			return nil, err
 		}
 		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))

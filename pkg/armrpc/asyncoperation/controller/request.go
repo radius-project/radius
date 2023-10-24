@@ -27,7 +27,7 @@ import (
 
 var (
 	// DefaultAsyncOperationTimeout is the default timeout duration of async operation.
-	DefaultAsyncOperationTimeout = time.Duration(30) * time.Second
+	DefaultAsyncOperationTimeout = time.Duration(20) * time.Second
 )
 
 // Request is a message used for async request queue message broker.

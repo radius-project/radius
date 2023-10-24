@@ -225,14 +225,24 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		logger.Error(err, "failed to unmarshal queue message.")
 		return
 	}
-	asyncReqCtx, opCancel := context.WithCancel(ctx)
+	asyncReqCtx, opCancel := context.WithCancelCause(ctx)
+	failureCh := make(chan error, 1)
 	// Ensure that asyncReqCtx context is cancelled when runOperation returns.
 	// That is, cancelling asyncReqCtx signals to ctrl.Run() to cancel the execution,
 	// resulting in completing the go-routine calling ctrl.Run() when runOperation returns.
-	defer opCancel()
+	var cancelError error
+	defer opCancel(cancelError)
 
 	opDone := make(chan struct{}, 1)
 	opStartAt := time.Now()
+
+	stop := context.AfterFunc(asyncReqCtx, func() {
+		fmt.Println("@@@@@ Reading channel for possible failure causes")
+		// Check length of failureCh to see if it has been populated
+		if len(failureCh) > 0 {
+			<-opDone
+		}
+	})
 
 	// Start new go routine to cancel and timeout async operation.
 	go func() {
@@ -284,9 +294,14 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		case <-operationTimeoutAfter:
 			logger.Info("Cancelling async operation.")
 
-			opCancel()
-			time.Sleep(10 * time.Second)
+			opCancel(cancelError)
+			fmt.Println("@@@@@ cancel cause: ", cancelError)
+			// Get the cause
+			cancelError = context.Cause(asyncReqCtx)
+			fmt.Println("@@@@@ cancel cause2: ", cancelError)
+
 			fmt.Println("@@@@@ Done invoking cancel function")
+			stop()
 			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %d s.", asyncReq.OperationType, int(asyncReq.Timeout().Seconds()))
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
