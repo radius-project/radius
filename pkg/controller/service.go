@@ -106,6 +106,9 @@ func (s *Service) Run(ctx context.Context) error {
 		logger.Info("Webhooks will be skipped. TLS certificates not present.")
 	} else {
 		logger.Info("Registering webhooks.")
+		if err = (&radappiov1alpha3.Recipe{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to create recipe-webhook: %w", err)
+		}
 	}
 
 	logger.Info("Registering health checks.")
