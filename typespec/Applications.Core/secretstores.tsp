@@ -37,7 +37,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 model SecretStoreResource is TrackedResource<SecretStoreProperties> {
-  @doc("SecretStore name")
+  @doc("The name of your Secret Store.")
   @key("secretStoreName")
   @path
   @segment("secretStores")
@@ -49,13 +49,13 @@ model SecretStoreProperties {
   ...ApplicationScopedResource;
 
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
-  @doc("The type of secret store data")
+  @doc("The type of secret in your resource.")
   type?: SecretStoreDataType = SecretStoreDataType.generic;
 
-  @doc("An object to represent key-value type secrets")
+  @doc("An object to represent key-value type secrets.")
   data: Record<SecretValueProperties>;
 
-  @doc("The resource id of external secret store.")
+  @doc("Reference to the backing secret store resource, required only if valueFrom specifies referenced secret name.")
   resource?: string;
 }
 
@@ -79,23 +79,23 @@ enum SecretValueEncoding {
 
 @doc("The Secret value source properties")
 model ValueFromProperties {
-  @doc("The name of the referenced secret.")
+  @doc("The name of the secret or key of `properties.resource`.")
   name: string;
 
-  @doc("The version of the referenced secret.")
+  @doc("The version of the secret.")
   version?: string;
 }
 
 @doc("The properties of SecretValue")
 model SecretValueProperties {
-  @doc("The encoding of value")
+  @doc("The encoding type of the data value (default is `'raw'`).")
   encoding?: SecretValueEncoding = SecretValueEncoding.raw;
 
-  @doc("The value of secret.")
+  @doc("The value of the secret key.")
   @secret
   value?: string;
 
-  @doc("The referenced secret in properties.resource")
+  @doc("A reference to an external secret. This field is currently not in use, as it is meant for supporting more types of external secrets in the future.")
   valueFrom?: ValueFromProperties;
 }
 

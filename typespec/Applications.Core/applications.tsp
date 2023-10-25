@@ -39,23 +39,23 @@ namespace Applications.Core;
 
 @doc("Radius Application resource")
 model ApplicationResource is TrackedResource<ApplicationProperties> {
-  @doc("The application name")
+  @doc("The name of your resource.")
   @path
   @key("applicationName")
   @segment("applications")
   name: ResourceNameString;
 }
 
-@doc("Application properties")
+@doc("Properties of the resource.")
 model ApplicationProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
+  @doc("The ID of the environment resource this container belongs to.")
   environment: string;
 
-  @doc("The application extension.")
+  @doc("List of extensions on the container.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
 

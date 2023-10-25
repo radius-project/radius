@@ -38,7 +38,7 @@ namespace Applications.Datastores;
 @doc("RedisCache portable resource")
 model RedisCacheResource is TrackedResource<RedisCacheProperties> {
   @path
-  @doc("The name of the RedisCache portable resource resource")
+  @doc("The name of your resource.")
   @key("redisCacheName")
   @segment("redisCaches")
   name: ResourceNameString;
@@ -49,13 +49,13 @@ model RedisCacheListSecretsResult is RedisCacheSecrets;
 
 @doc("The secret values for the given RedisCache resource")
 model RedisCacheSecrets {
-  @doc("The connection string used to connect to the Redis cache")
+  @doc("The connection string for the Redis cache. Write only.")
   connectionString?: string;
 
-  @doc("The password for this Redis cache instance")
+  @doc("The password for the Redis cache. Write only.")
   password?: string;
 
-  @doc("The URL used to connect to the Redis cache")
+  @doc("The connection URL for the Redis cache. Set automatically based on the values provided for `host`, `port`, `username`, and `password`. Can be explicitly set to override default behavior. Write only.")
   url?: string;
 }
 
@@ -63,22 +63,22 @@ model RedisCacheSecrets {
 model RedisCacheProperties {
   ...EnvironmentScopedResource;
 
-  @doc("Secrets provided by resource")
+  @doc("Secrets used when building the resource from values.")
   secrets?: RedisCacheSecrets;
 
-  @doc("The host name of the target Redis cache")
+  @doc("	The Redis host name.")
   host?: string;
 
-  @doc("The port value of the target Redis cache")
+  @doc("The Redis port value.")
   port?: int32;
 
-  @doc("The username for Redis cache")
+  @doc("The username for Redis cache.")
   username?: string;
 
-  @doc("Specifies whether to enable SSL connections to the Redis cache")
+  @doc("Indicates if the Redis cache is configured with SSL connections. If the `port` value is set to 6380 this defaults to `true`. Otherwise it is defaulted to `false`. If your Redis cache offers SSL connections on ports other than 6380, explicitly set this value to `true` to override the default behavior.")
   tls?: boolean;
 
-  @doc("List of the resource IDs that support the Redis resource")
+  @doc("An array of IDs of the underlying resources.")
   resources?: ResourceReference[];
 
   ...RecipeBaseProperties;

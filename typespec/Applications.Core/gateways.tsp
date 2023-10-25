@@ -37,7 +37,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 model GatewayResource is TrackedResource<GatewayProperties> {
-  @doc("Gateway name")
+  @doc("The name of your Gateway.")
   @key("gatewayName")
   @path
   @segment("gateways")
@@ -51,14 +51,14 @@ model GatewayProperties {
   @doc("Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).")
   internal?: boolean = false;
 
-  @doc("Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.")
+  @doc("The hostname information for this gateway.")
   hostname?: GatewayHostname;
 
-  @doc("Routes attached to this Gateway")
+  @doc("The routes attached to this gateway.")
   @extension("x-ms-identifiers", [])
   routes: GatewayRoute[];
 
-  @doc("TLS configuration for the Gateway.")
+  @doc("TLS/SSL configuration for this gateway.")
   tls?: GatewayTls;
 
   @doc("URL of the gateway resource. Readonly")
@@ -77,34 +77,34 @@ enum TlsMinVersion {
 
 @doc("TLS configuration definition for Gateway resource.")
 model GatewayTls {
-  @doc("If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.")
+  @doc("Configures the gateway to passthrough encrypted SSL traffic to an HTTP route and container. Requires a single route to be set with no 'path' defined (just destination). With sslPassthrough set to true, the gateway can only support SNI routing. Path based routing cannot be supported. Defaults to 'false'.")
   sslPassthrough?: boolean = false;
 
-  @doc("TLS minimum protocol version (defaults to 1.2).")
+  @doc("The minimum TLS protocol to support for TLS termination.")
   minimumProtocolVersion?: TlsMinVersion = TlsMinVersion.tls12;
 
-  @doc("The resource id for the secret containing the TLS certificate and key for the gateway.")
+  @doc("The Radius Secret Store resource ID that holds the TLS certificate data for TLS termination.")
   certificateFrom?: string;
 }
 
 @doc("Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.")
 model GatewayHostname {
-  @doc("Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname' and will be overridden if both are defined.")
+  @doc("A custom DNS prefix for the generated hostname.")
   prefix?: string;
 
-  @doc("Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both are defined.")
+  @doc("A fully-qualified domain name to use for the gateway.")
   fullyQualifiedHostname?: string;
 }
 
 @doc("Route attached to Gateway")
 model GatewayRoute {
-  @doc("The path to match the incoming request path on. Ex - /myservice.")
+  @doc("The path to match the incoming request path on. Not required when `tls.sslPassthrough` is set to `'true'`.")
   path?: string;
 
-  @doc("The HttpRoute to route to. Ex - myserviceroute.id.")
+  @doc("The service to route traffic to, in the form `'[scheme]://[serviceName]:[port]'`")
   destination?: string;
 
-  @doc("Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'")
+  @doc("The prefix to replace in the incoming request path that is sent to the destination route.")
   replacePrefix?: string;
 }
 

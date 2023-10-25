@@ -37,7 +37,7 @@ namespace Applications.Datastores;
 
 @doc("SqlDatabase portable resource")
 model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
-  @doc("The name of the SqlDatabase portable resource resource")
+  @doc("The name of your resource.")
   @key("sqlDatabaseName")
   @path
   @segment("sqlDatabases")
@@ -48,22 +48,22 @@ model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
 model SqlDatabaseProperties {
   ...EnvironmentScopedResource;
 
-  @doc("The name of the Sql database.")
+  @doc("The name of the SQL database.")
   database?: string;
 
-  @doc("The fully qualified domain name of the Sql database.")
+  @doc("The fully qualified domain name of the SQL server.")
   server?: string;
 
-  @doc("Port value of the target Sql database")
+  @doc("The SQL database port.")
   port?: int32;
 
-  @doc("Username to use when connecting to the target Sql database")
+  @doc("The username for the SQL database.")
   username?: string;
 
-  @doc("List of the resource IDs that support the SqlDatabase resource")
+  @doc("An array of IDs of the underlying resources.")
   resources?: ResourceReference[];
 
-  @doc("Secret values provided for the resource")
+  @doc("Secrets used when building the resource from values.")
   secrets?: SqlDatabaseSecrets;
 
   ...RecipeBaseProperties;
@@ -74,10 +74,10 @@ model SqlDatabaseListSecretsResult is SqlDatabaseSecrets;
 
 @doc("The secret values for the given SqlDatabase resource")
 model SqlDatabaseSecrets {
-  @doc("Password to use when connecting to the target Sql database")
+  @doc("The password for the SQL database. Write only.")
   password?: string;
 
-  @doc("Connection string used to connect to the target Sql database")
+  @doc("The connection string for the SQL database. Write only.")
   connectionString?: string;
 }
 

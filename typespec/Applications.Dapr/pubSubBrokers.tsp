@@ -38,7 +38,7 @@ namespace Applications.Dapr;
 
 @doc("Dapr PubSubBroker portable resource")
 model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
-  @doc("PubSubBroker name")
+  @doc("The name of the pub/sub. Names must contain at most 63 characters, contain only lowercase alphanumeric characters, '-', or '.', start with an alphanumeric character, and end with an alphanumeric character.")
   @key("pubSubBrokerName")
   @path
   @segment("pubSubBrokers")
@@ -50,7 +50,7 @@ model DaprPubSubBrokerProperties {
   ...EnvironmentScopedResource;
   ...DaprResourceProperties;
 
-  @doc("A collection of references to resources associated with the pubSubBroker")
+  @doc("An array of resources which underlay this resource. For example, an Azure Service Bus namespace ID if the Dapr Pub/Sub resource is leveraging Service Bus.")
   resources?: ResourceReference[];
 
   ...RecipeBaseProperties;

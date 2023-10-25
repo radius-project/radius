@@ -38,27 +38,27 @@ using OpenAPI;
 namespace Applications.Core;
 
 model ContainerResource is TrackedResource<ContainerProperties> {
-  @doc("Container name")
+  @doc("The name of your resource. See [common values]({{< ref "resource-schema.md#common-values" >}}) for more information.")
   @path
   @key("containerName")
   @segment("containers")
   name: ResourceNameString;
 }
 
-@doc("Container properties")
+@doc("Properties of the resource.")
 model ContainerProperties {
   ...ApplicationScopedResource;
 
-  @doc("Definition of a container.")
+  @doc("Container configuration.")
   container: Container;
 
-  @doc("Specifies a connection to another resource.")
+  @doc("List of connections to other resources.")
   connections?: Record<ConnectionProperties>;
 
   @doc("Configuration for supported external identity providers")
   identity?: IdentitySettings;
 
-  @doc("Extensions spec of the resource")
+  @doc("List of extensions on the container.")
   @extension("x-ms-identifiers", [])
   extensions?: Extension[];
 
@@ -71,7 +71,7 @@ model ContainerProperties {
   @doc("The restart policy for the underlying container")
   restartPolicy?: RestartPolicy;
 
-  @doc("Specifies Runtime-specific functionality")
+  @doc("Runtime specific configurations for the container.")
   runtimes?: RuntimesProperties;
 }
 
@@ -96,9 +96,9 @@ enum RestartPolicy {
   Never,
 }
 
-@doc("The properties for runtime configuration")
+@doc("Runtime specific configurations for the container.")
 model RuntimesProperties {
-  @doc("The runtime configuration properties for Kubernetes")
+  @doc("Kubernetes specific configuration for the container.")
   kubernetes?: KubernetesRuntimeProperties;
 }
 
@@ -106,22 +106,22 @@ model RuntimesProperties {
 @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
 model KubernetesPodSpec is Record<unknown>;
 
-@doc("The runtime configuration properties for Kubernetes")
+@doc("Kubernetes specific configuration for the container.")
 model KubernetesRuntimeProperties {
-  @doc("The serialized YAML manifest which represents the base Kubernetes resources to deploy, such as Deployment, Service, ServiceAccount, Secrets, and ConfigMaps.")
+  @doc("The base Kubernetes resource manifest on top of which Radius specified properties will be applied. Supported resource types are documented [here]({{<ref "guides/author-apps/containers/overview#base-kubernetes-yaml">}}).")
   base?: string;
 
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
-  @doc("A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.")
+  @doc("The pod specifications to apply to the Kubernetes resource created by Radius. Any field defined on PodSpec can be set here.")
   pod?: KubernetesPodSpec;
 }
 
 @doc("Specifies a listening port for the container")
 model ContainerPortProperties {
-  @doc("The listening port number")
+  @doc("The port the container exposes.")
   containerPort: int32;
 
-  @doc("Protocol in use by the port")
+  @doc("The protocol the container exposes. Options are 'TCP' and 'UCP'.")
   protocol?: PortProtocol;
 
   @doc("Specifies a route provided by this port")
@@ -140,7 +140,7 @@ model HealthProbeProperties {
   @doc("Initial delay in seconds before probing for readiness/liveness")
   initialDelaySeconds?: float32;
 
-  @doc("Threshold number of times the probe fails after which a failure would be reported")
+  @doc("Threshold number of times the probe fails after which a failure would be reported.")
   failureThreshold?: float32;
 
   @doc("Interval for the readiness/liveness probe in seconds")
@@ -152,13 +152,13 @@ model HealthProbeProperties {
 
 @doc("Specifies the properties for readiness/liveness probe using HTTP Get")
 model HttpGetHealthProbeProperties extends HealthProbeProperties {
-  @doc("The HealthProbeProperties kind")
+  @doc("Type of readiness check, `httpGet` or `tcp` or `exec`.")
   kind: "httpGet";
 
-  @doc("The listening port number")
+  @doc("Used when kind is `httpGet` or `tcp`. The listening port number.")
   containerPort: int32;
 
-  @doc("The route to make the HTTP request on")
+  @doc("Used when kind is `httpGet`. The route to make the HTTP request on")
   path: string;
 
   @doc("Custom HTTP headers to add to the get request")
@@ -167,101 +167,101 @@ model HttpGetHealthProbeProperties extends HealthProbeProperties {
 
 @doc("Specifies the properties for readiness/liveness probe using TCP")
 model TcpHealthProbeProperties extends HealthProbeProperties {
-  @doc("The HealthProbeProperties kind")
+  @doc("Type of readiness check, `httpGet` or `tcp` or `exec`.")
   kind: "tcp";
 
-  @doc("The listening port number")
+  @doc("Used when kind is `httpGet` or `tcp`. The listening port number.")
   containerPort: int32;
 }
 
 @doc("Specifies the properties for readiness/liveness probe using an executable")
 model ExecHealthProbeProperties extends HealthProbeProperties {
-  @doc("The HealthProbeProperties kind")
+  @doc("Type of readiness check, `httpGet` or `tcp` or `exec`.")
   kind: "exec";
 
-  @doc("Command to execute to probe readiness/liveness")
+  @doc("Used when kind is exec. Command to execute to probe readiness/liveness")
   command: string;
 }
 
 @discriminator("kind")
 @doc("Specifies a volume for a container")
 model Volume {
-  @doc("The path where the volume is mounted")
+  @doc("The container path to mount the volume to.")
   mountPath?: string;
 }
 
 @doc("Specifies an ephemeral volume for a container")
 model EphemeralVolume extends Volume {
-  @doc("The Volume kind")
+  @doc("The type of volume, either ephemeral or persistent.")
   kind: "ephemeral";
 
-  @doc("Backing store for the ephemeral volume")
+  @doc("The backing storage medium to use when kind is 'ephemeral'. Either disk or memory.")
   managedStore: ManagedStore;
 }
 
 @doc("Specifies a persistent volume for a container")
 model PersistentVolume extends Volume {
-  @doc("The Volume kind")
+  @doc("The type of volume, either ephemeral or persistent.")
   kind: "persistent";
 
   @doc("Container read/write access to the volume")
   permission?: VolumePermission;
 
-  @doc("The source of the volume")
+  @doc("A volume resource to mount when kind is 'persistent'.")
   source: string;
 }
 
 @doc("IAM properties")
 model IamProperties {
-  @doc("The kind of IAM provider to configure")
+  @doc("Type of IAM role. Only azure supported today")
   kind: IAMKind;
 
-  @doc("RBAC permissions to be assigned on the source resource")
+  @doc("The list IAM roles to set on the target resource.")
   roles?: string[];
 }
 
 @doc("Connection Properties")
 model ConnectionProperties {
-  @doc("The source of the connection")
+  @doc("The id of the resource the container is connecting to. For network connections to other services this is in the form '[scheme]://[serviceName]:[port]'")
   source: string;
 
   @doc("default environment variable override")
   disableDefaultEnvVars?: boolean = false;
 
-  @doc("iam properties")
+  @doc("Identity and access management (IAM) roles to set on the target resource.")
   iam?: IamProperties;
 }
 
 @doc("Definition of a container")
 model Container {
-  @doc("The registry and image to download and run in your container")
+  @doc("The registry and image to download and run in your container. Follows the format <registry-hostname>:<port>/<image-name>:<tag> where registry hostname is optional and defaults to the Docker public registry, port is optional and defaults to 443, tag is optional and defaults to latest.")
   image: string;
 
-  @doc("The pull policy for the container image")
+  @doc("How to pull images. Defaults to the runtime’s default behavior. For Kubernetes behavior refer to https://kubernetes.io/docs/concepts/containers/images/#required-image-pull")
   imagePullPolicy?: ImagePullPolicy;
 
-  @doc("environment")
+  @doc("A list of environment variables to be set for the container.")
   env?: Record<string>;
 
-  @doc("container ports")
+  @doc("Ports the container provides")
   ports?: Record<ContainerPortProperties>;
 
-  @doc("readiness probe properties")
+  @doc("Readiness probe configuration.")
   readinessProbe?: HealthProbeProperties;
 
-  @doc("liveness probe properties")
+  @doc("Liveness probe configuration.")
   livenessProbe?: HealthProbeProperties;
 
-  @doc("container volumes")
+  @doc("Volumes to mount into the container.")
   volumes?: Record<Volume>;
 
-  @doc("Entrypoint array. Overrides the container image's ENTRYPOINT")
+  @doc("Entrypoint array. Overrides the container image’s ENTRYPOINT.")
   command?: string[];
 
-  @doc("Arguments to the entrypoint. Overrides the container image's CMD")
+  @doc("Arguments to the entrypoint. Overrides the container image’s CMD.")
   args?: string[];
 
-  @doc("Working directory for the container")
+  @doc("Working directory for the container.")
   workingDir?: string;
 }
 
@@ -277,7 +277,7 @@ enum ImagePullPolicy {
   Never,
 }
 
-@doc("The protocol in use by the port")
+@doc("The protocol the container exposes. Options are ‘TCP’ and ‘UCP’.")
 enum PortProtocol {
   @doc("TCP protocol")
   TCP,

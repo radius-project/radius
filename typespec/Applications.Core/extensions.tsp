@@ -24,46 +24,46 @@ model Extension {}
 
 @doc("Kubernetes namespace extension of a environment/application resource.")
 model KubernetesNamespaceExtension extends Extension {
-  @doc("The kind of the resource.")
+  @doc("The kind of extension being used. Must be ‘kubernetesNamespace’")
   kind: "kubernetesNamespace";
 
-  @doc("The namespace of the application environment.")
+  @doc("The namespace where all application-scoped resources generate Kubernetes objects.")
   `namespace`: string;
 }
 
 @doc("Kubernetes metadata extension of a environment/application resource.")
 model KubernetesMetadataExtension extends Extension {
-  @doc("The kind of the resource.")
+  @doc("The kind of extension being used. Must be 'kubernetesMetadata'")
   kind: "kubernetesMetadata";
 
-  @doc("Annotations to be applied to the Kubernetes resources output by the resource")
+  @doc("The Kubernetes annotations to set on your application and its resources")
   annotations?: Record<string>;
 
-  @doc("Labels to be applied to the Kubernetes resources output by the resource")
+  @doc("The Kubernetes labels to be set on the application and its resources")
   labels?: Record<string>;
 }
 
 @doc("ManualScaling Extension")
 model ManualScalingExtension extends Extension {
-  @doc("Specifies the extension of the resource")
+  @doc("The kind of extension.")
   kind: "manualScaling";
 
-  @doc("Replica count.")
+  @doc("The number of replicas to run")
   replicas: int32;
 }
 
 @doc("Specifies the resource should have a Dapr sidecar injected")
 model DaprSidecarExtension extends Extension {
-  @doc("Specifies the extension of the resource")
+  @doc("The kind of extension.")
   kind: "daprSidecar";
 
-  @doc("The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ")
+  @doc("The port your service exposes to Dapr")
   appPort?: int32;
 
-  @doc("The Dapr appId. Specifies the identifier used by Dapr for service invocation.")
+  @doc("The appId of the Dapr sidecar.")
   appId: string;
 
-  @doc("Specifies the Dapr configuration to use for the resource.")
+  @doc("The configuration to use for the Dapr sidecar")
   config?: string;
 
   @doc("Specifies the Dapr app-protocol to use for the resource.")

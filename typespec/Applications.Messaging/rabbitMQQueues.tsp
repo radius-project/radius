@@ -38,7 +38,7 @@ namespace Applications.Messaging;
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQQueue portable resource")
 model RabbitMQQueueResource is TrackedResource<RabbitMQQueueProperties> {
-  @doc("The name of the RabbitMQQueue portable resource resource")
+  @doc("The name of your resource.")
   @key("rabbitMQQueueName")
   @segment("rabbitMQQueues")
   @path
@@ -52,10 +52,10 @@ model RabbitMQListSecretsResult is RabbitMQSecrets;
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("The connection secrets properties to the RabbitMQ instance")
 model RabbitMQSecrets {
-  @doc("The password used to connect to the RabbitMQ instance")
+  @doc("The password used to connect to this RabbitMQ. Write only.")
   password?: string;
 
-  @doc("The connection URI of the RabbitMQ instance. Generated automatically from host, port, SSL, username, password, and vhost. Can be overridden with a custom value")
+  @doc("The URI to the Rabbit MQ Message Queue. Write only")
   uri?: string;
 }
 
@@ -64,28 +64,28 @@ model RabbitMQSecrets {
 model RabbitMQQueueProperties {
   ...EnvironmentScopedResource;
 
-  @doc("The secrets to connect to the RabbitMQ instance")
+  @doc("Configuration used to manually specify a RabbitMQ container or other service providing a RabbitMQ Queue.")
   secrets?: RabbitMQSecrets;
 
-  @doc("The name of the queue")
+  @doc("The name of the queue.")
   queue?: string;
 
-  @doc("The hostname of the RabbitMQ instance")
+  @doc("The hostname of the RabbitMQ instance.")
   host?: string;
 
-  @doc("The port of the RabbitMQ instance. Defaults to 5672")
+  @doc("The port of the RabbitMQ instance. Defaults to 5672.")
   port?: int32;
 
   @doc("The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.")
   vHost?: string;
 
-  @doc("The username to use when connecting to the RabbitMQ instance")
+  @doc("Username to use when connecting to the target rabbitMQ.")
   username?: string;
 
-  @doc("List of the resource IDs that support the rabbitMQ resource")
+  @doc("	An array of IDs of the underlying resources.")
   resources?: ResourceReference[];
 
-  @doc("Specifies whether to use SSL when connecting to the RabbitMQ instance")
+  @doc("Specifies whether to use SSL when connecting to the RabbitMQ instance.")
   tls?: boolean;
 
   ...RecipeBaseProperties;

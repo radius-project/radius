@@ -37,7 +37,7 @@ namespace Applications.Dapr;
 
 @doc("Dapr SecretStore portable resource")
 model DaprSecretStoreResource is TrackedResource<DaprSecretStoreProperties> {
-  @doc("SecretStore name")
+  @doc("The name of the resource. Names must contain at most 63 characters, contain only lowercase alphanumeric characters, '-', or '.', start with an alphanumeric character, and end with an alphanumeric character.")
   @key("secretStoreName")
   @path
   @segment("secretStores")

@@ -39,7 +39,7 @@ namespace Applications.Core;
 
 @doc("The environment resource")
 model EnvironmentResource is TrackedResource<EnvironmentProperties> {
-  @doc("environment name")
+  @doc("The name of your resource. See [common values]({{< ref "resource-schema.md#common-values" >}}) for more information.")
   @key("environmentName")
   @path
   @segment("environments")
@@ -52,7 +52,7 @@ model EnvironmentProperties {
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("The compute resource used by application environment.")
+  @doc("Container runtime configuration.")
   compute: EnvironmentCompute;
 
   @doc("Cloud providers configuration for the environment.")
@@ -61,7 +61,7 @@ model EnvironmentProperties {
   @doc("Simulated environment.")
   simulated?: boolean;
 
-  @doc("Specifies Recipes linked to the Environment.")
+  @doc("Recipes registered to the environment")
   recipes?: Record<Record<RecipeProperties>>;
 
   @doc("The environment extension.")
@@ -93,10 +93,10 @@ model ProvidersAws {
 @doc("Format of the template provided by the recipe. Allowed values: bicep, terraform.")
 @discriminator("templateKind")
 model RecipeProperties {
-  @doc("Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.")
+  @doc("The path to the Recipe contents. For Bicep Recipes this is a Bicep module registry address.")
   templatePath: string;
 
-  @doc("Key/value parameters to pass to the recipe template at deployment")
+  @doc("A list of parameters to set on the Recipe for every Recipe usage and deployment. Can be overridden by the resource calling the Recipe.")
   parameters?: {};
 }
 
@@ -120,7 +120,7 @@ model RecipeGetMetadata {
   @doc("Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'")
   resourceType: string;
 
-  @doc("The name of the recipe registered to the environment")
+  @doc("The name of the Recipe. Must be unique within the resource-type.")
   name: string;
 }
 
@@ -129,13 +129,13 @@ model RecipeGetMetadataResponse {
   @doc("The format of the template provided by the recipe. Allowed values: bicep, terraform.")
   templateKind: string;
 
-  @doc("The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.")
+  @doc("The path to the Recipe contents. For Bicep Recipes this is a Bicep module registry address.")
   templatePath: string;
 
   @doc("The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources.")
   templateVersion?: string;
 
-  @doc("The key/value parameters to pass to the recipe template at deployment.")
+  @doc("A list of parameters to set on the Recipe for every Recipe usage and deployment. Can be overridden by the resource calling the Recipe.")
   parameters: {};
 }
 

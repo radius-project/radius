@@ -20,17 +20,17 @@ using OpenAPI;
 
 @doc("The base properties of a Dapr component object.")
 model DaprResourceProperties {
-  @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
+  @doc("_(read-only)_ The name of the Dapr component that is generated and applied to the underlying system. Used by the Dapr SDKs or APIs to access the Dapr component.")
   @visibility("read")
   componentName?: string;
 
-  @doc("The metadata for Dapr resource which must match the values specified in Dapr component spec")
+  @doc("Metadata for the Dapr component. Schema must match [Dapr component](https://docs.dapr.io/reference/components-reference/supported-state-stores/). Used when `resourceProvisioning` is set to `manual`.")
   metadata?: {};
 
   #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-duplicate-property"
-  @doc("Dapr component type which must matches the format used by Dapr Kubernetes configuration format")
+  @doc("The Dapr component type. Used when `resourceProvisioning` is set to `manual`.")
   type?: string;
 
-  @doc("Dapr component version")
+  @doc("The version of the Dapr component. See [Dapr components](https://docs.dapr.io/reference/components-reference/supported-state-stores/) for available versions. Used when `resourceProvisioning` is set to `manual`.")
   version?: string;
 }

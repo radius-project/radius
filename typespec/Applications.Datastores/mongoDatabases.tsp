@@ -38,7 +38,7 @@ namespace Applications.Datastores;
 
 @doc("MongoDatabase portable resource")
 model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
-  @doc("The name of the MongoDatabase portable resource resource")
+  @doc("The name of your resource.")
   @path
   @segment("mongoDatabases")
   @key("mongoDatabaseName")
@@ -50,10 +50,10 @@ model MongoDatabaseListSecretsResult is MongoDatabaseSecrets;
 
 @doc("The secret values for the given MongoDatabase resource")
 model MongoDatabaseSecrets {
-  @doc("Password to use when connecting to the target Mongo database")
+  @doc("The password for the MongoDB. Write only.")
   password?: string;
 
-  @doc("Connection string used to connect to the target Mongo database")
+  @doc("The connection string for the MongoDb. Write only.")
   connectionString?: string;
 }
 
@@ -61,22 +61,22 @@ model MongoDatabaseSecrets {
 model MongoDatabaseProperties {
   ...EnvironmentScopedResource;
 
-  @doc("Secret values provided for the resource")
+  @doc("Secrets used when building the resource from values.")
   secrets?: MongoDatabaseSecrets;
 
-  @doc("Host name of the target Mongo database")
+  @doc("The MongoDB host name.")
   host?: string;
 
-  @doc("Port value of the target Mongo database")
+  @doc("The MongoDB port.")
   port?: int32;
 
-  @doc("Database name of the target Mongo database")
+  @doc("Database name of the target MongoDB")
   database?: string;
 
-  @doc("List of the resource IDs that support the MongoDB resource")
+  @doc("An array of resources which underlay this resource. For example, an Azure CosmosDB database ID if the MongoDB resource is leveraging CosmosDB.")
   resources?: ResourceReference[];
 
-  @doc("Username to use when connecting to the target Mongo database")
+  @doc("The username for the MongoDB.")
   username?: string;
 
   ...RecipeBaseProperties;

@@ -41,7 +41,7 @@ model ExtenderListSecretResponse {}
 @doc("ExtenderResource portable resource")
 model ExtenderResource is TrackedResource<ExtenderProperties> {
   @path
-  @doc("The name of the ExtenderResource portable resource")
+  @doc("The name of your resource.")
   @key("extenderName")
   @segment("extenders")
   name: ResourceNameString;
@@ -55,13 +55,13 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
 model ExtenderProperties extends Record<unknown> {
   ...EnvironmentScopedResource;
 
-  @doc("The secrets for referenced resource")
+  @doc("Secrets in the form of key-value pairs")
   secrets?: {};
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the extender portable resource")
+  @doc("The Recipe to deploy.")
   recipe?: Recipe;
 
-  @doc("Specifies how the underlying service/resource is provisioned and managed.")
+  @doc("Specifies how to build the resource. Options are to build automatically via 'recipe' or build manually via 'manual'. Selection determines which set of fields to additionally require.")
   resourceProvisioning?: ResourceProvisioning;
 }
 
