@@ -763,6 +763,7 @@ func (c ContainerProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "provisioningState", c.ProvisioningState)
 	populate(objectMap, "resourceProvisioning", c.ResourceProvisioning)
 	populate(objectMap, "resources", c.Resources)
+	populate(objectMap, "restartPolicy", c.RestartPolicy)
 	populate(objectMap, "runtimes", c.Runtimes)
 	populate(objectMap, "status", c.Status)
 	return json.Marshal(objectMap)
@@ -803,6 +804,9 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &c.Resources)
+			delete(rawMsg, key)
+		case "restartPolicy":
+				err = unpopulate(val, "RestartPolicy", &c.RestartPolicy)
 			delete(rawMsg, key)
 		case "runtimes":
 				err = unpopulate(val, "Runtimes", &c.Runtimes)
@@ -942,6 +946,7 @@ func (c ContainerResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "identity", c.Identity)
 	populate(objectMap, "resourceProvisioning", c.ResourceProvisioning)
 	populate(objectMap, "resources", c.Resources)
+	populate(objectMap, "restartPolicy", c.RestartPolicy)
 	populate(objectMap, "runtimes", c.Runtimes)
 	return json.Marshal(objectMap)
 }
@@ -978,6 +983,9 @@ func (c *ContainerResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &c.Resources)
+			delete(rawMsg, key)
+		case "restartPolicy":
+				err = unpopulate(val, "RestartPolicy", &c.RestartPolicy)
 			delete(rawMsg, key)
 		case "runtimes":
 				err = unpopulate(val, "Runtimes", &c.Runtimes)

@@ -3118,6 +3118,10 @@
             "$ref": "#/definitions/ResourceReference"
           }
         },
+        "restartPolicy": {
+          "$ref": "#/definitions/RestartPolicy",
+          "description": "The restart policy for the underlying container"
+        },
         "runtimes": {
           "$ref": "#/definitions/RuntimesProperties",
           "description": "Specifies Runtime-specific functionality"
@@ -3255,6 +3259,10 @@
           "items": {
             "$ref": "#/definitions/ResourceReference"
           }
+        },
+        "restartPolicy": {
+          "$ref": "#/definitions/RestartPolicy",
+          "description": "The restart policy for the underlying container"
         },
         "runtimes": {
           "$ref": "#/definitions/RuntimesProperties",
@@ -4852,6 +4860,36 @@
           },
           "x-ms-identifiers": []
         }
+      }
+    },
+    "RestartPolicy": {
+      "type": "string",
+      "description": "Restart policy for the container",
+      "enum": [
+        "Always",
+        "OnFailure",
+        "Never"
+      ],
+      "x-ms-enum": {
+        "name": "RestartPolicy",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Always",
+            "value": "Always",
+            "description": "Always"
+          },
+          {
+            "name": "OnFailure",
+            "value": "OnFailure",
+            "description": "OnFailure"
+          },
+          {
+            "name": "Never",
+            "value": "Never",
+            "description": "Never"
+          }
+        ]
       }
     },
     "RuntimesProperties": {

@@ -24,6 +24,7 @@
         }
       }
     },
+    "restartPolicy": "Always",
     "container": {
       "image": "ghcr.io/radius-project/webapptutorial-todoapp",
       "livenessProbe": {

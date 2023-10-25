@@ -137,6 +137,7 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 			Runtimes:             toRuntimePropertiesDataModel(src.Properties.Runtimes),
 			ResourceProvisioning: toContainerResourceProvisioningDataModel(src.Properties.ResourceProvisioning),
 			Resources:            toResourceReferencesDataModel(src.Properties.Resources),
+			RestartPolicy:        toRestartPolicyDataModel(src.Properties.RestartPolicy),
 		},
 	}
 
@@ -265,6 +266,7 @@ func (dst *ContainerResource) ConvertFrom(src v1.DataModelInterface) error {
 		Runtimes:             fromRuntimePropertiesDataModel(c.Properties.Runtimes),
 		Resources:            fromResourceReferencesDataModel(c.Properties.Resources),
 		ResourceProvisioning: fromContainerResourceProvisioningDataModel(c.Properties.ResourceProvisioning),
+		RestartPolicy:        fromRestartPolicyDataModel(c.Properties.RestartPolicy),
 	}
 
 	return nil
@@ -591,6 +593,36 @@ func fromContainerResourceProvisioningDataModel(r datamodel.ContainerResourcePro
 		return to.Ptr(ContainerResourceProvisioningInternal)
 	case datamodel.ContainerResourceProvisioningManual:
 		return to.Ptr(ContainerResourceProvisioningManual)
+	default:
+		return nil
+	}
+}
+
+func toRestartPolicyDataModel(rp *RestartPolicy) string {
+	if rp == nil {
+		return ""
+	}
+
+	switch *rp {
+	case RestartPolicyAlways:
+		return "Always"
+	case RestartPolicyNever:
+		return "Never"
+	case RestartPolicyOnFailure:
+		return "OnFailure"
+	default:
+		return ""
+	}
+}
+
+func fromRestartPolicyDataModel(rp string) *RestartPolicy {
+	switch rp {
+	case "Always":
+		return to.Ptr(RestartPolicyAlways)
+	case "Never":
+		return to.Ptr(RestartPolicyNever)
+	case "OnFailure":
+		return to.Ptr(RestartPolicyOnFailure)
 	default:
 		return nil
 	}
