@@ -122,7 +122,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 		},
 	})
 
-	_ = ns.AddResource("sqldatabases", &builder.ResourceOption[*datamodel.SqlDatabase, datamodel.SqlDatabase]{
+	_ = ns.AddResource("sqlDatabases", &builder.ResourceOption[*datamodel.SqlDatabase, datamodel.SqlDatabase]{
 		RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 		ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 
