@@ -34,7 +34,7 @@ type ResourceTypeSchema struct {
 	WriteOnlyProperties             []string       `json:"writeOnlyProperties,omitempty"`
 }
 
-// FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
+// test FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
 // For example:
 //
 //	"NumShards": 1
