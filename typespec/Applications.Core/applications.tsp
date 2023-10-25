@@ -102,11 +102,14 @@ model ApplicationGraphResource {
 
   @doc("The resources that comprise this resource.")
   @extension("x-ms-identifiers", ["id"])
-  resources: Array<ApplicationGraphOutputResource>;
+  outputResources: Array<ApplicationGraphOutputResource>;
 
   @doc("The connections between resources in the application graph.")
   @extension("x-ms-identifiers",[])
   connections: Array<ApplicationGraphConnection>;
+
+  @doc("provisioningState of this resource.") 
+  provisioningState: string
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")

@@ -43,7 +43,10 @@ type ApplicationGraphResource struct {
 	Name *string
 
 	// REQUIRED; The resources that comprise this resource.
-	Resources []*ApplicationGraphOutputResource
+	OutputResources []*ApplicationGraphOutputResource
+
+	// REQUIRED; provisioningState of this resource.
+	ProvisioningState *string
 
 	// REQUIRED; The resource type.
 	Type *string

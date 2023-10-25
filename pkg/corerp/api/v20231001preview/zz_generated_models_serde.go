@@ -86,7 +86,8 @@ func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "connections", a.Connections)
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "name", a.Name)
-	populate(objectMap, "resources", a.Resources)
+	populate(objectMap, "outputResources", a.OutputResources)
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "type", a.Type)
 	return json.Marshal(objectMap)
 }
@@ -109,8 +110,11 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 		case "name":
 				err = unpopulate(val, "Name", &a.Name)
 			delete(rawMsg, key)
-		case "resources":
-				err = unpopulate(val, "Resources", &a.Resources)
+		case "outputResources":
+				err = unpopulate(val, "OutputResources", &a.OutputResources)
+			delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &a.Type)
