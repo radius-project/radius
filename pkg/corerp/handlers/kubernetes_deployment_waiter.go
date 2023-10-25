@@ -23,7 +23,8 @@ import (
 const (
 	// MaxDeploymentTimeout is the max timeout for waiting for a deployment to be ready.
 	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
-	MaxDeploymentTimeout = time.Minute * time.Duration(10)
+	MaxDeploymentTimeout        = time.Minute * time.Duration(10)
+	OperationInfoKey     string = "operationInfo"
 )
 
 type deploymentWaiter struct {
@@ -118,6 +119,9 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 			if len(possibleFailureCauses) > 0 {
 				errString += fmt.Sprintf(", possible failure causes: %s", strings.Join(possibleFailureCauses, ", "))
 			}
+
+			// Set a value on the context
+			ctx = context.WithValue(ctx, OperationInfoKey, errString)
 			return errors.New(errString)
 
 		case status := <-doneCh:

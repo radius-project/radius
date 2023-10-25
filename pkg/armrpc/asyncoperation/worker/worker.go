@@ -59,6 +59,8 @@ const (
 
 	// defaultDequeueInterval is the default duration for the dequeue interval.
 	defaultDequeueInterval = time.Duration(200) * time.Millisecond
+
+	OperationInfoKey string = "operationInfo"
 )
 
 // Options configures AsyncRequestProcessorWorker
@@ -168,6 +170,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
+			reqCtx = context.WithValue(reqCtx, OperationInfoKey, "")
 
 			asyncCtrl := w.registry.Get(armReqCtx.OperationType)
 			if asyncCtrl == nil {
@@ -225,24 +228,14 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		logger.Error(err, "failed to unmarshal queue message.")
 		return
 	}
-	asyncReqCtx, opCancel := context.WithCancelCause(ctx)
-	failureCh := make(chan error, 1)
+	asyncReqCtx, opCancel := context.WithCancel(ctx)
 	// Ensure that asyncReqCtx context is cancelled when runOperation returns.
 	// That is, cancelling asyncReqCtx signals to ctrl.Run() to cancel the execution,
 	// resulting in completing the go-routine calling ctrl.Run() when runOperation returns.
-	var cancelError error
-	defer opCancel(cancelError)
+	defer opCancel()
 
 	opDone := make(chan struct{}, 1)
 	opStartAt := time.Now()
-
-	stop := context.AfterFunc(asyncReqCtx, func() {
-		fmt.Println("@@@@@ Reading channel for possible failure causes")
-		// Check length of failureCh to see if it has been populated
-		if len(failureCh) > 0 {
-			<-opDone
-		}
-	})
 
 	// Start new go routine to cancel and timeout async operation.
 	go func() {
@@ -262,6 +255,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		logger.Info("Start processing operation.")
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
+		fmt.Println("@@@@@ Run operation complete with result: ", result.Error)
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
@@ -294,14 +288,9 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		case <-operationTimeoutAfter:
 			logger.Info("Cancelling async operation.")
 
-			opCancel(cancelError)
-			fmt.Println("@@@@@ cancel cause: ", cancelError)
-			// Get the cause
-			cancelError = context.Cause(asyncReqCtx)
-			fmt.Println("@@@@@ cancel cause2: ", cancelError)
+			opCancel()
 
 			fmt.Println("@@@@@ Done invoking cancel function")
-			stop()
 			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %d s.", asyncReq.OperationType, int(asyncReq.Timeout().Seconds()))
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
