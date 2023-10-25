@@ -188,6 +188,14 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql/listsecrets",
 		Method:        http.MethodPost,
+	},*/{
+		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGet},
+		Path:          "/providers/applications.messaging/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: "Applications.Messaging/operationResults", Method: v1.OperationGet},
+		Path:          "/providers/applications.messaging/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
+		Method:        http.MethodGet,
 	},
 	{
 		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGet},
