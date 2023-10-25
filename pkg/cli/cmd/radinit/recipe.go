@@ -131,13 +131,13 @@ func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[s
 		"Applications.Dapr/secretStores": {
 			"default": &corerp.BicepRecipeProperties{
 				TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
-				TemplatePath: to.Ptr(fmt.Sprintf("ghcr.io/radius-project/recipes/local-dev/secretStores:%s", tag)),
+				TemplatePath: to.Ptr(fmt.Sprintf("ghcr.io/radius-project/recipes/local-dev/secretstores:%s", tag)),
 			},
 		},
 		"Applications.Dapr/stateStores": {
 			"default": &corerp.BicepRecipeProperties{
 				TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
-				TemplatePath: to.Ptr(fmt.Sprintf("ghcr.io/radius-project/recipes/local-dev/stateStores:%s", tag)),
+				TemplatePath: to.Ptr(fmt.Sprintf("ghcr.io/radius-project/recipes/local-dev/statestores:%s", tag)),
 			},
 		},
 		"Applications.Datastores/mongoDatabases": {
