@@ -39,22 +39,21 @@ func (r *Recipe) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/validate,mutating=false,failurePolicy=fail,sideEffects=None,groups=radapp.io,resources=recipe,verbs=create;update,versions=v1alpha3,name=recipe-webhook,sideEffects=None,admissionReviewVersions=v1
-
+// +kubebuilder:webhook:path=/validate-radapp-io-v1alpha3-recipe,mutating=false,failurePolicy=fail,sideEffects=None,groups=radapp.io,resources=recipe,verbs=create;update,versions=v1alpha3,name=recipe-webhook.radapp.io,sideEffects=None,admissionReviewVersions=v1
 var _ webhook.Validator = &Recipe{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Recipe) ValidateCreate() (admission.Warnings, error) {
 	recipejoblog.Info("validate create", "name", r.Name)
 
-	return nil, r.validateRecipe()
+	return nil, r.validateRecipeType()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Recipe) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	recipejoblog.Info("validate update", "name", r.Name)
 
-	return nil, r.validateRecipe()
+	return nil, r.validateRecipeType()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -64,8 +63,8 @@ func (r *Recipe) ValidateDelete() (admission.Warnings, error) {
 	return nil, nil
 }
 
-// validateRecipe validates Resource Type to be created.
-func (r *Recipe) validateRecipe() error {
+// validateRecipeType validates Resource Type to be created.
+func (r *Recipe) validateRecipeType() error {
 	var errList field.ErrorList
 	flPath := field.NewPath("spec").Child("type")
 
@@ -75,6 +74,7 @@ func (r *Recipe) validateRecipe() error {
 			schema.GroupKind{Group: "radapp.io", Kind: "Recipe"},
 			r.Name,
 			errList)
+
 	}
 
 	return nil
