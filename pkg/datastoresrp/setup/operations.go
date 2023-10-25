@@ -60,16 +60,6 @@ var operationList = []v1.Operation{
 		IsDataAction: false,
 	},
 	{
-		Name: "Applications.Datastores/redisCaches/getmetadata/action",
-		Display: &v1.OperationDisplayProperties{
-			Provider:    "Applications.Datastores",
-			Resource:    "redisCaches",
-			Operation:   "Get recipe metadata",
-			Description: "Get recipe metadata.",
-		},
-		IsDataAction: false,
-	},
-	{
 		Name: "Applications.Datastores/redisCaches/listsecrets/action",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Datastores",
