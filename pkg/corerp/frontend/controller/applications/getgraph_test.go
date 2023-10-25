@@ -52,7 +52,8 @@ func TestGetGraphRun_20231001Preview(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		conn, _ := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+		conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+		require.NoError(t, err)
 
 		ctl, err := NewGetGraph(opts, conn)
 		require.NoError(t, err)
