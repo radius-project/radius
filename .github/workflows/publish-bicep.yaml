@@ -16,11 +16,6 @@
 
 name: Update extensibility provider types
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "hack/bicep-types-radius/generated/**"
   pull_request:
     branches:
       - main
@@ -76,14 +71,12 @@ jobs:
           exit 1
 
       - id: get_radius_commit_hash
-        if: github.ref == 'refs/heads/main'
         name: Get commit hash (radius-project/radius)
         run: |
           echo "commit_hash_short=$(git rev-parse HEAD --short)" >> $GITHUB_OUTPUT
           echo "gh_uri=https://github.com/radius-project/radius/tree/$(git rev-parse HEAD)/hack/bicep-types-radius/generated" >> $GITHUB_OUTPUT
 
       - name: Clone https://github.com/radius-project/bicep
-        if: github.ref == 'refs/heads/main'
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -92,13 +85,11 @@ jobs:
           ref: bicep-extensibility
 
       - name: Copy generated files to radius-project/bicep repo
-        if: github.ref == 'refs/heads/main'
         run: |
           mkdir -p workflow-temp/bicep/src/Bicep.Types.Radius/generated
           cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
 
       - name: Create Pull Request in radius-project/bicep repo
-        if: github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v4
         with:
           path: workflow-temp/bicep
