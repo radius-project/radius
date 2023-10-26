@@ -1,111 +1,31 @@
-# ------------------------------------------------------------
-# Copyright 2023 The Radius Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#    
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ------------------------------------------------------------
+name: Check for docs
 
-name: Update extensibility provider types
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
-      - "hack/bicep-types-radius/generated/**"
+      - "swagger/**"
+      - ".github/workflows/docs.yaml"
 
 jobs:
-  update-types:
-    name: Update Bicep extensibility provider types
+  docs:
+    name: "Documentation required: please read"
+    # name: Add docs comment
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      GOVER: '^1.21'
-      GOPROXY: https://proxy.golang.org
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GOVER }}
-      - name: Setup npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-      - name: Install TypeSpec compiler
+      # - name: Add comment requiring docs update
+      #   uses: peter-evans/create-or-update-comment@v2.1.1
+      #   with:
+      #     issue-number: ${{ github.event.pull_request.number }}
+      #     body: |
+      #       You are editing files which require a docs update. Please ensure you've made the appropriate changes to the docs and submitted a PR.
+      #       - Swagger changes require reference edge docs to be updated [here](https://github.com/radius-project/docs/tree/edge/docs/content/reference/resource-schema)
+      #       - Make sure to create a branch and submit a PR into the edge branch instead of the default latest branch, as the swagger changes will not be available until the next release.
+            
+      #       For more information on contributing to docs please visit https://docs.radapp.io/contributing/docs/.
+      - name: Changes in this PR require a docs update
         run: |
-          pushd typespec
-          npm ci
-          popd
-      - name: Install autorest
-        run: npm install -g autorest@3.6.1
-      - name: Install oav
-        run: npm install -g oav@3.2.0
-      - name: Install mockgen
-        run: go install github.com/golang/mock/mockgen@v1.5.0
-      - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-      - name: Run make generate
-        run: make generate
-
-      - name: Check if generated code is up to date
-        continue-on-error: true
-        id: gitdiff
-        run: |
-          git diff --exit-code
-
-      - name: Check git diff failures
-        if: steps.gitdiff.outcome != 'success'
-        run: |
-          echo "Generated code is not up to date, run 'make generate' to update generated code."
-          exit 1
-
-      - id: get_radius_commit_hash
-        name: Get commit hash (radius-project/radius)
-        run: |
-          echo "commit_hash_short=$(git rev-parse HEAD --short)" >> $GITHUB_OUTPUT
-          echo "gh_uri=https://github.com/radius-project/radius/tree/$(git rev-parse HEAD)/hack/bicep-types-radius/generated" >> $GITHUB_OUTPUT
-
-      - name: Clone https://github.com/radius-project/bicep
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          repository: radius-project/bicep
-          path: workflow-temp/bicep
-          ref: bicep-extensibility
-
-      - name: Copy generated files to radius-project/bicep repo
-        run: |
-          mkdir -p workflow-temp/bicep/src/Bicep.Types.Radius/generated
-          cp -R hack/bicep-types-radius/generated/* workflow-temp/bicep/src/Bicep.Types.Radius/generated
-
-      - name: Create Pull Request in radius-project/bicep repo
-        uses: peter-evans/create-pull-request@v4
-        with:
-          path: workflow-temp/bicep
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          signoff: false
-          branch: radius-types/patch-${{ github.event.pull_request.number }}
-          delete-branch: true
-          title: |
-            Update Radius extensibility provider for Bicep
-          body: |
-            ## Autogenerated Report 
-            - Updates Bicep extensibility type definitions generated from [radius-project/radius](${{ steps.get_radius_commit_hash.outputs.gh_uri }})
-          commit-message: |
-            update generated types from ${{ steps.get_radius_commit_hash.outputs.gh_uri }}
-          labels: |
-            autogenerated
-            github_actions
-            radius-types
-          draft: false
+          echo "You are editing files which require a docs update. Please ensure you've made the appropriate changes to the docs and submitted a PR."
+          echo "- Swagger changes require reference edge docs to be updated [here](https://github.com/radius-project/docs/tree/edge/docs/content/reference/resource-schema)"
+          echo "- Make sure to create a branch and submit a PR into the edge branch instead of the default latest branch, as the swagger changes will not be available until the next release."
+          echo "For more information on contributing to docs please visit https://docs.radapp.io/contributing/docs/."
