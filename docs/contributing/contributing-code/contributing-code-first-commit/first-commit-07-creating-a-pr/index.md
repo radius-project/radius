@@ -34,11 +34,17 @@ The format preferred for the project is formatted like:
 Fixes: #<issue number>
 
 <a more detailed description of the root cause and fix - may be long if necessary>
+
+Signed-off-by: Random J Developer <random@developer.example.org>
 ```
 
 Here's an [example](https://github.com/radius-project/radius/commit/8e95d07a66e6aa91dfb40217318649ca43ec4bd7).
 
 Include a level of detail that makese sense based on the complexity of problem and solution.
+
+Radius leverages the [Developer Certificate of Origin](https://github.com/apps/dco) to certify that you have the right to submit the code you are contributing to the project. Make sure to include the `Signed-off-by` line in your commit message, or use the `-s` flag when committing.
+
+Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Signed-off-by line to commit messages. Search for "sign-off" in VS Code settings to find it and enable it.
 
 ## Creating the pull request
 
