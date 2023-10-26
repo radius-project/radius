@@ -35,7 +35,7 @@ const (
 	AsyncOperationRetryAfter = time.Duration(5) * time.Second
 )
 
-// SetupNamespace builds the namespace for datastores resource provider.
+// SetupNamespace builds the namespace for messaging resource provider.
 func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerConfig) *builder.Namespace {
 	ns := builder.NewNamespace("Applications.Messaging")
 
