@@ -67,7 +67,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewDeleteResource[*datamodel.RabbitMQQueue, datamodel.RabbitMQQueue](options, &rmq_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
-			AsyncOperationTimeout:    msrp_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
+			AsyncOperationTimeout:    msrp_ctrl.AsyncDeleteRabbitMQTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Custom: map[string]builder.Operation[datamodel.RabbitMQQueue]{
