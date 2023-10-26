@@ -213,56 +213,6 @@ func Test_TerraformRecipe_Context(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_TerraformRecipe_AzureStorage creates an Extender resource consuming a Terraform recipe that deploys an Azure blob storage instance.
-func Test_TerraformRecipe_AzureStorage(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-azurestorage.bicep"
-	name := "corerp-resources-terraform-azstorage"
-	appName := "corerp-resources-terraform-azstorage-app"
-	envName := "corerp-resources-terraform-azstorage-env"
-
-	test := shared.NewRPTest(t, name, []shared.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetTerraformRecipeModuleServerURL(), "appName="+appName),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: envName,
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: appName,
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: name,
-						Type: validation.ExtendersResource,
-						App:  appName,
-					},
-				},
-			},
-			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
-				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-				secretSuffix, err := getSecretSuffix(resourceID, envName, appName)
-				require.NoError(t, err)
-
-				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
-					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
-				require.NoError(t, err)
-				require.Equal(t, secretNamespace, secret.Namespace)
-				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
-			},
-		},
-	})
-
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
-		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
-	}
-
-	test.Test(t)
-}
-
 // Test_TerraformRecipe_ParametersAndOutputs Validates input parameters correctly set and output values/secrets are populated.
 func Test_TerraformRecipe_ParametersAndOutputs(t *testing.T) {
 	template := "testdata/corerp-resources-terraform-recipe-terraform.bicep"

@@ -14,13 +14,16 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-name: Functional tests with no cloud resources
+name: Functional tests
 on:
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
+  schedule:
+    # Run every 4 hours on weekdays.
+    - cron: "30 0,4,8,12,16,20 * * 1-5"
+    # Run every 12 hours on weekends.
+    - cron: "30 0,12 * * 0,6"
+  # Dispatch on external events
+  repository_dispatch:
+    types: [functional-tests, de-functional-test]
 
 env:
   # Go version
@@ -48,10 +51,16 @@ env:
   BICEP_RECIPE_REGISTRY: ghcr.io/radius-project/dev
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 60m
+  # The Azure Location to store test resources
+  AZURE_LOCATION: westus3
   # The base directory for storing test logs
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
+  # The region for AWS resources
+  AWS_REGION: 'us-west-2'
+  # The AWS account ID
+  AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
   # The current GitHub action link
   ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
   # Server where terraform test modules are deployed
@@ -139,6 +148,7 @@ jobs:
           echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
+          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
@@ -267,13 +277,13 @@ jobs:
           message: |
             :x: Test recipe publishing failed
   tests:
-    name: Run ${{ matrix.name }} functional tests that do not require cloud resources
+    name: Run ${{ matrix.name }} functional tests that require cloud resources
     needs: build
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        name: [ucp,kubernetes,shared,msgrp,daprrp,samples]
+        name: [ucp,shared]
         include:
           # datastorerp functional tests need the larger VM.
           - os: ubuntu-latest-m
@@ -285,6 +295,7 @@ jobs:
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
@@ -325,6 +336,10 @@ jobs:
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: bin
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
@@ -333,6 +348,17 @@ jobs:
           append: true
           message: |
             :hourglass: Starting ${{ matrix.name }} functional tests...
+      - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          current_time=$(date +%s)
+          az group create \
+            --location ${{ env.AZURE_LOCATION }} \
+            --name $RESOURCE_GROUP \
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --tags creationTime=$current_time
+          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
+        env:
+          RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
@@ -381,6 +407,14 @@ jobs:
         run: |
           wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_VER }}
           dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_VER }}
+      - name: Install Azure Keyvault CSI driver chart
+        run: |
+          helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+          helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --version ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
+      - name: Install azure workload identity webhook chart
+        run: |
+          helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
+          helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }} --set azureTenantID=${{ secrets.INTEGRATION_TEST_TENANT_ID }}
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -424,6 +458,18 @@ jobs:
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
           rad env create kind-radius --namespace default
           rad env switch kind-radius
+
+          echo "*** Configuring Azure provider ***"
+          rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+            --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+
+          echo "*** Configuring AWS provider ***"
+          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad credential register aws \
+            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -436,7 +482,7 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
-      - name: Run functional tests that do not require cloud resources
+      - name: Run functional tests that require cloud resources
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -455,13 +501,17 @@ jobs:
           # AZURE_MSSQL_PASSWORD
           eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          make test-functional-${{ matrix.name }}
+          make test-functional-${{ matrix.name }}-cloud
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
+          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
       - uses: azure/setup-kubectl@v3
@@ -501,6 +551,14 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        if: always()
+        run: |
+          # if deletion fails, purge workflow will purge the resource group and its resources later.
+          az group delete \
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
+            --yes --verbose
   report-failure:
     name: Report test failure
     needs: [build, tests]

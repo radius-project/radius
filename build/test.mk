@@ -66,6 +66,9 @@ test-functional-kubernetes: ## Runs Kubernetes functional tests
 test-functional-shared: ## Runs shared functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
 
+test-functional-shared-cloud: ## Runs shared functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-cloud/shared/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+
 test-functional-msgrp: ## Runs Messaging RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/messagingrp/... -timeout ${TEST_TIMEOUT} -v -parallel 2 $(GOTEST_OPTS)
 
@@ -75,11 +78,17 @@ test-functional-daprrp: ## Runs Dapr RP functional tests
 test-functional-datastoresrp: ## Runs Datastores RP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
 
+test-functional-datastoresrp-cloud: ## Runs Datastores RP functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-cloud/datastoresrp/... -timeout ${TEST_TIMEOUT} -v -parallel 3 $(GOTEST_OPTS)
+
 test-functional-samples: ## Runs Samples functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/samples/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-ucp: ## Runs UCP functional tests
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-cloud/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin/rad-bicep" ./build/validate-bicep.sh
