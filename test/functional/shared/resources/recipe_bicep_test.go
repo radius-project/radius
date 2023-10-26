@@ -254,13 +254,14 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
-				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
-				// of our error. This is wrong.
-				//
-				// See: https://github.com/radius-project/radius/issues/6045
-
-				MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid",
+				Code:            recipes.RecipeDeploymentFailed,
+				MessageContains: "failed to deploy recipe",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "InvalidTemplate",
+						MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid",
+					},
+				},
 			},
 		},
 	})
@@ -341,13 +342,20 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
-				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
-				// of our error. This is wrong.
-				//
-				// See: https://github.com/radius-project/radius/issues/6046
-
-				MessageContains: "Unable to process template language expressions for resource",
+				Code:            recipes.RecipeDeploymentFailed,
+				MessageContains: "failed to deploy recipe",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "DeploymentFailed",
+						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						Details: []step.DeploymentErrorDetail{
+							{
+								Code:            "InvalidTemplate",
+								MessageContains: "Unable to process template language expressions for resource",
+							},
+						},
+					},
+				},
 			},
 		},
 	})
@@ -387,13 +395,26 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
-				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
-				// of our error. This is wrong.
-				//
-				// See: https://github.com/radius-project/radius/issues/6047
-
-				MessageContains: "'not an id, just deal with it' is not a valid resource id",
+				Code:            recipes.RecipeDeploymentFailed,
+				MessageContains: "failed to deploy recipe",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "DeploymentFailed",
+						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						Details: []step.DeploymentErrorDetail{
+							{
+								Code:            "ResourceDeploymentFailure",
+								MessageContains: "Failed",
+								Details: []step.DeploymentErrorDetail{
+									{
+										Code:            "Internal",
+										MessageContains: "'not an id, just deal with it' is not a valid resource id",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	})

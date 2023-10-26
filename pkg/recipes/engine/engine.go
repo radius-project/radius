@@ -56,8 +56,8 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
 		result = metrics.FailedOperationState
-		if recipes.GetRecipeErrorDetails(err) != nil {
-			result = recipes.GetRecipeErrorDetails(err).Code
+		if recipes.GetErrorDetails(err) != nil {
+			result = recipes.GetErrorDetails(err).Code
 		}
 	}
 
@@ -78,7 +78,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
-		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
+		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
@@ -104,8 +104,8 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources)
 	if err != nil {
 		result = metrics.FailedOperationState
-		if recipes.GetRecipeErrorDetails(err) != nil {
-			result = recipes.GetRecipeErrorDetails(err).Code
+		if recipes.GetErrorDetails(err) != nil {
+			result = recipes.GetErrorDetails(err).Code
 		}
 	}
 
@@ -180,7 +180,7 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	driver, ok := e.options.Drivers[definition.Driver]
 	if !ok {
 		err := fmt.Errorf("could not find driver `%s`", definition.Driver)
-		return nil, nil, recipes.NewRecipeError(recipes.RecipeDriverNotFoundFailure, err.Error(), util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
+		return nil, nil, recipes.NewRecipeError(recipes.RecipeDriverNotFoundFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 	return definition, driver, nil
 }

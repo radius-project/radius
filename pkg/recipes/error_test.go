@@ -102,7 +102,7 @@ func TestGetRecipeErrorDetails(t *testing.T) {
 		},
 	}
 	for _, tc := range errorTests {
-		details := GetRecipeErrorDetails(tc.err)
+		details := GetErrorDetails(tc.err)
 		require.Equal(t, details, tc.expErrorDetails)
 	}
 }
