@@ -17,8 +17,6 @@
 name: Update extensibility provider types
 on:
   pull_request:
-    branches:
-      - main
     paths:
       - "hack/bicep-types-radius/generated/**"
 
