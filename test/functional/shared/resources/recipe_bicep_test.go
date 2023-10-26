@@ -259,7 +259,7 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 				Details: []step.DeploymentErrorDetail{
 					{
 						Code:            "InvalidTemplate",
-						MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid",
+						MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid; they are not present in the original template and can therefore not be provided at deployment time. The only supported parameters for this template are ''. Please see https://aka.ms/arm-pass-parameter-values for usage details.'.",
 					},
 				},
 			},
@@ -351,7 +351,7 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 						Details: []step.DeploymentErrorDetail{
 							{
 								Code:            "InvalidTemplate",
-								MessageContains: "Unable to process template language expressions for resource",
+								MessageContains: "Unable to process template language expressions for resource 'Applications.Core/extenders/corerp-resources-recipe-bicep-langugagefailure-failure' at line '1' and column '442'. 'Unable to evaluate the template language function 'substring'. The index parameter cannot be larger than the length of the string. The index parameter: '10', the length of the string parameter: '4'. Please see https://aka.ms/arm-function-substring for usage details.'",
 							},
 						},
 					},

@@ -14,12 +14,11 @@ limitations under the License.
 package recipes
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
@@ -64,18 +63,7 @@ func GetErrorDetails(err error) *v1.ErrorDetails {
 		return &v.ErrorDetails
 
 	case *azcore.ResponseError:
-		data := v1.ErrorResponse{}
-		c, err := io.ReadAll(v.RawResponse.Body)
-		if err != nil {
-			return &v1.ErrorDetails{
-				Code:    v1.CodeInternal,
-				Message: fmt.Sprintf("Error reading Response Error : %s", err.Error()),
-			}
-		}
-
-		_ = json.Unmarshal(c, &data)
-
-		return &data.Error
+		return clientv2.TryUnfoldResponseError(v)
 	}
 
 	return nil
