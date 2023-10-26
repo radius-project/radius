@@ -254,13 +254,14 @@ func Test_BicepRecipe_ParameterNotDefined(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
-				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
-				// of our error. This is wrong.
-				//
-				// See: https://github.com/radius-project/radius/issues/6045
-
-				MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid",
+				Code:            recipes.RecipeDeploymentFailed,
+				MessageContains: "failed to deploy recipe",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "InvalidTemplate",
+						MessageContains: "Deployment template validation failed: 'The template parameters 'a, b' in the parameters file are not valid; they are not present in the original template and can therefore not be provided at deployment time. The only supported parameters for this template are ''. Please see https://aka.ms/arm-pass-parameter-values for usage details.'.",
+					},
+				},
 			},
 		},
 	})
@@ -341,13 +342,20 @@ func Test_BicepRecipe_LanguageFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
-				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
-				// of our error. This is wrong.
-				//
-				// See: https://github.com/radius-project/radius/issues/6046
-
-				MessageContains: "Unable to process template language expressions for resource",
+				Code:            recipes.RecipeDeploymentFailed,
+				MessageContains: "failed to deploy recipe",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "DeploymentFailed",
+						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						Details: []step.DeploymentErrorDetail{
+							{
+								Code:            "InvalidTemplate",
+								MessageContains: "Unable to process template language expressions for resource 'Applications.Core/extenders/corerp-resources-recipe-bicep-langugagefailure-failure' at line '1' and column '442'. 'Unable to evaluate the template language function 'substring'. The index parameter cannot be larger than the length of the string. The index parameter: '10', the length of the string parameter: '4'. Please see https://aka.ms/arm-function-substring for usage details.'",
+							},
+						},
+					},
+				},
 			},
 		},
 	})
@@ -387,13 +395,26 @@ func Test_BicepRecipe_ResourceCreationFailure(t *testing.T) {
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: recipes.RecipeDeploymentFailed,
-				// NOTE: There is a bug in our error handling for deployements. We return the JSON text of the deployment error inside the message
-				// of our error. This is wrong.
-				//
-				// See: https://github.com/radius-project/radius/issues/6047
-
-				MessageContains: "'not an id, just deal with it' is not a valid resource id",
+				Code:            recipes.RecipeDeploymentFailed,
+				MessageContains: "failed to deploy recipe",
+				Details: []step.DeploymentErrorDetail{
+					{
+						Code:            "DeploymentFailed",
+						MessageContains: "At least one resource deployment operation failed. Please see the details for the specific operation that failed.",
+						Details: []step.DeploymentErrorDetail{
+							{
+								Code:            "ResourceDeploymentFailure",
+								MessageContains: "Failed",
+								Details: []step.DeploymentErrorDetail{
+									{
+										Code:            "Internal",
+										MessageContains: "'not an id, just deal with it' is not a valid resource id",
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	})
