@@ -74,7 +74,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewDeleteResource[*datamodel.RedisCache, datamodel.RedisCache](options, &rds_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
-			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+			AsyncOperationTimeout:    ds_ctrl.AsyncDeleteRedisCacheTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Custom: map[string]builder.Operation[datamodel.RedisCache]{
@@ -112,7 +112,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewDeleteResource[*datamodel.MongoDatabase, datamodel.MongoDatabase](options, &mongo_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
-			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+			AsyncOperationTimeout:    ds_ctrl.AsyncDeleteMongoDatabaseTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Custom: map[string]builder.Operation[datamodel.MongoDatabase]{
@@ -133,7 +133,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.SqlDatabase, datamodel.SqlDatabase](options, &sql_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
-			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Patch: builder.Operation[datamodel.SqlDatabase]{
@@ -143,14 +143,14 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.SqlDatabase, datamodel.SqlDatabase](options, &sql_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
-			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateMongoDatabaseTimeout,
+			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateSqlDatabaseTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.SqlDatabase]{
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
 				return pr_ctrl.NewDeleteResource[*datamodel.SqlDatabase, datamodel.SqlDatabase](options, &sql_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
-			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateRedisCacheTimeout,
+			AsyncOperationTimeout:    ds_ctrl.AsyncDeleteSqlDatabaseTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Custom: map[string]builder.Operation[datamodel.SqlDatabase]{
