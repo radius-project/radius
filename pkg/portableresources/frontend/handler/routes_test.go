@@ -28,41 +28,12 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
-	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 )
 
 var handlerTests = []rpctest.HandlerTestSpec{
 	{
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationList},
-		Path:          "/providers/applications.messaging/rabbitmqqueues",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationList},
-		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationGet},
-		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationPut},
-		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
-		Method:        http.MethodPut,
-	}, {
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationPatch},
-		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
-		Method:        http.MethodPatch,
-	}, {
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: v1.OperationDelete},
-		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq",
-		Method:        http.MethodDelete,
-	}, {
-		OperationType: v1.OperationType{Type: msg_ctrl.RabbitMQQueuesResourceType, Method: msg_ctrl.OperationListSecret},
-		Path:          "/resourcegroups/testrg/providers/applications.messaging/rabbitmqqueues/rabbitmq/listsecrets",
-		Method:        http.MethodPost,
-	}, {
 		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/providers/applications.dapr/pubsubbrokers",
 		Method:        http.MethodGet,
@@ -218,14 +189,6 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: ds_ctrl.SqlDatabasesResourceType, Method: ds_ctrl.OperationListSecret},
 		Path:          "/resourcegroups/testrg/providers/applications.datastores/sqldatabases/sql/listsecrets",
 		Method:        http.MethodPost,
-	}, {
-		OperationType: v1.OperationType{Type: "Applications.Messaging/operationStatuses", Method: v1.OperationGet},
-		Path:          "/providers/applications.messaging/locations/global/operationstatuses/00000000-0000-0000-0000-000000000000",
-		Method:        http.MethodGet,
-	}, {
-		OperationType: v1.OperationType{Type: "Applications.Messaging/operationResults", Method: v1.OperationGet},
-		Path:          "/providers/applications.messaging/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
-		Method:        http.MethodGet,
 	},
 	{
 		OperationType: v1.OperationType{Type: "Applications.Dapr/operationStatuses", Method: v1.OperationGet},
@@ -260,13 +223,6 @@ func TestHandlers(t *testing.T) {
 	t.Run("Azure", func(t *testing.T) {
 		// Add azure specific handlers.
 		azureHandlerTests := append(handlerTests, []rpctest.HandlerTestSpec{
-			{
-				OperationType:               v1.OperationType{Type: "Applications.Messaging/providers", Method: v1.OperationGet},
-				Path:                        "/providers/applications.messaging/operations",
-				Method:                      http.MethodGet,
-				WithoutRootScope:            true,
-				SkipOperationTypeValidation: true,
-			},
 			{
 				OperationType:               v1.OperationType{Type: "Applications.Dapr/providers", Method: v1.OperationGet},
 				Path:                        "/providers/applications.dapr/operations",

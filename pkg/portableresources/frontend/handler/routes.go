@@ -39,10 +39,6 @@ import (
 	mongo_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller/mongodatabases"
 	redis_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller/rediscaches"
 	sql_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller/sqldatabases"
-	msg_dm "github.com/radius-project/radius/pkg/messagingrp/datamodel"
-	msg_conv "github.com/radius-project/radius/pkg/messagingrp/datamodel/converter"
-	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
-	rmq_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller/rabbitmqqueues"
 )
 
 const (
@@ -77,12 +73,7 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 		rootScopePath,
 	}
 
-	err := AddMessagingRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
-	if err != nil {
-		return err
-	}
-
-	err = AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
+	err := AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
@@ -90,144 +81,6 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 	err = AddDatastoresRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// AddMessagingRoutes configures the default ARM handlers and registers handlers for the RabbitMQQueue resource type for
-// the List, Get, Put, Patch and Delete operations.
-func AddMessagingRoutes(ctx context.Context, r chi.Router, rootScopePath string, prefixes []string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
-	// Configure the default ARM handlers.
-	err := server.ConfigureDefaultHandlers(ctx, r, rootScopePath, isARM, MessagingProviderNamespace, NewGetOperations, ctrlOpts)
-	if err != nil {
-		return err
-	}
-
-	specLoader, err := validator.LoadSpec(ctx, MessagingProviderNamespace, swagger.SpecFiles, prefixes, "rootScope")
-	if err != nil {
-		return err
-	}
-
-	validator := validator.APIValidator(validator.Options{
-		SpecLoader:         specLoader,
-		ResourceTypeGetter: validator.RadiusResourceTypeGetter,
-	})
-
-	// Register resource routers.
-	//
-	// Note: We have to follow the below rules to enable API validators:
-	// 1. For collection scope routers (xxxPlaneRouter and xxxResourceGroupRouter), register validator at HandlerOptions.Middlewares.
-	// 2. For resource scopes (xxxResourceRouter), register validator at Subrouter.
-
-	// rabbitmqqueues router handlers:
-	rmqPlaneRouter := server.NewSubrouter(r, rootScopePath+"/providers/applications.messaging/rabbitmqqueues", validator)
-	rmqResourceGroupRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues", validator)
-	rmqResourceRouter := server.NewSubrouter(r, rootScopePath+resourceGroupPath+"/providers/applications.messaging/rabbitmqqueues/{rabbitMQQueueName}", validator)
-
-	// Messaging handlers:
-	handlerOptions := []server.HandlerOptions{
-		{
-			ParentRouter: rmqPlaneRouter,
-			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
-			Method:       v1.OperationList,
-			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt,
-					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:   msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter:  msg_conv.RabbitMQQueueDataModelToVersioned,
-						ListRecursiveQuery: true,
-					})
-			},
-		},
-		{
-			ParentRouter: rmqResourceGroupRouter,
-			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
-			Method:       v1.OperationList,
-			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt,
-					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
-					})
-			},
-		},
-		{
-			ParentRouter: rmqResourceRouter,
-			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
-			Method:       v1.OperationGet,
-			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt,
-					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
-					})
-			},
-		},
-		{
-			ParentRouter: rmqResourceRouter,
-			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
-			Method:       v1.OperationPut,
-			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewDefaultAsyncPut(opt,
-					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
-						UpdateFilters: []frontend_ctrl.UpdateFilter[msg_dm.RabbitMQQueue]{
-							rp_frontend.PrepareRadiusResource[*msg_dm.RabbitMQQueue],
-						},
-						AsyncOperationTimeout:    msg_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
-						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
-					},
-				)
-			},
-		},
-		{
-			ParentRouter: rmqResourceRouter,
-			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
-			Method:       v1.OperationPatch,
-			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewDefaultAsyncPut(opt,
-					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:  msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter: msg_conv.RabbitMQQueueDataModelToVersioned,
-						UpdateFilters: []frontend_ctrl.UpdateFilter[msg_dm.RabbitMQQueue]{
-							rp_frontend.PrepareRadiusResource[*msg_dm.RabbitMQQueue],
-						},
-						AsyncOperationTimeout:    msg_ctrl.AsyncCreateOrUpdateRabbitMQTimeout,
-						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
-					},
-				)
-			},
-		},
-		{
-			ParentRouter: rmqResourceRouter,
-			ResourceType: msg_ctrl.RabbitMQQueuesResourceType,
-			Method:       v1.OperationDelete,
-			ControllerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewDefaultAsyncDelete(opt,
-					frontend_ctrl.ResourceOptions[msg_dm.RabbitMQQueue]{
-						RequestConverter:         msg_conv.RabbitMQQueueDataModelFromVersioned,
-						ResponseConverter:        msg_conv.RabbitMQQueueDataModelToVersioned,
-						AsyncOperationTimeout:    msg_ctrl.AsyncDeleteRabbitMQTimeout,
-						AsyncOperationRetryAfter: AsyncOperationRetryAfter,
-					},
-				)
-			},
-		},
-		{
-			ParentRouter:      rmqResourceRouter,
-			Path:              "/listsecrets",
-			ResourceType:      msg_ctrl.RabbitMQQueuesResourceType,
-			Method:            msg_ctrl.OperationListSecret,
-			ControllerFactory: rmq_ctrl.NewListSecretsRabbitMQQueue,
-		},
-	}
-
-	for _, h := range handlerOptions {
-		if err := server.RegisterHandler(ctx, h, ctrlOpts); err != nil {
-			return err
-		}
 	}
 
 	return nil
