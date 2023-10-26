@@ -10,9 +10,11 @@ on:
 jobs:
   docs:
     name: "Documentation required: please read"
+    # https://github.com/radius-project/radius/issues/6582
     # name: Add docs comment
     runs-on: ubuntu-latest
     steps:
+      # https://github.com/radius-project/radius/issues/6582
       # - name: Add comment requiring docs update
       #   uses: peter-evans/create-or-update-comment@v2.1.1
       #   with:
