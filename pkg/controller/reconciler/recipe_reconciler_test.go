@@ -197,7 +197,7 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	// This test tests our ability to recover from failed operations inside Radius.
 	//
 	// We use the mock client to simulate the failure of update and delete operations
-	// and verify that the controller will (eventally) retry these operations.
+	// and verify that the controller will (eventually) retry these operations.
 
 	ctx := testcontext.New(t)
 	radius, client := SetupRecipeTest(t)

@@ -166,7 +166,7 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expectedConfig, actualConfig)
 		})
 
-		t.Run("Switch (not existant)", func(t *testing.T) {
+		t.Run("Switch (not existent)", func(t *testing.T) {
 			configPath := path.Join(t.TempDir(), "config.yaml")
 
 			yamlData, err := yaml.Marshal(map[string]any{
