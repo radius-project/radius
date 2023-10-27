@@ -50,7 +50,7 @@ type Options struct {
 	// Client must also be set.
 	RESTConfig *rest.Config
 
-	// Status chan will recieve StatusMessage updates if provided.
+	// Status chan will receive StatusMessage updates if provided.
 	StatusChan chan<- StatusMessage
 }
 

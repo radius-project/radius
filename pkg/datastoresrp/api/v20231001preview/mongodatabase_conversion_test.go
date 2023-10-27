@@ -101,7 +101,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		},
 
 		{
-			desc: "mongodb resource default recipe with overriden values",
+			desc: "mongodb resource default recipe with overridden values",
 			file: "mongodatabaseresource_recipe2.json",
 			expected: &datamodel.MongoDatabase{
 				BaseResource: v1.BaseResource{

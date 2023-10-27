@@ -283,7 +283,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 				parsed, err := strconv.ParseInt(w.Header().Get("Retry-After"), 10, 64)
 				require.NoError(t, err)
 
-				// Yes, this looks wierd but it's the correct way to multiply by a non-constant value.
+				// Yes, this looks weird but it's the correct way to multiply by a non-constant value.
 				duration := time.Duration(parsed) * time.Second
 				require.Equal(t, tt.retryAfter, duration)
 			}

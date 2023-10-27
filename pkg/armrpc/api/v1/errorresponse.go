@@ -37,7 +37,7 @@ func (e ErrorDetails) Error() string {
 	return e.Message
 }
 
-// ErrorAdditionalInfo represents abritrary additional information as part of an error as defined by the ARM API.
+// ErrorAdditionalInfo represents arbitrary additional information as part of an error as defined by the ARM API.
 type ErrorAdditionalInfo struct {
 	Type string         `json:"type"`
 	Info map[string]any `json:"info"`

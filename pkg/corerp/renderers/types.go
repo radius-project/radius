@@ -50,7 +50,7 @@ type RendererDependency struct {
 	// ResourceID is the resource ID of the Radius resource that is the dependency.
 	ResourceID resources.ID
 
-	// Resource is the datamodel of depedency resource.
+	// Resource is the datamodel of dependency resource.
 	Resource v1.DataModelInterface
 
 	// ComputedValues is a map of the computed values and secrets of the dependency.

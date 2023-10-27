@@ -52,7 +52,7 @@ const (
 // descriptive labels:
 // - intended for humans and human troubleshooting
 // - we include both our own metadata and kubernetes *recommended* labels
-// - we might (in the future) include non-determinisitic details because these are informational
+// - we might (in the future) include non-deterministic details because these are informational
 //
 // selector labels:
 // - intended for programmatic matching (selecting a pod for logging)
