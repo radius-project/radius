@@ -75,56 +75,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Messaging/register/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    MessagingProviderNamespace,
-					Operation:   "Register Applications.Messaging resource provider",
-					Description: "Registers 'Applications.Messaging' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "Get/List rabbitMQQueues",
-					Description: "Gets/Lists rabbitMQQueue resource(s).",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/write",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "Create/Update rabbitMQQueues",
-					Description: "Creates or updates a rabbitMQQueue resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/delete",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "Delete rabbitMQQueue",
-					Description: "Deletes a rabbitMQQueue resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/listsecrets/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "List secrets",
-					Description: "Lists rabbitMQQueue secrets.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
 				Name: "Applications.Dapr/secretStores/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DaprProviderNamespace,

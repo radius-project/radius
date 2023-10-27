@@ -45,17 +45,11 @@ const (
 	// DaprProviderNamespace is the namespace for Dapr provider.
 	DaprProviderNamespace = "Applications.Dapr"
 
-	// DatastoresProviderNamespace is the namespace for Datastores provider.
-	DatastoresProviderNamespace = "Applications.Datastores"
-
-	// MessagingProviderNamespace is the namespace for Messaging provider.
-	MessagingProviderNamespace = "Applications.Messaging"
-
 	// AsyncOperationRetryAfter is the polling interval for async create/update or delete resource operations.
 	AsyncOperationRetryAfter = time.Duration(5) * time.Second
 )
 
-// AddRoutes configures routes and handlers for Datastores, Messaging, Dapr Resource Providers.
+// AddRoutes configures routes and handlers for Dapr Resource Providers.
 func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts frontend_ctrl.Options) error {
 	rootScopePath := ctrlOpts.PathBase
 	rootScopePath += getRootScopePath(isARM)
@@ -67,12 +61,7 @@ func AddRoutes(ctx context.Context, router chi.Router, isARM bool, ctrlOpts fron
 		rootScopePath,
 	}
 
-	err := AddMessagingRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
-	if err != nil {
-		return err
-	}
-
-	err = AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
+	err := AddDaprRoutes(ctx, router, rootScopePath, prefixes, isARM, ctrlOpts)
 	if err != nil {
 		return err
 	}
