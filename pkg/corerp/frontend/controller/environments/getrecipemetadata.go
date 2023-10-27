@@ -136,7 +136,7 @@ func parseAndFormatRecipeParams(recipeData map[string]any, recipeParameters map[
 
 	for paramName, paramValue := range recipeParam {
 		if paramName == pr_dm.RecipeContextParameter {
-			// context parameter is only revelant to operator and is generated and passed by resource provider instead of the developer/operators.
+			// context parameter is only relevant to operator and is generated and passed by resource provider instead of the developer/operators.
 			continue
 		}
 

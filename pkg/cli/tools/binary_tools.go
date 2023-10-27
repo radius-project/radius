@@ -193,7 +193,7 @@ func DownloadToFolder(filepath string) error {
 	// make file executable by everyone
 	err = bicepBinary.Chmod(file.Mode() | 0111)
 	if err != nil {
-		return fmt.Errorf("failed to change permissons for %s: %v", filepath, err)
+		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
 	}
 
 	return nil

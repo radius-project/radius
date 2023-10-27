@@ -512,7 +512,7 @@ func connectionsFromAPIData(resource generated.GenericResource) []*corerpv202310
 	return entries
 }
 
-// providesFromAPIData is specifically to suport HTTPRoute.
+// providesFromAPIData is specifically to support HTTPRoute.
 func providesFromAPIData(resource generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
 	// Any Radius resource type that exposes a port uses the following property path to return them.
 	// The port may have a 'provides' attribute that specifies a httproute.

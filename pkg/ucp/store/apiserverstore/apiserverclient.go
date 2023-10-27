@@ -77,7 +77,7 @@ const (
 	// hash collision.
 	LabelValueMultiple = "m_u_l_t_i_p_l_e"
 
-	// RetryCount is the number of retries we will make on optimisitic concurrency failures. The need for retries is **rare** because
+	// RetryCount is the number of retries we will make on optimistic concurrency failures. The need for retries is **rare** because
 	// it only happens on concurrent operations to the same UCP resource or on a hash collision.
 	RetryCount = 10
 )
