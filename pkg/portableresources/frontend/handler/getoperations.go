@@ -75,16 +75,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Messaging/operations/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "operations",
-					Operation:   "Get operations",
-					Description: "Get the list of operations.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
 				Name: "Applications.Datastores/mongoDatabases/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DatastoresProviderNamespace,
@@ -145,16 +135,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Messaging/register/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    MessagingProviderNamespace,
-					Operation:   "Register Applications.Messaging resource provider",
-					Description: "Registers 'Applications.Messaging' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
 				Name: "Applications.Datastores/unregister/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    DatastoresProviderNamespace,
@@ -171,16 +151,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "Applications.Datastores",
 					Operation:   "Unregister 'Applications.Dapr' resource provider",
 					Description: "Unregisters 'Applications.Dapr' resource provider with a subscription.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/unregister/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "Applications.Datastores",
-					Operation:   "Unregister 'Applications.Messaging' resource provider",
-					Description: "Unregisters 'Applications.Messaging' resource provider with a subscription.",
 				},
 				IsDataAction: false,
 			},
@@ -251,46 +221,6 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 					Resource:    "redisCaches",
 					Operation:   "List secrets",
 					Description: "Lists redisCache secrets.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/read",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "Get/List rabbitMQQueues",
-					Description: "Gets/Lists rabbitMQQueue resource(s).",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/write",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "Create/Update rabbitMQQueues",
-					Description: "Creates or updates a rabbitMQQueue resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/delete",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "Delete rabbitMQQueue",
-					Description: "Deletes a rabbitMQQueue resource.",
-				},
-				IsDataAction: false,
-			},
-			&v1.Operation{
-				Name: "Applications.Messaging/rabbitMQQueues/listsecrets/action",
-				Display: &v1.OperationDisplayProperties{
-					Provider:    MessagingProviderNamespace,
-					Resource:    "rabbitMQQueues",
-					Operation:   "List secrets",
-					Description: "Lists rabbitMQQueue secrets.",
 				},
 				IsDataAction: false,
 			},

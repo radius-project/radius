@@ -232,7 +232,7 @@ planes:
         Applications.Core: "http://applications-rp.radius-system:5443"
         Applications.Dapr: "http://applications-rp.radius-system:5444"
         Applications.Datastores: "http://applications-rp.radius-system:5444"
-        Applications.Messaging: "http://applications-rp.radius-system:5444"
+        Applications.Messaging: "http://applications-rp.radius-system:5443"
         Microsoft.Resources: "http://bicep-de.radius-system:6443"
       kind: "UCPNative"
   - id: "/planes/aws/aws"

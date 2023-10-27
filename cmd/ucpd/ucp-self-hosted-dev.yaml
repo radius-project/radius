@@ -39,7 +39,7 @@ planes:
     properties:
       resourceProviders:
         Applications.Core: "http://localhost:8080"
-        Applications.Messaging: "http://localhost:8081"
+        Applications.Messaging: "http://localhost:8080"
         Applications.Dapr: "http://localhost:8081"
         Applications.Datastores: "http://localhost:8081"
         Microsoft.Resources: "http://localhost:5017"
