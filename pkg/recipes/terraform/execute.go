@@ -26,6 +26,7 @@ import (
 	"time"
 
 	install "github.com/hashicorp/hc-install"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -95,14 +96,20 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
+	// Create a new instance of tfexec.Terraform with current the Terraform installation path
+	tf, err := NewTerraform(ctx, workingDir, execPath)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, workingDir, options)
 	if err != nil {
 		return nil, err
 	}
 
 	// Run TF Init and Apply in the working directory
-	state, err := initAndApply(ctx, workingDir, execPath)
+	state, err := initAndApply(ctx, tf, workingDir)
 	if err != nil {
 		return nil, err
 	}
@@ -144,8 +151,14 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
+	// Create a new instance of tfexec.Terraform with current the Terraform installation path
+	tf, err := NewTerraform(ctx, workingDir, execPath)
+	if err != nil {
+		return err
+	}
+
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, workingDir, execPath, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, workingDir, options)
 	if err != nil {
 		return err
 	}
@@ -165,7 +178,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
-	err = initAndDestroy(ctx, workingDir, execPath)
+	err = initAndDestroy(ctx, tf)
 	if err != nil {
 		return err
 	}
@@ -204,12 +217,18 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
+	// Create a new instance of tfexec.Terraform with current the Terraform installation path
+	tf, err := NewTerraform(ctx, workingDir, execPath)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = getTerraformConfig(ctx, workingDir, options)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := downloadAndInspect(ctx, workingDir, execPath, options)
+	result, err := downloadAndInspect(ctx, tf, workingDir, options)
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +251,7 @@ func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, workingDir, execPath string, options Options) (string, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, workingDir string, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
@@ -240,7 +259,7 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 		return "", err
 	}
 
-	loadedModule, err := downloadAndInspect(ctx, workingDir, execPath, options)
+	loadedModule, err := downloadAndInspect(ctx, tf, workingDir, options)
 	if err != nil {
 		return "", err
 	}
@@ -298,13 +317,13 @@ func (e *executor) generateConfig(ctx context.Context, workingDir, execPath stri
 }
 
 // downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, workingDir string, execPath string, options Options) (*moduleInspectResult, error) {
+func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, workingDir string, options Options) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Download the Terraform module to the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
-	if err := downloadModule(ctx, workingDir, execPath, options.EnvRecipe.TemplatePath); err != nil {
+	if err := downloadModule(ctx, tf, options.EnvRecipe.TemplatePath); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, recipes.RecipeDownloadFailed))
@@ -350,16 +369,11 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.State, error) {
+func initAndApply(ctx context.Context, tf *tfexec.Terraform, workingDir string) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	tf, err := NewTerraform(ctx, workingDir, execPath)
-	if err != nil {
-		return nil, err
-	}
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
-
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
@@ -382,19 +396,16 @@ func initAndApply(ctx context.Context, workingDir, execPath string) (*tfjson.Sta
 }
 
 // initAndDestroy runs Terraform init and destroy in the provided working directory.
-func initAndDestroy(ctx context.Context, workingDir, execPath string) error {
+func initAndDestroy(ctx context.Context, tf *tfexec.Terraform) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-
-	tf, err := NewTerraform(ctx, workingDir, execPath)
-	if err != nil {
-		return err
-	}
 
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
-
 	terraformInitStartTime := time.Now()
 	if err := tf.Init(ctx); err != nil {
+		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
+			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
+
 		return fmt.Errorf("terraform init failure: %w", err)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)

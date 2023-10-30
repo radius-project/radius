@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/test/testcontext"
@@ -57,17 +58,7 @@ func TestCreateWorkingDir_Error(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to create working directory")
 }
 
-func TestInitAndApply_EmptyWorkingDirPath(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-	execPath := filepath.Join(testDir, "terraform")
-
-	_, err := initAndApply(testcontext.New(t), "", execPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
-}
-
-func TestGeneratedConfig(t *testing.T) {
+func TestGenerateConfig(t *testing.T) {
 	configTests := []struct {
 		name       string
 		workingDir string
@@ -75,7 +66,7 @@ func TestGeneratedConfig(t *testing.T) {
 		err        string
 	}{
 		{
-			name: "empty recipe name",
+			name: "empty recipe name error",
 			opts: Options{
 				EnvRecipe: &recipes.EnvironmentDefinition{
 					TemplatePath: "test/module/source",
@@ -93,16 +84,6 @@ func TestGeneratedConfig(t *testing.T) {
 				ResourceRecipe: &recipes.ResourceMetadata{},
 			},
 			err: "error creating file: open /invalid-dir/main.tf.json",
-		}, {
-			name: "invalid exec path",
-			opts: Options{
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					Name:         "test-recipe",
-					TemplatePath: "test/module/source",
-				},
-				ResourceRecipe: &recipes.ResourceMetadata{},
-			},
-			err: "/terraform: no such file or directory",
 		},
 	}
 
@@ -112,9 +93,10 @@ func TestGeneratedConfig(t *testing.T) {
 			if tc.workingDir == "" {
 				tc.workingDir = t.TempDir()
 			}
-			execPath := filepath.Join(tc.workingDir, "terraform")
+			tf, _ := tfexec.NewTerraform(tc.workingDir, filepath.Join(tc.workingDir, "terraform"))
+
 			e := executor{}
-			_, err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
+			_, err := e.generateConfig(ctx, tf, tc.workingDir, tc.opts)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})
