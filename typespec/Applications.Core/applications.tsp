@@ -39,23 +39,23 @@ namespace Applications.Core;
 
 @doc("Radius Application resource")
 model ApplicationResource is TrackedResource<ApplicationProperties> {
-  @doc("The name of your resource.")
+  @doc("The name of the application. Used to identify and refer to the application and to form the full resource identifier.")
   @path
   @key("applicationName")
   @segment("applications")
   name: ResourceNameString;
 }
 
-@doc("Properties of the resource.")
+@doc("Properties of the applications. Used to configure how an application behaves when deployed.")
 model ApplicationProperties {
   @doc("The status of the asynchronous operation.")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("The ID of the environment resource this container belongs to.")
+  @doc("The ID of the environment resource this application belongs to. Specified in the fully-qualified UCP ID format.")
   environment: string;
 
-  @doc("List of extensions on the container.")
+  @doc("List of extensions on the container. Used to specify additional behavior of the application.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
 
