@@ -26,7 +26,7 @@ autorest README.md --tag=ucp-2023-10-01-preview
 
 The following are the settings for this using this API with AutoRest.
 
-### Input OpenAPI specificiations
+### Input OpenAPI specifications
 
 #### Tag: ucp-2023-10-01-preview
 
