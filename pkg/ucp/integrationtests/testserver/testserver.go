@@ -406,7 +406,7 @@ func (tr *TestResponse) EqualsErrorCode(statusCode int, code string) {
 	require.Equal(tr.t, code, tr.Error.Error.Code, "actual error code was different from expected")
 }
 
-// EqualsFixture compares a TestResponse against an expected status code and body payload. Use the fixture paramter to specify
+// EqualsFixture compares a TestResponse against an expected status code and body payload. Use the fixture parameter to specify
 // the path to a file.
 func (tr *TestResponse) EqualsFixture(statusCode int, fixture string) {
 	body, err := os.ReadFile(fixture)

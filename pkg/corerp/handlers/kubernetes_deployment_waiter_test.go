@@ -233,7 +233,7 @@ func TestWaitUntilReady_DifferentResourceName(t *testing.T) {
 
 	// It must be timed out because the name of the deployment does not match.
 	require.Error(t, err)
-	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occured while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
+	require.Equal(t, "deployment timed out, name: not-matched-deployment, namespace test-namespace, error occurred while fetching latest status: deployments.apps \"not-matched-deployment\" not found", err.Error())
 }
 
 func TestGetPodsInDeployment(t *testing.T) {

@@ -16,7 +16,9 @@ package recipes
 import (
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/recipes/util"
 )
 
@@ -50,11 +52,18 @@ func NewRecipeError(code string, message string, deploymentStatus util.RecipeDep
 	return err
 }
 
-// GetRecipeErrorDetails is used to get ErrorDetails if error is of type RecipeError else returns nil.
-func GetRecipeErrorDetails(err error) *v1.ErrorDetails {
-	recipeError, _ := err.(*RecipeError)
-	if recipeError != nil {
-		return &recipeError.ErrorDetails
+// GetErrorDetails is used to get ErrorDetails from different error types.
+func GetErrorDetails(err error) *v1.ErrorDetails {
+	if err == nil {
+		return nil
+	}
+
+	switch v := err.(type) {
+	case *RecipeError:
+		return &v.ErrorDetails
+
+	case *azcore.ResponseError:
+		return clientv2.TryUnfoldResponseError(v)
 	}
 
 	return nil

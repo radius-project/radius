@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// This is the version nuetral data model. Structures present in this package must be used internally.
+// This is the version neutral data model. Structures present in this package must be used internally.
 // API version specific models should be exist under /pkg/portableresources/api. This api package should be able
 // to convert among the versions.
 

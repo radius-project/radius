@@ -81,7 +81,7 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 		// Get the final deployment status
 		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
+			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occurred while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
 		}
 
 		// Now get the latest available observation of deployment current state

@@ -118,7 +118,7 @@ type ListModel struct {
 	Quitting bool
 }
 
-// Init used for creating an inital tea command if needed.
+// Init used for creating an initial tea command if needed.
 func (m ListModel) Init() tea.Cmd {
 	return nil
 }

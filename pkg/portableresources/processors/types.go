@@ -68,7 +68,7 @@ type ResourceClient interface {
 	Delete(ctx context.Context, id string) error
 }
 
-// ResourceError represents an error that occured while processing a resource.
+// ResourceError represents an error that occurred while processing a resource.
 type ResourceError struct {
 	ID    string
 	Inner error

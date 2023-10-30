@@ -18,8 +18,12 @@ package recipes
 
 import (
 	"errors"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
@@ -75,7 +79,7 @@ func TestNewRecipeError(t *testing.T) {
 	}
 }
 
-func TestGetRecipeErrorDetails(t *testing.T) {
+func TestGetErrorDetails(t *testing.T) {
 	errorTests := []struct {
 		name            string
 		err             error
@@ -100,9 +104,19 @@ func TestGetRecipeErrorDetails(t *testing.T) {
 				Message: "test-recipe-deployment-failed-message",
 			},
 		},
+		{
+			name: "",
+			err: runtime.NewResponseError(&http.Response{
+				Body: io.NopCloser(strings.NewReader(`{ "id": null, "error": { "code": "DeploymentFailed", "target": null, "message": "At least one resource deployment operation failed." } }`)),
+			}),
+			expErrorDetails: &v1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "At least one resource deployment operation failed.",
+			},
+		},
 	}
 	for _, tc := range errorTests {
-		details := GetRecipeErrorDetails(tc.err)
+		details := GetErrorDetails(tc.err)
 		require.Equal(t, details, tc.expErrorDetails)
 	}
 }
