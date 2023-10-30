@@ -36,13 +36,13 @@ var config *rest.Config
 // scheme holds a reference to the scheme for the test environment.
 var scheme *runtime.Scheme
 
-// webhookInstallOptions holds a reference to the webhook install options for the test environment.
-var webhookInstallOptions *envtest.WebhookInstallOptions
+// testOptions holds a reference to the webhook install options for the test environment.
+var testOptions *testWebhookOptions
 
-type WebhookInstallOptions struct {
-	LocalServingHost string
-	LocalServingPort int
-	CertDir          string
+type testWebhookOptions struct {
+	LocalServingHost    string
+	LocalServingPort    int
+	LocalServingCertDir string
 }
 
 // TestMain will be called before running any tests in the package.
@@ -72,7 +72,11 @@ func TestMain(m *testing.M) {
 
 	config = cfg
 	scheme = s
-	webhookInstallOptions = &env.WebhookInstallOptions
+	testOptions = &testWebhookOptions{
+		LocalServingHost:    env.WebhookInstallOptions.LocalServingHost,
+		LocalServingPort:    env.WebhookInstallOptions.LocalServingPort,
+		LocalServingCertDir: env.WebhookInstallOptions.LocalServingCertDir,
+	}
 
 	exitCode := m.Run()
 
@@ -92,6 +96,7 @@ func SkipWithoutEnvironment(t *testing.T) {
 	}
 }
 
+// initializeWebhookInEnvironment initializes the webhook installation options and validating configuration  in the given environment for validating webhooks.
 func initializeWebhookInEnvironment(env *envtest.Environment) {
 	namespacedScopeV1 := admissionv1.NamespacedScope
 	failedTypeV1 := admissionv1.Ignore

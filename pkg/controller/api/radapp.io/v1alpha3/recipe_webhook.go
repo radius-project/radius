@@ -17,65 +17,78 @@ limitations under the License.
 package v1alpha3
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
 	portableresources "github.com/radius-project/radius/pkg/rp/portableresources"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// log is for logging in this package.
-var recipejoblog = logf.Log.WithName("recipe-resource")
-
+// SetupWebhookWithManager sets up a webhook for the Recipe resource with the given controller manager.
+// It creates a new webhook managed by the controller manager, registers the Recipe resource with the webhook,
+// sets the validator for the webhook to the Recipe instance, and completes the webhook setup.
 func (r *Recipe) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(r).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-radapp-io-v1alpha3-recipe,mutating=false,failurePolicy=fail,sideEffects=None,groups=radapp.io,resources=recipe,verbs=create;update,versions=v1alpha3,name=recipe-webhook.radapp.io,sideEffects=None,admissionReviewVersions=v1
-var _ webhook.Validator = &Recipe{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Recipe) ValidateCreate() (admission.Warnings, error) {
-	recipejoblog.Info("validate create", "name", r.Name)
+// ValidateCreate validates the creation of a Recipe object.
+func (r *Recipe) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 
-	return nil, r.validateRecipeType()
+	recipe, ok := obj.(*Recipe)
+	if !ok {
+		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
+	}
+
+	logger.Info("Validating Create Recipe %s", recipe.Name)
+	return recipe.validateRecipeType(ctx)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Recipe) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	recipejoblog.Info("validate update", "name", r.Name)
+// ValidateUpdate validates the update of a Recipe object.
+func (r *Recipe) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
 
-	return nil, r.validateRecipeType()
+	recipe, ok := newObj.(*Recipe)
+	if !ok {
+		return nil, fmt.Errorf("expected a Recipe but got a %T", newObj)
+	}
+
+	logger.Info("Validating Update Recipe %s", recipe.Name)
+	return recipe.validateRecipeType(ctx)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Recipe) ValidateDelete() (admission.Warnings, error) {
-	recipejoblog.Info("validate delete", "name", r.Name)
+// ValidateDelete validates the deletion of a Recipe object.
+func (r *Recipe) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("Validating Delete Recipe")
 
+	_, ok := obj.(*Recipe)
+	if !ok {
+		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
+	}
+
+	// currently there is no validation when deleting Recipe
 	return nil, nil
 }
 
-// validateRecipeType validates Resource Type to be created.
-func (r *Recipe) validateRecipeType() error {
-	var errList field.ErrorList
-	flPath := field.NewPath("spec").Child("type")
+// validateRecipeType validates Resource Type to be created by Recipe.
+func (r *Recipe) validateRecipeType(ctx context.Context) (admission.Warnings, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	validResourceTypes := strings.Join(portableresources.GetValidPortableResourceTypes(), ", ")
 
+	logger.Info("Validating Recipe Type %s in Recipe %s", r.Spec.Type, r.Name)
 	if !portableresources.IsValidPortableResourceType(r.Spec.Type) {
-		errList = append(errList, field.Invalid(flPath, r.Spec.Type, fmt.Sprintf("invalid resource type %q in recipe", r.Spec.Type)))
-		return apierrors.NewInvalid(
-			schema.GroupKind{Group: "radapp.io", Kind: "Recipe"},
-			r.Name,
-			errList)
-
+		return nil, fmt.Errorf("invalid resource type %s in recipe %s. allowed values are: %s", r.Spec.Type, r.Name, validResourceTypes)
 	}
 
-	return nil
+	return nil, nil
 }

@@ -28,6 +28,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
@@ -68,16 +69,19 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	port := s.Options.Config.Server.Port
+	healthProbePort := *s.Options.Config.WorkerServer.Port
 	mgr, err := ctrl.NewManager(s.Options.K8sConfig, ctrl.Options{
 		Logger:                 logger,
 		CertDir:                s.TLSCertDir,
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
-		Port:                   port,
-		HealthProbeBindAddress: fmt.Sprintf(":%d", port),
+		HealthProbeBindAddress: fmt.Sprintf(":%d", healthProbePort),
 		LeaderElection:         false,
 		LeaderElectionID:       "c85b2113.radapp.io",
-	})
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:    port,
+			CertDir: s.TLSCertDir,
+		})})
 	if err != nil {
 		return fmt.Errorf("failed to create controller manager: %w", err)
 	}
@@ -102,13 +106,9 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to setup %s controller: %w", "Deployment", err)
 	}
 
-	if s.TLSCertDir == "" {
-		logger.Info("Webhooks will be skipped. TLS certificates not present.")
-	} else {
-		logger.Info("Registering webhooks.")
-		if err = (&radappiov1alpha3.Recipe{}).SetupWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("failed to create recipe-webhook: %w", err)
-		}
+	logger.Info("Registering webhooks.")
+	if err = (&radappiov1alpha3.Recipe{}).SetupWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("failed to create recipe-webhook: %w", err)
 	}
 
 	logger.Info("Registering health checks.")
@@ -116,6 +116,7 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to start health check: %w", err)
 	}
+
 	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
 	if err != nil {
 		return fmt.Errorf("failed to start ready check: %w", err)
