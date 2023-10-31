@@ -110,6 +110,7 @@
 
 ## ApplicationProperties
 ### Properties
+* **anotherTestProperty**: string: Another Test Property
 * **environment**: string (Required): Fully qualified resource ID for the environment that the portable resource is linked to
 * **extensions**: [Extension](#extension)[]: The application extension.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the portable resource at the time the operation was called

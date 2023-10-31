@@ -2656,6 +2656,10 @@
         "testProperty": {
           "type": "string",
           "description": "Test Property"
+        },
+        "anotherTestProperty": {
+          "type": "string",
+          "description": "Another Test Property"
         }
       },
       "required": [

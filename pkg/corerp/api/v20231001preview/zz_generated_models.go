@@ -63,6 +63,9 @@ type ApplicationProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
 	Environment *string
 
+	// Another Test Property
+	AnotherTestProperty *string
+
 	// The application extension.
 	Extensions []ExtensionClassification
 

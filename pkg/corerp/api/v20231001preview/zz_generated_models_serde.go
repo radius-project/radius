@@ -157,6 +157,7 @@ func (a *ApplicationGraphResponse) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ApplicationProperties.
 func (a ApplicationProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "anotherTestProperty", a.AnotherTestProperty)
 	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
@@ -174,6 +175,9 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "anotherTestProperty":
+				err = unpopulate(val, "AnotherTestProperty", &a.AnotherTestProperty)
+			delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &a.Environment)
 			delete(rawMsg, key)

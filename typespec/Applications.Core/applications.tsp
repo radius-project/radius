@@ -65,6 +65,9 @@ model ApplicationProperties {
 
   @doc("Test Property")
   testProperty?: string;
+
+  @doc("Another Test Property")
+  anotherTestProperty?: string;
 }
 
 @doc("Describes the application architecture and its dependencies.")
