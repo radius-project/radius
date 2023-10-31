@@ -110,6 +110,10 @@ Let's say we have a bug in a release which needs to be patched for an already cr
 
 1. Verify that a patch release was created on Github Releases for the current patch version. [Example](https://github.com/radius-project/radius/releases)
 
+1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases/download/<VERSION>/rad-vscode-bicep.vsix, replacing the <VERSION> as necessary.
+
+1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage). You may need access permissions, if so, ask a maintainer. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
+
 ## Cadence
 
 We follow a monthly release cadence. Any contributions that have been merged through the pull-request process will be present in the next scheduled release.
