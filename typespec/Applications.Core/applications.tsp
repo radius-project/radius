@@ -62,6 +62,9 @@ model ApplicationProperties {
   @doc("Status of a resource.")
   @visibility("read")
   status?: ResourceStatus;
+
+  @doc("Test Property")
+  testProperty?: string;
 }
 
 @doc("Describes the application architecture and its dependencies.")

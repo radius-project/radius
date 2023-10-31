@@ -161,6 +161,7 @@ func (a ApplicationProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "status", a.Status)
+	populate(objectMap, "testProperty", a.TestProperty)
 	return json.Marshal(objectMap)
 }
 
@@ -184,6 +185,9 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &a.Status)
+			delete(rawMsg, key)
+		case "testProperty":
+				err = unpopulate(val, "TestProperty", &a.TestProperty)
 			delete(rawMsg, key)
 		}
 		if err != nil {

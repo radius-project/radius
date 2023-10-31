@@ -2652,6 +2652,10 @@
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of a resource.",
           "readOnly": true
+        },
+        "testProperty": {
+          "type": "string",
+          "description": "Test Property"
         }
       },
       "required": [

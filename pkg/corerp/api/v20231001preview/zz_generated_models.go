@@ -66,6 +66,9 @@ type ApplicationProperties struct {
 	// The application extension.
 	Extensions []ExtensionClassification
 
+	// Test Property
+	TestProperty *string
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 
