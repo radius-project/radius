@@ -67,6 +67,9 @@ model EnvironmentProperties {
   @doc("The environment extension.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
+
+  @doc("Test Property")
+  testProperty?: boolean;
 }
 
 @doc("The Cloud providers configuration")

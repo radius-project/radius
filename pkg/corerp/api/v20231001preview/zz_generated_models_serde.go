@@ -314,6 +314,7 @@ func (a ApplicationResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "providers", a.Providers)
 	populate(objectMap, "recipes", a.Recipes)
 	populate(objectMap, "simulated", a.Simulated)
+	populate(objectMap, "testProperty", a.TestProperty)
 	return json.Marshal(objectMap)
 }
 
@@ -351,6 +352,9 @@ func (a *ApplicationResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "simulated":
 				err = unpopulate(val, "Simulated", &a.Simulated)
+			delete(rawMsg, key)
+		case "testProperty":
+				err = unpopulate(val, "TestProperty", &a.TestProperty)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1187,6 +1191,7 @@ func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "provisioningState", e.ProvisioningState)
 	populate(objectMap, "recipes", e.Recipes)
 	populate(objectMap, "simulated", e.Simulated)
+	populate(objectMap, "testProperty", e.TestProperty)
 	return json.Marshal(objectMap)
 }
 
@@ -1227,6 +1232,9 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "simulated":
 				err = unpopulate(val, "Simulated", &e.Simulated)
+			delete(rawMsg, key)
+		case "testProperty":
+				err = unpopulate(val, "TestProperty", &e.TestProperty)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1357,6 +1365,7 @@ func (e EnvironmentResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "recipes", e.Recipes)
 	populate(objectMap, "simulated", e.Simulated)
+	populate(objectMap, "testProperty", e.TestProperty)
 	return json.Marshal(objectMap)
 }
 
@@ -1394,6 +1403,9 @@ func (e *EnvironmentResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "simulated":
 				err = unpopulate(val, "Simulated", &e.Simulated)
+			delete(rawMsg, key)
+		case "testProperty":
+				err = unpopulate(val, "TestProperty", &e.TestProperty)
 			delete(rawMsg, key)
 		}
 		if err != nil {

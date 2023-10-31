@@ -2749,6 +2749,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "testProperty": {
+          "type": "boolean",
+          "description": "Test Property"
         }
       }
     },
@@ -3498,6 +3502,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "testProperty": {
+          "type": "boolean",
+          "description": "Test Property"
         }
       },
       "required": [
@@ -3595,6 +3603,10 @@
             "$ref": "#/definitions/Extension"
           },
           "x-ms-identifiers": []
+        },
+        "testProperty": {
+          "type": "boolean",
+          "description": "Test Property"
         }
       }
     },

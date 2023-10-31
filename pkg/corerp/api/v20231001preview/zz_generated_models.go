@@ -131,6 +131,9 @@ type ApplicationResourceUpdateProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+
+	// Test Property
+	TestProperty *bool
 }
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
@@ -551,6 +554,9 @@ type EnvironmentProperties struct {
 	// Simulated environment.
 	Simulated *bool
 
+	// Test Property
+	TestProperty *bool
+
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
 }
@@ -613,6 +619,9 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Simulated environment.
 	Simulated *bool
+
+	// Test Property
+	TestProperty *bool
 }
 
 // EphemeralVolume - Specifies an ephemeral volume for a container
