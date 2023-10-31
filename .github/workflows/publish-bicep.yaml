@@ -63,7 +63,7 @@ jobs:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          signoff: false
+          signoff: true
           branch: radius-types/patch-${{ github.event.pull_request.number }}
           delete-branch: true
           title: |
