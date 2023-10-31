@@ -26,7 +26,7 @@ autorest README.md --tag=dapr-2023-10-01-preview
 
 The following are the settings for this using this API with AutoRest.
 
-### Input OpenAPI specificiations
+### Input OpenAPI specifications
 
 #### Tag: dapr-2023-10-01-preview
 

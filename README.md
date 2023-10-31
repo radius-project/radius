@@ -10,7 +10,7 @@ Radius was designed to address these distinct but related challenges that arise 
 
 Key features of the Radius platform include: 
 - *Team Collaboration*: Radius Applications and Environments allow developers to work with Operations on application definition and delivery.
-- *Infrastructure Recipes*: Swappable infrastructure that complies with organization best practicies and IT policy be default.
+- *Infrastructure Recipes*: Swappable infrastructure that complies with organization best practices and IT policy be default.
 - *Application Graph*: Understand how services and infrastructure in an application are interconnected.
 - *Cloud Neutral*: Deploy across development, on-premises and cloud environments with a consistent experience.
 - *Incremental Adoption*: Integrate Radius into existing workflows and existing catalogs of Infrastructure-as-Code templates.

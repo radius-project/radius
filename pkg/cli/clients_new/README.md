@@ -10,7 +10,7 @@ npm install -g autorest
 
 The following are the settings for this using this API with AutoRest.
 
-### Input OpenAPI specificiations
+### Input OpenAPI specifications
 
 #### Tag: 2023-10-01-preview
 
