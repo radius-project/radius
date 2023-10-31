@@ -53,7 +53,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/secretStores/read",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprSecretStores",
+			Resource:    "secretStores",
 			Operation:   "Get/List daprSecretStores",
 			Description: "Gets/Lists daprSecretStore resource(s).",
 		},
@@ -63,7 +63,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/secretStores/write",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprSecretStores",
+			Resource:    "secretStores",
 			Operation:   "Create/Update daprSecretStores",
 			Description: "Creates or updates a daprSecretStore resource.",
 		},
@@ -73,7 +73,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/secretStores/delete",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprSecretStores",
+			Resource:    "secretStores",
 			Operation:   "Delete daprSecretStore",
 			Description: "Deletes a daprSecretStore resource.",
 		},
@@ -83,7 +83,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/stateStores/read",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprStateStores",
+			Resource:    "stateStores",
 			Operation:   "Get/List daprStateStores",
 			Description: "Gets/Lists daprStateStore resource(s).",
 		},
@@ -93,7 +93,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/stateStores/write",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprStateStores",
+			Resource:    "stateStores",
 			Operation:   "Create/Update daprStateStores",
 			Description: "Creates or updates a daprStateStore resource.",
 		},
@@ -103,7 +103,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/stateStores/delete",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprStateStores",
+			Resource:    "stateStores",
 			Operation:   "Delete daprStateStore",
 			Description: "Deletes a daprStateStore resource.",
 		},
@@ -113,7 +113,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/pubSubBrokers/read",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprPubSubBrokers",
+			Resource:    "pubSubBrokers",
 			Operation:   "Get/List daprPubSubBrokers",
 			Description: "Gets/Lists daprPubSubBroker resource(s).",
 		},
@@ -123,7 +123,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/pubSubBrokers/write",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprPubSubBrokers",
+			Resource:    "pubSubBrokers",
 			Operation:   "Create/Update daprPubSubBrokers",
 			Description: "Creates or updates a daprPubSubBroker resource.",
 		},
@@ -133,7 +133,7 @@ var operationList = []v1.Operation{
 		Name: "Applications.Dapr/pubSubBrokers/delete",
 		Display: &v1.OperationDisplayProperties{
 			Provider:    "Applications.Dapr",
-			Resource:    "daprPubSubBrokers",
+			Resource:    "pubSubBrokers",
 			Operation:   "Delete daprPubSubBroker",
 			Description: "Deletes a daprPubSubBroker resource.",
 		},
