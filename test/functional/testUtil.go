@@ -101,7 +101,7 @@ func GetBicepRecipeRegistry() string {
 func GetBicepRecipeVersion() string {
 	defaultVersion := os.Getenv("BICEP_RECIPE_TAG_VERSION")
 	if defaultVersion == "" {
-		defaultVersion = "pr-ce9d28f9ac"
+		defaultVersion = "latest"
 	}
 	return "version=" + defaultVersion
 }

@@ -43,7 +43,7 @@ type Processor struct {
 // Process validates resource properties, and applies output values from the recipe output. If the resource is
 // being provisioned manually, it creates a Dapr component in Kubernetes.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprPubSubBroker, options processors.Options) error {
-	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources, resource.ResourceMetadata().Status.Recipe)
+	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources, resource.Properties.Status.Recipe)
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddComputedStringField("componentName", &resource.Properties.ComponentName, func() (string, *processors.ValidationError) {
 		return kubernetes.NormalizeDaprResourceName(resource.Name), nil

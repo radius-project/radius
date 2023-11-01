@@ -363,9 +363,8 @@ func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, re
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{
-		TemplateKind:    recipes.TemplateKindBicep,
-		TemplatePath:    templatePath,
-		TemplateVersion: "",
+		TemplateKind: recipes.TemplateKindBicep,
+		TemplatePath: templatePath,
 	}
 
 	// process the 'resources' created by the template
