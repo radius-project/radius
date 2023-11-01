@@ -25,12 +25,11 @@ if [[ -z "${RELEASE_VERSION_NUMBER}" ]]; then
     exit 1
 fi
 
-OS=darwin
+OS=linux
 ARCH=arm64
 GITHUB_ORG=radius-project
 GITHUB_REPO=radius
-RADIUS_CLI_FILENAME=rad
-RADIUS_CLI_ARTIFACT="${RADIUS_CLI_FILENAME}_${OS}_${ARCH}"
+RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
 DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
 DOWNLOAD_URL="${DOWNLOAD_BASE}/v${RELEASE_VERSION_NUMBER}/${RADIUS_CLI_ARTIFACT}"
 
@@ -50,8 +49,8 @@ echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
 echo "Downloading ${DOWNLOAD_URL}"
-curl -sSL "${DOWNLOAD_URL}" -o "${RADIUS_CLI_FILENAME}"
-chmod +x "${RADIUS_CLI_FILENAME}"
+curl -sSL "${DOWNLOAD_URL}" -o rad
+chmod +x ./rad
 
 RELEASE_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.release')
 VERSION_FROM_RAD_VERSION=$(./rad version -o json | jq -r '.version')
