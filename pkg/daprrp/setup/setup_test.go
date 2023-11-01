@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	ds_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
+	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
@@ -37,75 +37,75 @@ import (
 
 var handlerTests = []rpctest.HandlerTestSpec{
 	{
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPlaneScopeList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPlaneScopeList},
 		Path:          "/providers/applications.dapr/pubsubbrokers",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/pubsubbroker",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/pubsubbroker",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/pubsubbroker",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprPubSubBrokersResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/pubsubbrokers/pubsubbroker",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprStateStoresResourceType, Method: v1.OperationPlaneScopeList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationPlaneScopeList},
 		Path:          "/providers/applications.dapr/statestores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprStateStoresResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprStateStoresResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/statestore",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprStateStoresResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/statestore",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprStateStoresResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/statestore",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprStateStoresResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprStateStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/statestores/statestore",
 		Method:        http.MethodDelete,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPlaneScopeList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPlaneScopeList},
 		Path:          "/providers/applications.dapr/secretstores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprSecretStoresResourceType, Method: v1.OperationList},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationList},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprSecretStoresResourceType, Method: v1.OperationGet},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationGet},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/secretstore",
 		Method:        http.MethodGet,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPut},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPut},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/secretstore",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPatch},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationPatch},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/secretstore",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: ds_ctrl.DaprSecretStoresResourceType, Method: v1.OperationDelete},
+		OperationType: v1.OperationType{Type: dapr_ctrl.DaprSecretStoresResourceType, Method: v1.OperationDelete},
 		Path:          "/resourcegroups/testrg/providers/applications.dapr/secretstores/secretstore",
 		Method:        http.MethodDelete,
 	},

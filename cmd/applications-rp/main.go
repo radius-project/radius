@@ -121,12 +121,6 @@ func main() {
 		hostingSvc,
 		server.NewAPIService(options, builders),
 		server.NewAsyncWorker(options, builders),
-
-		// Configure Portable Resources to run it with Applications.Core RP.
-		//
-		// This is temporary until we migrate these resources to use the new registration model.
-		//pr_frontend.NewService(prOptions),
-		//pr_backend.NewService(prOptions),
 	)
 
 	tracerOpts := options.Config.TracerProvider
