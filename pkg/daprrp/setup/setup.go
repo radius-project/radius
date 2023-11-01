@@ -52,7 +52,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -62,14 +62,14 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprPubSubBroker],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateDaprPubSubBrokerTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.DaprPubSubBroker]{
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewDeleteResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewDeleteResource[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker](options, &pubsub_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncDeleteDaprPubSubBrokerTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -85,7 +85,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -95,14 +95,14 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprStateStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateDaprStateStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.DaprStateStore]{
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewDeleteResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewDeleteResource[*datamodel.DaprStateStore, datamodel.DaprStateStore](options, &statestore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncDeleteDaprStateStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -118,7 +118,7 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
@@ -128,14 +128,14 @@ func SetupNamespace(recipeControllerConfig *controllerconfig.RecipeControllerCon
 				rp_frontend.PrepareRadiusResource[*datamodel.DaprSecretStore],
 			},
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewCreateOrUpdateResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ResourceClient, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncCreateOrUpdateDaprSecretStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
 		},
 		Delete: builder.Operation[datamodel.DaprSecretStore]{
 			AsyncJobController: func(options asyncctrl.Options) (asyncctrl.Controller, error) {
-				return pr_ctrl.NewDeleteResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
+				return pr_ctrl.NewDeleteResource[*datamodel.DaprSecretStore, datamodel.DaprSecretStore](options, &secretstore_proc.Processor{Client: options.KubeClient}, recipeControllerConfig.Engine, recipeControllerConfig.ConfigLoader)
 			},
 			AsyncOperationTimeout:    ds_ctrl.AsyncDeleteDaprSecretStoreTimeout,
 			AsyncOperationRetryAfter: AsyncOperationRetryAfter,
