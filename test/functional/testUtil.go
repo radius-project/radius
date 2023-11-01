@@ -73,7 +73,7 @@ func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
 	if defaultDockerReg == "" {
-		defaultDockerReg = "ghcr.io/radius-project/dev"
+		defaultDockerReg = "ghcr.io/radius-project"
 	}
 	if imageTag == "" {
 		imageTag = "latest"
@@ -91,7 +91,7 @@ type ProxyMetadata struct {
 func GetBicepRecipeRegistry() string {
 	defaultRecipeRegistry := os.Getenv("BICEP_RECIPE_REGISTRY")
 	if defaultRecipeRegistry == "" {
-		defaultRecipeRegistry = "ghcr.io/radius-project/dev"
+		defaultRecipeRegistry = "ghcr.io/radius-project"
 	}
 	return "registry=" + defaultRecipeRegistry
 }

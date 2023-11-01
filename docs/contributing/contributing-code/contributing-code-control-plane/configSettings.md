@@ -88,7 +88,7 @@ The following are properties that can be specified for UCP:
 | host | Domain name of the server | `0.0.0.0` |
 | port | HTTP port | `8080` |
 | pathBase | HTTPRequest PathBase | `""` |
-| authType | The environment authentication type (e.g. client ceritificate, etc) |`ClientCertificate` |
+| authType | The environment authentication type (e.g. client certificate, etc) |`ClientCertificate` |
 | armMetadataEndpoint | Endpoint that provides the client certification | `https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01` |
 | enableArmAuth | If set, the ARM client authentifictaion is performed (must be `true`/`false`) | `true` |
 
@@ -231,8 +231,8 @@ planes:
       resourceProviders:
         Applications.Core: "http://applications-rp.radius-system:5443"
         Applications.Dapr: "http://applications-rp.radius-system:5444"
-        Applications.Datastores: "http://applications-rp.radius-system:5444"
-        Applications.Messaging: "http://applications-rp.radius-system:5444"
+        Applications.Datastores: "http://applications-rp.radius-system:5443"
+        Applications.Messaging: "http://applications-rp.radius-system:5443"
         Microsoft.Resources: "http://bicep-de.radius-system:6443"
       kind: "UCPNative"
   - id: "/planes/aws/aws"
