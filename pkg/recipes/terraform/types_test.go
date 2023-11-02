@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,34 +25,69 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTerraform_EmptyWorkingDirPath(t *testing.T) {
+func TestNewTerraform_Success(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
 	execPath := filepath.Join(testDir, "terraform")
+	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
 
-	// Call NewTerraform with an empty working directory path.
-	_, err := NewTerraform(testcontext.New(t), "", execPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
+	tf, err := NewTerraform(testcontext.New(t), testDir, execPath)
+	require.NoError(t, err)
+	require.Equal(t, expectedWorkingDir, tf.WorkingDir())
 }
 
-func TestNewTerraform_InvalidWorkingDirPath(t *testing.T) {
+func TestNewTerraform_InvalidDir(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
+	// Create a read-only directory within the temporary directory.
+	readOnlyDir := filepath.Join(testDir, "read-only-dir")
+	err := os.MkdirAll(readOnlyDir, 0555)
+	require.NoError(t, err)
+
 	execPath := filepath.Join(testDir, "terraform")
 
-	// Call NewTerraform with an empty working directory path.
-	_, err := NewTerraform(testcontext.New(t), "/invalid-dir", execPath)
+	// Call NewTerraform with read only root directory.
+	_, err = NewTerraform(testcontext.New(t), readOnlyDir, execPath)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "failed to initialize Terraform: error initialising Terraform with workdir /invalid-dir: stat /invalid-dir: no such file or directory")
+	require.Contains(t, err.Error(), "failed to create working directory for terraform execution")
 }
 
 func TestNewTerraform_EmptyExecPath(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
 
-	// Call NewTerraform with an empty working directory path.
+	// Call NewTerraform with an empty exec path.
 	_, err := NewTerraform(testcontext.New(t), testDir, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to initialize Terraform: no suitable terraform binary could be found")
+}
+
+func TestCreateWorkingDir_Created(t *testing.T) {
+	// Create a temporary directory for testing.
+	testDir := t.TempDir()
+
+	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
+	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
+	require.NoError(t, err)
+	require.Equal(t, expectedWorkingDir, workingDir)
+
+	// Assert that the working directory was created.
+	_, err = os.Stat(workingDir)
+	require.NoError(t, err)
+}
+
+func TestCreateWorkingDir_Error(t *testing.T) {
+	// Create a temporary directory for testing.
+	testDir := t.TempDir()
+	// Create a read-only directory within the temporary directory.
+	readOnlyDir := filepath.Join(testDir, "read-only-dir")
+	err := os.MkdirAll(readOnlyDir, 0555)
+	require.NoError(t, err)
+
+	// Call createWorkingDir with the read-only directory.
+	_, err = createWorkingDir(testcontext.New(t), readOnlyDir)
+
+	// Assert that createWorkingDir returns an error.
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to create working directory")
 }

@@ -20,9 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
@@ -41,11 +38,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-)
-
-const (
-	executionSubDir                = "deploy"
-	workingDirFileMode fs.FileMode = 0700
 )
 
 var (
@@ -90,26 +82,20 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Create Working Directory
-	workingDir, err := createWorkingDir(ctx, options.RootDir)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new instance of tfexec.Terraform with current the Terraform installation path
-	tf, err := NewTerraform(ctx, workingDir, execPath)
+	// Create a new instance of tfexec.Terraform with current Terraform installation path
+	tf, err := NewTerraform(ctx, options.RootDir, execPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, workingDir, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
 
 	// Run TF Init and Apply in the working directory
-	state, err := initAndApply(ctx, tf, workingDir)
+	state, err := initAndApply(ctx, tf)
 	if err != nil {
 		return nil, err
 	}
@@ -145,20 +131,14 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
-	// Create Working Directory
-	workingDir, err := createWorkingDir(ctx, options.RootDir)
-	if err != nil {
-		return err
-	}
-
-	// Create a new instance of tfexec.Terraform with current the Terraform installation path
-	tf, err := NewTerraform(ctx, workingDir, execPath)
+	// Create a new instance of tfexec.Terraform with current Terraform installation path
+	tf, err := NewTerraform(ctx, options.RootDir, execPath)
 	if err != nil {
 		return err
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, workingDir, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
 	if err != nil {
 		return err
 	}
@@ -211,24 +191,18 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	// Create Working Directory
-	workingDir, err := createWorkingDir(ctx, options.RootDir)
+	// Create a new instance of tfexec.Terraform with current Terraform installation path
+	tf, err := NewTerraform(ctx, options.RootDir, execPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a new instance of tfexec.Terraform with current the Terraform installation path
-	tf, err := NewTerraform(ctx, workingDir, execPath)
+	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = getTerraformConfig(ctx, workingDir, options)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := downloadAndInspect(ctx, tf, workingDir, options)
+	result, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
 		return nil, err
 	}
@@ -238,28 +212,17 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
-func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	workingDir := filepath.Join(tfDir, executionSubDir)
-	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
-	if err := os.MkdirAll(workingDir, workingDirFileMode); err != nil {
-		return "", fmt.Errorf("failed to create working directory for terraform execution: %w", err)
-	}
-
-	return workingDir, nil
-}
-
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, workingDir string, options Options) (string, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	workingDir := tf.WorkingDir()
 
 	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
 	if err != nil {
 		return "", err
 	}
 
-	loadedModule, err := downloadAndInspect(ctx, tf, workingDir, options)
+	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
 		return "", err
 	}
@@ -317,7 +280,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, wor
 }
 
 // downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, workingDir string, options Options) (*moduleInspectResult, error) {
+func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Download the Terraform module to the working directory.
@@ -336,7 +299,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, workingDir st
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
 	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectModule(workingDir, options.EnvRecipe.Name)
+	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +332,7 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 }
 
 // initAndApply runs Terraform init and apply in the provided working directory.
-func initAndApply(ctx context.Context, tf *tfexec.Terraform, workingDir string) (*tfjson.State, error) {
+func initAndApply(ctx context.Context, tf *tfexec.Terraform) (*tfjson.State, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
