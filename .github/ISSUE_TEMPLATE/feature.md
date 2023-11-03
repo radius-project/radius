@@ -3,6 +3,7 @@ name: Feature Request
 about: Request a feature in Radius
 title: "<FEATURE TITLE>"
 assignees: ''
+labels: ["feature"]
 ---
 
 ## Overview of feature request
