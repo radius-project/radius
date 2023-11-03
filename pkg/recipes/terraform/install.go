@@ -94,6 +94,12 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 		if err != nil {
 			if attempt < installRetryCount {
 				logger.Info(fmt.Sprintf(errMsg, err.Error(), retryDelaySecs))
+				metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
+					[]attribute.KeyValue{
+						metrics.TerraformVersionAttrKey.String("latest"),
+						metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
+					},
+				)
 				time.Sleep(time.Duration(retryDelaySecs) * time.Second)
 				continue
 			}
@@ -101,6 +107,14 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 		}
 	}
 
+	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
+		[]attribute.KeyValue{
+			metrics.TerraformVersionAttrKey.String("latest"),
+			metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
+		},
+	)
+
+	// Configure Terraform logs once Terraform installation is complete
 	configureTerraformLogs(ctx, tf)
 
 	return tf, nil

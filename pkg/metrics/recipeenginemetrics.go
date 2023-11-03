@@ -43,6 +43,9 @@ const (
 	// terraformInitializationDuration is the metric name for the Terraform initialization duration.
 	terraformInitializationDuration = "recipe.tf.init.duration"
 
+	// terraformVerficiationDuration is the metric name for the Terraform installation verification duration.
+	terraformInstallVerficiationDuration = "recipe.tf.install.verification.duration"
+
 	// RecipeEngineOperationExecute represents the Execute operation of the Recipe Engine.
 	RecipeEngineOperationExecute = "execute"
 
@@ -118,6 +121,14 @@ func (m *recipeEngineMetrics) RecordTerraformInstallationDuration(ctx context.Co
 	if m.valueRecorders[terraformInstallationDuration] != nil {
 		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
 		m.valueRecorders[terraformInstallationDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
+	}
+}
+
+// RecordTerraformInstallVerificationDuration records the duration of the Terraform installation verification with the given attributes.
+func (m *recipeEngineMetrics) RecordTerraformInstallVerificationDuration(ctx context.Context, startTime time.Time, attrs []attribute.KeyValue) {
+	if m.valueRecorders[terraformInstallVerficiationDuration] != nil {
+		elapsedTime := float64(time.Since(startTime)) / float64(time.Millisecond)
+		m.valueRecorders[terraformInstallVerficiationDuration].Record(ctx, elapsedTime, metric.WithAttributes(attrs...))
 	}
 }
 
