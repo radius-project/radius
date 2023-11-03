@@ -108,6 +108,17 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, secretNamespace, secret.Namespace)
 				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
+
+				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				require.NoError(t, err)
+				require.NotNil(t, redis)
+				status := redis.Properties["status"].(map[string]any)
+				recipe := status["recipe"].(map[string]interface{})
+				require.Equal(t, "terraform", recipe["templateKind"].(string))
+				expectedTemplatePath := strings.Replace(functional.GetTerraformRecipeModuleServerURL()+"/kubernetes-redis.zip", "moduleServer=", "", 1)
+				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))
+				// At present, it is not possible to verify the template version in functional tests
+				// This is verified by UTs though
 			},
 		},
 	})

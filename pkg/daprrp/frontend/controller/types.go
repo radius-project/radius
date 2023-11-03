@@ -33,12 +33,12 @@ const (
 	// AsyncCreateOrUpdateDaprSecretStoreTimeout is the timeout for async create or update dapr secret store
 	AsyncCreateOrUpdateDaprSecretStoreTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprSecretStoreTimeout is the timeout for async delete dapr secret store
-	AsyncDeleteDaprSecretStoreTimeout = time.Duration(30) * time.Minute
+	AsyncDeleteDaprSecretStoreTimeout = time.Duration(60) * time.Minute
 
 	// DaprPubSubBrokersResourceType represents the resource type for Dapr PubSub brokers.
 	DaprPubSubBrokersResourceType = "Applications.Dapr/pubSubBrokers"
 	// AsyncCreateOrUpdateDaprPubSubBrokerTimeout is the timeout for async create or update dapr pub sub broker
 	AsyncCreateOrUpdateDaprPubSubBrokerTimeout = time.Duration(60) * time.Minute
 	// AsyncDeleteDaprPubSubBrokerTimeout is the timeout for async delete dapr pub sub broker
-	AsyncDeleteDaprPubSubBrokerTimeout = time.Duration(30) * time.Minute
+	AsyncDeleteDaprPubSubBrokerTimeout = time.Duration(60) * time.Minute
 )

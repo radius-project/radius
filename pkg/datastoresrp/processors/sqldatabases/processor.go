@@ -21,7 +21,7 @@ type Processor struct {
 // Process implements the processors.Processor interface for SQL database resources. It validates the given resource properties
 // and sets the computed values and secrets in the resource, and applies the values from the RecipeOutput.
 func (p *Processor) Process(ctx context.Context, resource *datamodel.SqlDatabase, options processors.Options) error {
-	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
+	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources, resource.Properties.Status.Recipe)
 
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(renderers.DatabaseNameValue, &resource.Properties.Database)

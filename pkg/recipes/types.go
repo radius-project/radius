@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 // Configuration represents kubernetes runtime and cloud provider configuration, which is used by the driver while deploying recipes.
@@ -98,6 +99,9 @@ type RecipeOutput struct {
 
 	// Values represents the key/value pairs of properties of the deployed resource.
 	Values map[string]any
+
+	// Status represents the recipe status at deployment time of resource.
+	Status *rpv1.RecipeStatus
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.

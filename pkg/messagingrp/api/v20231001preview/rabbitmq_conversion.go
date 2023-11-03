@@ -96,6 +96,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Properties = &RabbitMQQueueProperties{
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(rabbitmq.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(rabbitmq.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(rabbitmq.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(rabbitmq.Properties.Environment),
@@ -112,6 +113,7 @@ func (dst *RabbitMQQueueResource) ConvertFrom(src v1.DataModelInterface) error {
 	if rabbitmq.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
+
 	return nil
 }
 

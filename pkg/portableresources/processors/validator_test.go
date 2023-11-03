@@ -39,8 +39,9 @@ func Test_NewValidator(t *testing.T) {
 		var outputResources []rpv1.OutputResource
 		var values map[string]any
 		var secrets map[string]rpv1.SecretValueReference
+		var status rpv1.RecipeStatus = rpv1.RecipeStatus{}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		require.NotNil(t, v)
 		require.NotNil(t, outputResources)
 		require.NotNil(t, values)
@@ -49,6 +50,7 @@ func Test_NewValidator(t *testing.T) {
 		require.Same(t, &outputResources, v.OutputResources)
 		require.Equal(t, values, v.ConnectionValues)
 		require.Equal(t, secrets, v.ConnectionSecrets)
+		require.Equal(t, &status, v.Status)
 	})
 
 	t.Run("provided datastores", func(t *testing.T) {
@@ -57,8 +59,9 @@ func Test_NewValidator(t *testing.T) {
 		}
 		values := map[string]any{"test": ""}
 		secrets := map[string]rpv1.SecretValueReference{"test": {}}
+		status := rpv1.RecipeStatus{}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		require.NotNil(t, v)
 		require.NotNil(t, outputResources)
 		require.NotNil(t, values)
@@ -79,8 +82,9 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		err := v.SetAndValidate(nil)
 		require.NoError(t, err)
 
@@ -90,10 +94,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
 		var resources *[]*portableresources.ResourceReference
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		v.AddResourcesField(resources)
 
 		err := v.SetAndValidate(nil)
@@ -105,10 +110,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
 		resources := []*portableresources.ResourceReference{}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		v.AddResourcesField(&resources)
 
 		err := v.SetAndValidate(nil)
@@ -120,10 +126,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 
 		require.Empty(t, outputResources)
@@ -132,10 +139,11 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
 		resources := []*portableresources.ResourceReference{{ID: "////invalid//////"}}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		v.AddResourcesField(&resources)
 
 		err := v.SetAndValidate(nil)
@@ -149,12 +157,13 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
 		output := recipes.RecipeOutput{
 			Resources: []string{"////invalid//////"},
 		}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 
 		err := v.SetAndValidate(&output)
 		require.Error(t, err)
@@ -166,6 +175,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 		outputResources := []rpv1.OutputResource{}
 		values := map[string]any{}
 		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
 
 		resourcesField := []*portableresources.ResourceReference{
 			{
@@ -175,9 +185,10 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 		output := recipes.RecipeOutput{
 			Resources: []string{"/planes/aws/aws/accounts/1234/regions/us-west-1/providers/AWS.Kinesis/Stream/my-stream2"},
+			Status:    &rpv1.RecipeStatus{},
 		}
 
-		v := NewValidator(&values, &secrets, &outputResources)
+		v := NewValidator(&values, &secrets, &outputResources, &status)
 		v.AddResourcesField(&resourcesField)
 
 		err := v.SetAndValidate(&output)
@@ -200,7 +211,7 @@ func Test_Validator_SetAndValidate_OutputResources(t *testing.T) {
 
 func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 	t.Run("existing required value preserved", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "existing",
@@ -208,7 +219,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "ignored"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, "existing", v.ConnectionValues["test"])
@@ -216,7 +227,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 	})
 
 	t.Run("existing required secret preserved", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "existing",
@@ -224,7 +235,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 
 		v.AddRequiredSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "ignored"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "existing"}, v.ConnectionSecrets["test"])
@@ -232,14 +243,14 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 	})
 
 	t.Run("required recipe value set", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "new"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, "new", v.ConnectionValues["test"])
@@ -247,14 +258,14 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 	})
 
 	t.Run("required recipe secret set", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddRequiredSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "new"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "new"}, v.ConnectionSecrets["test"])
@@ -262,21 +273,21 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 	})
 
 	t.Run("required value missing with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" should be provided by the recipe, set '.properties.test' to provide a value manually", err.Error())
 	})
 
 	t.Run("required value missing without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
@@ -290,21 +301,21 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 	})
 
 	t.Run("required secret missing with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddRequiredSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection secret \"test\" should be provided by the recipe, set '.properties.secrets.test' to provide a value manually", err.Error())
 	})
 
 	t.Run("required secret missing without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
@@ -320,7 +331,7 @@ func Test_Validator_SetAndValidate_Required_Strings(t *testing.T) {
 
 func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	t.Run("existing optional value preserved", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "existing",
@@ -328,7 +339,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 
 		v.AddOptionalStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "ignored"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, "existing", v.ConnectionValues["test"])
@@ -336,7 +347,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("existing optional secret preserved", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "existing",
@@ -344,7 +355,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 
 		v.AddOptionalSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "ignored"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "ignored"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "existing", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "existing"}, v.ConnectionSecrets["test"])
@@ -352,14 +363,14 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("optional recipe value set", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddOptionalStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "new"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, "new", v.ConnectionValues["test"])
@@ -367,14 +378,14 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("Optional recipe secret set", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddOptionalSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "new"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Secrets: map[string]any{"test": "new"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "new", model.StringField)
 		require.Equal(t, rpv1.SecretValueReference{Value: "new"}, v.ConnectionSecrets["test"])
@@ -382,14 +393,14 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("optional value missing with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddOptionalStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "", model.StringField)
 		require.Empty(t, v.ConnectionValues)
@@ -397,7 +408,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("optional value missing without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
@@ -412,14 +423,14 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("optional secret missing with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
 		}
 		v.AddOptionalSecretField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "", model.StringField)
 		require.Empty(t, v.ConnectionValues)
@@ -427,7 +438,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 	})
 
 	t.Run("optional secret missing without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
@@ -445,7 +456,7 @@ func Test_Validator_SetAndValidate_Optional_Strings(t *testing.T) {
 func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 	// Code path for computed strings is the same as optional, except when the value is missing.\
 	t.Run("computed secret is computed with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField:            "",
@@ -457,7 +468,7 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 		})
 		v.AddOptionalStringField("regular", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": "YO"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": "YO"}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, "YO", model.StringField)
 		require.Equal(t, "YO-computed", model.AnotherCoolStringField)
@@ -466,7 +477,7 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 	})
 
 	t.Run("computed secret is computed without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField:            "YO",
@@ -487,7 +498,7 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 	})
 
 	t.Run("computed secret error", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField:            "",
@@ -498,14 +509,14 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 		})
 		v.AddOptionalStringField("regular", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": "YO"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": "YO"}, Status: &rpv1.RecipeStatus{}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "OH NO!", err.Error())
 	})
 
 	t.Run("computed secret not run if regular fields error", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField:            "",
@@ -527,7 +538,7 @@ func Test_Validator_SetAndValidate_Computed_Strings(t *testing.T) {
 func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 	// Code path for computed booleans is the same as optional, except when the value is missing.\
 	t.Run("computed value is computed with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			BooleanField: false,
@@ -539,14 +550,14 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 		})
 		v.AddOptionalInt32Field("regular", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, true, model.BooleanField)
 		require.Equal(t, map[string]any{"regular": int32(6380), "computed": true}, v.ConnectionValues)
 	})
 
 	t.Run("computed value is computed without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			BooleanField: false,
@@ -558,14 +569,14 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 		})
 		v.AddOptionalInt32Field("regular", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, false, model.BooleanField)
 		require.Equal(t, map[string]any{"regular": int32(6379), "computed": false}, v.ConnectionValues)
 	})
 
 	t.Run("computed value with recipe override", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			BooleanField: false,
@@ -577,7 +588,7 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 		})
 		v.AddOptionalInt32Field("regular", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"regular": 6380}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, true, model.BooleanField)
 		require.Equal(t, map[string]any{"regular": int32(6380), "computed": true}, v.ConnectionValues)
@@ -587,7 +598,7 @@ func Test_Validator_SetAndValidate_Computed_Boolean(t *testing.T) {
 func Test_Validator_SetAndValidate_TypeMismatch_Strings(t *testing.T) {
 	// Type mismatches are only possible with recipes
 	t.Run("type mismatch with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			StringField: "",
@@ -595,7 +606,7 @@ func Test_Validator_SetAndValidate_TypeMismatch_Strings(t *testing.T) {
 
 		v.AddRequiredStringField("test", &model.StringField)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": 3}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": 3}, Status: &rpv1.RecipeStatus{}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" provided by the recipe is expected to be a string, got int", err.Error())
@@ -604,7 +615,7 @@ func Test_Validator_SetAndValidate_TypeMismatch_Strings(t *testing.T) {
 
 func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 	t.Run("existing required value preserved", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 47,
@@ -612,7 +623,7 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 
 		v.AddRequiredInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(47), model.Int32Field)
 		require.Equal(t, int32(47), v.ConnectionValues["test"])
@@ -620,14 +631,14 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 	})
 
 	t.Run("required recipe value set", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddRequiredInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -635,21 +646,21 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 	})
 
 	t.Run("required value missing with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddRequiredInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" should be provided by the recipe, set '.properties.test' to provide a value manually", err.Error())
 	})
 
 	t.Run("required value missing without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
@@ -665,7 +676,7 @@ func Test_Validator_SetAndValidate_Required_Int32(t *testing.T) {
 
 func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 	t.Run("existing optional value preserved", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 47,
@@ -673,7 +684,7 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(47), model.Int32Field)
 		require.Equal(t, int32(47), v.ConnectionValues["test"])
@@ -681,14 +692,14 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 	})
 
 	t.Run("optional recipe value set", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int32(43)}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -696,14 +707,14 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 	})
 
 	t.Run("optional value missing with recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(0), model.Int32Field)
 		require.Empty(t, v.ConnectionValues)
@@ -711,7 +722,7 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 	})
 
 	t.Run("optional value missing without recipe", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
@@ -728,14 +739,14 @@ func Test_Validator_SetAndValidate_Optional_Int32(t *testing.T) {
 
 func Test_Validator_TypeConversions_Int32(t *testing.T) {
 	t.Run("conversion from int", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int(43)}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": int(43)}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -743,14 +754,14 @@ func Test_Validator_TypeConversions_Int32(t *testing.T) {
 	})
 
 	t.Run("conversion from float64", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": float64(43.1)}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": float64(43.1)}, Status: &rpv1.RecipeStatus{}})
 		require.NoError(t, err)
 		require.Equal(t, int32(43), model.Int32Field)
 		require.Equal(t, int32(43), v.ConnectionValues["test"])
@@ -758,14 +769,14 @@ func Test_Validator_TypeConversions_Int32(t *testing.T) {
 	})
 
 	t.Run("failed conversion", func(t *testing.T) {
-		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+		v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 		model := testDatamodel{
 			Int32Field: 0,
 		}
 		v.AddOptionalInt32Field("test", &model.Int32Field)
 
-		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "heyyyyy"}})
+		err := v.SetAndValidate(&recipes.RecipeOutput{Values: map[string]any{"test": "heyyyyy"}, Status: &rpv1.RecipeStatus{}})
 		require.Error(t, err)
 		require.IsType(t, &ValidationError{}, err)
 		require.Equal(t, "the connection value \"test\" provided by the recipe is expected to be a int32, got string", err.Error())
@@ -773,7 +784,7 @@ func Test_Validator_TypeConversions_Int32(t *testing.T) {
 }
 
 func Test_Validator_SetAndValidate_MultipleErrors(t *testing.T) {
-	v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{})
+	v := NewValidator(&map[string]any{}, &map[string]rpv1.SecretValueReference{}, &[]rpv1.OutputResource{}, &rpv1.RecipeStatus{})
 
 	model := testDatamodel{
 		StringField:            "",
@@ -786,4 +797,26 @@ func Test_Validator_SetAndValidate_MultipleErrors(t *testing.T) {
 	require.Error(t, err)
 	require.IsType(t, &ValidationError{}, err)
 	require.Equal(t, "validation returned multiple errors:\n\nthe connection value \"one\" must be provided when not using a recipe. Set '.properties.one' to provide a value manually\nthe connection value \"two\" must be provided when not using a recipe. Set '.properties.two' to provide a value manually", err.Error())
+}
+
+func Test_Validator_SetAndValidate_Status(t *testing.T) {
+	t.Run("status", func(t *testing.T) {
+		outputResources := []rpv1.OutputResource{}
+		values := map[string]any{}
+		secrets := map[string]rpv1.SecretValueReference{}
+		status := rpv1.RecipeStatus{}
+
+		v := NewValidator(&values, &secrets, &outputResources, &status)
+		recipeOutput := recipes.RecipeOutput{
+			Status: &rpv1.RecipeStatus{
+				TemplateKind:    "terraform",
+				TemplateVersion: "v1",
+				TemplatePath:    "/abc/def",
+			},
+		}
+		err := v.SetAndValidate(&recipeOutput)
+		require.NoError(t, err)
+
+		require.Equal(t, v.Status, recipeOutput.Status)
+	})
 }

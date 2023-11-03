@@ -52,12 +52,15 @@ type Validator struct {
 
 	// OutputResources stores the output resources extracted from the data model and recipe output.
 	OutputResources *[]rpv1.OutputResource
+
+	// Status stores the recipe status extracted from the recipe output.
+	Status *rpv1.RecipeStatus
 }
 
 // NewValidator initializes and returns a new Validator instance with empty data structures for connection values,
 // connection secrets and output resources. Use the parameters to pass in pointers to the corresponding fields on
 // the resource data model.
-func NewValidator(connectionValues *map[string]any, connectionSecrets *map[string]rpv1.SecretValueReference, outputResources *[]rpv1.OutputResource) *Validator {
+func NewValidator(connectionValues *map[string]any, connectionSecrets *map[string]rpv1.SecretValueReference, outputResources *[]rpv1.OutputResource, status *rpv1.RecipeStatus) *Validator {
 	// Empty the computed data structures. This ensures that we don't accumulate data from previous validations.
 	*connectionValues = map[string]any{}
 	*connectionSecrets = map[string]rpv1.SecretValueReference{}
@@ -67,6 +70,7 @@ func NewValidator(connectionValues *map[string]any, connectionSecrets *map[strin
 		ConnectionValues:  *connectionValues,
 		ConnectionSecrets: *connectionSecrets,
 		OutputResources:   outputResources,
+		Status:            status,
 	}
 }
 
@@ -160,6 +164,10 @@ func (v *Validator) SetAndValidate(output *recipes.RecipeOutput) error {
 		}
 
 		*v.OutputResources = append(*v.OutputResources, recipeResources...)
+
+		if output.Status != nil {
+			*v.Status = *output.Status
+		}
 	}
 
 	if v.resourcesField != nil {

@@ -217,7 +217,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ComponentName:        to.Ptr("test-dpsb"),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
-					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+					Status:               resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
