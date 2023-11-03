@@ -222,7 +222,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows'
         run: |
           cp ./dist/${{ matrix.target_os}}_${{ matrix.target_arch}}/release/rad.exe ./rad.exe
-          oras push ${{ env.CONTAINER_REGISTRY }}/rad/${{ matrix.target_os }}-${{ matrix.target_arch }}:latest .rad.exe --annotation "org.opencontainers.image.source=${{ env.IMAGE_SRC }}"
+          oras push ${{ env.CONTAINER_REGISTRY }}/rad/${{ matrix.target_os }}-${{ matrix.target_arch }}:latest ./rad.exe --annotation "org.opencontainers.image.source=${{ env.IMAGE_SRC }}"
 
   build-and-push-images:
     name: Build and publish container images
