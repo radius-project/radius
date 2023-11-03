@@ -1,0 +1,109 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#    
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# This is the configuration file for the Radius Triage Bot.
+#
+# See: https://github.com/dessant/label-actions for documentation.
+
+
+# Creation labels
+
+bug: 
+  comment: |
+    :wave: @{issue-author} Thanks for filing this bug report. 
+
+    A project maintainer will review this report and get back to you soon. If you'd like immediate help troubleshooting, please visit our [Discord server](https://aka.ms/radius/discord).
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+feature: 
+  comment: |
+    :wave: @{issue-author} Thanks for filing this feature request. 
+    
+    A project maintainer will review this feature request and get back to you soon.
+
+    We also welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+  
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+maintenance:
+  comment: |
+    :wave: @{issue-author} Thanks for filing this issue.
+
+    A project maintainer will review this issue and get back to you soon.
+
+    We also welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+  
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+
+# Processing labels
+
+needs-more-information:
+  comment: |
+    :wave: @{issue-author} we need more information. 
+    
+    To help us investigate further, we need additional information to reproduce or understand this issue. Please ensure you have steps to reproduce and information about your OS, rad CLI version, and runtime version.
+    
+    A project maintainer will reply on this issue soon to ask for additional specifics if needed.
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+triaged:
+  comment: |
+    :+1: We've reviewed this issue and have agreed to add it to our backlog. Please subscribe to this issue for notifications, we'll provide updates when we pick it up.
+
+    We also welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+important:
+  comment: |
+    We've prioritized work on this issue. Please subscribe to this issue for notifications, we'll provide updates as we make progress.
+
+    We also welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+'good first issue':
+  comment: |
+    This issue is a great one to pickup for new contributors. It should only require small changes and not assume a deep knowledge of the Radius architecture.
+
+    We always welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+# Closing labels
+
+wont-fix:
+  close: true
+  close-reason: 'not planned'
+  comment: |
+    :wave: @{issue-author} We've reviewed this issue and have decided not to address it at this time and to close it. If you have any questions or would like to discuss more, please reply to this issue and/or reach out on our [Discord server](https://aka.ms/radius/discord).
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+duplicate:
+  close: true
+  close-reason: 'not planned'
+  comment:  |
+    Thanks for filing this issue. We're closing this as a duplicate of another issue. 
+
+    A project maintainer will review this and link the duplicate item and get back to you soon. If you have any questions or would like to discuss more, please reply to this issue and/or reach out on our [Discord server](https://aka.ms/radius/discord).
+
+    _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
+
+
