@@ -89,11 +89,10 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 
 	// Verify Terraform installation is complete before proceeding
 	for attempt := 0; attempt <= installRetryCount; attempt++ {
-		errMsg := "Failed to verify Terraform installation: %s. Retrying after %d seconds"
 		_, _, err = tf.Version(ctx, false)
 		if err != nil {
 			if attempt < installRetryCount {
-				logger.Info(fmt.Sprintf(errMsg, err.Error(), retryDelaySecs))
+				logger.Info(fmt.Sprintf("Failed to verify Terraform installation: %s. Retrying after %d seconds", err.Error(), retryDelaySecs))
 				metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
 					[]attribute.KeyValue{
 						metrics.TerraformVersionAttrKey.String("latest"),
@@ -103,7 +102,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 				time.Sleep(time.Duration(retryDelaySecs) * time.Second)
 				continue
 			}
-			return nil, fmt.Errorf(errMsg, err.Error(), retryDelaySecs)
+			return nil, err
 		}
 	}
 
