@@ -149,7 +149,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
 	}
 
-	// Extract chi route context from request context to get the routing paramaters.
+	// Extract chi route context from request context to get the routing parameters.
 	rctx := chi.RouteContext(req.Context())
 	if rctx == nil {
 		return routeParams

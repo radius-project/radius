@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -16,7 +16,13 @@
 
 name: Update extensibility provider types
 on:
-  pull_request:
+  # Please be careful making changes to this workflow. This uses pull_request_target so it has access to our
+  # secrets. This is OK because we're just copying files out of the contributors PR branch.
+  #
+  # DO NOT run any code from the pull-request including makefile targets.
+  #
+  # See the official docs for more info:  https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
+  pull_request_target:
     paths:
       - "hack/bicep-types-radius/generated/**"
 
@@ -25,48 +31,11 @@ jobs:
     name: Update Bicep extensibility provider types
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      GOVER: '^1.21'
-      GOPROXY: https://proxy.golang.org
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v4
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
         with:
-          go-version: ${{ env.GOVER }}
-      - name: Setup npm
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-      - name: Install TypeSpec compiler
-        run: |
-          pushd typespec
-          npm ci
-          popd
-      - name: Install autorest
-        run: npm install -g autorest@3.6.1
-      - name: Install oav
-        run: npm install -g oav@3.2.0
-      - name: Install mockgen
-        run: go install github.com/golang/mock/mockgen@v1.5.0
-      - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
-      - name: Setup Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-      - name: Run make generate
-        run: make generate
-
-      - name: Check if generated code is up to date
-        continue-on-error: true
-        id: gitdiff
-        run: |
-          git diff --exit-code
-
-      - name: Check git diff failures
-        if: steps.gitdiff.outcome != 'success'
-        run: |
-          echo "Generated code is not up to date, run 'make generate' to update generated code."
-          exit 1
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - id: get_radius_commit_hash
         name: Get commit hash (radius-project/radius)
@@ -94,7 +63,7 @@ jobs:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
-          signoff: false
+          signoff: true
           branch: radius-types/patch-${{ github.event.pull_request.number }}
           delete-branch: true
           title: |

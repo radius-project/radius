@@ -125,7 +125,7 @@ func (i *Impl) GetPrompter() prompt.Interface {
 	return i.Prompter
 }
 
-// GetConfigFileInterface fetches the interface to interace with radius config file
+// GetConfigFileInterface fetches the interface to interacted with radius config file
 //
 
 // GetConfigFileInterface returns the ConfigFileInterface stored in the Impl struct.

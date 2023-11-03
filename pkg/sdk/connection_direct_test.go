@@ -38,7 +38,7 @@ func Test_NewDirectConnection_Valid(t *testing.T) {
 }
 
 func Test_NewDirectConnection_InvalidUrl(t *testing.T) {
-	// It's geniunely kinda hard to make Go's URL parser reject something :-|
+	// It's genuinely kinda hard to make Go's URL parser reject something :-|
 	endpoint := ":"
 
 	connection, err := NewDirectConnection(endpoint)

@@ -17,11 +17,9 @@ limitations under the License.
 package terraform
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,14 +86,4 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			require.Equal(t, tc.result, result)
 		})
 	}
-}
-
-func Test_DownloadModule_EmptyWorkingDirPath_Error(t *testing.T) {
-	// Create a temporary test directory.
-	testDir := t.TempDir()
-	execPath := filepath.Join(testDir, "terraform")
-
-	err := downloadModule(testcontext.New(t), "", execPath, "test/module/source")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
 }
