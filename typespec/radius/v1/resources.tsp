@@ -107,7 +107,7 @@ model RecipeStatus {
   @doc("TemplateKind is the kind of the recipe template used by the portable resource upon deployment.")
   templateKind: string;
 
-  @doc("Template path of the recipe consumed by the portable resource upon deployment.")
+  @doc("TemplatePath is the path of the recipe consumed by the portable resource upon deployment.")
   templatePath: string;
 
   @doc("TemplateVersion is the version number of the template.")
