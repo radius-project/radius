@@ -24,6 +24,7 @@ import (
 
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -70,7 +71,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 
 	// Install Terraform
 	i := install.NewInstaller()
-	execPath, err := Install(ctx, i, options.RootDir)
+	tf, err := Install(ctx, i, options.RootDir)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -78,12 +79,6 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
 		}
 	}()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new instance of tfexec.Terraform with current Terraform installation path
-	tf, err := NewTerraform(ctx, options.RootDir, execPath)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +114,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 
 	// Install Terraform
 	i := install.NewInstaller()
-	execPath, err := Install(ctx, i, options.RootDir)
+	tf, err := Install(ctx, i, options.RootDir)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -127,12 +122,6 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
 		}
 	}()
-	if err != nil {
-		return err
-	}
-
-	// Create a new instance of tfexec.Terraform with current Terraform installation path
-	tf, err := NewTerraform(ctx, options.RootDir, execPath)
 	if err != nil {
 		return err
 	}
@@ -179,7 +168,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 
 	// Install Terraform
 	i := install.NewInstaller()
-	execPath, err := Install(ctx, i, options.RootDir)
+	tf, err := Install(ctx, i, options.RootDir)
 	// The terraform zip for installation is downloaded in a location outside of the install directory and is only accessible through the installer.Remove function -
 	// stored in latestVersion.pathsToRemove. So this needs to be called for complete cleanup even if the root terraform directory is deleted.
 	defer func() {
@@ -187,12 +176,6 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 			logger.Info(fmt.Sprintf("Failed to cleanup Terraform installation: %s", err.Error()))
 		}
 	}()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new instance of tfexec.Terraform with current Terraform installation path
-	tf, err := NewTerraform(ctx, options.RootDir, execPath)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +196,7 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
 func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
