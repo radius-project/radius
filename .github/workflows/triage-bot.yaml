@@ -1,0 +1,40 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#    
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+name: 'Radius Triage Bot'
+on:
+  issues:
+    types: [labeled, unlabeled]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  build:
+    name: 'Process Triage Labels'
+    runs-on: ubuntu-latest
+    env: 
+      RADIUS_TRIAGE_BOT_APP_ID: 417813
+    steps:
+    - uses: tibdex/github-app-token@v1
+      id: get_installation_token
+      with: 
+        app_id: ${{ env.RADIUS_TRIAGE_BOT_APP_ID }}
+        private_key: ${{ secrets.RADIUS_TRIAGE_BOT_PRIVATE_KEY }}
+    - uses: dessant/label-actions@v3
+      with:
+        github-token: ${{ steps.get_installation_token.outputs.token }}
+        config-path: '.github/triage-bot/triage-bot-config.yaml'
+        process-only: 'issues'
