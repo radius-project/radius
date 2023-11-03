@@ -124,6 +124,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 		ComponentName:        to.Ptr(daprSecretStore.Properties.ComponentName),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(daprSecretStore.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(daprSecretStore.Properties.Status.Recipe),
 		},
 	}
 	if daprSecretStore.Properties.ResourceProvisioning == portableresources.ResourceProvisioningManual {
@@ -133,5 +134,6 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src v1.DataModelInterface) error
 	} else {
 		dst.Properties.Recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 	}
+
 	return nil
 }

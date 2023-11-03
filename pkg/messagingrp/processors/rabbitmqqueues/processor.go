@@ -38,7 +38,7 @@ type Processor struct {
 // Process implements the processors.Processor interface for RabbitMQQueue resources. It validates the required fields
 // and computed secret fields of the RabbitMQQueue resource and returns an error if validation fails.
 func (p *Processor) Process(ctx context.Context, resource *msg_dm.RabbitMQQueue, options processors.Options) error {
-	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources)
+	validator := processors.NewValidator(&resource.ComputedValues, &resource.SecretValues, &resource.Properties.Status.OutputResources, resource.ResourceMetadata().Status.Recipe)
 	validator.AddResourcesField(&resource.Properties.Resources)
 	validator.AddRequiredStringField(Queue, &resource.Properties.Queue)
 	validator.AddRequiredStringField(renderers.Host, &resource.Properties.Host)
