@@ -91,7 +91,7 @@ type ProxyMetadata struct {
 func GetBicepRecipeRegistry() string {
 	defaultRecipeRegistry := os.Getenv("BICEP_RECIPE_REGISTRY")
 	if defaultRecipeRegistry == "" {
-		defaultRecipeRegistry = "ghcr.io/radius-project/dev"
+		defaultRecipeRegistry = "ghcr.io/radius-project"
 	}
 	return "registry=" + defaultRecipeRegistry
 }
