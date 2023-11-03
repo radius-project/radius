@@ -43,7 +43,7 @@ const (
 	// terraformInitializationDuration is the metric name for the Terraform initialization duration.
 	terraformInitializationDuration = "recipe.tf.init.duration"
 
-	// terraformVerficiationDuration is the metric name for the Terraform installation verification duration.
+	// terraformInstallVerficiationDuration is the metric name for the Terraform installation verification duration.
 	terraformInstallVerficiationDuration = "recipe.tf.install.verification.duration"
 
 	// RecipeEngineOperationExecute represents the Execute operation of the Recipe Engine.
