@@ -1497,7 +1497,7 @@
         },
         "templatePath": {
           "type": "string",
-          "description": "Template path of the recipe consumed by the portable resource upon deployment."
+          "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
         },
         "templateVersion": {
           "type": "string",

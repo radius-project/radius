@@ -187,7 +187,7 @@
 ## RecipeStatus
 ### Properties
 * **templateKind**: string (Required): TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
-* **templatePath**: string (Required): Template path of the recipe consumed by the portable resource upon deployment.
+* **templatePath**: string (Required): TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
 * **templateVersion**: string: TemplateVersion is the version number of the template.
 
 ## SystemData

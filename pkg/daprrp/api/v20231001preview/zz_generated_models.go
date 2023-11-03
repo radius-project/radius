@@ -483,7 +483,7 @@ type RecipeStatus struct {
 	// REQUIRED; TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
 	TemplateKind *string
 
-	// REQUIRED; Template path of the recipe consumed by the portable resource upon deployment.
+	// REQUIRED; TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
 	TemplatePath *string
 
 	// TemplateVersion is the version number of the template.
