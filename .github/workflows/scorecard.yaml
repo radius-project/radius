@@ -1,0 +1,70 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+name: OpenSSF scorecard analysis
+on:
+  # Only the default branch is supported. See
+  # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
+  branch_protection_rule:
+  schedule:
+    # The workflow will run at 5:42PM UTC every Monday.
+    - cron: '42 17 * * 1'
+  push:
+    # The workflow will be triggered on every push to the main branch.
+    branches: [ "main" ]
+
+# By default, the workflow has read-only access to the repository.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: OpenSSF scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to upload the results to code-scanning dashboard.
+      security-events: write
+      # Needed to publish results and get a badge (see publish_results below).
+      id-token: write
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # v3.1.0
+        with:
+          persist-credentials: false
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@e38b1902ae4f44df626f11ba0734b14fb91f8f86 # v2.1.2
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publish results to enable scorecard badge. For more details, see
+          # https://github.com/ossf/scorecard-action#publishing-results.
+          publish_results: true
+
+      # Upload the results as artifacts (optional). Commenting out will disable uploads of run results in SARIF
+      # format to the repository Actions tab.
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # v3.1.0
+        with:
+          name: OpenSSF scan results
+          path: results.sarif
+          retention-days: 5
+
+      # Upload the results to GitHub's code scanning dashboard.
+      - name: "Upload to code-scanning"
+        uses: github/codeql-action/upload-sarif@17573ee1cc1b9d061760f3a006fc4aac4f944fd5 # v2.2.4
+        with:
+          sarif_file: results.sarif
