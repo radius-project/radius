@@ -17,12 +17,15 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Redis_Manual(t *testing.T) {
@@ -101,6 +104,16 @@ func Test_Redis_Recipe(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Datastores/redisCaches", "rds-recipe")
+				require.NoError(t, err)
+				require.NotNil(t, redis)
+				status := redis.Properties["status"].(map[string]any)
+				recipe := status["recipe"].(map[string]interface{})
+				require.Equal(t, "bicep", recipe["templateKind"].(string))
+				templatePath := strings.Split(recipe["templatePath"].(string), ":")[0]
+				require.Equal(t, "ghcr.io/radius-project/dev/test/functional/shared/recipes/redis-recipe-value-backed", templatePath)
+			},
 		},
 	})
 

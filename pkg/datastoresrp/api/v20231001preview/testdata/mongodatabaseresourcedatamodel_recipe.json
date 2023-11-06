@@ -23,6 +23,12 @@
             }
           },
         "host": "testAccount1.mongo.cosmos.azure.com",
-        "port": 10255
+        "port": 10255,
+        "status": {
+            "recipe": {
+                "templateKind": "bicep",
+                "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/abc"
+            }
+        }
     }
 }

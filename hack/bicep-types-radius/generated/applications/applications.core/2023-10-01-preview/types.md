@@ -158,6 +158,7 @@
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute): Represents backing compute resource
 * **outputResources**: [OutputResource](#outputresource)[]: Properties of an output resource
+* **recipe**: [RecipeStatus](#recipestatus) (ReadOnly): Recipe status at deployment time for a resource.
 
 ## EnvironmentCompute
 * **Discriminator**: kind
@@ -182,6 +183,12 @@
 * **id**: string: The UCP resource ID of the underlying resource.
 * **localId**: string: The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships.
 * **radiusManaged**: bool: Determines whether Radius manages the lifecycle of the underlying resource.
+
+## RecipeStatus
+### Properties
+* **templateKind**: string (Required): TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
+* **templatePath**: string (Required): TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
+* **templateVersion**: string: TemplateVersion is the version number of the template.
 
 ## SystemData
 ### Properties
