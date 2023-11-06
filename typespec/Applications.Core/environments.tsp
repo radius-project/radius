@@ -104,6 +104,9 @@ model RecipeProperties {
 model BicepRecipeProperties extends RecipeProperties {
   @doc("The Bicep template kind.")
   templateKind: "bicep";
+
+  @doc("Allows insecure connections to registry without SSL check")
+  insecureHttp?: boolean;
 }
 
 @doc("Represents Terraform recipe properties.")
@@ -137,6 +140,9 @@ model RecipeGetMetadataResponse {
 
   @doc("The key/value parameters to pass to the recipe template at deployment.")
   parameters: {};
+
+  @doc("Allows insecure connections to registry without SSL check")
+  insecureHttp?: boolean;
 }
 
 @armResourceOperations

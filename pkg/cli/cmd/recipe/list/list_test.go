@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -90,11 +91,17 @@ func Test_Run(t *testing.T) {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
+							InsecureHTTP: to.Ptr(false),
 						},
 						"cosmosDB-terraform": &v20231001preview.TerraformRecipeProperties{
 							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
 							TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
 							TemplateVersion: to.Ptr("1.1.0"),
+						},
+						"mongo": &v20231001preview.BicepRecipeProperties{
+							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+							TemplatePath: to.Ptr("localhost:8000/mongodatabases:v1"),
+							InsecureHTTP: to.Ptr(true),
 						},
 					},
 				},
@@ -106,6 +113,7 @@ func Test_Run(t *testing.T) {
 				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
+				InsecureHttp: false,
 			},
 			{
 				Name:            "cosmosDB-terraform",
@@ -114,8 +122,17 @@ func Test_Run(t *testing.T) {
 				TemplatePath:    "Azure/cosmosdb/azurerm",
 				TemplateVersion: "1.1.0",
 			},
+			{
+				Name:         "mongo",
+				ResourceType: ds_ctrl.MongoDatabasesResourceType,
+				TemplateKind: recipes.TemplateKindBicep,
+				TemplatePath: "localhost:8000/mongodatabases:v1",
+				InsecureHttp: true,
+			},
 		}
-
+		sort.Slice(recipes, func(i, j int) bool {
+			return recipes[i].Name < recipes[j].Name
+		})
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
 			GetEnvDetails(gomock.Any(), gomock.Any()).

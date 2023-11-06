@@ -1,0 +1,15 @@
+{
+    "templateKind": "bicep",
+    "templatePath": "br:localhost:8000/recipes/cosmosdb",
+    "insecureHttp": true,
+    "parameters": {
+      "throughput": {
+        "maxValue": 400,
+        "defaultValue": 200
+      },
+      "location": {
+        "type" : "string",
+        "defaultValue" : "[resourceGroup().location]"
+      }
+    }
+  }

@@ -140,6 +140,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							"redis-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplateKind: recipes.TemplateKindBicep,
 								TemplatePath: "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
+								InsecureHttp: true,
 							},
 						},
 						dapr_ctrl.DaprStateStoresResourceType: {
@@ -367,10 +368,11 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				if tt.filename == "environmentresourcedatamodel.json" {
 					require.Equal(t, "Azure/cosmosdb/azurerm", string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplatePath))
 					require.Equal(t, recipes.TemplateKindTerraform, string(*versioned.Properties.Recipes[ds_ctrl.MongoDatabasesResourceType]["terraform-recipe"].GetRecipeProperties().TemplateKind))
-
 					switch c := recipeDetails.(type) {
 					case *TerraformRecipeProperties:
 						require.Equal(t, "1.1.0", string(*c.TemplateVersion))
+					case *BicepRecipeProperties:
+						require.Equal(t, true, bool(*c.InsecureHTTP))
 					}
 				}
 				if tt.filename == "environmentresourcedatamodelemptyext.json" {

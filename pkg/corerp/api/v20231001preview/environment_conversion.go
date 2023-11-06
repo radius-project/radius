@@ -314,6 +314,7 @@ func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.
 		return datamodel.EnvironmentRecipeProperties{
 			TemplateKind: types.TemplateKindBicep,
 			TemplatePath: to.String(c.TemplatePath),
+			InsecureHttp: to.Bool(c.InsecureHTTP),
 			Parameters:   c.Parameters,
 		}, nil
 	}
@@ -334,6 +335,7 @@ func fromRecipePropertiesClassificationDatamodel(e datamodel.EnvironmentRecipePr
 			TemplateKind: to.Ptr(e.TemplateKind),
 			TemplatePath: to.Ptr(e.TemplatePath),
 			Parameters:   e.Parameters,
+			InsecureHTTP: to.Ptr(e.InsecureHttp),
 		}
 	}
 	return nil

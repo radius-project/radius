@@ -202,10 +202,11 @@ func Test_generateManifestContent(t *testing.T) {
 
 func TestRunner_prepareDestination(t *testing.T) {
 	tests := []struct {
-		name    string
-		dest    *destination
-		want    *remote.Repository
-		wantErr bool
+		name         string
+		dest         *destination
+		insecureHttp bool
+		want         *remote.Repository
+		wantErr      bool
 	}{
 		{
 			name: "prepare destination",
@@ -214,6 +215,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 				repo: "repo",
 				tag:  "tag",
 			},
+			insecureHttp: false,
 			want: &remote.Repository{
 				Reference: registry.Reference{
 					Registry:   "index.docker.io",
@@ -223,11 +225,30 @@ func TestRunner_prepareDestination(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "prepare destination : local registry",
+			dest: &destination{
+				host: "localhost:8000",
+				repo: "repo",
+				tag:  "tag",
+			},
+			insecureHttp: true,
+			want: &remote.Repository{
+				Reference: registry.Reference{
+					Registry:   "localhost:8000",
+					Repository: "repo",
+					Reference:  "tag",
+				},
+				PlainHTTP: true,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Runner{
-				Destination: tt.dest,
+				Destination:  tt.dest,
+				InsecureHttp: tt.insecureHttp,
 			}
 			got, err := r.prepareDestination(context.Background())
 			if (err != nil) != tt.wantErr {
@@ -237,6 +258,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 
 			require.Equal(t, tt.want.Reference.Registry, got.Reference.Registry)
 			require.Equal(t, tt.want.Reference.Repository, got.Reference.Repository)
+			require.Equal(t, tt.want.PlainHTTP, got.PlainHTTP)
 		})
 	}
 }

@@ -167,6 +167,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		recipe.TemplateVersion = *recipeDetails.TemplateVersion
 	}
 
+	if recipeDetails.InsecureHTTP != nil {
+		recipe.InsecureHttp = *recipeDetails.InsecureHTTP
+	}
+
 	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err

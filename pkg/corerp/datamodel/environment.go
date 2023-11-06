@@ -51,6 +51,7 @@ type EnvironmentRecipeProperties struct {
 	TemplatePath    string         `json:"templatePath"`
 	TemplateVersion string         `json:"templateVersion,omitempty"`
 	Parameters      map[string]any `json:"parameters,omitempty"`
+	InsecureHttp    bool           `json:"insecureHttp,omitempty"`
 }
 
 // Recipe represents input properties for recipe getMetadata api.

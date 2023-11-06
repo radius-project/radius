@@ -36,7 +36,8 @@
           "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/cosmosdb",
           "parameters" : {
             "throughput": 400
-          }
+          },
+          "insecureHttp":true
         },
         "terraform-recipe": {
           "templateKind": "terraform",

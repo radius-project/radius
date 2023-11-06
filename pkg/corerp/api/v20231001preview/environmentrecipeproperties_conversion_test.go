@@ -62,6 +62,26 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned(t *testing.T) {
 	}
 }
 
+func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_InsecureRegistry(t *testing.T) {
+	filename := "environmentrecipepropertiesdatamodel-insecure-registry.json"
+	t.Run(filename, func(t *testing.T) {
+		rawPayload := testutil.ReadFixture(filename)
+		r := &datamodel.EnvironmentRecipeProperties{}
+		err := json.Unmarshal(rawPayload, r)
+		require.NoError(t, err)
+
+		// act
+		versioned := &RecipeGetMetadataResponse{}
+		err = versioned.ConvertFrom(r)
+		// assert
+		require.NoError(t, err)
+		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
+		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
+		require.Equal(t, r.InsecureHttp, bool(*versioned.InsecureHTTP))
+		require.Equal(t, r.Parameters, versioned.Parameters)
+	})
+}
+
 func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_EmptyTemplateKind(t *testing.T) {
 	filename := "environmentrecipepropertiesdatamodel-missingtemplatekind.json"
 	t.Run(filename, func(t *testing.T) {

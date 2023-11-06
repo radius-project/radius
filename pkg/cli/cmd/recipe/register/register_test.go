@@ -65,7 +65,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid Register Command with parameters passed as file",
-			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--resource-type", ds_ctrl.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json"},
+			Input:         []string{"test_recipe", "--template-kind", recipes.TemplateKindBicep, "--template-path", "test_template", "--resource-type", ds_ctrl.MongoDatabasesResourceType, "--parameters", "@testdata/recipeparam.json", "--insecure-http"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -290,6 +290,7 @@ func Test_Run(t *testing.T) {
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
 						Parameters:   map[string]any{"throughput": 400},
+						InsecureHTTP: to.Ptr(true),
 					},
 				},
 			},

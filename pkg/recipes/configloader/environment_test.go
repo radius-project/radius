@@ -229,6 +229,11 @@ func TestGetRecipeDefinition(t *testing.T) {
 							"foo": "bar",
 						},
 					},
+					"mongo": &model.BicepRecipeProperties{
+						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+						TemplatePath: to.Ptr("localhost:8000/recipes/mongodatabases:1.0"),
+						InsecureHTTP: to.Ptr(true),
+					},
 					terraformRecipe: &model.TerraformRecipeProperties{
 						TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
 						TemplatePath:    to.Ptr("Azure/cosmosdb/azurerm"),
@@ -260,7 +265,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 		require.Contains(t, err.Error(), "could not find recipe")
 	})
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("success-bicep", func(t *testing.T) {
 		expected := recipes.EnvironmentDefinition{
 			Name:         recipeName,
 			Driver:       recipes.TemplateKindBicep,
@@ -271,6 +276,24 @@ func TestGetRecipeDefinition(t *testing.T) {
 			},
 		}
 		recipeDef, err := getRecipeDefinition(&envResource, &recipeMetadata)
+		require.NoError(t, err)
+		require.Equal(t, recipeDef, &expected)
+	})
+
+	t.Run("success-bicep-insecure-registry", func(t *testing.T) {
+		metadata := recipes.ResourceMetadata{
+			Name:          "mongo",
+			EnvironmentID: envResourceId,
+			ResourceID:    mongoResourceID,
+		}
+		expected := recipes.EnvironmentDefinition{
+			Name:         "mongo",
+			Driver:       recipes.TemplateKindBicep,
+			ResourceType: "Applications.Datastores/mongoDatabases",
+			TemplatePath: "localhost:8000/recipes/mongodatabases:1.0",
+			InsecureHttp: true,
+		}
+		recipeDef, err := getRecipeDefinition(&envResource, &metadata)
 		require.NoError(t, err)
 		require.Equal(t, recipeDef, &expected)
 	})
