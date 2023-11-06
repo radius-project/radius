@@ -480,6 +480,7 @@ jobs:
           message: |
             :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Publish Terraform test recipes
+        id: publish-tf-recipes
         run: |
           make publish-test-terraform-recipes
       - name: Run functional tests
@@ -576,3 +577,27 @@ jobs:
               labels: ['bug', 'test-failure'],
               body: `## Bug information \n\nThis bug is generated automatically if the scheduled functional test fails. The Radius functional test operates on a schedule of every 4 hours during weekdays and every 12 hours over the weekend. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
             })
+      - name: Get pod logs for recipe publishing failure
+        id: get-pod-logs
+        if: failure() && steps.publish-tf-recipes.outcome == 'failure' 
+        run: |
+          # Create pod-logs directory
+          mkdir -p recipes/pod-logs
+          # Get pod logs and save to file
+          namespace="radius-test-tf-module-server"
+          label="app.kubernetes.io/name=tf-module-server"
+          pod_names=($(kubectl get pods -l $label -n $namespace -o jsonpath='{.items[*].metadata.name}'))
+          for pod_name in "${pod_names[@]}"; do
+            kubectl logs $pod_name -n $namespace > recipes/pod-logs//${pod_name}.txt
+          done
+          echo "Pod logs saved to playwright/pod-logs/"
+          # Get kubernetes events and save to file
+          kubectl get events -n $namespace > playwright/pod-logs/events.txt
+      - name: Upload Pod logs for failed steps
+        uses: actions/upload-artifact@v3
+        if: failure() && steps.publish-tf-recipes.outcome.outcome == 'success'
+        with:
+          name: recipes-pod-logs
+          path: recipes/pod-logs
+          retention-days: 30
+          if-no-files-found: error
