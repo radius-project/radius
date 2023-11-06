@@ -12,9 +12,6 @@ param magpieimage string
 param registry string
 param version string
 
-
-
-
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'corerp-mechanics-invalid-resourceids'
   location: location
