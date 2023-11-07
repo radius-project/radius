@@ -27,25 +27,28 @@ import (
 	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/hc-install/releases"
 	"github.com/hashicorp/hc-install/src"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
-	installSubDir = "install"
+	installSubDir                     = "install"
+	installVerificationRetryCount     = 5
+	installVerificationRetryDelaySecs = 3
 )
 
 // Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
 // the latest version of Terraform and returns the path to the installed Terraform executable. It returns an error
 // if the directory creation or Terraform installation fails.
-func Install(ctx context.Context, installer *install.Installer, tfDir string) (string, error) {
+func Install(ctx context.Context, installer *install.Installer, tfDir string) (*tfexec.Terraform, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Create Terraform installation directory
 	installDir := filepath.Join(tfDir, installSubDir)
 	if err := os.MkdirAll(installDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create directory for terraform installation for resource: %w", err)
+		return nil, fmt.Errorf("failed to create directory for terraform installation for resource: %w", err)
 	}
 
 	logger.Info(fmt.Sprintf("Installing Terraform in the directory: %q", installDir))
@@ -66,7 +69,7 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 				metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
 			},
 		)
-		return "", err
+		return nil, err
 	}
 
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
@@ -78,5 +81,40 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (s
 
 	logger.Info(fmt.Sprintf("Terraform latest version installed to: %q", execPath))
 
-	return execPath, nil
+	// Create a new instance of tfexec.Terraform with current Terraform installation path
+	tf, err := NewTerraform(ctx, tfDir, execPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify Terraform installation is complete before proceeding
+	for attempt := 0; attempt <= installVerificationRetryCount; attempt++ {
+		_, _, err = tf.Version(ctx, false)
+		if err == nil {
+			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
+				[]attribute.KeyValue{
+					metrics.TerraformVersionAttrKey.String("latest"),
+					metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
+				},
+			)
+			break
+		}
+		if attempt < installVerificationRetryCount {
+			logger.Info(fmt.Sprintf("Failed to verify Terraform installation completion: %s. Retrying after %d seconds", err.Error(), installVerificationRetryDelaySecs))
+			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
+				[]attribute.KeyValue{
+					metrics.TerraformVersionAttrKey.String("latest"),
+					metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
+				},
+			)
+			time.Sleep(time.Duration(installVerificationRetryDelaySecs) * time.Second)
+			continue
+		}
+		return nil, fmt.Errorf("failed to verify Terraform installation completion after %d attempts. Error: %s", installVerificationRetryCount, err.Error())
+	}
+
+	// Configure Terraform logs once Terraform installation is complete
+	configureTerraformLogs(ctx, tf)
+
+	return tf, nil
 }

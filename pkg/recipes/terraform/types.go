@@ -74,8 +74,6 @@ func NewTerraform(ctx context.Context, tfRootDir, execPath string) (*tfexec.Terr
 		return nil, fmt.Errorf("failed to initialize Terraform: %w", err)
 	}
 
-	configureTerraformLogs(ctx, tf)
-
 	return tf, nil
 }
 
