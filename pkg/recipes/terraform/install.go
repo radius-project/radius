@@ -34,9 +34,9 @@ import (
 )
 
 const (
-	installSubDir     = "install"
-	installRetryCount = 5
-	retryDelaySecs    = 3
+	installSubDir                     = "install"
+	installVerificationRetryCount     = 5
+	installVerificationRetryDelaySecs = 3
 )
 
 // Install installs Terraform under /install in the provided Terraform root directory for the resource. It installs
@@ -88,33 +88,32 @@ func Install(ctx context.Context, installer *install.Installer, tfDir string) (*
 	}
 
 	// Verify Terraform installation is complete before proceeding
-	for attempt := 0; attempt <= installRetryCount; attempt++ {
+	for attempt := 0; attempt <= installVerificationRetryCount; attempt++ {
 		_, _, err = tf.Version(ctx, false)
 		if err == nil {
+			metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
+				[]attribute.KeyValue{
+					metrics.TerraformVersionAttrKey.String("latest"),
+					metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
+				},
+			)
 			break
 		}
 		if err != nil {
-			if attempt < installRetryCount {
-				logger.Info(fmt.Sprintf("Failed to verify Terraform installation: %s. Retrying after %d seconds", err.Error(), retryDelaySecs))
+			if attempt < installVerificationRetryCount {
+				logger.Info(fmt.Sprintf("Failed to verify Terraform installation completion: %s. Retrying after %d seconds", err.Error(), installVerificationRetryDelaySecs))
 				metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
 					[]attribute.KeyValue{
 						metrics.TerraformVersionAttrKey.String("latest"),
 						metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
 					},
 				)
-				time.Sleep(time.Duration(retryDelaySecs) * time.Second)
+				time.Sleep(time.Duration(installVerificationRetryDelaySecs) * time.Second)
 				continue
 			}
-			return nil, err
+			return nil, fmt.Errorf("failed to verify Terraform installation completion after %d attempts. Error: %s", installVerificationRetryCount, err.Error())
 		}
 	}
-
-	metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallVerificationDuration(ctx, installStartTime,
-		[]attribute.KeyValue{
-			metrics.TerraformVersionAttrKey.String("latest"),
-			metrics.OperationStateAttrKey.String(metrics.SuccessfulOperationState),
-		},
-	)
 
 	// Configure Terraform logs once Terraform installation is complete
 	configureTerraformLogs(ctx, tf)
