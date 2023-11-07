@@ -99,6 +99,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Database:  to.Ptr(mongo.Properties.Database),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(mongo.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(mongo.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(mongo.Properties.Environment),

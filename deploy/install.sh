@@ -167,7 +167,7 @@ installFile() {
     if [ -f "$RADIUS_CLI_FILE" ]; then
         runAsRoot rm "$RADIUS_CLI_FILE"
     fi
-    chmod o+x $tmp_root_radius_cli
+    chmod a+x $tmp_root_radius_cli
     mkdir -p $RADIUS_INSTALL_DIR
     runAsRoot cp "$tmp_root_radius_cli" "$RADIUS_INSTALL_DIR"
     runAsRoot mv "${RADIUS_INSTALL_DIR}/${RADIUS_CLI_ARTIFACT}" "${RADIUS_INSTALL_DIR}/${RADIUS_CLI_FILENAME}"

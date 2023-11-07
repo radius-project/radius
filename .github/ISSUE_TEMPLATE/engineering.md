@@ -3,7 +3,7 @@ name: Engineering Improvement
 about: Report problems or suggestions to improve the Radius engineering processes and/or pipelines
 title: "<TITLE>"
 assignees: ''
-labels: ["engineering"]
+labels: ["maintenance"]
 ---
 
 ## Engineering Improvement

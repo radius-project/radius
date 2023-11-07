@@ -192,7 +192,7 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 						},
 					},
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+					Status:            resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),
