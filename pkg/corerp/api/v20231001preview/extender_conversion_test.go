@@ -204,7 +204,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 					ResourceProvisioning: to.Ptr(ResourceProvisioningRecipe),
 					ProvisioningState:    to.Ptr(ProvisioningStateAccepted),
 					Recipe:               &Recipe{Name: to.Ptr("test-recipe"), Parameters: nil},
-					Status:               resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+					Status:               resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 				Tags: map[string]*string{
 					"env": to.Ptr("dev"),

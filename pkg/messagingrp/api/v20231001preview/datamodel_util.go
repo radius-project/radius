@@ -98,6 +98,23 @@ func fromResourceProvisioningDataModel(provisioning portableresources.ResourcePr
 	return &converted
 }
 
+func fromRecipeStatus(recipeStatus *rpv1.RecipeStatus) *RecipeStatus {
+	if recipeStatus == nil {
+		return nil
+	}
+
+	status := &RecipeStatus{
+		TemplateKind: to.Ptr(recipeStatus.TemplateKind),
+		TemplatePath: to.Ptr(recipeStatus.TemplatePath),
+	}
+
+	if recipeStatus.TemplateVersion != "" {
+		status.TemplateVersion = to.Ptr(recipeStatus.TemplateVersion)
+	}
+
+	return status
+}
+
 func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
 		CreatedBy:          to.Ptr(s.CreatedBy),
