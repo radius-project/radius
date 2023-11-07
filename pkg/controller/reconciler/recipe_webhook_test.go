@@ -52,7 +52,7 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 	t.Run("test recipe for invalid type", func(t *testing.T) {
 		recipeName := "test-recipe-invalidtype"
 		namespace := types.NamespacedName{Namespace: defaultNamespace, Name: recipeName}
-		recipe := makeTestRecipe(namespace, invalidResourceType)
+		recipe := makeRecipe(namespace, invalidResourceType)
 		expectedError := fmt.Sprintf("Recipe.radapp.io \"%s\" not found", recipeName)
 
 		err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace.Name}})
@@ -77,7 +77,7 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 	t.Run("test recipe for valid type", func(t *testing.T) {
 		recipeName := "test-recipe-validtype"
 		namespace := types.NamespacedName{Namespace: defaultNamespace, Name: recipeName}
-		recipe := makeTestRecipe(namespace, validResourceType)
+		recipe := makeRecipe(namespace, validResourceType)
 
 		err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace.Name}})
 		require.NoError(t, err)
@@ -163,7 +163,7 @@ func Test_Webhook_ValidateFunctions(t *testing.T) {
 			ctx := testcontext.New(t)
 			var err error
 			namespace := types.NamespacedName{Namespace: defaultNamespace, Name: tr.recipeName}
-			recipe := makeTestRecipe(namespace, tr.typeName)
+			recipe := makeRecipe(namespace, tr.typeName)
 
 			if tr.function == "create" {
 				_, err = recipe.ValidateCreate(ctx, recipe)
@@ -181,22 +181,6 @@ func Test_Webhook_ValidateFunctions(t *testing.T) {
 				require.NoError(t, err)
 			}
 		})
-	}
-}
-
-// makeTestRecipe creates a test recipe.
-func makeTestRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha3.Recipe {
-	return &radappiov1alpha3.Recipe{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-			Annotations: map[string]string{
-				"radapp.io/enabled": "true",
-			},
-		},
-		Spec: radappiov1alpha3.RecipeSpec{
-			Type: resourceType,
-		},
 	}
 }
 

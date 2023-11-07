@@ -38,12 +38,14 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "preLaunchTask": "Build Radius (all)",
+            "preLaunchTask": "prelaunch",
             "program": "${workspaceFolder}/cmd/controller/main.go",
             "cwd": "${workspaceFolder}",
             "args": [
                 "--config-file",
                 "${workspaceFolder}/cmd/controller/controller-self-hosted.yaml",
+                "--cert-dir",
+                "${env:HOME}${env:USERPROFILE}/tls/cert"
             ],
             "env": {
                 "RADIUS_ENV": "self-hosted"

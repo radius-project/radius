@@ -109,9 +109,6 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "recipe-webhook-config",
-					Annotations: map[string]string{
-						"radapp.io/enabled": "true",
-					},
 				},
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ValidatingWebhookConfiguration",
