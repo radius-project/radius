@@ -33,7 +33,7 @@ import (
 
 const (
 	radiusReleaseName     = "radius"
-	radiusHelmRepo        = "oci://ghcr.io/radius-project/helm-chart"
+	radiusHelmRepo        = "https://radius.azurecr.io/helm/v1/repo"
 	RadiusSystemNamespace = "radius-system"
 )
 
