@@ -13,7 +13,7 @@ Radius was designed to address these distinct but related challenges that arise 
 - *Team Collaboration*: Radius Applications and Environments enable developers to work with Operations on application definition and delivery.
 - *Infrastructure Recipes*: Swappable infrastructure that complies with organization best practices and IT policy be default.
 - *Application Graph*: Gain insights into the interconnections between services and infrastructure elements within an application.
-- *Cloud Neutrality*: Deploy applications consistently across development, on-premises, and cloud environments.
+- *Cloud Neutrality*: Deploy across development, on-premises and cloud environments with a consistent experience.
 - *Incremental Adoption*: Seamlessly integrate Radius into existing workflows and Infrastructure-as-Code templates.
 
 ## Release Status
