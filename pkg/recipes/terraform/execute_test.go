@@ -17,57 +17,17 @@ limitations under the License.
 package terraform
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateWorkingDir_Created(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-
-	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
-	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
-	require.NoError(t, err)
-	require.Equal(t, expectedWorkingDir, workingDir)
-
-	// Assert that the working directory was created.
-	_, err = os.Stat(workingDir)
-	require.NoError(t, err)
-}
-
-func TestCreateWorkingDir_Error(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-	// Create a read-only directory within the temporary directory.
-	readOnlyDir := filepath.Join(testDir, "read-only-dir")
-	err := os.MkdirAll(readOnlyDir, 0555)
-	require.NoError(t, err)
-
-	// Call createWorkingDir with the read-only directory.
-	_, err = createWorkingDir(testcontext.New(t), readOnlyDir)
-
-	// Assert that createWorkingDir returns an error.
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to create working directory")
-}
-
-func TestInitAndApply_EmptyWorkingDirPath(t *testing.T) {
-	// Create a temporary directory for testing.
-	testDir := t.TempDir()
-	execPath := filepath.Join(testDir, "terraform")
-
-	_, err := initAndApply(testcontext.New(t), "", execPath)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Terraform cannot be initialised with empty workdir")
-}
-
-func TestGeneratedConfig(t *testing.T) {
+func TestGenerateConfig(t *testing.T) {
 	configTests := []struct {
 		name       string
 		workingDir string
@@ -75,34 +35,13 @@ func TestGeneratedConfig(t *testing.T) {
 		err        string
 	}{
 		{
-			name: "empty recipe name",
+			name: "empty recipe name error",
 			opts: Options{
 				EnvRecipe: &recipes.EnvironmentDefinition{
 					TemplatePath: "test/module/source",
 				},
 			},
 			err: ErrRecipeNameEmpty.Error(),
-		}, {
-			name:       "invalid working dir",
-			workingDir: "/invalid-dir",
-			opts: Options{
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					Name:         "test-recipe",
-					TemplatePath: "test/module/source",
-				},
-				ResourceRecipe: &recipes.ResourceMetadata{},
-			},
-			err: "error creating file: open /invalid-dir/main.tf.json",
-		}, {
-			name: "invalid exec path",
-			opts: Options{
-				EnvRecipe: &recipes.EnvironmentDefinition{
-					Name:         "test-recipe",
-					TemplatePath: "test/module/source",
-				},
-				ResourceRecipe: &recipes.ResourceMetadata{},
-			},
-			err: "/terraform: no such file or directory",
 		},
 	}
 
@@ -112,9 +51,11 @@ func TestGeneratedConfig(t *testing.T) {
 			if tc.workingDir == "" {
 				tc.workingDir = t.TempDir()
 			}
-			execPath := filepath.Join(tc.workingDir, "terraform")
+			tf, err := tfexec.NewTerraform(tc.workingDir, filepath.Join(tc.workingDir, "terraform"))
+			require.NoError(t, err)
+
 			e := executor{}
-			_, err := e.generateConfig(ctx, tc.workingDir, execPath, tc.opts)
+			_, err = e.generateConfig(ctx, tf, tc.opts)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})
@@ -125,8 +66,6 @@ func Test_GetTerraformConfig(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
 
-	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
-	require.NoError(t, err)
 	options := Options{
 		EnvRecipe: &recipes.EnvironmentDefinition{
 			Name:         "test-recipe",
@@ -139,7 +78,7 @@ func Test_GetTerraformConfig(t *testing.T) {
 		Module: map[string]config.TFModuleConfig{
 			"test-recipe": {"source": "test/module/source"}},
 	}
-	tfConfig, err := getTerraformConfig(testcontext.New(t), workingDir, options)
+	tfConfig, err := getTerraformConfig(testcontext.New(t), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
 }
@@ -148,8 +87,6 @@ func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()
 
-	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
-	require.NoError(t, err)
 	options := Options{
 		EnvRecipe: &recipes.EnvironmentDefinition{
 			Name:         "",
@@ -158,14 +95,13 @@ func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err = getTerraformConfig(testcontext.New(t), workingDir, options)
+	_, err := getTerraformConfig(testcontext.New(t), testDir, options)
 	require.Error(t, err)
 	require.Equal(t, err, ErrRecipeNameEmpty)
 }
 
 func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
-	// Create a temporary directory for testing.
-	workingDir := "invalid directory"
+	workingDir := "invalid-directory"
 	options := Options{
 		EnvRecipe: &recipes.EnvironmentDefinition{
 			Name:         "test-recipe",
@@ -176,5 +112,5 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 
 	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "error creating file: open invalid directory/main.tf.json: no such file or directory")
+	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
 }

@@ -21,9 +21,14 @@ import (
 	"sort"
 	"strings"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
 const (
@@ -34,6 +39,77 @@ const (
 	defaultEnvironmentName                  = "default"
 	defaultEnvironmentNamespace             = "default"
 )
+
+func (r *Runner) CreateEnvironment(ctx context.Context) error {
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	err = client.CreateUCPGroup(ctx, "radius", "local", r.Options.Environment.Name, ucp.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create a resource group.")
+	}
+
+	providerList := []any{}
+	if r.Options.CloudProviders.Azure != nil {
+		providerList = append(providerList, r.Options.CloudProviders.Azure)
+	}
+	if r.Options.CloudProviders.AWS != nil {
+		providerList = append(providerList, r.Options.CloudProviders.AWS)
+	}
+
+	providers, err := cmd.CreateEnvProviders(providerList)
+	if err != nil {
+		return err
+	}
+
+	var recipes map[string]map[string]corerp.RecipePropertiesClassification
+	if r.Options.Recipes.DevRecipes {
+		recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	envProperties := corerp.EnvironmentProperties{
+		Compute: &corerp.KubernetesCompute{
+			Namespace: to.Ptr(r.Options.Environment.Namespace),
+		},
+		Providers: &providers,
+		Recipes:   recipes,
+	}
+
+	err = client.CreateEnvironment(ctx, r.Options.Environment.Name, v1.LocationGlobal, &envProperties)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create environment.")
+	}
+
+	credentialClient, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	if r.Options.CloudProviders.Azure != nil {
+		credential := r.getAzureCredential()
+		err := credentialClient.PutAzure(ctx, credential)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure Azure credentials.")
+		}
+	}
+
+	if r.Options.CloudProviders.AWS != nil {
+		credential := r.getAWSCredential()
+		err := credentialClient.PutAWS(ctx, credential)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to configure AWS credentials.")
+		}
+	}
+
+	return nil
+}
 
 func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspaces.Workspace, options *initOptions) error {
 	options.Environment.Create = true

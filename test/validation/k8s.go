@@ -491,13 +491,13 @@ func (pm PodMonitor) ValidateRunning(ctx context.Context, t *testing.T) {
 					return
 				}
 				if attempt >= MaxRetryAttempts {
-					assert.Failf(t, "pod %v failed readiness checks", pod.Name)
+					assert.Failf(t, "pod failed readiness checks.", "Pod Name: %v", pod.Name)
 				} else {
 					t.Logf("Readiness check failed. Retrying - attempt %d", attempt)
 					attempt++
 				}
 			} else if pod.Status.Phase == corev1.PodFailed {
-				assert.Failf(t, "pod %v entered a failing state", pod.Name)
+				assert.Failf(t, "pod entered a failing state", "Pod Name: %v", pod.Name)
 				return
 			}
 

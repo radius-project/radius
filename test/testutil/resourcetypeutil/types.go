@@ -75,3 +75,35 @@ func MustPopulateResourceStatus[T any](obj T) T {
 
 	return obj
 }
+
+// MustPopulateResourceStatusWithRecipe populates a ResourceStatus object with an output resource commonly used in our
+// test fixtures for recipes.
+//
+// Example usage (in a converter test):
+//
+//	..ResourceStatus: resourcetypeutil.MustPopulateResourceStatusWithRecipe(&myapiversion.ResourceStatus{})
+func MustPopulateResourceStatusWithRecipe[T any](obj T) T {
+	data := map[string]any{
+		"outputResources": []map[string]any{
+			{
+				"id": "/planes/test/local/providers/Test.Namespace/testResources/test-resource",
+			},
+		},
+		"recipe": map[string]string{
+			"templateKind": "bicep",
+			"templatePath": "br:sampleregistry.azureacr.io/radius/recipes/abc",
+		},
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(b, obj)
+	if err != nil {
+		panic(err)
+	}
+
+	return obj
+}

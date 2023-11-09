@@ -101,6 +101,7 @@ func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 		Username:             to.Ptr(redis.Properties.Username),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(redis.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(redis.Properties.Status.Recipe),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(redis.Properties.Environment),

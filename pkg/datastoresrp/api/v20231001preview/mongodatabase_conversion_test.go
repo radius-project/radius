@@ -296,6 +296,11 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 					Username:             to.Ptr(""),
 					Status: &ResourceStatus{
 						OutputResources: nil,
+						Recipe: &RecipeStatus{
+							TemplateKind:    to.Ptr("bicep"),
+							TemplatePath:    to.Ptr("br:sampleregistry.azureacr.io/radius/recipes/abc"),
+							TemplateVersion: nil,
+						},
 					},
 				},
 				Tags: map[string]*string{

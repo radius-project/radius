@@ -19,16 +19,22 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 
-	"github.com/go-logr/logr"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-//go:generate mockgen -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
+const (
+	executionSubDir                = "deploy"
+	workingDirFileMode fs.FileMode = 0700
+)
 
+//go:generate mockgen -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
 	Deploy(ctx context.Context, options Options) (*tfjson.State, error)
@@ -56,44 +62,30 @@ type Options struct {
 	ResourceRecipe *recipes.ResourceMetadata
 }
 
-// NewTerraform creates a new Terraform executor with Terraform logs enabled.
-func NewTerraform(ctx context.Context, workingDir, execPath string) (*tfexec.Terraform, error) {
+// NewTerraform creates a working directory for Terraform execution and new Terraform executor with Terraform logs enabled.
+func NewTerraform(ctx context.Context, tfRootDir, execPath string) (*tfexec.Terraform, error) {
+	workingDir, err := createWorkingDir(ctx, tfRootDir)
+	if err != nil {
+		return nil, err
+	}
+
 	tf, err := tfexec.NewTerraform(workingDir, execPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Terraform: %w", err)
 	}
 
-	configureTerraformLogs(ctx, tf)
-
 	return tf, nil
 }
 
-// tfLogWrapper is a wrapper around the Terraform logger to stream the logs to the Radius logger.
-type tfLogWrapper struct {
-	logger   logr.Logger
-	isStdErr bool
-}
-
-// Write implements the io.Writer interface to stream the Terraform logs to the Radius logger.
-func (w *tfLogWrapper) Write(p []byte) (n int, err error) {
-	if w.isStdErr {
-		w.logger.Error(nil, string(p))
-	} else {
-		w.logger.Info(string(p))
-	}
-	return len(p), nil
-}
-
-// configureTerraformLogs configures the Terraform logs to be streamed to the Radius logs.
-func configureTerraformLogs(ctx context.Context, tf *tfexec.Terraform) {
+// createWorkingDir creates a working directory for Terraform execution.
+func createWorkingDir(ctx context.Context, tfDir string) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	err := tf.SetLog("TRACE")
-	if err != nil {
-		logger.Error(err, "Failed to set log level for Terraform")
-		return
+	workingDir := filepath.Join(tfDir, executionSubDir)
+	logger.Info(fmt.Sprintf("Creating Terraform working directory: %q", workingDir))
+	if err := os.MkdirAll(workingDir, workingDirFileMode); err != nil {
+		return "", fmt.Errorf("failed to create working directory for terraform execution: %w", err)
 	}
 
-	tf.SetStdout(&tfLogWrapper{logger: logger})
-	tf.SetStderr(&tfLogWrapper{logger: logger, isStdErr: true})
+	return workingDir, nil
 }

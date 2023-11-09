@@ -155,7 +155,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 					Environment:       to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0"),
 					ComponentName:     to.Ptr("stateStore0"),
 					ProvisioningState: to.Ptr(ProvisioningStateAccepted),
-					Status:            resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{}),
+					Status:            resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{}),
 				},
 			}
 
@@ -171,11 +171,13 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 						ID: to.Ptr("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"),
 					},
 				}
+				expected.Properties.Status = resourcetypeutil.MustPopulateResourceStatus(&ResourceStatus{})
 			} else if payload == "statestore_recipe_resourcedatamodel.json" {
 				expected.Properties.ResourceProvisioning = to.Ptr(ResourceProvisioningRecipe)
 				expected.Properties.Recipe = &Recipe{
 					Name: to.Ptr("recipe-test"),
 				}
+				expected.Properties.Status = resourcetypeutil.MustPopulateResourceStatusWithRecipe(&ResourceStatus{})
 			}
 
 			require.Equal(t, expected, versionedResource)
