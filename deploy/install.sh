@@ -76,9 +76,9 @@ runAsRoot() {
 }
 
 checkHttpRequestCLI() {
-    if type "curl" > /dev/null; then
+    if type "curl" &> /dev/null; then
         RADIUS_HTTP_REQUEST_CLI=curl
-    elif type "wget" > /dev/null; then
+    elif type "wget" &> /dev/null; then
         RADIUS_HTTP_REQUEST_CLI=wget
     else
         echo "Either curl or wget is required"
