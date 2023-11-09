@@ -73,6 +73,7 @@ jobs:
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
+      FUNCTIONAL_TEST_APP_ID: 43818055
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -83,6 +84,12 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
+      - name: Login as the github app
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -482,6 +489,15 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
+      - name: Create check for functional tests using github app token
+        uses: LouisBrunner/checks-action@v1.6.1
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Tests'
+          status: in_progress
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -514,6 +530,28 @@ jobs:
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: success()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Tests'
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: completed
+          conclusion: ${{ job.status }}
+          output: |
+            {"summary":"All tests passed, great job."}
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: failure()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Tests'
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: failed
+          conclusion: ${{ job.status }}
+          output: |
+            {"summary":"Some tests failed."}
       - uses: azure/setup-kubectl@v3
         if: always()
         with:
