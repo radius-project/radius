@@ -128,7 +128,7 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 
 	_, err = pull.Run(chartRef)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
 	}
 
 	chartPath, err := locateChartFile(dir)
