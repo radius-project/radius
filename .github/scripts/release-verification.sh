@@ -26,7 +26,7 @@ if [[ -z "${RELEASE_VERSION_NUMBER}" ]]; then
 fi
 
 OS=linux
-ARCH=arm64
+ARCH=amd64
 GITHUB_ORG=radius-project
 GITHUB_REPO=radius
 RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
