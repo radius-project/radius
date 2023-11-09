@@ -119,8 +119,60 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 	} else {
 		workspace.Name = ws.Name
 	}
+
 	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
 	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
 	return &options, workspace, nil
+}
 
+// UpdateClusterOptions updates the cluster options with the provided values.
+func (r *Runner) UpdateClusterOptions(install bool, ns, ctx, version string) {
+	if r.Options == nil {
+		r.Options = &initOptions{}
+	}
+
+	r.Options.Cluster.Install = install
+	r.Options.Cluster.Namespace = ns
+	r.Options.Cluster.Context = ctx
+	r.Options.Cluster.Version = version
+}
+
+// UpdateEnvironmentOptions updates the environment options with the provided values.
+func (r *Runner) UpdateEnvironmentOptions(create bool, name, ns string) {
+	if r.Options == nil {
+		r.Options = &initOptions{}
+	}
+
+	r.Options.Environment.Create = create
+	r.Options.Environment.Name = name
+	r.Options.Environment.Namespace = ns
+}
+
+// UpdateCloudProviderOptions updates the cloud provider options with the provided values.
+func (r *Runner) UpdateCloudProviderOptions(azure *azure.Provider, aws *cli_aws.Provider) {
+	if r.Options == nil {
+		r.Options = &initOptions{}
+	}
+
+	r.Options.CloudProviders.Azure = azure
+	r.Options.CloudProviders.AWS = aws
+}
+
+// UpdateRecipePackOptions updates the recipe pack options with the provided values.
+func (r *Runner) UpdateRecipePackOptions(devRecipes bool) {
+	if r.Options == nil {
+		r.Options = &initOptions{}
+	}
+
+	r.Options.Recipes.DevRecipes = devRecipes
+}
+
+// UpdateApplicationOptions updates the application options with the provided values.
+func (r *Runner) UpdateApplicationOptions(scaffold bool, name string) {
+	if r.Options == nil {
+		r.Options = &initOptions{}
+	}
+
+	r.Options.Application.Scaffold = scaffold
+	r.Options.Application.Name = name
 }

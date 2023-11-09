@@ -116,11 +116,19 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 		// repo URL + the releaseName as the chartRef.
 		// pull.Run("oci://ghcr.io/radius-project/helm-chart/radius")
 		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
+
+		// Since we are using an OCI registry, we need to set the registry client
+		registryClient, err := registry.NewClient()
+		if err != nil {
+			return nil, err
+		}
+
+		pull.SetRegistryClient(registryClient)
 	}
 
 	_, err = pull.Run(chartRef)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
 	}
 
 	chartPath, err := locateChartFile(dir)
