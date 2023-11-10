@@ -214,76 +214,76 @@ jobs:
           append: true
           message: |
             :hourglass: Building Radius and pushing container images for functional tests...
-      - name: Build and Push container images
-        run: |
-          make build && make docker-build && make docker-push
-        env:
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
-      - name: Upload CLI binary
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
-          path: |
-            ./dist/linux_amd64/release/rad
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: success() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :white_check_mark: Container images build succeeded
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: Container images build failed
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :hourglass: Publishing Bicep Recipes for functional tests...
-      - name: Publish Bicep Test Recipes
-        run: |
-          mkdir ./bin
-          cp ./dist/linux_amd64/release/rad ./bin/rad
-          chmod +x ./bin/rad
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep download
-          rad version
-          make publish-test-bicep-recipes
-        env:
-          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
-          BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: success() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :white_check_mark: Recipe publishing succeeded
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: Test recipe publishing failed
+      # - name: Build and Push container images
+      #   run: |
+      #     make build && make docker-build && make docker-push
+      #   env:
+      #     DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+      #     DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+      # - name: Upload CLI binary
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
+      #     path: |
+      #       ./dist/linux_amd64/release/rad
+      # - uses: marocchino/sticky-pull-request-comment@v2
+      #   if: success() && env.PR_NUMBER != ''
+      #   continue-on-error: true
+      #   with:
+      #     header: teststatus-${{ github.run_id }}
+      #     number: ${{ env.PR_NUMBER }}
+      #     append: true
+      #     message: |
+      #       :white_check_mark: Container images build succeeded
+      # - uses: marocchino/sticky-pull-request-comment@v2
+      #   if: failure() && env.PR_NUMBER != ''
+      #   continue-on-error: true
+      #   with:
+      #     header: teststatus-${{ github.run_id }}
+      #     number: ${{ env.PR_NUMBER }}
+      #     append: true
+      #     message: |
+      #       :x: Container images build failed
+      # - uses: marocchino/sticky-pull-request-comment@v2
+      #   if: env.PR_NUMBER != ''
+      #   continue-on-error: true
+      #   with:
+      #     header: teststatus-${{ github.run_id }}
+      #     number: ${{ env.PR_NUMBER }}
+      #     append: true
+      #     message: |
+      #       :hourglass: Publishing Bicep Recipes for functional tests...
+      # - name: Publish Bicep Test Recipes
+      #   run: |
+      #     mkdir ./bin
+      #     cp ./dist/linux_amd64/release/rad ./bin/rad
+      #     chmod +x ./bin/rad
+      #     export PATH=$GITHUB_WORKSPACE/bin:$PATH
+      #     which rad || { echo "cannot find rad"; exit 1; }
+      #     rad bicep download
+      #     rad version
+      #     make publish-test-bicep-recipes
+      #   env:
+      #     BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+      #     BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
+      # - uses: marocchino/sticky-pull-request-comment@v2
+      #   if: success() && env.PR_NUMBER != ''
+      #   continue-on-error: true
+      #   with:
+      #     header: teststatus-${{ github.run_id }}
+      #     number: ${{ env.PR_NUMBER }}
+      #     append: true
+      #     message: |
+      #       :white_check_mark: Recipe publishing succeeded
+      # - uses: marocchino/sticky-pull-request-comment@v2
+      #   if: failure() && env.PR_NUMBER != ''
+      #   continue-on-error: true
+      #   with:
+      #     header: teststatus-${{ github.run_id }}
+      #     number: ${{ env.PR_NUMBER }}
+      #     append: true
+      #     message: |
+      #       :x: Test recipe publishing failed
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
