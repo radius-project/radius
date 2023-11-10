@@ -36,19 +36,12 @@ resource demoGateway 'Applications.Core/gateways@2023-10-01-preview' = {
     routes: [
       {
         path: '/'
-        destination: demoRoute.id
+        destination: 'http://demo-container:3000'
       }
     ]
     tls: {
       certificateFrom: demoSecretStore.id
       minimumProtocolVersion: '1.2'
     }
-  }
-}
-
-resource demoRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'corerp-resources-gateway-failure-route'
-  properties: {
-    application: demoApplication.id
   }
 }

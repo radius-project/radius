@@ -55,11 +55,6 @@ func Test_SQLDatabase_Manual(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "sql-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "sql-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
@@ -71,7 +66,6 @@ func Test_SQLDatabase_Manual(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "sql-app-ctnr"),
 						validation.NewK8sPodForResource(name, "sql-ctnr"),
-						validation.NewK8sServiceForResource(name, "sql-rte"),
 					},
 				},
 			},

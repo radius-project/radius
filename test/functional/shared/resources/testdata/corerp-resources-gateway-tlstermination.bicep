@@ -32,7 +32,7 @@ resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
     routes: [
       {
         path: '/'
-        destination: frontendRoute.id
+        destination: 'http://tls-gtwy-front-ctnr:443'
       }
     ]
   }
@@ -54,14 +54,6 @@ resource certificate 'Applications.Core/secretStores@2023-10-01-preview' = {
   }
 }
 
-resource frontendRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'tls-gtwy-front-rte'
-  properties: {
-    application: app.id
-    port: 443
-  }
-}
-
 resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
   name: 'tls-gtwy-front-ctnr'
   properties: {
@@ -71,7 +63,7 @@ resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: port
-          provides: frontendRoute.id
+          port: 443
         }
       }
       readinessProbe: {
