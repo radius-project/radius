@@ -25,6 +25,9 @@ on:
   repository_dispatch:
     types: [functional-tests, de-functional-test]
 
+permissions:
+  pull-requests: write
+
 env:
   # Go version
   GOVER: '^1.21'
@@ -556,7 +559,7 @@ jobs:
           name: 'Functional Tests'
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
-          status: failed
+          status: completed
           conclusion: ${{ job.status }}
           output: |
             {"summary":"Some tests failed."}
