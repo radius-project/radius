@@ -78,6 +78,7 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
 			OutputResources: toOutputResourcesDataModel(extender.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(extender.Properties.Status.Recipe),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.Ptr(extender.Properties.Environment),
@@ -87,6 +88,7 @@ func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 		ResourceProvisioning: fromResourceProvisioningDataModel(extender.Properties.ResourceProvisioning),
 		// Secrets are omitted.
 	}
+
 	return nil
 }
 
@@ -114,6 +116,23 @@ func fromResourceProvisioningDataModel(provisioning portableresources.ResourcePr
 	}
 
 	return &converted
+}
+
+func fromRecipeStatus(recipeStatus *rpv1.RecipeStatus) *RecipeStatus {
+	if recipeStatus == nil {
+		return nil
+	}
+
+	status := &RecipeStatus{
+		TemplateKind: to.Ptr(recipeStatus.TemplateKind),
+		TemplatePath: to.Ptr(recipeStatus.TemplatePath),
+	}
+
+	if recipeStatus.TemplateVersion != "" {
+		status.TemplateVersion = to.Ptr(recipeStatus.TemplateVersion)
+	}
+
+	return status
 }
 
 func fromRecipeDataModel(r portableresources.ResourceRecipe) *Recipe {

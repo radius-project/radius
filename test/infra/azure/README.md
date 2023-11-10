@@ -67,7 +67,7 @@ This directory includes the Bicep templates to deploy the following resources on
     az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaEnabled=[Grafana Dashboard Enabled] grafanaAdminObjectId='[Grafana Admin Object Id]'
     ```
 
-    - **[Grafana Dashboard Enabled]**: Set `true` if you want to see metrics and its dashboard with Azure managed Prometheus and Grafana dashboard. Otherwise, `false` is recommendeded to save the cost.
+    - **[Grafana Dashboard Enabled]**: Set `true` if you want to see metrics and its dashboard with Azure managed Prometheus and Grafana dashboard. Otherwise, `false` is recommended to save the cost.
     - **[Grafana Admin Object Id]**: Set the object ID of the Grafana Admin user or group. To find the object id, search for the admin user or group name on [AAD Portal Overview search box](https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview) and get the object id or run `az ad signed-in-user show` to get your own user object id.
 
 ## Monitor Radius

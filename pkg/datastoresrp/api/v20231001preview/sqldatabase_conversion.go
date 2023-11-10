@@ -99,6 +99,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 		Port:                 to.Ptr(sql.Properties.Port),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(sql.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(sql.Properties.Status.Recipe),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.Ptr(sql.Properties.Environment),
@@ -108,6 +109,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	if sql.Properties.ResourceProvisioning == portableresources.ResourceProvisioningRecipe {
 		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
 	}
+
 	return nil
 }
 

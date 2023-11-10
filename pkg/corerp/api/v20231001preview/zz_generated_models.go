@@ -43,7 +43,10 @@ type ApplicationGraphResource struct {
 	Name *string
 
 	// REQUIRED; The resources that comprise this resource.
-	Resources []*ApplicationGraphOutputResource
+	OutputResources []*ApplicationGraphOutputResource
+
+	// REQUIRED; provisioningState of this resource.
+	ProvisioningState *string
 
 	// REQUIRED; The resource type.
 	Type *string
@@ -355,6 +358,9 @@ type ContainerProperties struct {
 	// A collection of references to resources associated with the container
 	Resources []*ResourceReference
 
+	// The restart policy for the underlying container
+	RestartPolicy *RestartPolicy
+
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
 
@@ -432,6 +438,9 @@ type ContainerResourceUpdateProperties struct {
 
 	// A collection of references to resources associated with the container
 	Resources []*ResourceReference
+
+	// The restart policy for the underlying container
+	RestartPolicy *RestartPolicy
 
 	// Specifies Runtime-specific functionality
 	Runtimes *RuntimesProperties
@@ -1415,6 +1424,18 @@ type RecipePropertiesUpdate struct {
 // GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type RecipePropertiesUpdate.
 func (r *RecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate { return r }
 
+// RecipeStatus - Recipe status at deployment time for a resource.
+type RecipeStatus struct {
+	// REQUIRED; TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
+	TemplateKind *string
+
+	// REQUIRED; TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
+	TemplatePath *string
+
+	// TemplateVersion is the version number of the template.
+	TemplateVersion *string
+}
+
 // RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type RecipeUpdate struct {
 	// The name of the recipe within the environment to use
@@ -1452,6 +1473,9 @@ type ResourceStatus struct {
 
 	// Properties of an output resource
 	OutputResources []*OutputResource
+
+	// READ-ONLY; The recipe data at the time of deployment
+	Recipe *RecipeStatus
 }
 
 // RuntimesProperties - The properties for runtime configuration

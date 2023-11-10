@@ -69,7 +69,7 @@ func (pp ParameterParser) ParseFileContents(input map[string]any) (clients.Deplo
 func (pp ParameterParser) Parse(inputs ...string) (clients.DeploymentParameters, error) {
 	output := clients.DeploymentParameters{}
 	for _, input := range inputs {
-		// Parameters get merged with the later ones taking precendence. ParseSingleParameter handles
+		// Parameters get merged with the later ones taking precedence. ParseSingleParameter handles
 		// this logic.
 		err := pp.parseSingle(input, output)
 		if err != nil {

@@ -18,7 +18,6 @@ package reconciler
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -503,8 +502,7 @@ func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1a
 	}
 
 	for k, v := range values {
-		encoded := base64.RawStdEncoding.EncodeToString([]byte(v))
-		secret.Data[k] = []byte(encoded)
+		secret.Data[k] = []byte(v)
 	}
 
 	secrets, err := r.Radius.Resources(recipe.Status.Scope, recipe.Spec.Type).ListSecrets(ctx, recipe.Name)
@@ -514,8 +512,7 @@ func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1a
 		return fmt.Errorf("failed to list secrets: %w", err)
 	} else {
 		for k, v := range secrets.Value {
-			encoded := base64.RawStdEncoding.EncodeToString([]byte(*v))
-			secret.Data[k] = []byte(encoded)
+			secret.Data[k] = []byte(*v)
 		}
 	}
 

@@ -35,14 +35,15 @@ import (
 	"github.com/radius-project/radius/pkg/server"
 	"github.com/radius-project/radius/pkg/trace"
 
-	pr_backend "github.com/radius-project/radius/pkg/portableresources/backend"
-	pr_frontend "github.com/radius-project/radius/pkg/portableresources/frontend"
 	"github.com/radius-project/radius/pkg/ucp/data"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
+	daprrp_setup "github.com/radius-project/radius/pkg/daprrp/setup"
+	dsrp_setup "github.com/radius-project/radius/pkg/datastoresrp/setup"
+	msgrp_setup "github.com/radius-project/radius/pkg/messagingrp/setup"
 )
 
 const serviceName = "radius"
@@ -120,12 +121,6 @@ func main() {
 		hostingSvc,
 		server.NewAPIService(options, builders),
 		server.NewAsyncWorker(options, builders),
-
-		// Configure Portable Resources to run it with Applications.Core RP.
-		//
-		// This is temporary until we migrate these resources to use the new registration model.
-		pr_frontend.NewService(prOptions),
-		pr_backend.NewService(prOptions),
 	)
 
 	tracerOpts := options.Config.TracerProvider
@@ -157,6 +152,9 @@ func builders(options hostoptions.HostOptions) ([]builder.Builder, error) {
 
 	return []builder.Builder{
 		corerp_setup.SetupNamespace(config).GenerateBuilder(),
+		daprrp_setup.SetupNamespace(config).GenerateBuilder(),
+		msgrp_setup.SetupNamespace(config).GenerateBuilder(),
+		dsrp_setup.SetupNamespace(config).GenerateBuilder(),
 		// Add resource provider builders...
 	}, nil
 }

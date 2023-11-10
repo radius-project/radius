@@ -55,8 +55,8 @@ docker-push-$(1):
 endef
 
 define generateDockerMultiArches
-.PHONY: docker-multi-arch-push-$(1)
-docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build-$(1)-linux-arm
+.PHONY: docker-multi-arch-build-$(1)
+docker-multi-arch-build-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build-$(1)-linux-arm
 	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
@@ -67,7 +67,24 @@ docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build
 		--label org.opencontainers.image.description="$(1)" \
 		--label org.opencontainers.image.version="$(REL_VERSION)" \
 		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
-		--push $(2)
+		$(2)
+
+.PHONY: docker-multi-arch-push-$(1)
+docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build-$(1)-linux-arm
+	@echo "$(ARROW) Building and pushing Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
+	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
+
+	# Building and pushing in one step is more efficient with buildx, so we duplicate the command
+	# to build and add --push.
+	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
+		--platform linux/amd64,linux/arm64,linux/arm \
+		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
+		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description="$(1)" \
+		--label org.opencontainers.image.version="$(REL_VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		--push \
+		$(2)
 endef
 
 # configure-buildx is to initialize qemu and buildx environment.
@@ -100,15 +117,18 @@ DOCKER_BUILD_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-build-$(IMAGE))
 # list of 'outputs' to push all images
 DOCKER_PUSH_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-push-$(IMAGE))
 
+# list of 'outputs' to build all multi arch images
+DOCKER_BUILD_MULTI_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-multi-arch-build-$(IMAGE))
+
 # list of 'outputs' to push all multi arch images
 DOCKER_PUSH_MULTI_TARGETS:=$(foreach IMAGE,$(DOCKER_IMAGES),docker-multi-arch-push-$(IMAGE))
 
 # targets to build test images
 .PHONY: docker-test-image-build
-docker-test-image-build: docker-build-magpiego docker-build-testrp ## Builds all Docker images.
+docker-test-image-build: docker-build-magpiego docker-build-testrp ## Builds all test Docker images.
 
 .PHONY: docker-test-image-push
-docker-test-image-push: docker-push-magpiego docker-push-testrp ## Builds all Docker images.
+docker-test-image-push: docker-push-magpiego docker-push-testrp ## Pushes all test Docker images.
 
 # targets to build development images
 .PHONY: docker-build
@@ -119,5 +139,8 @@ docker-push: $(DOCKER_PUSH_TARGETS) docker-test-image-push ## Pushes all Docker 
 
 # targets to build and push multi arch images. If you run this target in your machine,
 # ensure you have qemu and buildx installed by running make configure-buildx.
+.PHONY: docker-multi-arch-build
+docker-multi-arch-build: $(DOCKER_BUILD_MULTI_TARGETS) ## Builds all non-test docker images for multiple architectures.
+
 .PHONY: docker-multi-arch-push
-docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images after building.
+docker-multi-arch-push: $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all non-test docker images for multiple architectures after building.

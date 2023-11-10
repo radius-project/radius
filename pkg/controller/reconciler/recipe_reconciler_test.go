@@ -17,7 +17,6 @@ limitations under the License.
 package reconciler
 
 import (
-	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
@@ -198,7 +197,7 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	// This test tests our ability to recover from failed operations inside Radius.
 	//
 	// We use the mock client to simulate the failure of update and delete operations
-	// and verify that the controller will (eventally) retry these operations.
+	// and verify that the controller will (eventually) retry these operations.
 
 	ctx := testcontext.New(t)
 	radius, client := SetupRecipeTest(t)
@@ -303,8 +302,8 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedData := map[string][]byte{
-		"a-value":  []byte(base64.RawStdEncoding.EncodeToString([]byte("a"))),
-		"b-secret": []byte(base64.RawStdEncoding.EncodeToString([]byte("b"))),
+		"a-value":  []byte("a"),
+		"b-secret": []byte("b"),
 	}
 
 	require.Equal(t, expectedData, secret.Data)

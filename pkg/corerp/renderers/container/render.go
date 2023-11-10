@@ -642,6 +642,11 @@ func (r Renderer) makeDeployment(
 	// want to leak into Radius containers.
 	podSpec.EnableServiceLinks = to.Ptr(false)
 
+	// If the user has specified a restart policy, use it. Else, it will use the Kubernetes default.
+	if properties.RestartPolicy != "" {
+		podSpec.RestartPolicy = corev1.RestartPolicy(properties.RestartPolicy)
+	}
+
 	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
 	// when the secret changes. Normally referencing an environment variable from a secret will **NOT** cause
 	// a new revision when the secret changes.
@@ -650,7 +655,7 @@ func (r Renderer) makeDeployment(
 	//
 	// The solution to this is to embed the hash of the secret as an annotation in the deployment. This way when the
 	// secret changes we also change the content of the deployment and thus trigger a new revision. This is a very
-	// common solution to this problem, and not a bizzare workaround that we invented.
+	// common solution to this problem, and not a bizarre workaround that we invented.
 	if len(secretData) > 0 {
 		hash := kubernetes.HashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash

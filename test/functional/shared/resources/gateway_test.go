@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 	"testing"
 	"time"
@@ -35,11 +36,8 @@ import (
 )
 
 const (
-	retries         = 3
 	httpRemotePort  = 8080
 	httpsRemotePort = 8443
-	retryTimeout    = 1 * time.Minute
-	retryBackoff    = 1 * time.Second
 )
 
 // GatewayTestConfig is a struct that contains the configuration for a Gateway test
@@ -441,7 +439,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at shared.RPT
 		t.Logf("Portforward session active at %s", baseURL)
 
 		for _, test := range tests {
-			if err := testGatewayAvailability(hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps); err != nil {
+			if err := testGatewayAvailability(t, hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps); err != nil {
 				close(stopChan)
 				return err
 			}
@@ -453,7 +451,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at shared.RPT
 	}
 }
 
-func testGatewayAvailability(hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
+func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
 	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
 	if err != nil {
@@ -463,17 +461,45 @@ func testGatewayAvailability(hostname, baseURL, path string, expectedStatusCode 
 	req.Host = hostname
 
 	client := newTestHTTPClient(isHttps, hostname)
-	res, err := client.Do(req)
-	if err != nil {
-		return err
+
+	retries := 2
+	retryBackoff := 5 * time.Second
+	for i := 1; i <= retries; i++ {
+		res, err := client.Do(req)
+		if err == nil && res.StatusCode == expectedStatusCode {
+			// Got expected status code, return
+			return nil
+		}
+
+		// If we got an error, or the status code was not what we expected, log the error and retry
+		// Logging the request and response will help with debugging the issue
+
+		t.Logf("failed to make request to %s with error: %s", urlPath, err)
+		requestDump, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			t.Logf("failed to dump request with error: %s", err)
+		}
+		t.Logf("request dump: %s", string(requestDump))
+
+		if res == nil {
+			t.Logf("response is nil")
+		}
+
+		if res != nil && res.StatusCode != expectedStatusCode {
+			t.Logf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
+			responseDump, err := httputil.DumpResponse(res, true)
+			if err != nil {
+				t.Logf("failed to dump response with error: %s", err)
+			}
+			t.Logf("response dump: %s", string(responseDump))
+		}
+
+		// Wait for retryBackoff before trying again
+		time.Sleep(retryBackoff)
+		continue
 	}
 
-	if res.StatusCode != expectedStatusCode {
-		return fmt.Errorf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
-	}
-
-	// Encountered the correct status code
-	return nil
+	return fmt.Errorf("failed to make request to %s after %d retries", urlPath, retries)
 }
 
 func newTestHTTPClient(isHttps bool, hostname string) *http.Client {

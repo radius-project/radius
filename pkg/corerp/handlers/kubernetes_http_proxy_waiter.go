@@ -91,13 +91,13 @@ func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.O
 		proxy, err := httpProxyInformer.Lister().Get(obj.GetName())
 
 		if err != nil {
-			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
+			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occurred while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
 		}
 
 		p := contourv1.HTTPProxy{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(proxy.(*unstructured.Unstructured).Object, &p)
 		if err != nil {
-			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
+			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occurred while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
 		}
 
 		status := contourv1.DetailedCondition{}

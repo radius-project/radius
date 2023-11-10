@@ -19,6 +19,7 @@ package recipes
 import (
 	"testing"
 
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,6 +27,7 @@ func TestRecipeOutput_PrepareRecipeResponse(t *testing.T) {
 	tests := []struct {
 		desc        string
 		result      map[string]any
+		recipe      rpv1.RecipeStatus
 		expectedErr bool
 	}{
 		{

@@ -105,7 +105,7 @@ const (
 	// OperationProxy is used for controllers that proxy the underlying request without classifying the type of operation.
 	OperationProxy OperationMethod = "PROXY"
 
-	Seperator = "|"
+	Separator = "|"
 )
 
 // OperationType represents the operation type which includes resource type name and its method.
@@ -120,12 +120,12 @@ type OperationType struct {
 
 // String returns the operation type string.
 func (o OperationType) String() string {
-	return strings.ToUpper(o.Type + Seperator + string(o.Method))
+	return strings.ToUpper(o.Type + Separator + string(o.Method))
 }
 
 // ParseOperationType parses OperationType from string.
 func ParseOperationType(s string) (OperationType, bool) {
-	p := strings.Split(s, Seperator)
+	p := strings.Split(s, Separator)
 	if len(p) == 2 {
 		return OperationType{
 			Type:   strings.ToUpper(p[0]),

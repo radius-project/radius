@@ -86,7 +86,8 @@ func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "connections", a.Connections)
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "name", a.Name)
-	populate(objectMap, "resources", a.Resources)
+	populate(objectMap, "outputResources", a.OutputResources)
+	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "type", a.Type)
 	return json.Marshal(objectMap)
 }
@@ -109,8 +110,11 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 		case "name":
 				err = unpopulate(val, "Name", &a.Name)
 			delete(rawMsg, key)
-		case "resources":
-				err = unpopulate(val, "Resources", &a.Resources)
+		case "outputResources":
+				err = unpopulate(val, "OutputResources", &a.OutputResources)
+			delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 			delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, "Type", &a.Type)
@@ -763,6 +767,7 @@ func (c ContainerProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "provisioningState", c.ProvisioningState)
 	populate(objectMap, "resourceProvisioning", c.ResourceProvisioning)
 	populate(objectMap, "resources", c.Resources)
+	populate(objectMap, "restartPolicy", c.RestartPolicy)
 	populate(objectMap, "runtimes", c.Runtimes)
 	populate(objectMap, "status", c.Status)
 	return json.Marshal(objectMap)
@@ -803,6 +808,9 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &c.Resources)
+			delete(rawMsg, key)
+		case "restartPolicy":
+				err = unpopulate(val, "RestartPolicy", &c.RestartPolicy)
 			delete(rawMsg, key)
 		case "runtimes":
 				err = unpopulate(val, "Runtimes", &c.Runtimes)
@@ -942,6 +950,7 @@ func (c ContainerResourceUpdateProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "identity", c.Identity)
 	populate(objectMap, "resourceProvisioning", c.ResourceProvisioning)
 	populate(objectMap, "resources", c.Resources)
+	populate(objectMap, "restartPolicy", c.RestartPolicy)
 	populate(objectMap, "runtimes", c.Runtimes)
 	return json.Marshal(objectMap)
 }
@@ -978,6 +987,9 @@ func (c *ContainerResourceUpdateProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "resources":
 				err = unpopulate(val, "Resources", &c.Resources)
+			delete(rawMsg, key)
+		case "restartPolicy":
+				err = unpopulate(val, "RestartPolicy", &c.RestartPolicy)
 			delete(rawMsg, key)
 		case "runtimes":
 				err = unpopulate(val, "Runtimes", &c.Runtimes)
@@ -3349,6 +3361,41 @@ func (r *RecipePropertiesUpdate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type RecipeStatus.
+func (r RecipeStatus) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "templateKind", r.TemplateKind)
+	populate(objectMap, "templatePath", r.TemplatePath)
+	populate(objectMap, "templateVersion", r.TemplateVersion)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeStatus.
+func (r *RecipeStatus) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "templateKind":
+				err = unpopulate(val, "TemplateKind", &r.TemplateKind)
+			delete(rawMsg, key)
+		case "templatePath":
+				err = unpopulate(val, "TemplatePath", &r.TemplatePath)
+			delete(rawMsg, key)
+		case "templateVersion":
+				err = unpopulate(val, "TemplateVersion", &r.TemplateVersion)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type RecipeUpdate.
 func (r RecipeUpdate) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -3451,6 +3498,7 @@ func (r ResourceStatus) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "compute", r.Compute)
 	populate(objectMap, "outputResources", r.OutputResources)
+	populate(objectMap, "recipe", r.Recipe)
 	return json.Marshal(objectMap)
 }
 
@@ -3468,6 +3516,9 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "outputResources":
 				err = unpopulate(val, "OutputResources", &r.OutputResources)
+			delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
 			delete(rawMsg, key)
 		}
 		if err != nil {

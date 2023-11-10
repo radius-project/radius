@@ -2,7 +2,7 @@
 
 The Radius helm chart deploys the Radius services on a Kubernetes cluster using Helm.
 
-### Prerequisities
+### Prerequisites
 
 - Kubernetes cluster with RBAC enabled
 - Helm 3

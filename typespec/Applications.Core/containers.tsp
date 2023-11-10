@@ -68,6 +68,9 @@ model ContainerProperties {
   @doc("A collection of references to resources associated with the container")
   resources?: ResourceReference[];
 
+  @doc("The restart policy for the underlying container")
+  restartPolicy?: RestartPolicy;
+
   @doc("Specifies Runtime-specific functionality")
   runtimes?: RuntimesProperties;
 }
@@ -79,6 +82,18 @@ enum ContainerResourceProvisioning {
 
   @doc("The resource lifecycle will be managed by the user")
   manual,
+}
+
+@doc("Restart policy for the container")
+enum RestartPolicy {
+  @doc("Always")
+  Always,
+
+  @doc("OnFailure")
+  OnFailure,
+
+  @doc("Never")
+  Never,
 }
 
 @doc("The properties for runtime configuration")

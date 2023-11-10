@@ -204,7 +204,7 @@ func Test_AddRecipeContext(t *testing.T) {
 		err                string
 	}{
 		{
-			desc:       "non empty recipe context and input recipe paramters",
+			desc:       "non empty recipe context and input recipe parameters",
 			moduleName: testRecipeName,
 			envdef: &recipes.EnvironmentDefinition{
 				Name:            testRecipeName,

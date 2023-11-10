@@ -23,13 +23,10 @@ import (
 	"path"
 	"runtime"
 
-	credentials "github.com/oras-project/oras-credentials-go"
 	"github.com/radius-project/radius/pkg/version"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	retry_lib "oras.land/oras-go/v2/registry/remote/retry"
 )
 
 const (
@@ -154,20 +151,6 @@ func DownloadToFolder(filepath string) error {
 		return err
 	}
 
-	// Create credentials to authenticate to repository
-	ds, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
-		AllowPlaintextPut: true,
-	})
-	if err != nil {
-		return err
-	}
-
-	repo.Client = &auth.Client{
-		Client:     retry_lib.DefaultClient,
-		Cache:      auth.DefaultCache,
-		Credential: ds.Get,
-	}
-
 	// Copy the artifact from the registry into the file store
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
@@ -193,7 +176,7 @@ func DownloadToFolder(filepath string) error {
 	// make file executable by everyone
 	err = bicepBinary.Chmod(file.Mode() | 0111)
 	if err != nil {
-		return fmt.Errorf("failed to change permissons for %s: %v", filepath, err)
+		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
 	}
 
 	return nil

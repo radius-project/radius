@@ -30,6 +30,7 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/store"
 
@@ -227,6 +228,10 @@ var handlerTests = []rpctest.HandlerTestSpec{
 		OperationType: v1.OperationType{Type: "Applications.Core/operationStatuses", Method: v1.OperationGet},
 		Path:          "/providers/applications.core/locations/global/operationresults/00000000-0000-0000-0000-000000000000",
 		Method:        http.MethodGet,
+	}, {
+		OperationType: v1.OperationType{Type: app_ctrl.ResourceTypeName, Method: "ACTIONGETGRAPH"},
+		Path:          "/resourcegroups/testrg/providers/applications.core/applications/app0/getgraph",
+		Method:        http.MethodPost,
 	},
 }
 
@@ -240,7 +245,11 @@ func TestRouter(t *testing.T) {
 	mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
 
-	cfg := &controllerconfig.RecipeControllerConfig{}
+	conn, err := sdk.NewDirectConnection("http://localhost:9000/apis/api.ucp.dev/v1alpha3")
+	require.NoError(t, err)
+	cfg := &controllerconfig.RecipeControllerConfig{
+		UCPConnection: &conn,
+	}
 	ns := SetupNamespace(cfg)
 	nsBuilder := ns.GenerateBuilder()
 

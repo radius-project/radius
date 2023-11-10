@@ -34,7 +34,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "ucpd",
 	Short: "UCP server",
-	Long:  `Server process for the Univeral Control Plane (UCP).`,
+	Long:  `Server process for the Universal Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		options, err := server.NewServerOptionsFromEnvironment()
 		if err != nil {

@@ -2576,7 +2576,7 @@
           "type": "string",
           "description": "The resource name."
         },
-        "resources": {
+        "outputResources": {
           "type": "array",
           "description": "The resources that comprise this resource.",
           "items": {
@@ -2593,14 +2593,19 @@
             "$ref": "#/definitions/ApplicationGraphConnection"
           },
           "x-ms-identifiers": []
+        },
+        "provisioningState": {
+          "type": "string",
+          "description": "provisioningState of this resource."
         }
       },
       "required": [
         "id",
         "type",
         "name",
-        "resources",
-        "connections"
+        "outputResources",
+        "connections",
+        "provisioningState"
       ]
     },
     "ApplicationGraphResponse": {
@@ -3118,6 +3123,10 @@
             "$ref": "#/definitions/ResourceReference"
           }
         },
+        "restartPolicy": {
+          "$ref": "#/definitions/RestartPolicy",
+          "description": "The restart policy for the underlying container"
+        },
         "runtimes": {
           "$ref": "#/definitions/RuntimesProperties",
           "description": "Specifies Runtime-specific functionality"
@@ -3255,6 +3264,10 @@
           "items": {
             "$ref": "#/definitions/ResourceReference"
           }
+        },
+        "restartPolicy": {
+          "$ref": "#/definitions/RestartPolicy",
+          "description": "The restart policy for the underlying container"
         },
         "runtimes": {
           "$ref": "#/definitions/RuntimesProperties",
@@ -4784,6 +4797,28 @@
         "templateKind"
       ]
     },
+    "RecipeStatus": {
+      "type": "object",
+      "description": "Recipe status at deployment time for a resource.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "TemplateKind is the kind of the recipe template used by the portable resource upon deployment."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
+        },
+        "templateVersion": {
+          "type": "string",
+          "description": "TemplateVersion is the version number of the template."
+        }
+      },
+      "required": [
+        "templateKind",
+        "templatePath"
+      ]
+    },
     "RecipeUpdate": {
       "type": "object",
       "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
@@ -4844,6 +4879,11 @@
           "$ref": "#/definitions/EnvironmentCompute",
           "description": "The compute resource associated with the resource."
         },
+        "recipe": {
+          "$ref": "#/definitions/RecipeStatus",
+          "description": "The recipe data at the time of deployment",
+          "readOnly": true
+        },
         "outputResources": {
           "type": "array",
           "description": "Properties of an output resource",
@@ -4852,6 +4892,36 @@
           },
           "x-ms-identifiers": []
         }
+      }
+    },
+    "RestartPolicy": {
+      "type": "string",
+      "description": "Restart policy for the container",
+      "enum": [
+        "Always",
+        "OnFailure",
+        "Never"
+      ],
+      "x-ms-enum": {
+        "name": "RestartPolicy",
+        "modelAsString": true,
+        "values": [
+          {
+            "name": "Always",
+            "value": "Always",
+            "description": "Always"
+          },
+          {
+            "name": "OnFailure",
+            "value": "OnFailure",
+            "description": "OnFailure"
+          },
+          {
+            "name": "Never",
+            "value": "Never",
+            "description": "Never"
+          }
+        ]
       }
     },
     "RuntimesProperties": {

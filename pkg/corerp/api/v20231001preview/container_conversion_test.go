@@ -108,6 +108,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 
 				require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
 				require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, ct.Properties.Container.Args)
+				require.Equal(t, "Always", ct.Properties.RestartPolicy)
 				require.Equal(t, "/app", ct.Properties.Container.WorkingDir)
 				if tt.emptyExt {
 					require.Equal(t, getTestContainerEmptyKuberenetesMetadataExt(t), ct.Properties.Extensions)

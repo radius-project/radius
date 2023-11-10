@@ -73,7 +73,7 @@ func ComputeDependencyGraph(items []DependencyItem) (DependencyGraph, error) {
 		return DependencyGraph{}, fmt.Errorf("the dependency graph has references to the following missing items %s", strings.Join(names, ", "))
 	}
 
-	// Sort keys so that our operations that need to iterate have a determinisitic order.
+	// Sort keys so that our operations that need to iterate have a deterministic order.
 	sort.Strings(keys)
 
 	return DependencyGraph{keys: keys, setsByKey: setsByKey}, nil

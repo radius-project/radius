@@ -20,10 +20,10 @@ param prefix string = uniqueString(resourceGroup().id)
 @description('Specifies the location where to deploy the resources. Default is the resource group location.')
 param location string = resourceGroup().location
 
-@description('Specifies the name of log anlaytics workspace. Default is {prefix}-workspace.')
+@description('Specifies the name of log analytics workspace. Default is {prefix}-workspace.')
 param logAnalyticsWorkspaceName string = '${prefix}-workspace'
 
-@description('Specifies the location of log anlaytics workspace. Default is the resource group location.')
+@description('Specifies the location of log analytics workspace. Default is the resource group location.')
 param logAnalyticsWorkspaceLocation string = resourceGroup().location
 
 @description('Specifies the location of azure monitor workspace. Default is {prefix}-azm-workspace.')

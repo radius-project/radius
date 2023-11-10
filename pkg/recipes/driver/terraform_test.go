@@ -66,10 +66,11 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 	}
 
 	envRecipe := recipes.EnvironmentDefinition{
-		Name:         "redis-azure",
-		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "Azure/redis/azurerm",
-		ResourceType: "Applications.Datastores/redisCaches",
+		Name:            "redis-azure",
+		Driver:          recipes.TemplateKindBicep,
+		TemplatePath:    "Azure/redis/azurerm",
+		ResourceType:    "Applications.Datastores/redisCaches",
+		TemplateVersion: "1.0",
 	}
 
 	return envConfig, recipeMetadata, envRecipe
@@ -102,6 +103,11 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 		},
 		Secrets:   map[string]any{},
 		Resources: []string{},
+		Status: &rpv1.RecipeStatus{
+			TemplateKind:    recipes.TemplateKindTerraform,
+			TemplatePath:    "Azure/redis/azurerm",
+			TemplateVersion: "1.0",
+		},
 	}
 
 	expectedTFState := &tfjson.State{
@@ -245,6 +251,11 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 		},
 		Secrets:   map[string]any{},
 		Resources: []string{},
+		Status: &rpv1.RecipeStatus{
+			TemplateKind:    recipes.TemplateKindTerraform,
+			TemplatePath:    "Azure/redis/azurerm",
+			TemplateVersion: "1.0",
+		},
 	}
 
 	expectedTFState := &tfjson.State{
@@ -586,6 +597,11 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
 					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
 				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
 			},
 		},
 		{
@@ -741,9 +757,22 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 		},
 	}
 
+	opts := ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Definition: recipes.EnvironmentDefinition{
+				Name:            "mongo-azure",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+				ResourceType:    "Applications.Datastores/mongoDatabases",
+				TemplateVersion: "1.0",
+			},
+		},
+		PrevState: []string{},
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

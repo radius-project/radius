@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/kubernetes"
 
@@ -76,7 +77,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
@@ -96,12 +97,12 @@ func (d *terraformDriver) Execute(ctx context.Context, opts ExecuteOptions) (*re
 		EnvRecipe:      &opts.Definition,
 	})
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeOutputs, err := d.prepareRecipeResponse(ctx, tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, tfState)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
 	return recipeOutputs, nil
@@ -113,7 +114,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
@@ -128,7 +129,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 		EnvRecipe:      &opts.Definition,
 	})
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
 
 	return nil
@@ -136,7 +137,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts DeleteOptions) error 
 
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
-func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	if tfState == nil || (*tfState == tfjson.State{}) {
 		return &recipes.RecipeOutput{}, errors.New("terraform state is empty")
 	}
@@ -151,6 +152,12 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, tfState *tf
 				return &recipes.RecipeOutput{}, err
 			}
 		}
+	}
+
+	recipeResponse.Status = &rpv1.RecipeStatus{
+		TemplateKind:    recipes.TemplateKindTerraform,
+		TemplatePath:    definition.TemplatePath,
+		TemplateVersion: definition.TemplateVersion,
 	}
 
 	deployedResources, err := d.getDeployedOutputResources(ctx, tfState.Values.RootModule)
@@ -208,7 +215,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
 	defer func() {
 		if err := os.RemoveAll(requestDirPath); err != nil {
@@ -222,7 +229,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts BaseOption
 		EnvRecipe:      &opts.Definition,
 	})
 	if err != nil {
-		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetRecipeErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.RecipeGetMetadataFailed, err.Error(), "", recipes.GetErrorDetails(err))
 	}
 
 	return recipeData, nil
