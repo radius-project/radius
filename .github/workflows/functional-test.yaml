@@ -309,6 +309,12 @@ jobs:
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
+      - name: Login as the github app
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
