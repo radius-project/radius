@@ -88,12 +88,6 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Login as the github app
-        uses: tibdex/github-app-token@v1
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
