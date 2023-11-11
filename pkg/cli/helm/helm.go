@@ -20,6 +20,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,6 +79,20 @@ func locateChartFile(dirPath string) (string, error) {
 	return filepath.Join(dirPath, files[0].Name()), nil
 }
 
+type anonymousTransport struct {
+}
+
+func (t *anonymousTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Del("Authorization")
+	return http.DefaultTransport.RoundTrip(req)
+}
+
+func newAnonymousHelmClient() *http.Client {
+	return &http.Client{
+		Transport: &anonymousTransport{},
+	}
+}
+
 func helmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
 	pull.Settings = &cli.EnvSettings{}
@@ -118,7 +133,7 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
 
 		// Since we are using an OCI registry, we need to set the registry client
-		registryClient, err := registry.NewClient()
+		registryClient, err := registry.NewClient(registry.ClientOptHTTPClient(newAnonymousHelmClient()))
 		if err != nil {
 			return nil, err
 		}
