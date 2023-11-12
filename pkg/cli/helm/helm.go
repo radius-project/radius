@@ -18,6 +18,7 @@ package helm
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -83,7 +84,13 @@ type anonymousTransport struct {
 }
 
 func (t *anonymousTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Del("Authorization")
+	fmt.Printf("Original Authorization Header %v\n", req.Header["Authorization"])
+
+	anonymousToken := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("v1:radius-project/helm-chart/radius:%d", time.Now().Nanosecond())))
+	fmt.Printf("New Anonymous Token %s\n", anonymousToken)
+
+	req.Header["Authorization"] = []string{"Bearer " + anonymousToken}
+
 	return http.DefaultTransport.RoundTrip(req)
 }
 
