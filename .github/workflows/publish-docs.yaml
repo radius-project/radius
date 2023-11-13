@@ -39,7 +39,12 @@ jobs:
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-      # Generate Biep documentation
+      # Setup dependencies
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GOVER }}
+          cache-dependency-path: radius/go.sum
       - name: Setup NodeJS
         uses: actions/setup-node@v3
         with:
@@ -61,6 +66,7 @@ jobs:
         run: |
           cd radius
           go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+      # Generate Bicep docs
       - name: Generate Bicep docs
         run: |
           cd radius
@@ -74,11 +80,6 @@ jobs:
           name: resource-docs
           path: docs/docs/content/reference/resources
       # Generate and upload CLI docs
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GOVER }}
-          cache-dependency-path: radius/go.sum
       - name: Generate CLI docs
         run: |
             find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
