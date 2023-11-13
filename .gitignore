@@ -62,3 +62,6 @@ node_modules
 
 # temporary test files starting with tmp-
 tmp-*
+
+# Auto-generated Bicep markdown files
+hack/bicep-types-radius/generated/**/*.md

@@ -16,9 +16,12 @@
 
 import { AutoRestExtension, AutorestExtensionHost, startSession } from "@autorest/extension-base";
 import { generateTypes } from "./type-generator";
+import { orderBy } from 'lodash';
+import { ResourceType } from "./types"
 import { CodeModel, codeModelSchema } from "@autorest/codemodel";
 import { writeJson } from './writers/json';
 import { writeMarkdown } from "./writers/markdown";
+import { writeTableMarkdown } from "./writers/markdown-table";
 import { getProviderDefinitions } from "./resources";
 
 export async function processRequest(host: AutorestExtensionHost) {
@@ -41,6 +44,14 @@ export async function processRequest(host: AutorestExtensionHost) {
 
       // writer types.md
       host.writeFile({ filename: `${outFolder}/types.md`, content: writeMarkdown(namespace, apiVersion, types) });
+
+      // writer resource types
+      const resourceTypes = orderBy(types.filter(t => t instanceof ResourceType) as ResourceType[], x => x.Name.split('@')[0].toLowerCase());
+      for (const resourceType of resourceTypes) {
+        const filename = resourceType.Name.split('/')[1].split('@')[0].toLowerCase();
+        host.writeFile({ filename: `${outFolder}/docs/${filename}.md`, content: writeTableMarkdown(namespace, apiVersion, [resourceType], types) });
+      }
+
     }
 
     session.info(`autorest.bicep took ${Date.now() - start}ms`);
