@@ -41,8 +41,10 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 3. Make sure 
 4. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
 5. Log-in to the container registry of your Github organization. 
+   ```
     export CR_PAT=<your_pat>
     echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin
+   ```
 6. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
 7. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
 8. Change the visibility of the published packages to 'public'
