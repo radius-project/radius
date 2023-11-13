@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       open_pull_request:
-        description: 'Open a pull request against the docs repository'
+        description: 'Open a pull request against the docs repository. Defaults to false for a "dry run" of the workflow that generates the docs and uploads them as artifacts.'
         required: false
         default: 'false'
         options:
