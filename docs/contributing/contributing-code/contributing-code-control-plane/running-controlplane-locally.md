@@ -21,8 +21,7 @@ The easiest way to get started is to launch Radius using VS Code. This will give
 If you need to manually test APIs you can reach them at the following endpoints after following these instructions:
 
 - UCP: port 9000
-- AppCore Namespace: port 8080
-- AppPortableResource Namespace: port 8081 (Applications.Datastores, Applications.Dapr and Applications.Messaging are hosted)
+- AppCore and AppPortableResource Namespaces: port 8080
 - Deployment Engine: port 5017
 
 ## Prerequisites
