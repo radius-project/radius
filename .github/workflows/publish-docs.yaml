@@ -109,6 +109,7 @@ jobs:
             *.md
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
+          signoff: true
           branch: reference-cli/patch-${{ github.sha }}
           delete-branch: true
           title: |
