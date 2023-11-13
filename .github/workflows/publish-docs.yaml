@@ -6,6 +6,10 @@ on:
     branches:
       - main
       - release/*
+  # Temporarily run on PRs to test workflow
+  pull_request:
+    branches:
+      - main
 jobs:
   reference-docs:
     name: Generate and PR reference documentation
