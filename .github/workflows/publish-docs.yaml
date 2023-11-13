@@ -35,6 +35,11 @@ jobs:
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      # Generate Biep documentation
+      - name: Generate Bicep docs
+        run: |
+          cd radius
+          make generate-bicep-types
       # Generate resource reference docs
       - name: Generate resource reference docs
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
