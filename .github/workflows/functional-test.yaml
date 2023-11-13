@@ -25,8 +25,7 @@ on:
   repository_dispatch:
     types: [functional-tests, de-functional-test]
 
-permissions:
-  pull-requests: write
+permissions: write-all
 
 env:
   # Go version
