@@ -40,6 +40,19 @@ jobs:
           ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       # Generate Biep documentation
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install TypeSpec compiler
+        run: |
+          pushd radius/typespec
+          npm ci
+          popd
+      - name: Install autorest
+        run: npm install -g autorest@3.6.1
+      - name: Install oav
+        run: npm install -g oav@3.2.0
       - name: Generate Bicep docs
         run: |
           cd radius
