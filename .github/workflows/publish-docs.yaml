@@ -2,10 +2,21 @@ name: Generate reference docs
 
 on:
   workflow_dispatch:
+    inputs:
+      open_pull_request:
+        description: 'Open a pull request against the docs repository. Defaults to false for a "dry run" of the workflow that generates the docs and uploads them as artifacts.'
+        required: false
+        default: 'false'
+        options:
+          - "true"
+          - "false"
   push:
     branches:
       - main
       - release/*
+  pull_request:
+    branches:
+      - main
 jobs:
   reference-docs:
     name: Generate and PR reference documentation
@@ -35,6 +46,38 @@ jobs:
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+      # Setup dependencies
+      - name: Set up Go ${{ env.GOVER }}
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GOVER }}
+          cache-dependency-path: radius/go.sum
+      - name: Setup NodeJS
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install TypeSpec compiler
+        run: |
+          pushd radius/typespec
+          npm ci
+          popd
+      - name: Install autorest
+        run: npm install -g autorest@3.6.1
+      - name: Install oav
+        run: npm install -g oav@3.2.0
+      - name: Install mockgen
+        run: |
+          cd radius
+          go install github.com/golang/mock/mockgen@v1.5.0
+      - name: Install controller-gen
+        run: |
+          cd radius
+          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.1
+      # Generate Bicep docs
+      - name: Generate Bicep docs
+        run: |
+          cd radius
+          make generate
       # Generate resource reference docs
       - name: Generate resource reference docs
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
@@ -44,11 +87,6 @@ jobs:
           name: resource-docs
           path: docs/docs/content/reference/resources
       # Generate and upload CLI docs
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GOVER }}
-          cache-dependency-path: radius/go.sum
       - name: Generate CLI docs
         run: |
             find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
@@ -65,6 +103,7 @@ jobs:
           cd docs
           git status --porcelain -unormal -- *.md
       - name: Create pull request
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -73,6 +112,7 @@ jobs:
             *.md
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
+          signoff: true
           branch: reference-cli/patch-${{ github.sha }}
           delete-branch: true
           title: |
