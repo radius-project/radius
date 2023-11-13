@@ -45,19 +45,11 @@ resource redisContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         redis: {
           containerPort: 6379
-          provides: redisRoute.id
+          port: 80
         }
       }
     }
     connections: {}
-  }
-}
-
-resource redisRoute 'Applications.Core/httproutes@2023-10-01-preview' = {
-  name: 'rds-rte'
-  location: 'global'
-  properties: {
-    application: app.id
   }
 }
 
@@ -68,10 +60,10 @@ resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
     environment: environment
     application: app.id
     resourceProvisioning: 'manual'
-    host: redisRoute.properties.hostname
-    port: redisRoute.properties.port
+    host: 'rds-ctnr'
+    port: 80
     secrets: {
-      connectionString: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
+      connectionString: 'rds-ctnr:6379'
       password: ''
     }
   }

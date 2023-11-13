@@ -44,25 +44,12 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
     application: app.id
     container: {
       image: magpieimage
-      env: {
-        rteUrl: httproute.properties.url
-      }
       ports: {
         web: {
           containerPort: port
-          provides: httproute.id
         }
       }
     }
     connections: {}
-  }
-}
-
-resource httproute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'ctnr-rte-kme'
-  location: location
-  properties: {
-    application: app.id
-    port: port
   }
 }
