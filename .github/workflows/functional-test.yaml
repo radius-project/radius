@@ -282,6 +282,7 @@ jobs:
       #     message: |
       #       :x: Test recipe publishing failed
   tests:
+    permissions: write-all
     name: Run ${{ matrix.name }} functional tests
     needs: build
     strategy:
@@ -502,7 +503,7 @@ jobs:
           name: 'Functional Tests'
           status: in_progress
           repo: ${{ github.repository }}
-          # sha: ${{ env.CHECKOUT_REF }}
+          sha: ${{ env.CHECKOUT_REF }}
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
