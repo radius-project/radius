@@ -133,7 +133,50 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 						SideEffects:   &noSideEffectsV1,
 						ClientConfig: admissionv1.WebhookClientConfig{
 							Service: &admissionv1.ServiceReference{
-								Name:      "recipe-webhook-service",
+								Name:      "controller",
+								Namespace: "default",
+								Path:      &webhookPathV1,
+							},
+						},
+						AdmissionReviewVersions: []string{"v1"},
+					},
+				},
+			},
+		},
+		MutatingWebhooks: []*admissionv1.MutatingWebhookConfiguration{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "deployment-webhook-config",
+				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "MutatingWebhookConfiguration",
+					APIVersion: "admissionregistration.k8s.io/v1",
+				},
+				Webhooks: []admissionv1.MutatingWebhook{
+					{
+						Name: "deployment-webhook.radapp.io",
+						Rules: []admissionv1.RuleWithOperations{
+							{
+								Operations: []admissionv1.OperationType{"CREATE", "UPDATE"},
+								Rule: admissionv1.Rule{
+									APIGroups:   []string{"radapp.io"},
+									APIVersions: []string{"v1alpha3"},
+									Resources:   []string{"deployments"},
+									Scope:       &namespacedScopeV1,
+								},
+							},
+						},
+						ObjectSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"radapp.io/enabled": "true",
+							},
+						},
+						FailurePolicy: &failedTypeV1,
+						MatchPolicy:   &equivalentTypeV1,
+						SideEffects:   &noSideEffectsV1,
+						ClientConfig: admissionv1.WebhookClientConfig{
+							Service: &admissionv1.ServiceReference{
+								Name:      "controller",
 								Namespace: "default",
 								Path:      &webhookPathV1,
 							},

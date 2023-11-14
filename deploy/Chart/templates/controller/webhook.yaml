@@ -52,3 +52,35 @@ webhooks:
     resources:
     - recipes
   sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: deployment-webhook.radapp.io
+  objectSelector:
+    matchLabels:
+      radapp.io/enabled: "true"
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    caBundle: {{ b64enc $ca.Cert }}
+    service:
+      name: controller
+      namespace: {{ .Release.Namespace }}
+      path: /mutate-radapp-io-v1alpha3-builtindeployment
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: deployment-webhook.radapp.io
+  rules:
+  - apiGroups:
+    - radapp.io
+    apiVersions:
+    - v1alpha3
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - deployments
+  sideEffects: None
