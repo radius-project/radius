@@ -39,6 +39,11 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
+        {{- if .Values.global.rootCA.cert }}
+        # This is the environment variable to set the path to the intermediate root CA for outgoing connections.
+        - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
+          value: {{ .Values.global.rootCA.mountPath }}
+        {{- end}}
         ports:
         - containerPort: 9443
           name: controller
@@ -59,6 +64,11 @@ spec:
         - name: cert
           mountPath: '/var/tls/cert'
           readOnly: true
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          mountPath: {{ .Values.global.rootCA.mountPath }}
+          readOnly: true
+        {{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -66,3 +76,8 @@ spec:
         - name: cert
           secret:
             secretName: controller-cert
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          secret:
+            secretName: {{ .Values.global.rootCA.secretName }}
+        {{- end }}
