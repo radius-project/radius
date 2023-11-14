@@ -422,8 +422,8 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type BicepRecipeProperties.
 func (b BicepRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "insecureHttp", b.InsecureHTTP)
 	populate(objectMap, "parameters", b.Parameters)
+	populate(objectMap, "plainHttp", b.PlainHTTP)
 	objectMap["templateKind"] = "bicep"
 	populate(objectMap, "templatePath", b.TemplatePath)
 	return json.Marshal(objectMap)
@@ -438,11 +438,11 @@ func (b *BicepRecipeProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "insecureHttp":
-				err = unpopulate(val, "InsecureHTTP", &b.InsecureHTTP)
-			delete(rawMsg, key)
 		case "parameters":
 				err = unpopulate(val, "Parameters", &b.Parameters)
+			delete(rawMsg, key)
+		case "plainHttp":
+				err = unpopulate(val, "PlainHTTP", &b.PlainHTTP)
 			delete(rawMsg, key)
 		case "templateKind":
 				err = unpopulate(val, "TemplateKind", &b.TemplateKind)
@@ -461,8 +461,8 @@ func (b *BicepRecipeProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type BicepRecipePropertiesUpdate.
 func (b BicepRecipePropertiesUpdate) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "insecureHttp", b.InsecureHTTP)
 	populate(objectMap, "parameters", b.Parameters)
+	populate(objectMap, "plainHttp", b.PlainHTTP)
 	objectMap["templateKind"] = "bicep"
 	populate(objectMap, "templatePath", b.TemplatePath)
 	return json.Marshal(objectMap)
@@ -477,11 +477,11 @@ func (b *BicepRecipePropertiesUpdate) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "insecureHttp":
-				err = unpopulate(val, "InsecureHTTP", &b.InsecureHTTP)
-			delete(rawMsg, key)
 		case "parameters":
 				err = unpopulate(val, "Parameters", &b.Parameters)
+			delete(rawMsg, key)
+		case "plainHttp":
+				err = unpopulate(val, "PlainHTTP", &b.PlainHTTP)
 			delete(rawMsg, key)
 		case "templateKind":
 				err = unpopulate(val, "TemplateKind", &b.TemplateKind)
@@ -3263,8 +3263,8 @@ func (r *RecipeGetMetadata) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeGetMetadataResponse.
 func (r RecipeGetMetadataResponse) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
-	populate(objectMap, "insecureHttp", r.InsecureHTTP)
 	populate(objectMap, "parameters", r.Parameters)
+	populate(objectMap, "plainHttp", r.PlainHTTP)
 	populate(objectMap, "templateKind", r.TemplateKind)
 	populate(objectMap, "templatePath", r.TemplatePath)
 	populate(objectMap, "templateVersion", r.TemplateVersion)
@@ -3280,11 +3280,11 @@ func (r *RecipeGetMetadataResponse) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "insecureHttp":
-				err = unpopulate(val, "InsecureHTTP", &r.InsecureHTTP)
-			delete(rawMsg, key)
 		case "parameters":
 				err = unpopulate(val, "Parameters", &r.Parameters)
+			delete(rawMsg, key)
+		case "plainHttp":
+				err = unpopulate(val, "PlainHTTP", &r.PlainHTTP)
 			delete(rawMsg, key)
 		case "templateKind":
 				err = unpopulate(val, "TemplateKind", &r.TemplateKind)

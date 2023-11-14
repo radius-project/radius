@@ -22,5 +22,5 @@ type EnvironmentRecipe struct {
 	TemplateKind    string `json:"templateKind"`
 	TemplatePath    string `json:"templatePath"`
 	TemplateVersion string `json:"templateVersion"`
-	InsecureHttp    bool   `json:"insecureHttp"`
+	PlainHttp       bool   `json:"plainHttp"`
 }

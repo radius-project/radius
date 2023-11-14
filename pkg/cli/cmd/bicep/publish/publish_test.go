@@ -202,11 +202,11 @@ func Test_generateManifestContent(t *testing.T) {
 
 func TestRunner_prepareDestination(t *testing.T) {
 	tests := []struct {
-		name         string
-		dest         *destination
-		insecureHttp bool
-		want         *remote.Repository
-		wantErr      bool
+		name      string
+		dest      *destination
+		plainHttp bool
+		want      *remote.Repository
+		wantErr   bool
 	}{
 		{
 			name: "prepare destination",
@@ -215,7 +215,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 				repo: "repo",
 				tag:  "tag",
 			},
-			insecureHttp: false,
+			plainHttp: false,
 			want: &remote.Repository{
 				Reference: registry.Reference{
 					Registry:   "index.docker.io",
@@ -232,7 +232,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 				repo: "repo",
 				tag:  "tag",
 			},
-			insecureHttp: true,
+			plainHttp: true,
 			want: &remote.Repository{
 				Reference: registry.Reference{
 					Registry:   "localhost:8000",
@@ -247,8 +247,8 @@ func TestRunner_prepareDestination(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Runner{
-				Destination:  tt.dest,
-				InsecureHttp: tt.insecureHttp,
+				Destination: tt.dest,
+				PlainHttp:   tt.plainHttp,
 			}
 			got, err := r.prepareDestination(context.Background())
 			if (err != nil) != tt.wantErr {

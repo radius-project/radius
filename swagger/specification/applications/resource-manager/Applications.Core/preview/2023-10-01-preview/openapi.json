@@ -2796,7 +2796,7 @@
       "type": "object",
       "description": "Represents Bicep recipe properties.",
       "properties": {
-        "insecureHttp": {
+        "plainHttp": {
           "type": "boolean",
           "description": "Allows insecure connections to registry without SSL check"
         }
@@ -2812,7 +2812,7 @@
       "type": "object",
       "description": "Represents Bicep recipe properties.",
       "properties": {
-        "insecureHttp": {
+        "plainHttp": {
           "type": "boolean",
           "description": "Allows insecure connections to registry without SSL check"
         }
@@ -4753,7 +4753,7 @@
           "description": "The key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
         },
-        "insecureHttp": {
+        "plainHttp": {
           "type": "boolean",
           "description": "Allows insecure connections to registry without SSL check"
         }

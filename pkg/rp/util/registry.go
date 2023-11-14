@@ -44,7 +44,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 		return fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
 
-	if definition.InsecureHttp {
+	if definition.PlainHttp {
 		repo.PlainHTTP = true
 	}
 

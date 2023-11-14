@@ -182,11 +182,11 @@ type BicepRecipeProperties struct {
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
-	// Allows insecure connections to registry without SSL check
-	InsecureHTTP *bool
-
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Allows insecure connections to registry without SSL check
+	PlainHTTP *bool
 }
 
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type BicepRecipeProperties.
@@ -203,11 +203,11 @@ type BicepRecipePropertiesUpdate struct {
 	// REQUIRED; Discriminator property for RecipeProperties.
 	TemplateKind *string
 
-	// Allows insecure connections to registry without SSL check
-	InsecureHTTP *bool
-
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Allows insecure connections to registry without SSL check
+	PlainHTTP *bool
 
 	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
@@ -1396,7 +1396,7 @@ type RecipeGetMetadataResponse struct {
 	TemplatePath *string
 
 	// Allows insecure connections to registry without SSL check
-	InsecureHTTP *bool
+	PlainHTTP *bool
 
 	// The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
 // for other module sources.

@@ -42,7 +42,7 @@ func (dst *RecipeGetMetadataResponse) ConvertFrom(src v1.DataModelInterface) err
 	case types.TemplateKindTerraform:
 		dst.TemplateVersion = to.Ptr(recipe.TemplateVersion)
 	case types.TemplateKindBicep:
-		dst.InsecureHTTP = to.Ptr(recipe.InsecureHttp)
+		dst.PlainHTTP = to.Ptr(recipe.PlainHttp)
 	}
 	dst.Parameters = recipe.Parameters
 	return nil

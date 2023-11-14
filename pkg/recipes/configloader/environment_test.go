@@ -232,7 +232,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 					"mongo": &model.BicepRecipeProperties{
 						TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 						TemplatePath: to.Ptr("localhost:8000/recipes/mongodatabases:1.0"),
-						InsecureHTTP: to.Ptr(true),
+						PlainHTTP:    to.Ptr(true),
 					},
 					terraformRecipe: &model.TerraformRecipeProperties{
 						TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
@@ -291,7 +291,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 			Driver:       recipes.TemplateKindBicep,
 			ResourceType: "Applications.Datastores/mongoDatabases",
 			TemplatePath: "localhost:8000/recipes/mongodatabases:1.0",
-			InsecureHttp: true,
+			PlainHttp:    true,
 		}
 		recipeDef, err := getRecipeDefinition(&envResource, &metadata)
 		require.NoError(t, err)

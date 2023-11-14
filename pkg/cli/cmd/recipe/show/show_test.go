@@ -174,7 +174,7 @@ func Test_Run(t *testing.T) {
 		envRecipe := v20231001preview.RecipeGetMetadataResponse{
 			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 			TemplatePath: to.Ptr("localhost:8000/mongodatabases:v1"),
-			InsecureHTTP: to.Ptr(true),
+			PlainHTTP:    to.Ptr(true),
 			Parameters: map[string]any{
 				"throughput": map[string]any{
 					"type":     "float64",
@@ -190,7 +190,7 @@ func Test_Run(t *testing.T) {
 			ResourceType: datastoresrp.MongoDatabasesResourceType,
 			TemplateKind: recipes.TemplateKindBicep,
 			TemplatePath: "localhost:8000/mongodatabases:v1",
-			InsecureHttp: true,
+			PlainHttp:    true,
 		}
 		recipeParams := []RecipeParameter{
 			{

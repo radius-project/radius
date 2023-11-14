@@ -140,7 +140,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							"redis-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplateKind: recipes.TemplateKindBicep,
 								TemplatePath: "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
-								InsecureHttp: true,
+								PlainHttp:    true,
 							},
 						},
 						dapr_ctrl.DaprStateStoresResourceType: {
@@ -372,7 +372,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					case *TerraformRecipeProperties:
 						require.Equal(t, "1.1.0", string(*c.TemplateVersion))
 					case *BicepRecipeProperties:
-						require.Equal(t, true, bool(*c.InsecureHTTP))
+						require.Equal(t, true, bool(*c.PlainHTTP))
 					}
 				}
 				if tt.filename == "environmentresourcedatamodelemptyext.json" {

@@ -39,7 +39,7 @@
         "redis-recipe": {
           "templateKind": "bicep",
           "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
-          "insecureHttp": true
+          "plainHttp": true
         }
       },
       "Applications.Dapr/stateStores":{

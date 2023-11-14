@@ -1,7 +1,7 @@
 {
     "templateKind": "bicep",
     "templatePath": "br:localhost:8000/recipes/cosmosdb",
-    "insecureHttp": true,
+    "plainHttp": true,
     "parameters": {
       "throughput": {
         "maxValue": 400,

@@ -225,10 +225,6 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 				Heading:  "TEMPLATE",
 				JSONPath: "{ .TemplatePath }",
 			},
-			{
-				Heading:  "INSECURE-HTTP",
-				JSONPath: "{ .InsecureHttp }",
-			},
 		},
 	}
 }

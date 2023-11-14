@@ -91,7 +91,7 @@ func Test_Run(t *testing.T) {
 						"cosmosDB": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1"),
-							InsecureHTTP: to.Ptr(false),
+							PlainHTTP:    to.Ptr(false),
 						},
 						"cosmosDB-terraform": &v20231001preview.TerraformRecipeProperties{
 							TemplateKind:    to.Ptr(recipes.TemplateKindTerraform),
@@ -101,7 +101,7 @@ func Test_Run(t *testing.T) {
 						"mongo": &v20231001preview.BicepRecipeProperties{
 							TemplateKind: to.Ptr(recipes.TemplateKindBicep),
 							TemplatePath: to.Ptr("localhost:8000/mongodatabases:v1"),
-							InsecureHTTP: to.Ptr(true),
+							PlainHTTP:    to.Ptr(true),
 						},
 					},
 				},
@@ -113,7 +113,7 @@ func Test_Run(t *testing.T) {
 				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
-				InsecureHttp: false,
+				PlainHttp:    false,
 			},
 			{
 				Name:            "cosmosDB-terraform",
@@ -127,7 +127,7 @@ func Test_Run(t *testing.T) {
 				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "localhost:8000/mongodatabases:v1",
-				InsecureHttp: true,
+				PlainHttp:    true,
 			},
 		}
 		sort.Slice(recipes, func(i, j int) bool {

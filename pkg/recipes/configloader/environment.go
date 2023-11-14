@@ -162,8 +162,8 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 	case *v20231001preview.TerraformRecipeProperties:
 		definition.TemplateVersion = *c.TemplateVersion
 	case *v20231001preview.BicepRecipeProperties:
-		if c.InsecureHTTP != nil {
-			definition.InsecureHttp = *c.InsecureHTTP
+		if c.PlainHTTP != nil {
+			definition.PlainHttp = *c.PlainHTTP
 		}
 	}
 

@@ -77,7 +77,7 @@ func TestEnvironmentRecipePropertiesConvertDataModelToVersioned_InsecureRegistry
 		require.NoError(t, err)
 		require.Equal(t, r.TemplatePath, string(*versioned.TemplatePath))
 		require.Equal(t, r.TemplateKind, string(*versioned.TemplateKind))
-		require.Equal(t, r.InsecureHttp, bool(*versioned.InsecureHTTP))
+		require.Equal(t, r.PlainHttp, bool(*versioned.PlainHTTP))
 		require.Equal(t, r.Parameters, versioned.Parameters)
 	})
 }
