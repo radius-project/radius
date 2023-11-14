@@ -128,44 +128,6 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, environment
 	return cliErr
 }
 
-// Run runs the rad run command. This returns the command output on success or an error.
-func (cli *CLI) Run(ctx context.Context, templateFilePath string, applicationName string, parameters ...string) (string, error) {
-	// Check if the template file path exists
-	if _, err := os.Stat(templateFilePath); err != nil {
-		return "", fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
-	}
-
-	args := []string{
-		"run",
-		templateFilePath,
-	}
-
-	if applicationName != "" {
-		args = append(args, "--application", applicationName)
-	}
-
-	for _, parameter := range parameters {
-		args = append(args, "--parameters", parameter)
-	}
-
-	out, cliErr := cli.RunCommand(ctx, args)
-	if cliErr != nil && strings.Contains(out, "Error: {") {
-		var errResponse v1.ErrorResponse
-		idx := strings.Index(out, "Error: {")
-		actualErr := "{\"error\": " + out[idx+7:] + "}"
-
-		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
-			return "", err
-		}
-
-		return "", &CLIError{ErrorResponse: errResponse}
-	} else if cliErr != nil {
-		return "", cliErr
-	}
-
-	return out, nil
-}
-
 // ApplicationShow returns the output of running the "application show" command with the given application name as
 // an argument, or an error if the command fails.
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
@@ -175,18 +137,6 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (st
 		command,
 		"show",
 		"-a", applicationName,
-	}
-	return cli.RunCommand(ctx, args)
-}
-
-// ApplicationList runs a command to list applications and returns the output as a string. It returns an
-// error if the command fails.
-func (cli *CLI) ApplicationList(ctx context.Context) (string, error) {
-	command := "application"
-
-	args := []string{
-		command,
-		"list",
 	}
 	return cli.RunCommand(ctx, args)
 }
@@ -203,33 +153,6 @@ func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) e
 	}
 	_, err := cli.RunCommand(ctx, args)
 	return err
-}
-
-// EnvStatus runs the "env status" command and returns the output as a string. It returns an error if the command fails.
-func (cli *CLI) EnvStatus(ctx context.Context) (string, error) {
-	args := []string{
-		"env",
-		"status",
-	}
-	return cli.RunCommand(ctx, args)
-}
-
-// EnvShow runs the "env show" command and returns the output as a string, or an error if the command fails.
-func (cli *CLI) EnvShow(ctx context.Context) (string, error) {
-	args := []string{
-		"env",
-		"show",
-	}
-	return cli.RunCommand(ctx, args)
-}
-
-// EnvList runs the "env list" command and returns the output as a string, or an error if the command fails.
-func (cli *CLI) EnvList(ctx context.Context) (string, error) {
-	args := []string{
-		"env",
-		"list",
-	}
-	return cli.RunCommand(ctx, args)
 }
 
 // EnvDelete runs the command to delete an environment with the given name and returns an error if the command fails.
