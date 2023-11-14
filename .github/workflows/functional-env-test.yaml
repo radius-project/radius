@@ -16,14 +16,11 @@
 
 name: Functional tests
 on:
-  schedule:
-    # Run every 4 hours on weekdays.
-    - cron: "30 0,4,8,12,16,20 * * 1-5"
-    # Run every 12 hours on weekends.
-    - cron: "30 0,12 * * 0,6"
-  # Dispatch on external events
-  repository_dispatch:
-    types: [functional-tests, de-functional-test]
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
 
 env:
   # Go version
@@ -291,6 +288,7 @@ jobs:
           - os: ubuntu-latest-m
             name: datastoresrp
     runs-on: ${{ matrix.os }}
+    environment: functional-tests
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
