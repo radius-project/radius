@@ -41,12 +41,12 @@ jobs:
           radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
           echo "RAD_VERSION=$(curl -s ${radReleaseUrl} | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')" >> $GITHUB_ENV
       - name: Download file
-        run: curl -sSLI -w "%{http_code}" "https://github.com/radius-project/radius/releases/download/${{ env.RAD_VERSION }}/{{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }} --fail-with-body -o {{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }}" 
+        run: curl -sSLI -w "%{http_code}" "https://github.com/radius-project/radius/releases/download/${{ env.RAD_VERSION }}/${{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }} --fail-with-body -o ${{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }}" 
       - name: Test Linux x64
         if: ${{ matrix.os == 'linux' && matrix.arch == 'x64' }}
         run: |
-          chmod +x ./{{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }}
-          ./{{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }} version
+          chmod +x ./${{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }}
+          ./${{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }} version
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
         env:
