@@ -37,10 +37,8 @@ jobs:
             ext: .exe
     steps:
       - name: Get latest version
-        run:
-          GITHUB_ORG=radius-project
-          GITHUB_REPO=radius
-          radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
+        run: |
+          radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
           echo "RAD_VERSION=$(curl -s $radReleaseUrl | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |  sed -n 's/\"\(.*\)\",/\1/p')
       - name: Download file
         run: curl -sSLI -w "%{http_code}" "https://github.com/radius-project/radius/releases/download/${{ env.RAD_VERSION }}/{{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }} --fail-with-body -o {{ matrix.file }}_${{ matrix.os }}_${{ matrix.arch }}${{ matrix.ext }}" 
