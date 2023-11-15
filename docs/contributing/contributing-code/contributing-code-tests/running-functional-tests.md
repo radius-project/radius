@@ -38,8 +38,8 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 
 1. Place `rad` on your path
 2. Make sure `rad-bicep` is downloaded (`rad bicep download`)
-3. Make sure 
-4. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
+3. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
+4. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 5. Log-in to the container registry of your Github organization. 
    
     `export CR_PAT=<your_pat>`
