@@ -120,13 +120,19 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 				// At present, it is not possible to verify the template version in functional tests
 				// This is verified by UTs though
 
-				// Force delete the kubernetes secret for terraform state file.
-				// This is done to validate that the application/portable resource deletion is not blocked if the Terraform state file backend is deleted.
+				// Manually delete Kubernetes the secret that stores the Terraform state file now. The next step in the test will be the deletion
+				// of the portable resource that uses this secret for Terraform recipe. This is to verify that the test and portable resource
+				// deletion will not fail even though the secret is already deleted.
 				err = test.Options.K8sClient.CoreV1().Secrets(secretNamespace).Delete(ctx, secretPrefix+secretSuffix, metav1.DeleteOptions{})
 				require.NoError(t, err)
 			},
 		},
 	})
+
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test shared.RPTest) {
+		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+		testSecretDeletion(t, ctx, test, appName, envName, resourceID)
+	}
 
 	test.Test(t)
 }
