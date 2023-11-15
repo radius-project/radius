@@ -32,7 +32,7 @@ The Radius project follows the [Developer Certificate of Origin](https://develop
 Contributors sign-off that they adhere to these requirements by adding a Signed-off-by line to commit messages.
 
 ```
-This is my commit message
+This is my commit message.
 
 Signed-off-by: Random J Developer <random@developer.example.org>
 ```
