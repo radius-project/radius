@@ -23,7 +23,18 @@ on:
     - cron: "30 0,12 * * 0,6"
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests, de-functional-test]
+    types: [de-functional-test]
+  push:
+    branches:
+      - main
+      - release/*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
 
 env:
   # Go version
@@ -289,6 +300,7 @@ jobs:
           - os: ubuntu-latest-m
             name: datastoresrp
     runs-on: ${{ matrix.os }}
+    environment: functional-tests
     env:
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
