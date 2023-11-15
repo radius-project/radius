@@ -35,11 +35,11 @@ jobs:
             arch: x64
             file: rad.exe
     steps:
-      - name: Download and parse latest version
-        run:
-          echo "RAD_VERSION=$(curl https://get.radapp.dev/version/stable.txt)" >> $GITHUB_ENV
       - name: Download file
-        run: curl -sSLI -o /dev/null -w "%{http_code}" "https://github.com/radius-project/radius/releases/download/${{ env.RAD_VERSION }}/rad_${{ matrix.os }}_${{ matrix.arch }}"
+        run: |
+          RAD_CLI_URL=https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh
+          echo Downloading latest rad CLI
+          curl -fsSL RAD_CLI_URL | /bin/bash
       - name: Test Linux x64
         if: ${{ matrix.os == 'linux' && matrix.arch == 'x64' }}
         run: |
