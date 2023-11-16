@@ -75,7 +75,7 @@ rad recipe register cosmosdb -e env_name -w workspace --template-kind bicep --te
 	_ = cmd.MarkFlagRequired("template-path")
 	cmd.Flags().String("resource-type", "", "specify the type of the portable resource this recipe can be consumed by")
 	_ = cmd.MarkFlagRequired("resource-type")
-	cmd.Flags().Bool("plain-http", false, "allow insecure connections to registry without SSL check")
+	cmd.Flags().Bool("plain-http", false, "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).")
 	commonflags.AddParameterFlag(cmd)
 
 	return cmd, runner
@@ -89,7 +89,7 @@ type Runner struct {
 	Workspace         *workspaces.Workspace
 	TemplateKind      string
 	TemplatePath      string
-	PlainHttp         bool
+	PlainHTTP         bool
 	TemplateVersion   string
 	ResourceType      string
 	RecipeName        string
@@ -155,11 +155,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	plainHttp, err := cmd.Flags().GetBool("plain-http")
+	plainHTTP, err := cmd.Flags().GetBool("plain-http")
 	if err != nil {
 		return err
 	}
-	r.PlainHttp = plainHttp
+	r.PlainHTTP = plainHTTP
 
 	return nil
 }
@@ -197,7 +197,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		properties = &corerp.BicepRecipeProperties{
 			TemplateKind: &r.TemplateKind,
 			TemplatePath: &r.TemplatePath,
-			PlainHTTP:    &r.PlainHttp,
+			PlainHTTP:    &r.PlainHTTP,
 			Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 		}
 	}

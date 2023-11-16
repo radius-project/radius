@@ -113,7 +113,7 @@ func Test_Run(t *testing.T) {
 				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
-				PlainHttp:    false,
+				PlainHTTP:    false,
 			},
 			{
 				Name:            "cosmosDB-terraform",
@@ -127,7 +127,7 @@ func Test_Run(t *testing.T) {
 				ResourceType: ds_ctrl.MongoDatabasesResourceType,
 				TemplateKind: recipes.TemplateKindBicep,
 				TemplatePath: "localhost:8000/mongodatabases:v1",
-				PlainHttp:    true,
+				PlainHTTP:    true,
 			},
 		}
 		sort.Slice(recipes, func(i, j int) bool {

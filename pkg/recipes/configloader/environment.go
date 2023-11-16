@@ -163,7 +163,7 @@ func getRecipeDefinition(environment *v20231001preview.EnvironmentResource, reci
 		definition.TemplateVersion = *c.TemplateVersion
 	case *v20231001preview.BicepRecipeProperties:
 		if c.PlainHTTP != nil {
-			definition.PlainHttp = *c.PlainHTTP
+			definition.PlainHTTP = *c.PlainHTTP
 		}
 	}
 

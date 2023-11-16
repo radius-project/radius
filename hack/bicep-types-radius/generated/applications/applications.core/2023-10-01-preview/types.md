@@ -382,7 +382,7 @@
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 ### BicepRecipeProperties
 #### Properties
-* **plainHttp**: bool: Allows insecure connections to registry without SSL check
+* **plainHTTP**: bool: Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
 * **templateKind**: 'bicep' (Required): Discriminator property for RecipeProperties.
 
 ### TerraformRecipeProperties

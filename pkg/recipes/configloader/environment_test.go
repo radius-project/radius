@@ -291,7 +291,7 @@ func TestGetRecipeDefinition(t *testing.T) {
 			Driver:       recipes.TemplateKindBicep,
 			ResourceType: "Applications.Datastores/mongoDatabases",
 			TemplatePath: "localhost:8000/recipes/mongodatabases:1.0",
-			PlainHttp:    true,
+			PlainHTTP:    true,
 		}
 		recipeDef, err := getRecipeDefinition(&envResource, &metadata)
 		require.NoError(t, err)

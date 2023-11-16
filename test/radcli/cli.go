@@ -308,7 +308,7 @@ func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) 
 
 // RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and
 // resource type, and returns the output string or an error.
-func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, resourceType string, plainHttp bool) (string, error) {
+func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, resourceType string, plainHTTP bool) (string, error) {
 	args := []string{
 		"recipe",
 		"register",
@@ -318,7 +318,7 @@ func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templat
 		"--template-path", templatePath,
 		"--resource-type", resourceType,
 	}
-	if plainHttp {
+	if plainHTTP {
 		args = append(args, "--plain-http")
 	}
 	return cli.RunCommand(ctx, args)

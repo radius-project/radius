@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	dockerParser "github.com/novln/docker-parser"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -44,7 +43,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 		return fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
 
-	if definition.PlainHttp {
+	if definition.PlainHTTP {
 		repo.PlainHTTP = true
 	}
 
@@ -131,8 +130,4 @@ func parsePath(path string) (repository string, tag string, err error) {
 	repository = reference.Repository()
 	tag = reference.Tag()
 	return
-}
-
-func IsLocalhost(registry string) bool {
-	return strings.HasPrefix(registry, "localhost:") || strings.HasPrefix(registry, "127.0.0.1:")
 }

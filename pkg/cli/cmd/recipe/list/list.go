@@ -136,7 +136,7 @@ func (r *Runner) Run(ctx context.Context) error {
 					ResourceType: resourceType,
 					TemplatePath: *c.TemplatePath,
 					TemplateKind: *c.TemplateKind,
-					PlainHttp:    *c.PlainHTTP,
+					PlainHTTP:    *c.PlainHTTP,
 				}
 			}
 			envRecipes = append(envRecipes, recipe)

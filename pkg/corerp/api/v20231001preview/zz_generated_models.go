@@ -185,7 +185,8 @@ type BicepRecipeProperties struct {
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
 
-	// Allows insecure connections to registry without SSL check
+	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
+// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
 	PlainHTTP *bool
 }
 
@@ -206,7 +207,8 @@ type BicepRecipePropertiesUpdate struct {
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
 
-	// Allows insecure connections to registry without SSL check
+	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
+// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
 	PlainHTTP *bool
 
 	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
@@ -1395,7 +1397,8 @@ type RecipeGetMetadataResponse struct {
 	// REQUIRED; The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
-	// Allows insecure connections to registry without SSL check
+	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
+// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
 	PlainHTTP *bool
 
 	// The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted

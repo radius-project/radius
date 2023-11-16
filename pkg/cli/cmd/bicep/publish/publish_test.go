@@ -204,7 +204,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 	tests := []struct {
 		name      string
 		dest      *destination
-		plainHttp bool
+		plainHTTP bool
 		want      *remote.Repository
 		wantErr   bool
 	}{
@@ -215,7 +215,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 				repo: "repo",
 				tag:  "tag",
 			},
-			plainHttp: false,
+			plainHTTP: false,
 			want: &remote.Repository{
 				Reference: registry.Reference{
 					Registry:   "index.docker.io",
@@ -232,7 +232,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 				repo: "repo",
 				tag:  "tag",
 			},
-			plainHttp: true,
+			plainHTTP: true,
 			want: &remote.Repository{
 				Reference: registry.Reference{
 					Registry:   "localhost:8000",
@@ -248,7 +248,7 @@ func TestRunner_prepareDestination(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Runner{
 				Destination: tt.dest,
-				PlainHttp:   tt.plainHttp,
+				PlainHTTP:   tt.plainHTTP,
 			}
 			got, err := r.prepareDestination(context.Background())
 			if (err != nil) != tt.wantErr {

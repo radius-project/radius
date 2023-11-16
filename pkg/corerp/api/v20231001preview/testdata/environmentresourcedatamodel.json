@@ -37,7 +37,7 @@
           "parameters" : {
             "throughput": 400
           },
-          "plainHttp":true
+          "plainHTTP":true
         },
         "terraform-recipe": {
           "templateKind": "terraform",

@@ -140,7 +140,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							"redis-recipe": datamodel.EnvironmentRecipeProperties{
 								TemplateKind: recipes.TemplateKindBicep,
 								TemplatePath: "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
-								PlainHttp:    true,
+								PlainHTTP:    true,
 							},
 						},
 						dapr_ctrl.DaprStateStoresResourceType: {

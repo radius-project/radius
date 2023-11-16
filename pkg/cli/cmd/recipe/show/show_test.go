@@ -190,7 +190,7 @@ func Test_Run(t *testing.T) {
 			ResourceType: datastoresrp.MongoDatabasesResourceType,
 			TemplateKind: recipes.TemplateKindBicep,
 			TemplatePath: "localhost:8000/mongodatabases:v1",
-			PlainHttp:    true,
+			PlainHTTP:    true,
 		}
 		recipeParams := []RecipeParameter{
 			{
