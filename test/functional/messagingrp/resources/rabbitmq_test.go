@@ -50,11 +50,6 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "rmq-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "msg-rmq-rmq",
 						Type: validation.RabbitMQQueuesResource,
 						App:  name,
@@ -66,7 +61,7 @@ func Test_RabbitMQ_Manual(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
 						validation.NewK8sPodForResource(name, "rmq-ctnr"),
-						validation.NewK8sServiceForResource(name, "rmq-rte"),
+						validation.NewK8sServiceForResource(name, "rmq-ctnr"),
 					},
 				},
 			},

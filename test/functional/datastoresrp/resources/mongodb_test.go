@@ -52,11 +52,6 @@ func Test_MongoDB_Manual(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mdb-us-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "mdb-us-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
@@ -68,7 +63,6 @@ func Test_MongoDB_Manual(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr").ValidateLabels(false),
 						validation.NewK8sPodForResource(name, "mdb-us-ctnr").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "mdb-us-rte").ValidateLabels(false),
 					},
 				},
 			},

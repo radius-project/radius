@@ -53,6 +53,9 @@ rad install kubernetes --kubecontext mycluster
 
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
+
+# Install Radius with the intermediate root CA certificate in the current Kubernetes context
+rad install kubernetes --set-file global.rootCA.cert=/path/to/rootCA.crt
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -62,6 +65,7 @@ rad install kubernetes --set key=value
 	cmd.Flags().BoolVar(&runner.Reinstall, "reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	return cmd, runner
 }
@@ -75,6 +79,7 @@ type Runner struct {
 	Chart       string
 	Reinstall   bool
 	Set         []string
+	SetFile     []string
 }
 
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
@@ -103,9 +108,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall: r.Reinstall,
-			ChartPath: r.Chart,
-			SetArgs:   r.Set,
+			Reinstall:   r.Reinstall,
+			ChartPath:   r.Chart,
+			SetArgs:     r.Set,
+			SetFileArgs: r.SetFile,
 		},
 	}
 

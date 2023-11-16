@@ -18,7 +18,7 @@ jobs:
       - name: Comment analyzer
         uses: actions/github-script@v6
         env:
-          TEAM_SLUG: 'Radius-Eng'
+          TEAM_SLUG: 'approvers-radius'
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           script: |

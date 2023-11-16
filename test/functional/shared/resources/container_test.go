@@ -63,46 +63,6 @@ func Test_Container(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_ContainerHttpRoute(t *testing.T) {
-	template := "testdata/corerp-resources-container-httproute.bicep"
-	name := "corerp-resources-container-httproute"
-	appNamespace := "corerp-resources-container-httproute-app"
-
-	test := shared.NewRPTest(t, name, []shared.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: name,
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: "ctnr-rte-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "ctnr-rte-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
-						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
-					},
-				},
-			},
-		},
-	})
-
-	test.Test(t)
-}
-
 func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 	template := "testdata/corerp-resources-container-two-containers-dns.bicep"
 	name := "corerp-resources-container-two-containers-dns"

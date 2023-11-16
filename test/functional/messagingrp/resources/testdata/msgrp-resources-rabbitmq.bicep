@@ -64,20 +64,12 @@ resource rabbitmqContainer 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         rabbitmq: {
           containerPort: rabbitmqPort
-          provides: rabbitmqRoute.id
         }
       }
     }
   }
 }
 
-resource rabbitmqRoute 'Applications.Core/httpRoutes@2023-10-01-preview' = {
-  name: 'rmq-rte'
-  properties: {
-    application: app.id
-    port: rabbitmqPort
-  }
-}
 
 resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2023-10-01-preview' = {
   name: 'msg-rmq-rmq'
@@ -86,8 +78,8 @@ resource rabbitmq 'Applications.Messaging/rabbitMQQueues@2023-10-01-preview' = {
     environment: environment
     resourceProvisioning: 'manual'
     queue: 'queue'
-    host: rabbitmqRoute.properties.hostname
-    port:rabbitmqRoute.properties.port
+    host: 'rmq-ctnr'
+    port: rabbitmqPort
     username:username
     secrets: {
       password: password

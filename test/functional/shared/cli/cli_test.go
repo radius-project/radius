@@ -35,8 +35,13 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/radcli"
@@ -199,6 +204,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		// We don't want to be too fragile so we're not validating the logs in depth
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
+
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
 		t.Skip("https://github.com/radius-project/radius/issues/3232")
 		port, err := GetAvailablePort()
@@ -695,6 +701,57 @@ func Test_RecipeCommands(t *testing.T) {
 	})
 
 	test.Test(t)
+}
+
+// This test creates an environment by directly calling the CreateEnvironment function to test dev recipes.
+// After dev recipes are confirmed, the environment is deleted.
+func Test_DevRecipes(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	options := shared.NewTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	envName := "test-dev-recipes"
+	envNamespace := "test-dev-recipes"
+
+	basicRunner := radinit.NewRunner(
+		&framework.Impl{
+			ConnectionFactory: connections.DefaultFactory,
+		},
+	)
+	basicRunner.UpdateEnvironmentOptions(true, envName, envNamespace)
+	basicRunner.UpdateRecipePackOptions(true)
+	basicRunner.DevRecipeClient = radinit.NewDevRecipeClient()
+	basicRunner.Workspace = &workspaces.Workspace{
+		Name: envName,
+		Connection: map[string]any{
+			"kind": workspaces.KindKubernetes,
+		},
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/kind-radius/providers/Applications.Core/environments/%s", envName),
+		Scope:       "/planes/radius/local/resourceGroups/kind-radius",
+	}
+
+	// Create the environment
+	err := basicRunner.CreateEnvironment(ctx)
+	require.NoError(t, err)
+
+	output, err := cli.RecipeList(ctx, envName)
+	require.NoError(t, err)
+	require.Regexp(t, "default", output)
+
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
+	for _, devRecipe := range radinit.AvailableDevRecipes() {
+		require.Regexp(t, devRecipe.ResourceType, output)
+		require.Regexp(t, devRecipe.RepoPath+":"+tag, output)
+	}
+
+	err = cli.EnvDelete(ctx, envName)
+	require.NoError(t, err)
 }
 
 // GetAvailablePort attempts to find an available port on the localhost and returns it, or returns an error if it fails.

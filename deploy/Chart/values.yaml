@@ -1,4 +1,15 @@
 global:
+  # Configure global.rootCA.cert to use the intermediate CA cert in Radius containers.
+  # Otherwise, Radius containers use the default root CA provided by base OS image.
+  rootCA:
+    cert: ""
+    secretName: "root-ca-cert"
+    volumeName: "root-ca-vol"
+    mountPath: "/tmp/sslcerts"
+    # SSL_CERT_DIRS is used to override the default root CA location.
+    # Dotnet runtime and Go use this environment variable to load the root CA.
+    sslCertDirEnvVar: "SSL_CERT_DIRS"
+
   prometheus:
     enabled: true
     path: "/metrics"
@@ -9,6 +20,7 @@ global:
   # zipkin:
   #   url: "http://jaeger-collector.radius-monitoring.svc.cluster.local:9411/api/v2/spans"
   #
+
 controller:
   image: ghcr.io/radius-project/controller
   # Default tag uses Chart AppVersion.

@@ -18,11 +18,8 @@ package radinit
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	ext_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/extenders"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	ds_ctrl "github.com/radius-project/radius/pkg/datastoresrp/frontend/controller"
 	msg_ctrl "github.com/radius-project/radius/pkg/messagingrp/frontend/controller"
@@ -33,8 +30,69 @@ import (
 )
 
 const (
-	DevRecipesRegistry = "ghcr.io/radius-project"
+	// RecipeRepositoryPrefix is the prefix for the repository path.
+	RecipeRepositoryPrefix = "ghcr.io/radius-project/recipes/local-dev/"
 )
+
+type DevRecipe struct {
+	// NormalizedName is the normalized name of the recipe.
+	//
+	// For example, "mongodatabases".
+	NormalizedName string
+
+	// ResourceType is the resource type of the recipe.
+	//
+	// For example, "Applications.Datastores/mongoDatabases".
+	ResourceType string
+
+	// RepoPath is the repository path of the recipe.
+	//
+	// For example, "ghcr.io/radius-project/recipes/local-dev/mongodatabases".
+	RepoPath string
+}
+
+// AvailableDevRecipes returns the list of available dev recipes.
+//
+// If we want to add a new recipe, we need to add it here.
+func AvailableDevRecipes() []DevRecipe {
+	return []DevRecipe{
+		{
+			"mongodatabases",
+			ds_ctrl.MongoDatabasesResourceType,
+			RecipeRepositoryPrefix + "mongodatabases",
+		},
+		{
+			"rediscaches",
+			ds_ctrl.RedisCachesResourceType,
+			RecipeRepositoryPrefix + "rediscaches",
+		},
+		{
+			"sqldatabases",
+			ds_ctrl.SqlDatabasesResourceType,
+			RecipeRepositoryPrefix + "sqldatabases",
+		},
+		{
+			"rabbitmqqueues",
+			msg_ctrl.RabbitMQQueuesResourceType,
+			RecipeRepositoryPrefix + "rabbitmqqueues",
+		},
+		{
+			"pubsubbrokers",
+			dapr_ctrl.DaprPubSubBrokersResourceType,
+			RecipeRepositoryPrefix + "pubsubbrokers",
+		},
+		{
+			"secretstores",
+			dapr_ctrl.DaprSecretStoresResourceType,
+			RecipeRepositoryPrefix + "secretstores",
+		},
+		{
+			"statestores",
+			dapr_ctrl.DaprStateStoresResourceType,
+			RecipeRepositoryPrefix + "statestores",
+		},
+	}
+}
 
 //go:generate mockgen -destination=./mock_devrecipeclient.go -package=radinit -self_package github.com/radius-project/radius/pkg/cli/cmd/radinit github.com/radius-project/radius/pkg/cli/cmd/radinit DevRecipeClient
 type DevRecipeClient interface {
@@ -52,148 +110,38 @@ func NewDevRecipeClient() DevRecipeClient {
 // GetDevRecipes is a function that queries a registry for recipes with a specific tag and returns a map of recipes.
 // If an error occurs, an error is returned.
 func (drc *devRecipeClient) GetDevRecipes(ctx context.Context) (map[string]map[string]corerp.RecipePropertiesClassification, error) {
-	reg, err := remote.NewRegistry(DevRecipesRegistry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesRegistry, err.Error())
-	}
-
 	// The tag will be the major.minor version of the release.
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
 		tag = "latest"
 	}
 
-	// Temporary solution to get all repositories.
-	// The issue is that if RepositoryListPageSize is not specified the default is 100.
-	// We have 104 repositories in the registry as of 12 Oct 2023. That is why processRepositories
-	// function was being called twice and the second call was overwriting all the recipes.
-	// TODO: Remove this once we have a better solution.
-	reg.RepositoryListPageSize = 1000
-
-	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
-
-	// if repository has the correct path it should look like: <registryPath>/recipes/<category>/<type>:<tag>
-	// Ex: ghcr.io/radius-project/recipes/local-dev/rediscaches:0.20
-	// The start parameter is set to "radius-rp" because our recipes are after that repository.
-	err = reg.Repositories(ctx, "", func(repos []string) error {
-		// validRepos will contain the repositories that have the requested tag.
-		validRepos := []string{}
-		for _, repo := range repos {
-			r, err := reg.Repository(ctx, repo)
-			if err != nil {
-				continue
-			}
-
-			tagExists := false
-			err = r.Tags(ctx, "", func(tags []string) error {
-				for _, t := range tags {
-					if t == tag {
-						tagExists = true
-						break
-					}
-				}
-				return nil
-			})
-			if err != nil {
-				continue
-			}
-
-			if tagExists {
-				validRepos = append(validRepos, repo)
-			}
-		}
-
-		recipes = processRepositories(validRepos, tag)
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list recipes available in registry at path  %s -  %s", DevRecipesRegistry, err.Error())
-	}
-
-	return recipes, nil
-}
-
-// processRepositories processes the repositories and returns the recipes.
-func processRepositories(repos []string, tag string) map[string]map[string]corerp.RecipePropertiesClassification {
-	recipes := map[string]map[string]corerp.RecipePropertiesClassification{}
-
-	// We are using the default recipe.
-	name := "default"
-
-	for _, repo := range repos {
-		// Skip dev environment recipes.
-		// dev repositories is in the form of ghcr.io/radius-project/dev/recipes/local-dev/secretstores:latest
-		// We should skip the dev repositories.
-		if isDevRepository(repo) {
+	validDevRecipes := map[string]map[string]corerp.RecipePropertiesClassification{}
+	for _, devRecipe := range AvailableDevRecipes() {
+		repo, err := remote.NewRepository(devRecipe.RepoPath)
+		if err != nil {
 			continue
 		}
 
-		resourceType := getResourceTypeFromPath(repo)
-		// If the resource type is empty, it means we don't support the repository.
-		if resourceType == "" {
-			continue
-		}
-
-		portableResourceType := getPortableResourceType(resourceType)
-		// If the PortableResource type is empty, it means we don't support the resource type.
-		if portableResourceType == "" {
-			continue
-		}
-
-		repoPath := DevRecipesRegistry + "/" + repo
-
-		recipes[portableResourceType] = map[string]corerp.RecipePropertiesClassification{
-			name: &corerp.BicepRecipeProperties{
-				TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
-				TemplatePath: to.Ptr(repoPath + ":" + tag),
-			},
+		// The descriptor and the ReadCloser that are returned by FetchReference are not used.
+		// If the tag does not exist, Not Found error is returned from the FetchReference function.
+		_, _, err = repo.FetchReference(ctx, tag)
+		if err == nil {
+			validDevRecipes[devRecipe.ResourceType] = getRecipeProperties(devRecipe, tag)
 		}
 	}
 
-	return recipes
+	return validDevRecipes, nil
 }
 
-// getResourceTypeFromPath parses the repository path to extract the resource type.
-//
-// Should be of the form: recipes/local-dev/<resourceType>
-func getResourceTypeFromPath(repo string) (resourceType string) {
-	_, after, found := strings.Cut(repo, "recipes/local-dev/")
-	if !found || after == "" {
-		return ""
+// getRecipeProperties returns the recipe properties for a specific recipe.
+func getRecipeProperties(devRecipe DevRecipe, tag string) map[string]corerp.RecipePropertiesClassification {
+	recipeName := "default"
+
+	return map[string]corerp.RecipePropertiesClassification{
+		recipeName: &corerp.BicepRecipeProperties{
+			TemplateKind: to.Ptr(recipe_types.TemplateKindBicep),
+			TemplatePath: to.Ptr(devRecipe.RepoPath + ":" + tag),
+		},
 	}
-
-	if strings.Count(after, "/") == 0 {
-		resourceType = strings.Split(after, "/")[0]
-	}
-
-	return resourceType
-}
-
-// getPortableResourceType returns the resource type for the given resource.
-func getPortableResourceType(resourceType string) string {
-	switch resourceType {
-	case "mongodatabases":
-		return ds_ctrl.MongoDatabasesResourceType
-	case "rediscaches":
-		return ds_ctrl.RedisCachesResourceType
-	case "sqldatabases":
-		return ds_ctrl.SqlDatabasesResourceType
-	case "rabbitmqqueues":
-		return msg_ctrl.RabbitMQQueuesResourceType
-	case "pubsubbrokers":
-		return dapr_ctrl.DaprPubSubBrokersResourceType
-	case "secretstores":
-		return dapr_ctrl.DaprSecretStoresResourceType
-	case "statestores":
-		return dapr_ctrl.DaprStateStoresResourceType
-	case "extenders":
-		return ext_ctrl.ResourceTypeName
-	default:
-		return ""
-	}
-}
-
-func isDevRepository(repo string) bool {
-	_, found := strings.CutPrefix(repo, "dev/")
-	return found
 }
