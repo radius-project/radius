@@ -84,7 +84,6 @@ jobs:
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
-      FUNCTIONAL_TEST_APP_ID: 428394
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -95,22 +94,12 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Login as the github app
-        uses: tibdex/github-app-token@v1
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
-        with:
-            github-token: ${{ steps.get_installation_token.outputs.token }}
         if: github.event_name == 'schedule'
         run: |
           echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
           echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
       - name: Set up checkout target (pull_request)
-        with:
-            github-token: ${{ steps.get_installation_token.outputs.token }}
         if: github.event_name == 'pull_request'
         run: |
             echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
@@ -163,7 +152,6 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           hide: true
@@ -208,15 +196,12 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :hourglass: Building Radius and pushing container images for functional tests...
       - name: Build and Push container images
-        with:
-          github-token: ${{ steps.get_installation_token.outputs.token }}
         run: |
           make build && make docker-build && make docker-push
         env:
@@ -232,7 +217,6 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -242,7 +226,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -252,7 +235,6 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -275,7 +257,6 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -285,7 +266,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -317,12 +297,6 @@ jobs:
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
-      - name: Login as the github app
-        uses: tibdex/github-app-token@v1
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -365,7 +339,6 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -458,7 +431,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -498,7 +470,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -562,7 +533,6 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -572,7 +542,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
