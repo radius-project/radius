@@ -102,8 +102,8 @@ func (m MinimumTLSProtocolVersion) IsValid() bool {
 }
 
 // IsEqualTo compares two MinimumTLSProtocolVersion objects and returns true if they are equal.
-func (m MinimumTLSProtocolVersion) IsEqualTo(minumumTLSProtocolVersion MinimumTLSProtocolVersion) bool {
-	return m == minumumTLSProtocolVersion
+func (m MinimumTLSProtocolVersion) IsEqualTo(minimumTLSProtocolVersion MinimumTLSProtocolVersion) bool {
+	return m == minimumTLSProtocolVersion
 }
 
 // MinimumTLSProtocolVersion represents the minimum TLS protocol version supported by the Gateway.
