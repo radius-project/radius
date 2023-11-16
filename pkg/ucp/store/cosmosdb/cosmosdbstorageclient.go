@@ -452,7 +452,7 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 func GetPartitionKey(id resources.ID) (string, error) {
 	partitionKey := NormalizeSubscriptionID(id.FindScope(resources_azure.ScopeSubscriptions))
 
-	if id.IsUCPQualfied() {
+	if id.IsUCPQualified() {
 		partitionKey = NormalizeLetterOrDigitToUpper(id.PlaneNamespace())
 	}
 

@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package apiserver is Kuberentes CRD based queue implementation. To implement the distributed queue using CRD,
-// we define QueueMessage Custom Resource and leverage Kuberentes optimistic concurrency.
+// Package apiserver is Kubernetes CRD based queue implementation. To implement the distributed queue using CRD,
+// we define QueueMessage Custom Resource and leverage Kubernetes optimistic concurrency.
 //
 // Kubernetes Concurrency control and consistency:
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency

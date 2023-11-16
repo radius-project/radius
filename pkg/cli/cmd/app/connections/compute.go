@@ -212,7 +212,7 @@ func resourceEntryFromID(id string) resourceEntry {
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
 func outputResourceEntryFromID(id resources.ID) outputResourceEntry {
 	entry := outputResourceEntry{node: nodeFromParsedID(id)}
-	if len(id.ScopeSegments()) > 0 && id.IsUCPQualfied() {
+	if len(id.ScopeSegments()) > 0 && id.IsUCPQualified() {
 		entry.Provider = id.ScopeSegments()[0].Type
 	} else if len(id.ScopeSegments()) > 0 {
 		// Relative Resource ID (ARM)
