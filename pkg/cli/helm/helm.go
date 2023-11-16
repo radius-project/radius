@@ -29,6 +29,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/registry"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -79,7 +80,6 @@ func locateChartFile(dirPath string) (string, error) {
 
 func helmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pull := helm.NewPull()
-	pull.RepoURL = repoUrl
 	pull.Settings = &cli.EnvSettings{}
 	pullopt := helm.WithConfig(config)
 	pullopt(pull)
@@ -101,7 +101,32 @@ func helmChartFromContainerRegistry(version string, config *helm.Configuration, 
 
 	pull.DestDir = dir
 
-	_, err = pull.Run(releaseName)
+	var chartRef string
+
+	if !registry.IsOCI(repoUrl) {
+		// For non-OCI registries (like contour), we need to set the repo URL
+		// to the registry URL. The chartRef is the release name.
+		// ex.
+		// pull.RepoURL = https://charts.bitnami.com/bitnami
+		// pull.Run("contour")
+		pull.RepoURL = repoUrl
+		chartRef = releaseName
+	} else {
+		// For OCI registries (like radius), we will use the
+		// repo URL + the releaseName as the chartRef.
+		// pull.Run("oci://ghcr.io/radius-project/helm-chart/radius")
+		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
+
+		// Since we are using an OCI registry, we need to set the registry client
+		registryClient, err := registry.NewClient(registry.ClientOptHTTPClient(newAnonymousHTTPClient()))
+		if err != nil {
+			return nil, err
+		}
+
+		pull.SetRegistryClient(registryClient)
+	}
+
+	_, err = pull.Run(chartRef)
 	if err != nil {
 		return nil, fmt.Errorf("error downloading helm chart from the registry for version: %s, release name: %s. Error: %w", version, releaseName, err)
 	}
