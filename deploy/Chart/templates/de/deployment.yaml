@@ -31,6 +31,11 @@ spec:
         - name: appsettings-vol
           configMap:
             name: bicep-de-config
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          secret:
+            secretName: {{ .Values.global.rootCA.secretName }}
+        {{- end }}
       containers:
       - name: de
         image: {{ .Values.de.image }}:{{ .Values.de.tag | default $appversion }}
@@ -40,6 +45,11 @@ spec:
         - name: appsettings-vol
           mountPath: /app/appsettings.Production.json
           subPath: appsettings.Production.json
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          mountPath: {{ .Values.global.rootCA.mountPath }}
+          readOnly: true
+        {{- end }}
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
@@ -53,6 +63,10 @@ spec:
           value: "true"
         - name: RADIUSBACKENDURL
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
+          value: {{ .Values.global.rootCA.mountPath }}
+        {{- end}}
         ports:
         - containerPort: 6443
           name: bicep-de-api

@@ -45,7 +45,6 @@ jobs:
           repository: radius-project/docs
           path: docs
           ref: ${{ env.DOCS_BRANCH }}
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
       # Setup dependencies
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v4

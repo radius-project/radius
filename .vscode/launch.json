@@ -14,8 +14,6 @@
             "args": [
                 "--config-file",
                 "${workspaceFolder}/cmd/applications-rp/radius-self-hosted.yaml",
-                "--portableresource-config",
-                "${workspaceFolder}/cmd/applications-rp/portableresource-self-hosted.yaml",
             ],
             "env": {
                 "RADIUS_ENV": "self-hosted"

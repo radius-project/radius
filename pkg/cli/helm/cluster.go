@@ -79,6 +79,11 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	if len(cliOptions.Radius.SetArgs) > 0 {
 		options.Radius.SetArgs = cliOptions.Radius.SetArgs
 	}
+
+	if len(cliOptions.Radius.SetFileArgs) > 0 {
+		options.Radius.SetFileArgs = cliOptions.Radius.SetFileArgs
+	}
+
 	return options
 }
 

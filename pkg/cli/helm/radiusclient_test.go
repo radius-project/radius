@@ -28,7 +28,8 @@ func Test_AddRadiusValues(t *testing.T) {
 	var helmChart chart.Chart
 	helmChart.Values = map[string]any{}
 	options := &RadiusOptions{
-		SetArgs: []string{"global.zipkin.url=url,global.prometheus.path=path"},
+		SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
+		SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
 	}
 
 	err := AddRadiusValues(&helmChart, options)
@@ -45,6 +46,10 @@ func Test_AddRadiusValues(t *testing.T) {
 	_, ok = zipkin["url"]
 	assert.True(t, ok)
 	assert.Equal(t, zipkin["url"], "url")
+	rootCA := global["rootCA"].(map[string]any)
+	_, ok = rootCA["cert"]
+	assert.True(t, ok)
+	assert.Contains(t, rootCA["cert"], "-----BEGIN CERTIFICATE-----")
 
 	_, ok = global["prometheus"]
 	assert.True(t, ok)
