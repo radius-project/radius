@@ -45,6 +45,10 @@ spec:
         - name: RADIUS_PUBLIC_ENDPOINT_OVERRIDE
           value: {{ .Values.rp.publicEndpointOverride }}
         {{- end }}
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
+          value: {{ .Values.global.rootCA.mountPath }}
+        {{- end}}
         ports:
         - containerPort: 5443
           name: applications-rp
@@ -64,6 +68,11 @@ spec:
           mountPath: /etc/config
         - name: terraform
           mountPath: {{ .Values.rp.terraform.path }}
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          mountPath: {{ .Values.global.rootCA.mountPath }}
+          readOnly: true
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.rp.resources }}
@@ -75,3 +84,8 @@ spec:
             name: applications-rp-config
         - name: terraform
           emptyDir: {}
+        {{- if .Values.global.rootCA.cert }}
+        - name: {{ .Values.global.rootCA.volumeName }}
+          secret:
+            secretName: {{ .Values.global.rootCA.secretName }}
+        {{- end }}
