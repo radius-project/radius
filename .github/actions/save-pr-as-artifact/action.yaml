@@ -1,0 +1,17 @@
+name: "Save PR number as artifact"
+description: "Save PR number as artifact"
+runs:
+  using: "composite"
+  steps:
+    - name: Save PR number
+      shell: bash
+      env:
+        PR_NUMBER: ${{ github.event.number }}
+      run: |
+          mkdir -p ./pr
+          echo $PR_NUMBER > ./pr/pr_number
+    - uses: actions/upload-artifact@v3
+      with:
+        name: pr_number
+        path: pr/
+
