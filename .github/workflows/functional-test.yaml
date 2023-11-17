@@ -73,6 +73,7 @@ jobs:
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
+      FUNCTIONAL_TEST_APP_ID: 428394
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -83,6 +84,12 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
+      - name: Login as the GitHub App
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -157,6 +164,7 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           hide: true
@@ -201,6 +209,7 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -222,6 +231,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -231,6 +241,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -240,6 +251,7 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -262,6 +274,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -271,6 +284,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -300,7 +314,8 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
-      FUNCTIONAL_TEST_APP_ID: 425843
+      # TODO Change APPID to the real one
+      FUNCTIONAL_TEST_APP_ID: 428394
     steps:
       - name: Login as the GitHub App
         uses: tibdex/github-app-token@v1
@@ -350,6 +365,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -442,6 +458,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -481,6 +498,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -565,6 +583,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -574,6 +593,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
