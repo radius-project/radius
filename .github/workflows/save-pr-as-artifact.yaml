@@ -1,0 +1,21 @@
+name: Save PR number as artifact
+on:
+  workflow_call
+
+jobs:
+  save_pr_as_artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Save PR number
+        run: |
+          mkdir -p ./pr
+          echo ${{ github.event.pull_request.number }} > ./pr/pr_number
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: pr_number
+          path: pr/
