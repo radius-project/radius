@@ -167,6 +167,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		recipe.TemplateVersion = *recipeDetails.TemplateVersion
 	}
 
+	if recipeDetails.PlainHTTP != nil {
+		recipe.PlainHTTP = *recipeDetails.PlainHTTP
+	}
+
 	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err
