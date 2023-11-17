@@ -169,6 +169,83 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expected, outputSink.Writes)
 	})
 
+	t.Run("Show bicep recipe details - Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		envRecipe := v20231001preview.RecipeGetMetadataResponse{
+			TemplateKind: to.Ptr(recipes.TemplateKindBicep),
+			TemplatePath: to.Ptr("localhost:8000/mongodatabases:v1"),
+			PlainHTTP:    to.Ptr(true),
+			Parameters: map[string]any{
+				"throughput": map[string]any{
+					"type":     "float64",
+					"maxValue": float64(800),
+				},
+				"sku": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+		recipe := types.EnvironmentRecipe{
+			Name:         "cosmosDB",
+			ResourceType: datastoresrp.MongoDatabasesResourceType,
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "localhost:8000/mongodatabases:v1",
+			PlainHTTP:    true,
+		}
+		recipeParams := []RecipeParameter{
+			{
+				Name:         "throughput",
+				Type:         "float64",
+				MaxValue:     "800",
+				MinValue:     "-",
+				DefaultValue: "-",
+			},
+			{
+				Name:         "sku",
+				Type:         "string",
+				MaxValue:     "-",
+				MinValue:     "-",
+				DefaultValue: "-",
+			},
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ShowRecipe(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(envRecipe, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			Format:            "table",
+			RecipeName:        "cosmosDB",
+			ResourceType:      datastoresrp.MongoDatabasesResourceType,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipe,
+				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+			},
+			output.LogOutput{
+				Format: "",
+			},
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     recipeParams,
+				Options: objectformats.GetRecipeParamsTableFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
 	t.Run("Show terraformn recipe details - Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		envRecipe := v20231001preview.RecipeGetMetadataResponse{

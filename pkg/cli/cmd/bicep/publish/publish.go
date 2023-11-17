@@ -81,6 +81,7 @@ rad bicep publish --file ./redis-test.bicep --target br:ghcr.io/myregistry/redis
 	_ = cmd.MarkFlagRequired("file")
 	cmd.Flags().String("target", "", "remote OCI registry path, in the format 'br:HOST/PATH:TAG'.")
 	_ = cmd.MarkFlagRequired("target")
+	cmd.Flags().Bool("plain-http", false, "connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).")
 
 	return cmd, runner
 }
@@ -94,6 +95,7 @@ type Runner struct {
 
 	File          string
 	Target        string
+	PlainHTTP     bool
 	Destination   *destination
 	Template      map[string]any
 	TemplateBytes []byte
@@ -130,6 +132,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	r.Target = strings.TrimPrefix(target, "br:")
+
+	plainHTTP, err := cmd.Flags().GetBool("plain-http")
+	if err != nil {
+		return err
+	}
+	r.PlainHTTP = plainHTTP
 
 	return nil
 }
@@ -244,6 +252,10 @@ func (r *Runner) prepareDestination(ctx context.Context) (*remote.Repository, er
 		Client:     retry.DefaultClient,
 		Cache:      auth.DefaultCache,
 		Credential: ds.Get,
+	}
+
+	if r.PlainHTTP {
+		dst.PlainHTTP = true
 	}
 
 	return dst, nil

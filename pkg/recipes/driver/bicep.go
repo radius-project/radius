@@ -85,7 +85,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -258,7 +258,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData)
 	if err != nil {
 		return nil, err
 	}

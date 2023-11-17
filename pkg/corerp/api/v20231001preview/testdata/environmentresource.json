@@ -38,7 +38,8 @@
       "Applications.Datastores/redisCaches":{
         "redis-recipe": {
           "templateKind": "bicep",
-          "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscaches"
+          "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
+          "plainHTTP": true
         }
       },
       "Applications.Dapr/stateStores":{
