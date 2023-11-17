@@ -103,7 +103,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
+							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparator),
 						},
 					},
 				},
@@ -117,7 +117,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
-							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
+							Base: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparator),
 						},
 					},
 				},
@@ -216,25 +216,25 @@ func TestValidateManifest(t *testing.T) {
 	}{
 		{
 			name:     "valid manifest with deployments/services/serviceaccounts",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err:      nil,
 		},
 		{
 			name:     "valid manifest with deployments/services/secrets/configmaps",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err:      nil,
 		},
 		{
 			name:     "valid manifest with multiple secrets and multiple configmaps",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeSecret, fakeSecret, fakeSecret, fakeConfigMap, fakeConfigMap}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err:      nil,
 		},
 		{
 			name:     "invalid manifest with multiple deployments",
-			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeDeployment}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -251,7 +251,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with multiple services",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -268,7 +268,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with multiple serviceaccounts",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -285,7 +285,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with resource including namespace",
-			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeServiceWithNamespace, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -302,7 +302,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched deployment name",
-			manifest: strings.Join([]string{fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "pie", "", "magpie"), fakeService, fakeServiceAccount}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "pie", "", "magpie"), fakeService, fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -319,7 +319,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched service name",
-			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(k8sutil.FakeServiceTemplate, "pie", ""), fakeServiceAccount}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fmt.Sprintf(k8sutil.FakeServiceTemplate, "pie", ""), fakeServiceAccount}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -336,7 +336,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with unmatched serviceaccount name",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,
@@ -358,7 +358,7 @@ func TestValidateManifest(t *testing.T) {
 		},
 		{
 			name:     "invalid manifest with multiple errors",
-			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparater),
+			manifest: strings.Join([]string{fakeDeployment, fakeService, fakeService, fmt.Sprintf(k8sutil.FakeServiceAccountTemplate, "pie")}, k8sutil.YAMLSeparator),
 			resource: validResource,
 			err: v1.ErrorDetails{
 				Code:    v1.CodeInvalidRequestContent,

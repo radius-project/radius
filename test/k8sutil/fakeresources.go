@@ -16,8 +16,8 @@ limitations under the License.
 
 package k8sutil
 
-// YAMLSeparater is the separater for fake YAML.
-const YAMLSeparater = "\n---\n"
+// YAMLSeparator is the separator for fake YAML.
+const YAMLSeparator = "\n---\n"
 
 // FakeDeploymentTemplate is the template for fake deployment.
 const FakeDeploymentTemplate = `
