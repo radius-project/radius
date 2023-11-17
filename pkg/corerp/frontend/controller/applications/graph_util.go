@@ -425,7 +425,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 	// The data is returned as an array of JSON objects. We need to convert each object from a map[string]any
 	// to the strongly-typed format we understand.
 	//
-	// If we enounter an error processing this data, just and an "invalid" output resource entry.
+	// If we encounter an error processing this data, just and an "invalid" output resource entry.
 	entries := []*corerpv20231001preview.ApplicationGraphOutputResource{}
 	for _, or := range ors {
 		// This is the wire format returned by the API for an output resource.

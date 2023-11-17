@@ -60,7 +60,7 @@ func ScaffoldApplication(directory string, name string) error {
 		return err
 	}
 
-	// We NEVER overwite app.bicep if it exists. We assume the user might have changed it, and don't
+	// We NEVER overwrite app.bicep if it exists. We assume the user might have changed it, and don't
 	// want them to lose their content.
 	//
 	// On the other hand, we ALWAYS overwrite rad.yaml if it exists. We assume that the reason why

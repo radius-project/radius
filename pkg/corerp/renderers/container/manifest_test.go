@@ -592,7 +592,7 @@ func TestPopulateAllBaseResources(t *testing.T) {
 		fakeConfigMap0 := fmt.Sprintf(k8sutil.FakeConfigMapTemplate, "configmap0")
 		fakeConfigMap1 := fmt.Sprintf(k8sutil.FakeConfigMapTemplate, "configmap1")
 
-		baseString := strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeSecret0, fakeConfigMap0, fakeSecret1, fakeConfigMap1}, k8sutil.YAMLSeparater)
+		baseString := strings.Join([]string{fakeDeployment, fakeService, fakeServiceAccount, fakeSecret0, fakeConfigMap0, fakeSecret1, fakeConfigMap1}, k8sutil.YAMLSeparator)
 		manifest, err := kubeutil.ParseManifest([]byte(baseString))
 		require.NoError(t, err)
 

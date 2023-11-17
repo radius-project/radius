@@ -29,14 +29,14 @@ import (
 	"github.com/radius-project/radius/pkg/kubeutil"
 )
 
-// AsyncWorker is a service to run AsyncReqeustProcessWorker.
+// AsyncWorker is a service to run AsyncRequestProcessWorker.
 type AsyncWorker struct {
 	worker.Service
 
 	handlerBuilder []builder.Builder
 }
 
-// NewAsyncWorker creates new service instance to run AsyncReqeustProcessWorker.
+// NewAsyncWorker creates new service instance to run AsyncRequestProcessWorker.
 func NewAsyncWorker(options hostoptions.HostOptions, builder []builder.Builder) *AsyncWorker {
 	return &AsyncWorker{
 		Service: worker.Service{
