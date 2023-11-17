@@ -300,7 +300,14 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      FUNCTIONAL_TEST_APP_ID: 425843
     steps:
+      - name: Login as the GitHub App
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -482,6 +489,15 @@ jobs:
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Approved Functional Test Run'
+          status: in_progress
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Run functional tests
         run: |
           # Ensure rad cli is in path before running tests.
@@ -533,6 +549,18 @@ jobs:
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional test run (after approval)'
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: completed
+          conclusion: ${{ job.status }}
+          output: |
+            {"summary":"Functional Test run completed. See links for more information.","title":"Approved Functional Test Run"}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
