@@ -74,7 +74,7 @@ func (or OutputResource) GetResourceType() resourcemodel.ResourceType {
 		return or.CreateResource.ResourceType
 	}
 
-	if or.ID.IsUCPQualfied() && len(or.ID.ScopeSegments()) > 0 {
+	if or.ID.IsUCPQualified() && len(or.ID.ScopeSegments()) > 0 {
 		return resourcemodel.ResourceType{
 			Provider: or.ID.ScopeSegments()[0].Type,
 			Type:     or.ID.Type(),

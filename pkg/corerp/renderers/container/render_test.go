@@ -264,7 +264,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 }
 
 // This test verifies most of the 'basics' of rendering a deployment. These verifications are not
-// repeated in other tests becase the code is simple for these cases.
+// repeated in other tests because the code is simple for these cases.
 //
 // If you add minor features, add them here.
 func Test_Render_Basic(t *testing.T) {
@@ -1696,7 +1696,7 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 }
 
 func Test_Render_StrategicPatchMerge(t *testing.T) {
-	const contianerPatchObject = `
+	const containerPatchObject = `
 {
 	"containers": [
 		{
@@ -1730,7 +1730,7 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 		},
 		Runtimes: &datamodel.RuntimeProperties{
 			Kubernetes: &datamodel.KubernetesRuntime{
-				Pod: contianerPatchObject,
+				Pod: containerPatchObject,
 			},
 		},
 	}

@@ -629,7 +629,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 		computedValues[k] = v
 	}
 
-	// Now build the renderer dependecy out of these collected dependencies
+	// Now build the renderer dependency out of these collected dependencies
 	rendererDependency := renderers.RendererDependency{
 		ResourceID:      dependency.ID,
 		Resource:        dependency.Resource,

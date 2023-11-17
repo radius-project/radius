@@ -103,7 +103,7 @@ func readAnnotations(deployment *appsv1.Deployment) (*deploymentAnnotations, err
 	result.Status = &s
 
 	// Note: we need to read and return the configuration even if Radius is not enabled for the Deployment.
-	// This is important so that can clean up previsouly created connections when Radius is disabled.
+	// This is important so that can clean up previously created connections when Radius is disabled.
 	enabled := deployment.Annotations[AnnotationRadiusEnabled]
 	if !strings.EqualFold(enabled, "true") {
 		return &result, nil

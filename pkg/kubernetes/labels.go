@@ -113,7 +113,7 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 // MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
-// This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
+// This function differs from MakeRouteSelectorLabels in that it's intended to *cross* resources. eg: The Service created by
 // an HttpRoute and the Deployment created by a Container.
 func MakeRouteSelectorLabels(application string, resourceType string, route string) map[string]string {
 	return map[string]string{

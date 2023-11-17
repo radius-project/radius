@@ -90,7 +90,7 @@ type EnvironmentCompute struct {
 
 // KubernetesComputeProperties represents the kubernetes compute of the environment.
 type KubernetesComputeProperties struct {
-	// ResourceID represents the resource ID for kuberentes compute resource.
+	// ResourceID represents the resource ID for kubernetes compute resource.
 	ResourceID string `json:"resourceId,omitempty"`
 
 	// Namespace represents Kubernetes namespace.
