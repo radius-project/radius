@@ -24,7 +24,7 @@ const (
 	// ResourceProvisioningRecipe is the scenario when Radius manages the lifecycle of the resource through a Recipe.
 	ResourceProvisioningRecipe ResourceProvisioning = "recipe"
 
-	// ResourceProvisioningManual is the scenario where the user manages the resource and provides values.
+	// ResourceProvisioningManual is the scenario where the user manages the resource and provides valuesasd.
 	ResourceProvisioningManual ResourceProvisioning = "manual"
 
 	// DefaultRecipeName represents the default recipe name.
