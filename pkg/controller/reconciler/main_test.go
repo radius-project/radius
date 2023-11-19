@@ -102,7 +102,8 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 	failedTypeV1 := admissionv1.Ignore
 	equivalentTypeV1 := admissionv1.Equivalent
 	noSideEffectsV1 := admissionv1.SideEffectClassNone
-	webhookPathV1 := "/validate-radapp-io-v1alpha3-recipe"
+	recipeWebhookPathV1 := "/validate-radapp-io-v1alpha3-recipe"
+	deploymentWebhookPathV1 := "/mutate-apps-v1-deployment"
 
 	env.WebhookInstallOptions = envtest.WebhookInstallOptions{
 		ValidatingWebhooks: []*admissionv1.ValidatingWebhookConfiguration{
@@ -135,7 +136,7 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 							Service: &admissionv1.ServiceReference{
 								Name:      "controller",
 								Namespace: "default",
-								Path:      &webhookPathV1,
+								Path:      &recipeWebhookPathV1,
 							},
 						},
 						AdmissionReviewVersions: []string{"v1"},
@@ -154,21 +155,16 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 				},
 				Webhooks: []admissionv1.MutatingWebhook{
 					{
-						Name: "deployment-webhook.radapp.io",
+						Name: "deployment-webhook.apps.io",
 						Rules: []admissionv1.RuleWithOperations{
 							{
 								Operations: []admissionv1.OperationType{"CREATE", "UPDATE"},
 								Rule: admissionv1.Rule{
-									APIGroups:   []string{"radapp.io"},
-									APIVersions: []string{"v1alpha3"},
+									APIGroups:   []string{"apps"},
+									APIVersions: []string{"v1"},
 									Resources:   []string{"deployments"},
 									Scope:       &namespacedScopeV1,
 								},
-							},
-						},
-						ObjectSelector: &metav1.LabelSelector{
-							MatchLabels: map[string]string{
-								"radapp.io/enabled": "true",
 							},
 						},
 						FailurePolicy: &failedTypeV1,
@@ -178,7 +174,7 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 							Service: &admissionv1.ServiceReference{
 								Name:      "controller",
 								Namespace: "default",
-								Path:      &webhookPathV1,
+								Path:      &deploymentWebhookPathV1,
 							},
 						},
 						AdmissionReviewVersions: []string{"v1"},

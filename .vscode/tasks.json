@@ -63,20 +63,6 @@
 				"showReuseMessage": false,
 				"clear": true
 			}
-		},
-		{
-			"label": "generate-certs",
-            "type": "shell",
-            "command": "mkdir -p ~/tls/cert && openssl req -x509 -newkey rsa:4096 -keyout ~/tls/cert/tls.key -out ~/tls/cert/tls.crt -days 365 -nodes -subj \"/CN=localhost\" && export TLSCertDir=~/tls/cert",
-            "problemMatcher": [],
-			"windows": {
-				"command": "if not exist %USERPROFILE%\\tls\\cert mkdir %USERPROFILE%\\tls\\cert && openssl req -x509 -newkey rsa:4096 -keyout %USERPROFILE%\\tls\\cert\\tls.key -out %USERPROFILE%\\tls\\cert\\tls.crt -days 365 -nodes -subj \"/CN=localhost\" && set TLSCertDir %USERPROFILE%\\tls\\cert"
-			}
-		},
-		{
-			"label": "prelaunch",
-			"dependsOn": ["Build Radius (all)", "generate-certs"],
-			"problemMatcher": []
 		}
 	]
 }

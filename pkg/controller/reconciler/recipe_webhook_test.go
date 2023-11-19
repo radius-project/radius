@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,7 +54,6 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 		recipeName := "test-recipe-invalidtype"
 		namespace := types.NamespacedName{Namespace: defaultNamespace, Name: recipeName}
 		recipe := makeRecipe(namespace, invalidResourceType)
-		expectedError := fmt.Sprintf("Recipe.radapp.io \"%s\" not found", recipeName)
 
 		err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace.Name}})
 		require.NoError(t, err)
@@ -63,15 +63,12 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 
 		current := &radappiov1alpha3.Recipe{}
 		require.Eventually(t, func() bool {
-			if err := client.Get(ctx, namespace, current); err != nil {
-				require.EqualError(t, err, expectedError)
-				return true
-			}
-			return false
+			err := client.Get(ctx, namespace, current)
+			return apierrors.IsNotFound(err)
 		}, time.Second*10, time.Millisecond*200)
 
 		err = client.Delete(ctx, recipe)
-		require.Error(t, err, expectedError)
+		require.True(t, apierrors.IsNotFound(err))
 	})
 
 	t.Run("test recipe for valid type", func(t *testing.T) {
@@ -164,13 +161,14 @@ func Test_Webhook_ValidateFunctions(t *testing.T) {
 			var err error
 			namespace := types.NamespacedName{Namespace: defaultNamespace, Name: tr.recipeName}
 			recipe := makeRecipe(namespace, tr.typeName)
+			recipeWebhook := &RecipeWebhook{}
 
 			if tr.function == "create" {
-				_, err = recipe.ValidateCreate(ctx, recipe)
+				_, err = recipeWebhook.ValidateCreate(ctx, recipe)
 			} else if tr.function == "update" {
-				_, err = recipe.ValidateUpdate(ctx, nil, recipe)
+				_, err = recipeWebhook.ValidateUpdate(ctx, nil, recipe)
 			} else {
-				_, err = recipe.ValidateDelete(ctx, recipe)
+				_, err = recipeWebhook.ValidateDelete(ctx, recipe)
 			}
 
 			if tr.wantErr {
@@ -221,7 +219,7 @@ func setupWebhookTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
-	err = (&radappiov1alpha3.Recipe{}).SetupWebhookWithManager(mgr)
+	err = (&RecipeWebhook{}).SetupWebhookWithManager(mgr)
 	require.NoError(t, err)
 
 	go func() {

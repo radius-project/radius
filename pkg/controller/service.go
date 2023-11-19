@@ -106,14 +106,18 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to setup %s controller: %w", "Deployment", err)
 	}
 
-	logger.Info("Registering validating webhook.")
-	if err = (&radappiov1alpha3.Recipe{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to create recipe-webhook: %w", err)
-	}
+	if s.TLSCertDir == "" {
+		logger.Info("Webhooks will be skipped. TLS certificates not present.")
+	} else {
+		logger.Info("Registering validating webhook.")
+		if err = (&reconciler.RecipeWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to create recipe-webhook: %w", err)
+		}
 
-	logger.Info("Registering mutating webhook.")
-	if err = (&radappiov1alpha3.BuiltInDeployment{}).SetupWebhookWithManager(mgr); err != nil {
-		return fmt.Errorf("failed to create deployment-webhook: %w", err)
+		logger.Info("Registering mutating webhook.")
+		if err = (&reconciler.DeploymentWebhook{}).SetupWebhookWithManager(mgr); err != nil {
+			return fmt.Errorf("failed to create deployment-webhook: %w", err)
+		}
 	}
 
 	logger.Info("Registering health checks.")

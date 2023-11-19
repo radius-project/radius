@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha3
+package reconciler
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	portableresources "github.com/radius-project/radius/pkg/rp/portableresources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,50 +29,51 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// SetupWebhookWithManager sets up a webhook for the Recipe resource with the given controller manager.
-// It creates a new webhook managed by the controller manager, registers the Recipe resource with the webhook,
-// sets the validator for the webhook to the Recipe instance, and completes the webhook setup.
-func (r *Recipe) SetupWebhookWithManager(mgr ctrl.Manager) error {
+// SetupWebhookWithManager sets up the webhook for the Recipe type with the provided manager.
+// It configures the webhook to watch for changes on the Recipe resource and uses the provided validator.
+// Returns an error if there was a problem setting up the webhook.
+func (r *RecipeWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(&radappiov1alpha3.Recipe{}).
 		WithValidator(r).
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-radapp-io-v1alpha3-recipe,mutating=false,failurePolicy=fail,sideEffects=None,groups=radapp.io,resources=recipe,verbs=create;update,versions=v1alpha3,name=recipe-webhook.radapp.io,sideEffects=None,admissionReviewVersions=v1
+// RecipeWebhook implements the validating webhook functions for the Recipe type.
+type RecipeWebhook struct{}
 
 // ValidateCreate validates the creation of a Recipe object.
-func (r *Recipe) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (r *RecipeWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	recipe, ok := obj.(*Recipe)
+	recipe, ok := obj.(*radappiov1alpha3.Recipe)
 	if !ok {
 		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
 	}
 
 	logger.Info("Validating Create Recipe %s", recipe.Name)
-	return recipe.validateRecipeType(ctx)
+	return r.validateRecipeType(ctx, recipe)
 }
 
 // ValidateUpdate validates the update of a Recipe object.
-func (r *Recipe) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
+func (r *RecipeWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	recipe, ok := newObj.(*Recipe)
+	recipe, ok := newObj.(*radappiov1alpha3.Recipe)
 	if !ok {
 		return nil, fmt.Errorf("expected a Recipe but got a %T", newObj)
 	}
 
 	logger.Info("Validating Update Recipe %s", recipe.Name)
-	return recipe.validateRecipeType(ctx)
+	return r.validateRecipeType(ctx, recipe)
 }
 
 // ValidateDelete validates the deletion of a Recipe object.
-func (r *Recipe) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
+func (r *RecipeWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Validating Delete Recipe")
 
-	_, ok := obj.(*Recipe)
+	_, ok := obj.(*radappiov1alpha3.Recipe)
 	if !ok {
 		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
 	}
@@ -80,14 +82,14 @@ func (r *Recipe) ValidateDelete(ctx context.Context, obj runtime.Object) (admiss
 	return nil, nil
 }
 
-// validateRecipeType validates Resource Type to be created by Recipe.
-func (r *Recipe) validateRecipeType(ctx context.Context) (admission.Warnings, error) {
+// validateRecipeType validates Recipe object.
+func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappiov1alpha3.Recipe) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	validResourceTypes := strings.Join(portableresources.GetValidPortableResourceTypes(), ", ")
 
-	logger.Info("Validating Recipe Type %s in Recipe %s", r.Spec.Type, r.Name)
-	if !portableresources.IsValidPortableResourceType(r.Spec.Type) {
-		return nil, fmt.Errorf("invalid resource type %s in recipe %s. allowed values are: %s", r.Spec.Type, r.Name, validResourceTypes)
+	logger.Info("Validating Recipe Type %s in Recipe %s", recipe.Spec.Type, recipe.Name)
+	if !portableresources.IsValidPortableResourceType(recipe.Spec.Type) {
+		return nil, fmt.Errorf("invalid resource type %s in recipe %s. allowed values are: %s", recipe.Spec.Type, recipe.Name, validResourceTypes)
 	}
 
 	return nil, nil

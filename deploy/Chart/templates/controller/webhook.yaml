@@ -27,7 +27,6 @@ data:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  creationTimestamp: null
   name: recipe-webhook.radapp.io
 webhooks:
 - admissionReviewVersions:
@@ -56,11 +55,7 @@ webhooks:
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  creationTimestamp: null
-  name: deployment-webhook.radapp.io
-  objectSelector:
-    matchLabels:
-      radapp.io/enabled: "true"
+  name: deployment-webhook.apps.io
 webhooks:
 - admissionReviewVersions:
   - v1
@@ -69,15 +64,15 @@ webhooks:
     service:
       name: controller
       namespace: {{ .Release.Namespace }}
-      path: /mutate-radapp-io-v1alpha3-builtindeployment
+      path: /mutate-apps-v1-deployment
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: deployment-webhook.radapp.io
+  name: deployment-webhook.apps.io
   rules:
   - apiGroups:
-    - radapp.io
+    - apps
     apiVersions:
-    - v1alpha3
+    - v1
     operations:
     - CREATE
     - UPDATE
