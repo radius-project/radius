@@ -9,6 +9,11 @@ on:
       - completed
     outputs:
       pr_number:
+      description: "PR number"
+      value: ${{ jobs.download_pr_number.outputs.pr_number  }}
+  workflow_call:
+    outputs:
+      pr_number:
         description: "PR number"
         value: ${{ jobs.download_pr_number.outputs.pr_number  }}
 
