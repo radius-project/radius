@@ -2638,7 +2638,7 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "extensions": {
           "type": "array",
@@ -3083,11 +3083,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -3235,11 +3235,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "container": {
           "$ref": "#/definitions/ContainerUpdate",
@@ -3817,11 +3817,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -3929,11 +3929,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "internal": {
           "type": "boolean",
@@ -4069,11 +4069,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -4173,11 +4173,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "hostname": {
           "type": "string",
@@ -4643,7 +4643,7 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -5025,11 +5025,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -5127,11 +5127,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "type": {
           "$ref": "#/definitions/SecretStoreDataType",
@@ -5359,11 +5359,11 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -5446,11 +5446,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         }
       }
     },
