@@ -7,9 +7,16 @@ on:
       - "save-pr-as-artifact"
     types:
       - completed
+    outputs:
+      pr_number:
+        description: "PR number"
+        value: ${{ jobs.download_pr_number.outputs.pr_number  }}
 
 jobs:
   download_pr_number:
+    outputs:
+      pr_number: ${{ steps.set-pr-number.outputs.pr_number }}
+    if: github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
