@@ -9,12 +9,3 @@ jobs:
   save_pr_as_artifact:
       name: 'Approve Functional Tests'
       uses: test-org-admin/radius-main/.github/workflows/save-pr-as-artifact.yaml@main
-  # approve-functional-tests-run:
-  #   name: 'Approve Functional Tests'
-  #   runs-on: ubuntu-latest
-  #   environment: functional-tests
-  #   steps:
-    # - name: Use custom actions
-    #   uses: actions/checkout@v3
-    # - name: Save PR number
-      # uses: ./.github/actions/save-pr-as-artifact

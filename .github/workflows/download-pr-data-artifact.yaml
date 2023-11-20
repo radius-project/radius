@@ -1,0 +1,51 @@
+# This workflow can be used together with save-pr-as-artifact custom action which uploads the PR number as an artifact.
+# It downloads the artifact to retrieve the PR number.
+name: Download PR number saved as an artifact
+on:
+  workflow_run:
+    workflows:
+      - "save-pr-as-artifact"
+    types:
+      - completed
+
+jobs:
+  download_pr_number:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Download artifact
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.payload.workflow_run.id,
+            });
+            let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "pr_number"
+            })[0];
+            let download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: matchArtifact.id,
+                archive_format: 'zip',
+            });
+            let fs = require('fs');
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/pr_number.zip`, Buffer.from(download.data));
+
+      - name: Unzip artifact
+        shell: bash
+        run: unzip pr_number.zip
+
+      - name: Set PR number
+        id: set-pr-number
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let fs = require('fs');
+            PR_NUMBER=fs.readFileSync('./pr_number').toString();
+            console.log(`Setting output: pr_number=${PR_NUMBER}`);
+            core.setOutput('pr_number', PR_NUMBER)
