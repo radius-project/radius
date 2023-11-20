@@ -104,7 +104,7 @@ jobs:
       - name: 'Download PR data artifacts'
         if: github.event_name == 'workflow_run'
         # uses: ./.github/actions/download-pr-data-artifact
-        uses: radius-project/radius/.github/workflows/download-pr-data-artifact@main
+        uses: test-org-admin/radius-main/.github/workflows/download-pr-data-artifact@main
         id: get-pr-number
       - name: 'Set PR context (workflow_run)'
         if: github.event_name == 'workflow_run'
