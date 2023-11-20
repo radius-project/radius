@@ -99,11 +99,12 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-      - name: Use custom actions
-        uses: actions/checkout@v3
+      # - name: Use custom actions
+      #   uses: actions/checkout@v3
       - name: 'Download PR data artifacts'
         if: github.event_name == 'workflow_run'
-        uses: ./.github/actions/download-pr-data-artifact
+        # uses: ./.github/actions/download-pr-data-artifact
+        uses: radius-project/radius/.github/workflows/download-pr-data-artifact@main
         id: get-pr-number
       - name: 'Set PR context (workflow_run)'
         if: github.event_name == 'workflow_run'
