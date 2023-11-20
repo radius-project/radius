@@ -8,7 +8,7 @@ on:
 jobs:
   save_pr_as_artifact:
       name: 'Approve Functional Tests'
-      uses: radius-project/radius/.github/workflows/save-pr-as-artifact.yaml@main
+      uses: radius-project/radius/.github/actions/save-pr-as-artifact/action.yaml@main
   # approve-functional-tests-run:
   #   name: 'Approve Functional Tests'
   #   runs-on: ubuntu-latest
