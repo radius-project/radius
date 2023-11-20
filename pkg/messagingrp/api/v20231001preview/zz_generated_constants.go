@@ -83,7 +83,7 @@ func PossibleOriginValues() []Origin {
 	}
 }
 
-// ProvisioningState - Provisioning state of the portable resource at the time the operation was called
+// ProvisioningState - Provisioning state of the resource at the time the operation was called
 type ProvisioningState string
 
 const (
