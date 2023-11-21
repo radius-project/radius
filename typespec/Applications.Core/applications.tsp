@@ -52,7 +52,7 @@ model ApplicationProperties {
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Fully qualified resource ID for the environment that the portable resource is linked to")
+  @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment: string;
 
   @doc("The application extension.")
