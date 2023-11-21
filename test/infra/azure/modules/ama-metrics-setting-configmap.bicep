@@ -25,7 +25,7 @@ var podAnnotationNamespaceRegex = 'podannotationnamespaceregex = "${prefix}.*"'
 import 'kubernetes@1.0.0' with {
   namespace: 'default'
   kubeConfig: kubeConfig
-}
+} as k8s
 
 resource coreConfigMap_amaMetricsSettingsConfigmap 'core/ConfigMap@v1' = {
   metadata: {

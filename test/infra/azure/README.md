@@ -67,7 +67,7 @@ This directory includes the Bicep templates to deploy the following resources on
     By default, `grafanaEnabled` is false. We do not need to set any parameters unless you need Grafana dashboard. If you want to see Grafana dashboard later, you can redeploy main.bicep with `grafanaEnabled` and `grafanaAdminObjectId` later--bicep will install only Grafana dashboard with your existing cluster.
 
     ```bash
-    az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaEnabled=[Grafana Dashboard Enabled] grafanaAdminObjectId='[Grafana Admin Object Id]'
+    az deployment group create --resource-group [Resource Group Name] --template-file main.bicep --parameters grafanaEnabled=[Grafana Dashboard Enabled] grafanaAdminObjectId='[Grafana Admin Object Id]' isPrivateClusterSupported=true enablePrivateCluster=true
     ```
 
     * **[Grafana Dashboard Enabled]**: Set `true` if you want to see metrics and its dashboard with Azure managed Prometheus and Grafana dashboard. Otherwise, `false` is recommended to save the cost.

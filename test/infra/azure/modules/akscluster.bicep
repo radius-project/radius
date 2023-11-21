@@ -146,7 +146,7 @@ param systemAgentPoolScaleSetEvictionPolicy string = 'Delete'
 param systemAgentPoolNodeLabels object = {}
 
 @description('Specifies the taints added to new nodes during node pool create and scale. For example, key=value:NoSchedule.')
-param systemAgentPoolNodeTaints array = ['CriticalAddonsOnly=true:NoSchedule']
+param systemAgentPoolNodeTaints array = [ 'CriticalAddonsOnly=true:NoSchedule' ]
 
 @description('Determines the placement of emptyDir volumes, container runtime data root, and Kubelet ephemeral storage.')
 @allowed([
@@ -175,7 +175,7 @@ param userAgentPoolName string = 'userpool'
 @description('Specifies the vm size of nodes in the user node pool.')
 param userAgentPoolVmSize string = 'Standard_D4as_v5'
 
-@description('Specifies the OS Disk Size in GB to be used to specify the disk size for every machine in the system agent pool. If you specify 0, it will apply the default osDisk size according to the vmSize specified..')
+@description('Specifies the OS Disk Size in GB to be used to specify the disk size for every machine in the user node pool. If you specify 0, it will apply the default osDisk size according to the vmSize specified..')
 param userAgentPoolOsDiskSizeGB int = 0
 
 @description('Specifies the OS disk type to be used for machines in a given agent pool. Allowed values are \'Ephemeral\' and \'Managed\'. If unspecified, defaults to \'Ephemeral\' when the VM supports ephemeral OS and has a cache disk larger than the requested OSDiskSizeGB. Otherwise, defaults to \'Managed\'. May not be changed after creation. - Managed or Ephemeral')
@@ -248,6 +248,78 @@ param userAgentPoolAvailabilityZones array = [
   '3'
 ]
 
+@description('Specifies the unique name of of the arc node pool profile in the context of the subscription and resource group.')
+param arcAgentPoolName string = 'arcpool'
+
+@description('Specifies the vm size of nodes in the arc node pool.')
+param arcAgentPoolVmSize string = 'Standard_DS2_v2'
+
+@description('Specifies the OS Disk Size in GB to be used to specify the disk size for every machine in the arc node pool. If you specify 0, it will apply the default osDisk size according to the vmSize specified..')
+param arcAgentPoolOsDiskSizeGB int = 0
+
+@description('Specifies the number of agents (VMs) to host docker containers in the arc node pool. Allowed values must be in the range of 1 to 100 (inclusive). The default value is 1.')
+param arcAgentPoolAgentCount int = 2
+
+@description('Specifies the OS type for the vms in the arc node pool. Choose from Linux and Windows. Default to Linux.')
+@allowed([
+  'Linux'
+  'Windows'
+])
+param arcAgentPoolOsType string = 'Linux'
+
+@description('Specifies the OS SKU for the vms in the arc node pool. Choose from Ubuntu and Azure Linux. Default to Linux.')
+@allowed([
+  'Ubuntu'
+  'Azure_Linux'
+])
+param arcAgentPoolOsSKU string = 'Ubuntu'
+
+@description('Specifies the maximum number of pods that can run on a node in the arc node pool. The maximum number of pods per node in an AKS cluster is 250. The default maximum number of pods per node varies between kubenet and Azure CNI networking, and the method of cluster deployment.')
+param arcAgentPoolMaxPods int = 30
+
+@description('Specifies the minimum number of nodes for auto-scaling for the arc node pool.')
+param arcAgentPoolMinCount int = 2
+
+@description('Specifies the maximum number of nodes for auto-scaling for the arc node pool.')
+param arcAgentPoolMaxCount int = 5
+
+@description('Specifies whether to enable auto-scaling for the arc node pool.')
+param arcAgentPoolEnableAutoScaling bool = true
+
+@description('Specifies the virtual machine scale set priority in the arc node pool: Spot or Regular.')
+@allowed([
+  'Spot'
+  'Regular'
+])
+param arcAgentPoolScaleSetPriority string = 'Regular'
+
+@description('Specifies the ScaleSetEvictionPolicy to be used to specify eviction policy for spot virtual machine scale set. Default to Delete. Allowed values are Delete or Deallocate.')
+@allowed([
+  'Delete'
+  'Deallocate'
+])
+param arcAgentPoolScaleSetEvictionPolicy string = 'Delete'
+
+@description('Specifies the arc pool node labels to be persisted across all nodes in the arc node pool.')
+param arcAgentPoolNodeLabels object = {}
+
+@description('Specifies the taints added to new nodes during node pool create and scale. For example, key=value:NoSchedule.')
+@allowed([
+  'OS'
+  'Temporary'
+])
+param arcAgentPoolNodeTaints array = []
+
+@description('Determines the placement of emptyDir volumes, container runtime data root, and Kubelet ephemeral storage.')
+param arcAgentPoolKubeletDiskType string = 'OS'
+
+@description('Specifies the type for the arc node pool: VirtualMachineScaleSets or AvailabilitySet')
+@allowed([
+  'VirtualMachineScaleSets'
+  'AvailabilitySet'
+])
+param arcAgentPoolType string = 'VirtualMachineScaleSets'
+
 @description('Specifies whether the Dapr extension is enabled or not.')
 param daprEnabled bool = false
 
@@ -293,9 +365,6 @@ param autoScalerProfileMaxGracefulTerminationSec string = '600'
 @description('Specifies the resource id of the Log Analytics workspace.')
 param logAnalyticsWorkspaceId string
 
-@description('Specifies the workspace data retention in days.')
-param retentionInDays int = 30
-
 @description('Specifies the location.')
 param location string = resourceGroup().location
 
@@ -326,8 +395,30 @@ param imageCleanerIntervalHours int = 24
 @description('Specifies whether to enable Workload Identity. The default value is false.')
 param workloadIdentityEnabled bool = false
 
+@description('Specifies whether private cluster is supported. Default is false.')
+param isPrivateClusterSupported bool = false
+
+@description('Specifies whether to enable private cluster. The default value is false.')
+param enablePrivateCluster bool = false
+
+@description('Specifies whether to enable authorized IP range. The default value is false.')
+param enableAuthorizedIpRange bool = false
+
+@description('Specifies the authorized IP range.')
+param authorizedIPRanges array = []
+
+@description('Specifies the default API server access profile.')
+param defaultApiServerAccessProfile object = {
+  authorizedIPRanges: enableAuthorizedIpRange ? authorizedIPRanges : []
+  enablePrivateCluster: enablePrivateCluster
+}
+
+@description('Specifies the virtual network subnet id.')
+param aksPoolsSubnetID string = ''
+
 // Variables
 var diagnosticSettingsName = 'diagnosticSettings'
+
 var logCategories = [
   'kube-apiserver'
   'kube-audit'
@@ -341,24 +432,24 @@ var logCategories = [
   'csi-azurefile-controller'
   'csi-snapshot-controller'
 ]
+
 var metricCategories = [
   'AllMetrics'
 ]
+
+// Note: Deleted `days `from logs and metrics based on this thread:
+// https://github.com/hashicorp/terraform-provider-azurerm/issues/23051.
+// This might affect billing since logs and metrics may be retained
+// for longer than expected. Please check later.
+
 var logs = [for category in logCategories: {
   category: category
   enabled: true
-  retentionPolicy: {
-    enabled: true
-    days: retentionInDays
-  }
 }]
+
 var metrics = [for category in metricCategories: {
   category: category
   enabled: true
-  retentionPolicy: {
-    enabled: true
-    days: retentionInDays
-  }
 }]
 
 resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
@@ -374,6 +465,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
   }
   properties: {
     kubernetesVersion: kubernetesVersion
+    enableRBAC: true
     dnsPrefix: dnsPrefix
     agentPoolProfiles: [
       {
@@ -395,6 +487,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
         nodeLabels: systemAgentPoolNodeLabels
         nodeTaints: systemAgentPoolNodeTaints
         kubeletDiskType: systemAgentPoolKubeletDiskType
+        vnetSubnetID: aksPoolsSubnetID
       }
       {
         name: toLower(userAgentPoolName)
@@ -415,6 +508,28 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
         nodeLabels: userAgentPoolNodeLabels
         nodeTaints: userAgentPoolNodeTaints
         kubeletDiskType: userAgentPoolKubeletDiskType
+        vnetSubnetID: aksPoolsSubnetID
+      }
+      {
+        name: toLower(arcAgentPoolName)
+        osDiskSizeGB: arcAgentPoolOsDiskSizeGB
+        count: arcAgentPoolAgentCount
+        enableAutoScaling: arcAgentPoolEnableAutoScaling
+        minCount: arcAgentPoolMinCount
+        maxCount: arcAgentPoolMaxCount
+        vmSize: arcAgentPoolVmSize
+        osType: arcAgentPoolOsType
+        osSKU: arcAgentPoolOsSKU
+        type: arcAgentPoolType
+        mode: 'User'
+        maxPods: arcAgentPoolMaxPods
+        nodeLabels: arcAgentPoolNodeLabels
+        nodeTaints: arcAgentPoolNodeTaints
+        tags: {}
+        scaleSetPriority: arcAgentPoolScaleSetPriority
+        scaleSetEvictionPolicy: arcAgentPoolScaleSetEvictionPolicy
+        kubeletDiskType: arcAgentPoolKubeletDiskType
+        vnetSubnetID: aksPoolsSubnetID
       }
     ]
     addonProfiles: {
@@ -441,7 +556,6 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
     oidcIssuerProfile: {
       enabled: oidcIssuerProfileEnabled
     }
-    enableRBAC: true
     networkProfile: {
       networkPlugin: networkPlugin
       networkPluginMode: networkPlugin == 'azure' ? networkPluginMode : ''
@@ -453,6 +567,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
       loadBalancerSku: loadBalancerSku
       loadBalancerProfile: null
     }
+
     autoUpgradeProfile: {
       upgradeChannel: upgradeChannel
     }
@@ -495,6 +610,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
         enabled: snapshotControllerEnabled
       }
     }
+    apiServerAccessProfile: isPrivateClusterSupported ? defaultApiServerAccessProfile : null
   }
 }
 
