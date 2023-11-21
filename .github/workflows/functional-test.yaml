@@ -78,6 +78,7 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
+    needs: download_pr_number
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -108,7 +109,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            echo "PR number = ${{ jobs.download_pr_number.outputs.pr_number }}"
+            echo "PR number = ${{ needs.download_pr_number.outputs.pr_number }}"
             const payload = context.payload.workflow_run;
             let fs = require('fs');
             // Set environment variables
