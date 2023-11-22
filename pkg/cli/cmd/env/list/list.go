@@ -120,10 +120,5 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, environments, objectformats.GetGenericEnvironmentTableFormat())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.Output.WriteFormatted(r.Format, environments, objectformats.GetResourceTableFormat())
 }

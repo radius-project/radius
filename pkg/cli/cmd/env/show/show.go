@@ -130,17 +130,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environment, err := client.GetEnvDetails(ctx, r.EnvironmentName)
+	env, err := client.GetEnvDetails(ctx, r.EnvironmentName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("The environment %q was not found or has been deleted.", r.EnvironmentName)
 	} else if err != nil {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, environment, objectformats.GetGenericEnvironmentTableFormat())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.Output.WriteFormatted(r.Format, env, objectformats.GetResourceTableFormat())
 }

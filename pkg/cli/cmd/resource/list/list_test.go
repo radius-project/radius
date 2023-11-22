@@ -159,7 +159,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     resources,
-					Options: objectformats.GetResourceTableFormat(),
+					Options: objectformats.GetGenericResourceTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -197,7 +197,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     resources,
-					Options: objectformats.GetResourceTableFormat(),
+					Options: objectformats.GetGenericResourceTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
