@@ -25,6 +25,7 @@ import (
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
@@ -113,7 +114,6 @@ func (s *Service) Name() string {
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
-	var err error
 	r := chi.NewRouter()
 
 	s.storageProvider = dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
@@ -125,6 +125,13 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		return nil, err
 	}
 
+	queueClient, err := s.queueProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	statusManager := statusmanager.New(s.storageProvider, queueClient, s.options.Location)
+
 	moduleOptions := modules.Options{
 		Address:        s.options.Address,
 		PathBase:       s.options.PathBase,
@@ -134,6 +141,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		QueueProvider:  s.queueProvider,
 		SecretProvider: s.secretProvider,
 		SpecLoader:     specLoader,
+		StatusManager:  statusManager,
 		UCPConnection:  s.options.UCPConnection,
 	}
 

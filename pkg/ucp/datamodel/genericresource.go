@@ -16,7 +16,17 @@ limitations under the License.
 
 package datamodel
 
-import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+import (
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+const (
+	// OperationProcess is the operation type for processing a tracked resource.
+	OperationProcess = "PROCESS"
+	// ResourceType is the resource type for a generic resource.
+	ResourceType = "System.Resources/resources"
+)
 
 // GenericResource represents a stored "tracked resource" within a UCP resource group.
 //
@@ -37,7 +47,7 @@ type GenericResource struct {
 
 // ResourceTypeName gives the type of ucp resource.
 func (r *GenericResource) ResourceTypeName() string {
-	return "System.Resources/resources"
+	return ResourceType
 }
 
 // GenericResourceProperties stores the properties of the resource being tracked.
@@ -52,4 +62,30 @@ type GenericResourceProperties struct {
 	Name string `json:"name"`
 	// Type is the resource type.
 	Type string `json:"type"`
+
+	// APIVersion is the version of the API that can be used to query the resource.
+	APIVersion string `json:"apiVersion"`
+
+	// OperationID is the last operation that updated this entry. This is used when an operation
+	// is enqueued as a way to force a different Etag to be returned. This data doesn't need to be
+	// read or used, it's just acting as a "salt" for the Etag.
+	OperationID string `json:"operationId"`
+}
+
+// GenericResourceFromID creates a new GenericResource from the given original resource ID and tracking ID.
+func GenericResourceFromID(originalID resources.ID, trackingID resources.ID) *GenericResource {
+	return &GenericResource{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   trackingID.String(),
+				Type: trackingID.Type(),
+				Name: trackingID.Name(),
+			},
+		},
+		Properties: GenericResourceProperties{
+			ID:   originalID.String(),
+			Name: originalID.Name(),
+			Type: originalID.Type(),
+		},
+	}
 }
