@@ -52,8 +52,8 @@ const (
 // Create an interface for deployment waiter and http proxy waiter
 type ResourceWaiter interface {
 	addDynamicEventHandler(ctx context.Context, informerFactory dynamicinformer.DynamicSharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error)
-	addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus)
-	waitUntilReady(ctx context.Context, item client.Object) error
+	addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string)
+	waitUntilReady(ctx context.Context, item client.Object, operationProgress chan string) error
 }
 
 // NewKubernetesHandler creates a new KubernetesHandler which is used to handle Kubernetes resources.
@@ -124,7 +124,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 	switch strings.ToLower(item.GetKind()) {
 	case "deployment":
 		// Monitor the deployment until it is ready.
-		err = handler.deploymentWaiter.waitUntilReady(ctx, &item)
+		err = handler.deploymentWaiter.waitUntilReady(ctx, &item, options.OperationProgress)
 		if err != nil {
 			fmt.Println("@@@@@ deployment error: ", err.Error())
 			return nil, err
@@ -132,7 +132,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	case "httpproxy":
-		err = handler.httpProxyWaiter.waitUntilReady(ctx, &item)
+		err = handler.httpProxyWaiter.waitUntilReady(ctx, &item, options.OperationProgress)
 		if err != nil {
 			return nil, err
 		}

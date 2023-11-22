@@ -47,6 +47,9 @@ type PutOptions struct {
 
 	// DependencyProperties is a map of output resource localID to resource properties populated during deployment in the resource handler
 	DependencyProperties map[string]map[string]string
+
+	// Operation Progress channel
+	OperationProgress chan string
 }
 
 // DeleteOptions represents the options for ResourceHandler.Delete.

@@ -228,6 +228,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		logger.Error(err, "failed to unmarshal queue message.")
 		return
 	}
+
+	asyncReq.OperationProgress = make(chan string, 1)
 	asyncReqCtx, opCancel := context.WithCancel(ctx)
 	// Ensure that asyncReqCtx context is cancelled when runOperation returns.
 	// That is, cancelling asyncReqCtx signals to ctrl.Run() to cancel the execution,
@@ -273,9 +275,14 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 	operationTimeoutAfter := time.After(asyncReq.Timeout())
 	messageExtendAfter := w.getMessageExtendDuration(message.NextVisibleAt)
-
+	operationProgress := map[string]bool{}
 	for {
 		select {
+		case progressMessage := <-asyncReq.OperationProgress:
+			fmt.Println("@@@@@ runOperation received progress message: ", progressMessage)
+			if operationProgress[progressMessage] == false {
+				operationProgress[progressMessage] = true
+			}
 		case <-time.After(messageExtendAfter):
 			if err := w.requestQueue.ExtendMessage(ctx, message); err != nil {
 				logger.Error(err, "fails to extend message lock")
@@ -292,6 +299,18 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 			fmt.Println("@@@@@ Done invoking cancel function")
 			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %d s.", asyncReq.OperationType, int(asyncReq.Timeout().Seconds()))
+
+			if len(operationProgress) > 0 {
+				fmt.Println("@@@@ Operation progress: ", operationProgress)
+				possibleFailureCauses := []string{}
+				for k, _ := range operationProgress {
+					possibleFailureCauses = append(possibleFailureCauses, k)
+				}
+				errMessage = fmt.Sprintf("%s Operation progress: %s", errMessage, strings.Join(possibleFailureCauses, ", "))
+			} else {
+				fmt.Println("@@@@ Operation progress is empty")
+			}
+
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())

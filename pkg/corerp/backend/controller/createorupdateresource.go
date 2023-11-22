@@ -101,7 +101,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
+	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput, request.OperationProgress)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

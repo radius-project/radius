@@ -41,15 +41,15 @@ func NewDeploymentWaiter(clientSet k8s.Interface) *deploymentWaiter {
 	}
 }
 
-func (handler *deploymentWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus) {
+func (handler *deploymentWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh, operationProgress)
 		},
 		UpdateFunc: func(_, newObj any) {
-			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh)
+			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh, operationProgress)
 		},
 	})
 
@@ -67,7 +67,7 @@ type deploymentStatus struct {
 	err                  error
 }
 
-func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client.Object) error {
+func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client.Object, operationProgress chan string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// When the deployment is done, an error nil will be sent
@@ -78,26 +78,14 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 	// This ensures that the informer is stopped when this function is returned.
 	defer cancel()
 
-	err := handler.startInformers(ctx, item, doneCh)
+	err := handler.startInformers(ctx, item, doneCh, operationProgress)
 	if err != nil {
 		logger.Error(err, "failed to start deployment informer")
 		return err
 	}
 
 	var possibleFailureCauses []string
-	select {
-	case <-ctx.Done():
-		// Get the final deployment status
-		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
-		if err != nil {
-			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occurred while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
-		}
-
 	dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
-	if err != nil {
-		fmt.Println("@@@@ error getting deployment", err.Error())
-		return fmt.Errorf("deployment cannot be fetched, name: %s, namespace %s, error: %w", item.GetName(), item.GetNamespace(), err)
-	}
 
 	for {
 		select {
@@ -151,7 +139,7 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 }
 
 // Check if all the pods in the deployment are ready
-func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- deploymentStatus) bool {
+func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
 
 	// Get the deployment
@@ -167,7 +155,7 @@ func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, info
 		return false
 	}
 
-	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh)
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh, operationProgress)
 	if !allReady {
 		logger.Info("All pods are not ready yet for deployment")
 		return false
@@ -197,21 +185,21 @@ func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, info
 	return false
 }
 
-func (handler *deploymentWaiter) startInformers(ctx context.Context, item client.Object, doneCh chan<- deploymentStatus) error {
+func (handler *deploymentWaiter) startInformers(ctx context.Context, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 	// Add event handlers to the pod informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh, operationProgress)
 
 	// Add event handlers to the deployment informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().Deployments().Informer(), item, doneCh)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().Deployments().Informer(), item, doneCh, operationProgress)
 
 	// Add event handlers to the replicaset informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().ReplicaSets().Informer(), item, doneCh)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().ReplicaSets().Informer(), item, doneCh, operationProgress)
 
 	// Add event handlers to the events informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Events().Informer(), item, doneCh)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Events().Informer(), item, doneCh, operationProgress)
 
 	// Start the informers
 	informerFactory.Start(ctx.Done())
@@ -270,7 +258,7 @@ func (handler *deploymentWaiter) getCurrentReplicaSetForDeployment(ctx context.C
 	return nil
 }
 
-func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- deploymentStatus) bool {
+func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- deploymentStatus, operationProgress chan string) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", obj.GetName(), "namespace", obj.GetNamespace())
 	logger.Info("Checking if all pods in the deployment are ready")
 
@@ -282,7 +270,7 @@ func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informer
 
 	allReady := true
 	for _, pod := range podsInDeployment {
-		podReady, status := handler.checkPodStatus(ctx, informerFactory, &pod)
+		podReady, status := handler.checkPodStatus(ctx, informerFactory, &pod, operationProgress)
 		if status != nil {
 			fmt.Println("@@@@@ Sent status to doneCh: ", status.possibleFailureCause)
 			doneCh <- *status
@@ -323,7 +311,7 @@ func (handler *deploymentWaiter) getPodsInDeployment(ctx context.Context, inform
 	return pods, nil
 }
 
-func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, pod *corev1.Pod) (bool, *deploymentStatus) {
+func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, pod *corev1.Pod, operationProgress chan string) (bool, *deploymentStatus) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("podName", pod.Name, "namespace", pod.Namespace)
 
 	conditionPodReady := true
@@ -390,6 +378,8 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 			for _, event := range events {
 				fmt.Println("@@@@@ event.Message", event.Message)
 				if strings.Contains(event.Message, "Readiness probe failed") {
+					fmt.Println("@@@@@@ Sending message to operationProgress", fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message))
+					operationProgress <- fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message)
 					return false, &deploymentStatus{possibleFailureCause: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message), err: nil}
 				}
 			}

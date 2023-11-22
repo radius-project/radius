@@ -56,6 +56,9 @@ type Request struct {
 
 	// OperationTimeout represents the timeout duration of async operation.
 	OperationTimeout *time.Duration `json:"asyncOperationTimeout"`
+
+	// Operation Progress channel
+	OperationProgress chan string `json:"-"`
 }
 
 // Timeout gets the operation timeout and returns the default timeout unless it specifies.

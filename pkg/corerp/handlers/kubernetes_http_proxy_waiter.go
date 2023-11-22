@@ -61,10 +61,10 @@ func (handler *httpProxyWaiter) addDynamicEventHandler(ctx context.Context, info
 }
 
 // addEventHandler is not implemented for HTTPProxyWaiter
-func (handler *httpProxyWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus) {
+func (handler *httpProxyWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, _ chan string) {
 }
 
-func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.Object) error {
+func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.Object, _ chan string) error {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
 
 	doneCh := make(chan error, 1)
