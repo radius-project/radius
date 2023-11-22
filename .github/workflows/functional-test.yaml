@@ -16,12 +16,14 @@
 
 name: Functional tests
 on:
-  schedule:
-    # Run every 4 hours on weekdays.
-    - cron: "30 0,4,8,12,16,20 * * 1-5"
-    # Run every 12 hours on weekends.
-    - cron: "30 0,12 * * 0,6"
-  # Dispatch on external events
+  push:
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
   repository_dispatch:
     types: [de-functional-test]
   workflow_run:
