@@ -113,11 +113,6 @@ func (s *Service) Run(ctx context.Context) error {
 		if err = (&reconciler.RecipeWebhook{}).SetupWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("failed to create recipe-webhook: %w", err)
 		}
-
-		logger.Info("Registering mutating webhook.")
-		if err = (&reconciler.DeploymentWebhook{}).SetupWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("failed to create deployment-webhook: %w", err)
-		}
 	}
 
 	logger.Info("Registering health checks.")

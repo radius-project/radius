@@ -24,7 +24,10 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	portableresources "github.com/radius-project/radius/pkg/rp/portableresources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -85,11 +88,18 @@ func (r *RecipeWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) 
 // validateRecipeType validates Recipe object.
 func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappiov1alpha3.Recipe) (admission.Warnings, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	var errList field.ErrorList
+	flPath := field.NewPath("spec").Child("type")
 	validResourceTypes := strings.Join(portableresources.GetValidPortableResourceTypes(), ", ")
 
 	logger.Info("Validating Recipe Type %s in Recipe %s", recipe.Spec.Type, recipe.Name)
 	if !portableresources.IsValidPortableResourceType(recipe.Spec.Type) {
-		return nil, fmt.Errorf("invalid resource type %s in recipe %s. allowed values are: %s", recipe.Spec.Type, recipe.Name, validResourceTypes)
+		errList = append(errList, field.Invalid(flPath, recipe.Spec.Type, fmt.Sprintf("allowed values are: %s", validResourceTypes)))
+
+		return nil, apierrors.NewInvalid(
+			schema.GroupKind{Group: "radapp.io", Kind: "Recipe"},
+			recipe.Name,
+			errList)
 	}
 
 	return nil, nil
