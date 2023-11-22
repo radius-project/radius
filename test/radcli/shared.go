@@ -231,25 +231,6 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
-// LoadConfigWithWorkspaceAndApplication loads a config with a test-workspace and test-application.
-func LoadConfigWithWorkspaceAndApplication(t *testing.T) *viper.Viper {
-
-	var yamlData = `
-workspaces: 
-  default: test-workspace
-  items: 
-    test-workspace: 
-      connection: 
-        context: test-context
-        kind: kubernetes
-      defaultApplication: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application
-      environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment
-      scope: /planes/radius/local/resourceGroups/test-resource-group
-`
-
-	return LoadConfig(t, yamlData)
-}
-
 // LoadEmptyConfig creates a viper instance with an empty workspaces configuration.
 func LoadEmptyConfig(t *testing.T) *viper.Viper {
 
