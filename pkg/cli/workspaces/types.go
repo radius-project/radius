@@ -51,9 +51,6 @@ type Workspace struct {
 
 	// Scope represents the default scope used for deployments of Radius resources. This field is optional.
 	Scope string `json:"scope,omitempty" mapstructure:"scope" yaml:"scope,omitempty"`
-
-	// DefaultApplication represents the default application used for deployments and management commands. This field is optional.
-	DefaultApplication string `json:"defaultApplication,omitempty" mapstructure:"defaultApplication" yaml:"defaultApplication,omitempty"`
 }
 
 // IsNamedWorkspace returns true for workspaces stored in per-user configuration. These workspaces have names that can
