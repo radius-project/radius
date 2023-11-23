@@ -671,7 +671,11 @@ func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.Deployment{}).
-		Watches(&radappiov1alpha3.Recipe{}, handler.EnqueueRequestsFromMapFunc(r.findDeploymentsForRecipe), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(
+			&radappiov1alpha3.Recipe{},
+			handler.EnqueueRequestsFromMapFunc(r.findDeploymentsForRecipe),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Owns(&corev1.Secret{}).
 		Complete(r)
 }
