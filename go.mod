@@ -12,6 +12,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.3
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.3.0
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.4.1
+	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/agnivade/levenshtein v1.1.1
 	github.com/aws/aws-sdk-go-v2 v1.19.1
@@ -26,6 +27,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20231116172829-450eedbca1ab
+	github.com/creack/pty v1.1.21
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.15.0
 	github.com/go-chi/chi/v5 v5.0.10
@@ -48,6 +50,7 @@ require (
 	github.com/hashicorp/hc-install v0.5.2
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230614215431-f32df32a01cd
 	github.com/hashicorp/terraform-exec v0.18.1
+	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/novln/docker-parser v1.0.0
