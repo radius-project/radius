@@ -110,7 +110,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if annotations.Status != nil && annotations.Status.Operation != nil {
 		// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 		// this means the operation has completed and we should continue processing.
-		result, err := r.reconcileOperation(ctx, &deployment, annotations)
+		result, err := r.reconcileOperation(ctx, &deployment, &annotations)
 		if err != nil {
 			logger.Error(err, "Unable to reconcile in-progress operation.")
 			return ctrl.Result{}, err
@@ -127,10 +127,10 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// If the Deployment is being deleted **or** if Radius is no longer enabled, then we should
 	// clean up any Radius state.
 	if deployment.DeletionTimestamp != nil || (annotations.Configuration == nil && annotations.Status != nil) {
-		return r.reconcileDelete(ctx, &deployment, annotations)
+		return r.reconcileDelete(ctx, &deployment, &annotations)
 	}
 
-	return r.reconcileUpdate(ctx, &deployment, annotations)
+	return r.reconcileUpdate(ctx, &deployment, &annotations)
 }
 
 // reconcileOperation reconciles a Deployment that has an operation in progress.
@@ -249,12 +249,12 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 	}
 
 	environmentName := "default"
-	if annotations.Configuration.Environment != "" {
+	if annotations.Configuration != nil && annotations.Configuration.Environment != "" {
 		environmentName = annotations.Configuration.Environment
 	}
 
 	applicationName := deployment.Namespace
-	if annotations.Configuration.Application != "" {
+	if annotations.Configuration != nil && annotations.Configuration.Application != "" {
 		applicationName = annotations.Configuration.Application
 	}
 
@@ -263,6 +263,10 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 		r.EventRecorder.Event(deployment, corev1.EventTypeWarning, "DependencyError", err.Error())
 		logger.Error(err, "Unable to resolve dependencies.")
 		return ctrl.Result{}, fmt.Errorf("failed to resolve dependencies: %w", err)
+	}
+
+	if annotations.Status == nil {
+		annotations.Status = &deploymentStatus{}
 	}
 
 	annotations.Status.Scope = resourceGroupID
@@ -654,7 +658,7 @@ func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		annotations, err := readAnnotations(deployment)
 		if err != nil {
 			return []string{}
-		} else if annotations == nil || annotations.Configuration == nil {
+		} else if annotations.Configuration == nil {
 			return []string{}
 		}
 

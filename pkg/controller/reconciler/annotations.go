@@ -82,9 +82,9 @@ type deploymentStatus struct {
 // readAnnotations reads the annotations from a Deployment.
 //
 // This includes the configuration specified by the user, the hash of the configuration, and the status.
-func readAnnotations(deployment *appsv1.Deployment) (*deploymentAnnotations, error) {
+func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, error) {
 	if deployment.Annotations == nil {
-		return nil, nil
+		return deploymentAnnotations{}, nil
 	}
 
 	result := deploymentAnnotations{
@@ -96,7 +96,7 @@ func readAnnotations(deployment *appsv1.Deployment) (*deploymentAnnotations, err
 	if status != "" {
 		err := json.Unmarshal([]byte(status), &s)
 		if err != nil {
-			return &result, fmt.Errorf("failed to unmarshal status annotation: %w", err)
+			return result, fmt.Errorf("failed to unmarshal status annotation: %w", err)
 		}
 	}
 
@@ -106,7 +106,7 @@ func readAnnotations(deployment *appsv1.Deployment) (*deploymentAnnotations, err
 	// This is important so that can clean up previously created connections when Radius is disabled.
 	enabled := deployment.Annotations[AnnotationRadiusEnabled]
 	if !strings.EqualFold(enabled, "true") {
-		return &result, nil
+		return result, nil
 	}
 
 	result.Configuration = &deploymentConfiguration{
@@ -121,7 +121,7 @@ func readAnnotations(deployment *appsv1.Deployment) (*deploymentAnnotations, err
 		}
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 // ApplyToDeployment applies the configuration and status to a Deployment.
