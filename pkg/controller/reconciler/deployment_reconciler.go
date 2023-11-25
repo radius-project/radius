@@ -107,7 +107,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// and repair it on the next reconcile.
 	}
 
-	if annotations.Status.Operation != nil {
+	if annotations.Status != nil && annotations.Status.Operation != nil {
 		// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 		// this means the operation has completed and we should continue processing.
 		result, err := r.reconcileOperation(ctx, &deployment, annotations)
@@ -181,7 +181,6 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 		annotations.Status.Operation = nil
 		annotations.Status.Container = annotations.Status.Scope + "/providers/Applications.Core/containers/" + deployment.Name
 		return ctrl.Result{}, nil
-
 	} else if annotations.Status.Operation.OperationKind == radappiov1alpha3.OperationKindDelete {
 		poller, err := r.Radius.Containers(annotations.Status.Scope).ContinueDeleteOperation(ctx, annotations.Status.Operation.ResumeToken)
 		if err != nil {
