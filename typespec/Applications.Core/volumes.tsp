@@ -53,40 +53,40 @@ model VolumeProperties {
 
 @doc("Represents Azure Key Vault Volume properties")
 model AzureKeyVaultVolumeProperties extends VolumeProperties {
-  @doc("The kind of persistent volume. Should be 'azure.com.keyvault' for Azure Key Vault persistent volumes")
+  @doc("The kind of persistent volume. Should be 'azure.com.keyvault' for Azure Key Vault persistent volumes.")
   kind: "azure.com.keyvault";
 
-  @doc("Map specify certificate object name and [certificate properties]. See [certificate properties](#certificate)")
+  @doc("Map specify certificate object name and [certificate properties]. See [certificate properties](#certificate).")
   certificates?: Record<CertificateObjectProperties>;
 
-  @doc("Map specify key object name and key properties. See [key properties](#keys)")
+  @doc("Map specify key object name and key properties. See [key properties](#keys).")
   keys?: Record<KeyObjectProperties>;
 
   @doc("Resource ID for the Azure KeyVault resource.")
   resource: string;
 
-  @doc("Map specify secret object name and secret properties. See [secret properties](#secrets)")
+  @doc("Map specify secret object name and secret properties. See [secret properties](#secrets).")
   secrets?: Record<SecretObjectProperties>;
 }
 
 @doc("Represents certificate object properties")
 model CertificateObjectProperties {
-  @doc("File name when written to disk. Same as object name if not specified")
+  @doc("File name when written to disk. Same as object name if not specified.")
   `alias`?: string;
 
-  @doc("Encoding format 'utf-8', 'hex', 'base64'. Default is 'utf-8' and this field can be specificed only when value is 'privatekey'")
+  @doc("Encoding format 'utf-8', 'hex', 'base64'. Default is 'utf-8' and this field can be specificed only when value is 'privatekey'.")
   encoding?: VolumeSecretEncodings = VolumeSecretEncodings.utf8;
 
-  @doc("Certificate format 'pfx', 'pem'. Default is 'pfx'")
+  @doc("Certificate format 'pfx', 'pem'. Default is 'pfx'.")
   format?: CertificateFormats = CertificateFormats.pem;
 
-  @doc("Certificate name in Azure Key Vault")
+  @doc("Certificate name in Azure Key Vault.")
   name: string;
 
   @doc("Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate")
   certType?: CertificateTypes;
 
-  @doc("Specific certificate version. Default is latest")
+  @doc("Specific certificate version. Default is latest.")
   version?: string;
 }
 
@@ -125,28 +125,28 @@ enum CertificateTypes {
 
 @doc("Represents secret object properties")
 model SecretObjectProperties {
-  @doc("File name when written to disk. Same as object name if not specified")
+  @doc("File name when written to disk. Same as object name if not specified.")
   `alias`?: string;
 
-  @doc("Encoding format 'utf-8', 'hex', 'base64'. Default is 'utf-8'")
+  @doc("Encoding format 'utf-8', 'hex', 'base64'. Default is 'utf-8'.")
   encoding?: VolumeSecretEncodings = VolumeSecretEncodings.utf8;
 
-  @doc("Secret name in Azure Key Vault")
+  @doc("Secret name in Azure Key Vault.")
   name: string;
 
-  @doc("Specific secret version. Default is latest")
+  @doc("Specific secret version. Default is latest.")
   version?: string;
 }
 
 @doc("Represents key object properties")
 model KeyObjectProperties {
-  @doc("File name when written to disk. Same as object name if not specified")
+  @doc("File name when written to disk. Same as object name if not specified.")
   `alias`?: string;
 
-  @doc("Key name in Azure Key Vault")
+  @doc("Key name in Azure Key Vault.")
   name: string;
 
-  @doc("Specific key version. Default is latest")
+  @doc("Specific key version. Default is latest.")
   version?: string;
 }
 

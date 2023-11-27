@@ -55,7 +55,7 @@ model RabbitMQSecrets {
   @doc("The password used to connect to this RabbitMQ. Write only.")
   password?: string;
 
-  @doc("The URI to the Rabbit MQ Message Queue. Write only")
+  @doc("The URI to the Rabbit MQ Message Queue. Write only.")
   uri?: string;
 }
 
@@ -79,7 +79,7 @@ model RabbitMQQueueProperties {
   @doc("The RabbitMQ virtual host (vHost) the client will connect to. Defaults to no vHost.")
   vHost?: string;
 
-  @doc("Username to use when connecting to the target rabbitMQ.")
+  @doc("Username to use when connecting to the target RabbitMQ.")
   username?: string;
 
   @doc("	An array of IDs of the underlying resources.")

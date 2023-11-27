@@ -39,7 +39,7 @@ model KubernetesMetadataExtension extends Extension {
   @doc("The Kubernetes annotations to set on your application and its resources.")
   annotations?: Record<string>;
 
-  @doc("The Kubernetes labels to be set on the application and its resources")
+  @doc("The Kubernetes labels to be set on the application and its resources.")
   labels?: Record<string>;
 }
 
@@ -48,7 +48,7 @@ model ManualScalingExtension extends Extension {
   @doc("The kind of extension.")
   kind: "manualScaling";
 
-  @doc("The number of replicas to run")
+  @doc("The number of replicas to run.")
   replicas: int32;
 }
 
@@ -57,13 +57,13 @@ model DaprSidecarExtension extends Extension {
   @doc("The kind of extension.")
   kind: "daprSidecar";
 
-  @doc("The port your service exposes to Dapr")
+  @doc("The port your service exposes to Dapr.")
   appPort?: int32;
 
   @doc("The appId of the Dapr sidecar.")
   appId: string;
 
-  @doc("The configuration to use for the Dapr sidecar")
+  @doc("The configuration to use for the Dapr sidecar.")
   config?: string;
 
   @doc("Specifies the Dapr app-protocol to use for the resource.")

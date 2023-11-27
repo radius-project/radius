@@ -70,7 +70,7 @@ model MongoDatabaseProperties {
   @doc("The MongoDB port.")
   port?: int32;
 
-  @doc("Database name of the target MongoDB")
+  @doc("Database name of the target MongoDB.")
   database?: string;
 
   @doc("An array of resources which underlay this resource. For example, an Azure CosmosDB database ID if the MongoDB resource is leveraging CosmosDB.")

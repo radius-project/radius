@@ -101,7 +101,7 @@ model GatewayRoute {
   @doc("The path to match the incoming request path on. Not required when `tls.sslPassthrough` is set to `'true'`.")
   path?: string;
 
-  @doc("The service to route traffic to, in the form `'[scheme]://[serviceName]:[port]'`")
+  @doc("The service to route traffic to, in the form `'[scheme]://[serviceName]:[port]'`.")
   destination?: string;
 
   @doc("The prefix to replace in the incoming request path that is sent to the destination route.")
