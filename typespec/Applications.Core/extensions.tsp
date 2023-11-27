@@ -24,7 +24,7 @@ model Extension {}
 
 @doc("Kubernetes namespace extension of a environment/application resource.")
 model KubernetesNamespaceExtension extends Extension {
-  @doc("The kind of extension being used. Must be ‘kubernetesNamespace’")
+  @doc("The kind of extension being used. Must be ‘kubernetesNamespace’.")
   kind: "kubernetesNamespace";
 
   @doc("The namespace where all application-scoped resources generate Kubernetes objects.")
@@ -33,10 +33,10 @@ model KubernetesNamespaceExtension extends Extension {
 
 @doc("Kubernetes metadata extension of a environment/application resource.")
 model KubernetesMetadataExtension extends Extension {
-  @doc("The kind of extension being used. Must be 'kubernetesMetadata'")
+  @doc("The kind of extension being used. Must be 'kubernetesMetadata'.")
   kind: "kubernetesMetadata";
 
-  @doc("The Kubernetes annotations to set on your application and its resources")
+  @doc("The Kubernetes annotations to set on your application and its resources.")
   annotations?: Record<string>;
 
   @doc("The Kubernetes labels to be set on the application and its resources")

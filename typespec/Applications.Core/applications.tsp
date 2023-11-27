@@ -56,7 +56,7 @@ model ApplicationProperties {
   @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment: string;
 
-  @doc("List of extensions on the container. Used to specify additional behavior of the application.")
+  @doc("List of extensions on the application. Used to specify additional behavior of the application.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;
 

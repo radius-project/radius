@@ -61,7 +61,7 @@ model EnvironmentProperties {
   @doc("Simulated environment.")
   simulated?: boolean;
 
-  @doc("Recipes registered to the environment")
+  @doc("Recipes registered to the environment.")
   recipes?: Record<Record<RecipeProperties>>;
 
   @doc("The environment extension.")

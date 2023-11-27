@@ -158,7 +158,7 @@ model HttpGetHealthProbeProperties extends HealthProbeProperties {
   @doc("Used when kind is `httpGet` or `tcp`. The listening port number.")
   containerPort: int32;
 
-  @doc("Used when kind is `httpGet`. The route to make the HTTP request on")
+  @doc("Used when kind is `httpGet`. The route to make the HTTP request on.")
   path: string;
 
   @doc("Custom HTTP headers to add to the get request")
@@ -179,7 +179,7 @@ model ExecHealthProbeProperties extends HealthProbeProperties {
   @doc("Type of readiness check, `httpGet` or `tcp` or `exec`.")
   kind: "exec";
 
-  @doc("Used when kind is exec. Command to execute to probe readiness/liveness")
+  @doc("Used when kind is exec. Command to execute to probe readiness/liveness.")
   command: string;
 }
 
@@ -213,7 +213,7 @@ model PersistentVolume extends Volume {
 
 @doc("IAM properties")
 model IamProperties {
-  @doc("Type of IAM role. Only azure supported today")
+  @doc("Type of IAM role. Only Azure supported today.")
   kind: IAMKind;
 
   @doc("The list IAM roles to set on the target resource.")
@@ -222,7 +222,7 @@ model IamProperties {
 
 @doc("Connection Properties")
 model ConnectionProperties {
-  @doc("The id of the resource the container is connecting to. For network connections to other services this is in the form '[scheme]://[serviceName]:[port]'")
+  @doc("The id of the resource the container is connecting to. For network connections to other services this is in the form '[scheme]://[serviceName]:[port]'.")
   source: string;
 
   @doc("default environment variable override")
@@ -234,7 +234,7 @@ model ConnectionProperties {
 
 @doc("Definition of a container")
 model Container {
-  @doc("The registry and image to download and run in your container. Follows the format <registry-hostname>:<port>/<image-name>:<tag> where registry hostname is optional and defaults to the Docker public registry, port is optional and defaults to 443, tag is optional and defaults to latest.")
+  @doc("The registry and image to download and run in your container. Follows the format `<registry-hostname>:<port>/<image-name>:<tag>` where registry hostname is optional and defaults to the Docker public registry, port is optional and defaults to 443, tag is optional and defaults to latest.")
   image: string;
 
   @doc("How to pull images. Defaults to the runtime’s default behavior. For Kubernetes behavior refer to https://kubernetes.io/docs/concepts/containers/images/#required-image-pull")
