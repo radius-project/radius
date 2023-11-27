@@ -32,8 +32,8 @@ import (
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
 // if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
 // the data fails to be unmarshalled.
-func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) error {
-	registryRepo, tag, err := parsePath(path)
+func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinition, data *map[string]any) error {
+	registryRepo, tag, err := parsePath(definition.TemplatePath)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
@@ -43,14 +43,18 @@ func ReadFromRegistry(ctx context.Context, path string, data *map[string]any) er
 		return fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
 
+	if definition.PlainHTTP {
+		repo.PlainHTTP = true
+	}
+
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), recipes_util.RecipeSetupError, nil)
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
 
 	bytes, err := getBytes(ctx, repo, digest)
 	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", path, err.Error()), recipes_util.RecipeSetupError, nil)
+		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
 
 	err = json.Unmarshal(bytes, data)

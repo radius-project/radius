@@ -176,8 +176,8 @@ func (ri ID) IsExtensionCollection() bool {
 	return len(ri.extensionSegments) > 0 && len(ri.extensionSegments[len(ri.extensionSegments)-1].Name) == 0
 }
 
-// IsUCPQualfied checks if the ID has a prefix of SegmentSeparator and PlanesSegment.
-func (ri ID) IsUCPQualfied() bool {
+// IsUCPQualified checks if the ID has a prefix of SegmentSeparator and PlanesSegment.
+func (ri ID) IsUCPQualified() bool {
 	return strings.HasPrefix(ri.id, SegmentSeparator+PlanesSegment)
 }
 
@@ -229,7 +229,7 @@ func (ri ID) RootScope() string {
 	}
 
 	joined := strings.Join(segments, SegmentSeparator)
-	if ri.IsUCPQualfied() {
+	if ri.IsUCPQualified() {
 		return SegmentSeparator + PlanesSegment + SegmentSeparator + joined
 	}
 
@@ -255,7 +255,7 @@ func (ri ID) PlaneScope() string {
 	}
 
 	joined := strings.Join(segments, SegmentSeparator)
-	if ri.IsUCPQualfied() {
+	if ri.IsUCPQualified() {
 		return SegmentSeparator + PlanesSegment + SegmentSeparator + joined
 	}
 
@@ -288,7 +288,7 @@ func (ri ID) ProviderNamespace() string {
 //
 //	radius/local
 func (ri ID) PlaneNamespace() string {
-	if !ri.IsUCPQualfied() {
+	if !ri.IsUCPQualified() {
 		return ""
 	}
 
@@ -338,7 +338,7 @@ func (ri ID) ParentResource() string {
 		return ""
 	}
 
-	if ri.IsUCPQualfied() {
+	if ri.IsUCPQualified() {
 		return MakeUCPID(ri.scopeSegments, ri.typeSegments, nil)
 	} else {
 		return MakeRelativeID(ri.scopeSegments, ri.typeSegments, nil)
@@ -463,7 +463,7 @@ func (ri ID) Append(resourceType TypeSegment) ID {
 		typeSegments = append(typeSegments, resourceType)
 	}
 
-	if ri.IsUCPQualfied() {
+	if ri.IsUCPQualified() {
 		result, err := Parse(MakeUCPID(ri.scopeSegments, typeSegments, extensionSegments))
 		if err != nil {
 			panic(err) // Should not be possible.
@@ -501,7 +501,7 @@ func (ri ID) Truncate() ID {
 		scopeSegments = scopeSegments[0 : len(scopeSegments)-1]
 	}
 
-	if ri.IsUCPQualfied() {
+	if ri.IsUCPQualified() {
 		result, err := Parse(MakeUCPID(scopeSegments, typeSegments, extensionSegments))
 		if err != nil {
 			panic(err) // Should not be possible.

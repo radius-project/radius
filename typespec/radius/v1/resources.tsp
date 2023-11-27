@@ -47,10 +47,10 @@ model EnvironmentScopedResource {
 
 @doc("Base properties of a Application-scoped resource")
 model ApplicationScopedResource {
-  @doc("Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)")
+  @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment?: string;
 
-  @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
+  @doc("Fully qualified resource ID for the application")
   application: string;
 
   @doc("The status of the asynchronous operation.")
@@ -102,10 +102,26 @@ model KubernetesCompute extends EnvironmentCompute {
   `namespace`: string;
 }
 
+@doc("Recipe status at deployment time for a resource.")
+model RecipeStatus {
+  @doc("TemplateKind is the kind of the recipe template used by the portable resource upon deployment.")
+  templateKind: string;
+
+  @doc("TemplatePath is the path of the recipe consumed by the portable resource upon deployment.")
+  templatePath: string;
+
+  @doc("TemplateVersion is the version number of the template.")
+  templateVersion?: string;
+}
+
 @doc("Status of a resource.")
 model ResourceStatus {
   @doc("The compute resource associated with the resource.")
   compute?: EnvironmentCompute;
+
+  @doc("The recipe data at the time of deployment")
+  @visibility("read")
+  recipe?: RecipeStatus;
 
   @doc("Properties of an output resource")
   @extension("x-ms-identifiers", [])
@@ -130,7 +146,7 @@ model ResourceReference {
   id: string;
 }
 
-@doc("Provisioning state of the portable resource at the time the operation was called")
+@doc("Provisioning state of the resource at the time the operation was called")
 @lroStatus
 enum ProvisioningState {
   ...ResourceProvisioningState,

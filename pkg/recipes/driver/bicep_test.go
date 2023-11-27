@@ -294,9 +294,24 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
 		},
+		Status: &rpv1.RecipeStatus{
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse(response, resources)
+	opts := ExecuteOptions{
+		BaseOptions: BaseOptions{
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "mongo-azure",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+				ResourceType: "Applications.Datastores/mongoDatabases",
+			},
+		},
+		PrevState: []string{},
+	}
+	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -327,9 +342,13 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 			"host": "myrediscache.redis.cache.windows.net",
 			"port": float64(6379),
 		},
+		Status: &rpv1.RecipeStatus{
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -345,9 +364,13 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	response := map[string]any{}
 	expectedResponse := &recipes.RecipeOutput{
 		Resources: []string{"outputResourceId"},
+		Status: &rpv1.RecipeStatus{
+			TemplateKind: recipes.TemplateKindBicep,
+			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse(response, resources)
+	actualResponse, err := d.prepareRecipeResponse("radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0", response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }

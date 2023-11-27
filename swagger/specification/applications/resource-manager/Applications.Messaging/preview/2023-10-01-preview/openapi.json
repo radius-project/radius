@@ -528,7 +528,7 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -814,6 +814,28 @@
         "name"
       ]
     },
+    "RecipeStatus": {
+      "type": "object",
+      "description": "Recipe status at deployment time for a resource.",
+      "properties": {
+        "templateKind": {
+          "type": "string",
+          "description": "TemplateKind is the kind of the recipe template used by the portable resource upon deployment."
+        },
+        "templatePath": {
+          "type": "string",
+          "description": "TemplatePath is the path of the recipe consumed by the portable resource upon deployment."
+        },
+        "templateVersion": {
+          "type": "string",
+          "description": "TemplateVersion is the version number of the template."
+        }
+      },
+      "required": [
+        "templateKind",
+        "templatePath"
+      ]
+    },
     "RecipeUpdate": {
       "type": "object",
       "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource",
@@ -873,6 +895,11 @@
         "compute": {
           "$ref": "#/definitions/EnvironmentCompute",
           "description": "The compute resource associated with the resource."
+        },
+        "recipe": {
+          "$ref": "#/definitions/RecipeStatus",
+          "description": "The recipe data at the time of deployment",
+          "readOnly": true
         },
         "outputResources": {
           "type": "array",

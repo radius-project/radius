@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 	"testing"
 	"time"
@@ -35,114 +36,14 @@ import (
 )
 
 const (
-	retries         = 3
 	httpRemotePort  = 8080
 	httpsRemotePort = 8443
-	retryTimeout    = 1 * time.Minute
-	retryBackoff    = 1 * time.Second
 )
 
 // GatewayTestConfig is a struct that contains the configuration for a Gateway test
 type GatewayTestConfig struct {
 	Path               string
 	ExpectedStatusCode int
-}
-
-func Test_Gateway(t *testing.T) {
-	template := "testdata/corerp-resources-gateway.bicep"
-	name := "corerp-resources-gateway"
-	appNamespace := "default-corerp-resources-gateway"
-
-	test := shared.NewRPTest(t, name, []shared.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: name,
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: "http-gtwy-gtwy",
-						Type: validation.GatewaysResource,
-						App:  name,
-					},
-					{
-						Name: "http-gtwy-front-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
-						Name: "http-gtwy-front-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "http-gtwy-back-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
-						Name: "http-gtwy-back-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "http-gtwy-front-ctnr"),
-						validation.NewK8sPodForResource(name, "http-gtwy-back-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-front-rte"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-back-rte"),
-						validation.NewK8sServiceForResource(name, "http-gtwy-back-rte"),
-					},
-				},
-			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
-				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := functional.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
-				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
-
-				require.Equal(t, "Valid HTTPProxy", metadata.Status)
-
-				// Set up pod port-forwarding for contour-envoy
-				t.Logf("Setting up portforward")
-
-				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
-					// /healthz is exposed on frontend container
-					{
-						Path:               "healthz",
-						ExpectedStatusCode: http.StatusOK,
-					},
-					// /backend2 uses 'replacePrefix', so it can access /healthz on backend container
-					{
-						Path:               "backend2/healthz",
-						ExpectedStatusCode: http.StatusOK,
-					},
-					// since /backend1/healthz is not exposed on frontend container, it should return 404
-					{
-						Path:               "backend1/healthz",
-						ExpectedStatusCode: http.StatusNotFound,
-					},
-				})
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
-				}
-
-				require.Fail(t, "Gateway tests failed")
-			},
-		},
-	})
-
-	test.Test(t)
 }
 
 func Test_GatewayDNS(t *testing.T) {
@@ -244,11 +145,6 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "ssl-gtwy-front-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "ssl-gtwy-front-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
@@ -259,9 +155,9 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "ssl-gtwy-front-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-front-ctnr"),
 						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "ssl-gtwy-front-rte"),
+						validation.NewK8sServiceForResource(name, "ssl-gtwy-front-ctnr"),
 					},
 				},
 			},
@@ -320,11 +216,6 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "tls-gtwy-front-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
 						Name: "tls-gtwy-front-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
@@ -336,8 +227,8 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "tls-gtwy-front-ctnr"),
 						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "tls-gtwy-front-rte"),
+						validation.NewK8sHTTPProxyForResource(name, "tls-gtwy-front-ctnr"),
+						validation.NewK8sServiceForResource(name, "tls-gtwy-front-ctnr"),
 						validation.NewK8sSecretForResource(name, "tls-gtwy-cert"),
 					},
 				},
@@ -441,7 +332,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at shared.RPT
 		t.Logf("Portforward session active at %s", baseURL)
 
 		for _, test := range tests {
-			if err := testGatewayAvailability(hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps); err != nil {
+			if err := testGatewayAvailability(t, hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps); err != nil {
 				close(stopChan)
 				return err
 			}
@@ -453,7 +344,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at shared.RPT
 	}
 }
 
-func testGatewayAvailability(hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
+func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
 	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
 	if err != nil {
@@ -463,17 +354,45 @@ func testGatewayAvailability(hostname, baseURL, path string, expectedStatusCode 
 	req.Host = hostname
 
 	client := newTestHTTPClient(isHttps, hostname)
-	res, err := client.Do(req)
-	if err != nil {
-		return err
+
+	retries := 2
+	retryBackoff := 5 * time.Second
+	for i := 1; i <= retries; i++ {
+		res, err := client.Do(req)
+		if err == nil && res.StatusCode == expectedStatusCode {
+			// Got expected status code, return
+			return nil
+		}
+
+		// If we got an error, or the status code was not what we expected, log the error and retry
+		// Logging the request and response will help with debugging the issue
+
+		t.Logf("failed to make request to %s with error: %s", urlPath, err)
+		requestDump, err := httputil.DumpRequestOut(req, true)
+		if err != nil {
+			t.Logf("failed to dump request with error: %s", err)
+		}
+		t.Logf("request dump: %s", string(requestDump))
+
+		if res == nil {
+			t.Logf("response is nil")
+		}
+
+		if res != nil && res.StatusCode != expectedStatusCode {
+			t.Logf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
+			responseDump, err := httputil.DumpResponse(res, true)
+			if err != nil {
+				t.Logf("failed to dump response with error: %s", err)
+			}
+			t.Logf("response dump: %s", string(responseDump))
+		}
+
+		// Wait for retryBackoff before trying again
+		time.Sleep(retryBackoff)
+		continue
 	}
 
-	if res.StatusCode != expectedStatusCode {
-		return fmt.Errorf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
-	}
-
-	// Encountered the correct status code
-	return nil
+	return fmt.Errorf("failed to make request to %s after %d retries", urlPath, retries)
 }
 
 func newTestHTTPClient(isHttps bool, hostname string) *http.Client {

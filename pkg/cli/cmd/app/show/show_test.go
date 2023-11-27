@@ -23,6 +23,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
@@ -39,7 +40,6 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-	config := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Show Command with default application",
@@ -47,7 +47,12 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspaceAndApplication(t),
+				Config:         radcli.LoadConfigWithWorkspace(t),
+				DirectoryConfig: &config.DirectoryConfig{
+					Workspace: config.DirectoryWorkspaceConfig{
+						Application: "test-application",
+					},
+				},
 			},
 		},
 		{
@@ -56,7 +61,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         config,
+				Config:         radcli.LoadConfigWithWorkspace(t),
 			},
 		},
 		{
@@ -65,7 +70,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         config,
+				Config:         radcli.LoadConfigWithWorkspace(t),
 			},
 		},
 		{
@@ -83,7 +88,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         config,
+				Config:         radcli.LoadConfigWithWorkspace(t),
 			},
 		},
 	}

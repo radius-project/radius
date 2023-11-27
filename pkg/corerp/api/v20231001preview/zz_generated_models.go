@@ -60,7 +60,7 @@ type ApplicationGraphResponse struct {
 
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the portable resource is linked to
+	// REQUIRED; Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// The application extension.
@@ -135,7 +135,7 @@ type ApplicationResourceUpdateProperties struct {
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
 type AzureKeyVaultVolumeProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application
 	Application *string
 
 	// REQUIRED; Discriminator property for VolumeProperties.
@@ -147,7 +147,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]*CertificateObjectProperties
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// The KeyVault keys that this volume exposes
@@ -184,6 +184,10 @@ type BicepRecipeProperties struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
+// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
+	PlainHTTP *bool
 }
 
 // GetRecipeProperties implements the RecipePropertiesClassification interface for type BicepRecipeProperties.
@@ -202,6 +206,10 @@ type BicepRecipePropertiesUpdate struct {
 
 	// Key/value parameters to pass to the recipe template at deployment
 	Parameters map[string]any
+
+	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
+// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
+	PlainHTTP *bool
 
 	// Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
@@ -334,7 +342,7 @@ type ContainerPortPropertiesUpdate struct {
 
 // ContainerProperties - Container properties
 type ContainerProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application
 	Application *string
 
 	// REQUIRED; Definition of a container.
@@ -343,7 +351,7 @@ type ContainerProperties struct {
 	// Specifies a connection to another resource.
 	Connections map[string]*ConnectionProperties
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// Extensions spec of the resource
@@ -415,7 +423,7 @@ type ContainerResourceUpdate struct {
 
 // ContainerResourceUpdateProperties - The updatable properties of the ContainerResource.
 type ContainerResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application
 	Application *string
 
 	// Specifies a connection to another resource.
@@ -424,7 +432,7 @@ type ContainerResourceUpdateProperties struct {
 	// Definition of a container.
 	Container *ContainerUpdate
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// Extensions spec of the resource
@@ -810,13 +818,13 @@ type GatewayHostname struct {
 
 // GatewayProperties - Gateway properties
 type GatewayProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application
 	Application *string
 
 	// REQUIRED; Routes attached to this Gateway
 	Routes []*GatewayRoute
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
@@ -882,10 +890,10 @@ type GatewayResourceUpdate struct {
 
 // GatewayResourceUpdateProperties - The updatable properties of the GatewayResource.
 type GatewayResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
@@ -966,10 +974,10 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 
 // HTTPRouteProperties - HTTPRoute properties
 type HTTPRouteProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
@@ -1035,10 +1043,10 @@ type HTTPRouteResourceUpdate struct {
 
 // HTTPRouteResourceUpdateProperties - The updatable properties of the HttpRouteResource.
 type HTTPRouteResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
@@ -1389,6 +1397,10 @@ type RecipeGetMetadataResponse struct {
 	// REQUIRED; The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string
 
+	// Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS,
+// for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).
+	PlainHTTP *bool
+
 	// The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted
 // for other module sources.
 	TemplateVersion *string
@@ -1423,6 +1435,18 @@ type RecipePropertiesUpdate struct {
 
 // GetRecipePropertiesUpdate implements the RecipePropertiesUpdateClassification interface for type RecipePropertiesUpdate.
 func (r *RecipePropertiesUpdate) GetRecipePropertiesUpdate() *RecipePropertiesUpdate { return r }
+
+// RecipeStatus - Recipe status at deployment time for a resource.
+type RecipeStatus struct {
+	// REQUIRED; TemplateKind is the kind of the recipe template used by the portable resource upon deployment.
+	TemplateKind *string
+
+	// REQUIRED; TemplatePath is the path of the recipe consumed by the portable resource upon deployment.
+	TemplatePath *string
+
+	// TemplateVersion is the version number of the template.
+	TemplateVersion *string
+}
 
 // RecipeUpdate - The recipe used to automatically deploy underlying infrastructure for a portable resource
 type RecipeUpdate struct {
@@ -1461,6 +1485,9 @@ type ResourceStatus struct {
 
 	// Properties of an output resource
 	OutputResources []*OutputResource
+
+	// READ-ONLY; The recipe data at the time of deployment
+	Recipe *RecipeStatus
 }
 
 // RuntimesProperties - The properties for runtime configuration
@@ -1495,13 +1522,13 @@ type SecretStoreListSecretsResult struct {
 
 // SecretStoreProperties - The properties of SecretStore
 type SecretStoreProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application
 	Application *string
 
 	// REQUIRED; An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// The resource id of external secret store.
@@ -1561,13 +1588,13 @@ type SecretStoreResourceUpdate struct {
 
 // SecretStoreResourceUpdateProperties - The updatable properties of the SecretStoreResource.
 type SecretStoreResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application
 	Application *string
 
 	// An object to represent key-value type secrets
 	Data map[string]*SecretValueProperties
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// The resource id of external secret store.
@@ -1737,13 +1764,13 @@ func (v *Volume) GetVolume() *Volume { return v }
 
 // VolumeProperties - Volume properties
 type VolumeProperties struct {
-	// REQUIRED; Fully qualified resource ID for the application that the portable resource is consumed by
+	// REQUIRED; Fully qualified resource ID for the application
 	Application *string
 
 	// REQUIRED; Discriminator property for VolumeProperties.
 	Kind *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 
 	// READ-ONLY; The status of the asynchronous operation.
@@ -1800,10 +1827,10 @@ type VolumeResourceUpdate struct {
 
 // VolumeResourceUpdateProperties - The updatable properties of the VolumeResource.
 type VolumeResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the portable resource is consumed by
+	// Fully qualified resource ID for the application
 	Application *string
 
-	// Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)
+	// Fully qualified resource ID for the environment that the application is linked to
 	Environment *string
 }
 

@@ -130,6 +130,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) erro
 		ProvisioningState:    fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 		Status: &ResourceStatus{
 			OutputResources: toOutputResources(daprPubSub.Properties.Status.OutputResources),
+			Recipe:          fromRecipeStatus(daprPubSub.Properties.Status.Recipe),
 		},
 	}
 

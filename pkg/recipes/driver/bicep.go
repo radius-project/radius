@@ -85,7 +85,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -150,7 +150,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -258,7 +258,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, opts.Definition.TemplatePath, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//
@@ -360,6 +360,11 @@ func (d *bicepDriver) prepareRecipeResponse(outputs any, resources []*armresourc
 				}
 			}
 		}
+	}
+
+	recipeResponse.Status = &rpv1.RecipeStatus{
+		TemplateKind: recipes.TemplateKindBicep,
+		TemplatePath: templatePath,
 	}
 
 	// process the 'resources' created by the template

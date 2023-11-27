@@ -80,7 +80,7 @@ func (c *resourceClient) Delete(ctx context.Context, id string) error {
 	// Azure and Kubernetes resources yet, so those are handled as special cases here.
 	ns := strings.ToLower(parsed.PlaneNamespace())
 
-	if !parsed.IsUCPQualfied() || strings.HasPrefix(ns, "azure/") {
+	if !parsed.IsUCPQualified() || strings.HasPrefix(ns, "azure/") {
 		return c.wrapError(parsed, c.deleteAzureResource(ctx, parsed))
 	} else if strings.HasPrefix(ns, "kubernetes/") {
 		return c.wrapError(parsed, c.deleteKubernetesResource(ctx, parsed))
@@ -99,7 +99,7 @@ func (c *resourceClient) wrapError(id resources.ID, err error) error {
 
 func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.ID) error {
 	var err error
-	if id.IsUCPQualfied() {
+	if id.IsUCPQualified() {
 		id, err = resources.ParseResource(resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments()))
 		if err != nil {
 			return err

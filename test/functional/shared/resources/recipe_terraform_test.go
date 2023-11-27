@@ -108,6 +108,23 @@ func Test_TerraformRecipe_KubernetesRedis(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, secretNamespace, secret.Namespace)
 				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
+
+				redis, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				require.NoError(t, err)
+				require.NotNil(t, redis)
+				status := redis.Properties["status"].(map[string]any)
+				recipe := status["recipe"].(map[string]interface{})
+				require.Equal(t, "terraform", recipe["templateKind"].(string))
+				expectedTemplatePath := strings.Replace(functional.GetTerraformRecipeModuleServerURL()+"/kubernetes-redis.zip", "moduleServer=", "", 1)
+				require.Equal(t, expectedTemplatePath, recipe["templatePath"].(string))
+				// At present, it is not possible to verify the template version in functional tests
+				// This is verified by UTs though
+
+				// Manually delete Kubernetes the secret that stores the Terraform state file now. The next step in the test will be the deletion
+				// of the portable resource that uses this secret for Terraform recipe. This is to verify that the test and portable resource
+				// deletion will not fail even though the secret is already deleted.
+				err = test.Options.K8sClient.CoreV1().Secrets(secretNamespace).Delete(ctx, secretPrefix+secretSuffix, metav1.DeleteOptions{})
+				require.NoError(t, err)
 			},
 		},
 	})

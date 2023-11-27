@@ -112,7 +112,7 @@ func TestNormalizeResoureName(t *testing.T) {
 	}
 }
 
-func TestNormalizeResoureNameDapr(t *testing.T) {
+func TestNormalizeResourceNameDapr(t *testing.T) {
 	nameTests := []struct {
 		in    string
 		out   string

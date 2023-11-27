@@ -62,12 +62,20 @@ type ResourceStatus struct {
 
 	// OutputResources represents the output resources associated with the radius resource.
 	OutputResources []OutputResource `json:"outputResources,omitempty"`
+	Recipe          *RecipeStatus    `json:"recipe,omitempty"`
 }
 
 // DeepCopy copies the contents of the ResourceStatus struct from in to out.
 func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
 	in.Compute = out.Compute
 	in.OutputResources = out.OutputResources
+	if out.Recipe != nil {
+		in.Recipe = &RecipeStatus{
+			TemplateKind:    out.Recipe.TemplateKind,
+			TemplatePath:    out.Recipe.TemplatePath,
+			TemplateVersion: out.Recipe.TemplateVersion,
+		}
+	}
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
@@ -82,7 +90,7 @@ type EnvironmentCompute struct {
 
 // KubernetesComputeProperties represents the kubernetes compute of the environment.
 type KubernetesComputeProperties struct {
-	// ResourceID represents the resource ID for kuberentes compute resource.
+	// ResourceID represents the resource ID for kubernetes compute resource.
 	ResourceID string `json:"resourceId,omitempty"`
 
 	// Namespace represents Kubernetes namespace.

@@ -1649,7 +1649,7 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",

@@ -162,10 +162,6 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 	}
 
 	if applicationName == "" {
-		applicationName = workspace.DefaultApplication
-	}
-
-	if applicationName == "" {
 		applicationName = workspace.DirectoryConfig.Workspace.Application
 	}
 
@@ -191,10 +187,6 @@ func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (st
 	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return "", err
-	}
-
-	if applicationName == "" {
-		applicationName = workspace.DefaultApplication
 	}
 
 	if applicationName == "" {
@@ -359,7 +351,7 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper, dc *config.Direct
 	return ws, nil
 }
 
-// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
+// RequireUCPResourceGroup is used by commands that require specifying a UCP resource group name using flag or positional args
 //
 
 // RequireUCPResourceGroup reads the resource group name from the command line arguments and returns an error if the name

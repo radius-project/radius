@@ -20,6 +20,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -51,6 +52,9 @@ type RadiusOptions struct {
 	// SetArgs specifies as set of additional "values" to pass to helm. These are specified using the command-line syntax accepted
 	// by helm, in the order they appear on the command line (last one wins).
 	SetArgs []string
+
+	// SetFileArgs specifies as set of additional "values" from file to pass it to helm.
+	SetFileArgs []string
 }
 
 // Apply the radius helm chart.
@@ -131,6 +135,18 @@ func AddRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	// Parse --set arguments in order so that the last one wins.
 	for _, arg := range options.SetArgs {
 		err := strvals.ParseInto(arg, values)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, arg := range options.SetFileArgs {
+		reader := func(rs []rune) (any, error) {
+			data, err := os.ReadFile(string(rs))
+			return string(data), err
+		}
+
+		err := strvals.ParseIntoFile(arg, values, reader)
 		if err != nil {
 			return err
 		}

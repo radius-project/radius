@@ -34,7 +34,7 @@ const (
 	// AnnotationRadiusConfigurationHash is the name of the annotation that indicates the hash of the configuration.
 	AnnotationRadiusConfigurationHash = "radapp.io/configuration-hash"
 
-	// AnnotationRadiusEnvionment is the name of the annotation that indicates the name of the environment. If unset,
+	// AnnotationRadiusEnvironment is the name of the annotation that indicates the name of the environment. If unset,
 	// the value 'default' will be used as the environment name.
 	AnnotationRadiusEnvironment = "radapp.io/environment"
 

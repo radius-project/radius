@@ -35,14 +35,13 @@ import (
 	"github.com/radius-project/radius/pkg/server"
 	"github.com/radius-project/radius/pkg/trace"
 
-	pr_backend "github.com/radius-project/radius/pkg/portableresources/backend"
-	pr_frontend "github.com/radius-project/radius/pkg/portableresources/frontend"
 	"github.com/radius-project/radius/pkg/ucp/data"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
+	daprrp_setup "github.com/radius-project/radius/pkg/daprrp/setup"
 	dsrp_setup "github.com/radius-project/radius/pkg/datastoresrp/setup"
 	msgrp_setup "github.com/radius-project/radius/pkg/messagingrp/setup"
 )
@@ -56,11 +55,6 @@ func main() {
 	if configFile == "" {
 		log.Fatal("config-file is empty.") //nolint:forbidigo // this is OK inside the main function.
 	}
-
-	var portableResourceConfigFile string
-	defaultPortableRsConfig := fmt.Sprintf("portableresource-%s.yaml", hostoptions.Environment())
-	pflag.StringVar(&portableResourceConfigFile, "portableresource-config", defaultPortableRsConfig, "The service configuration file for portable resource providers.")
-
 	pflag.Parse()
 
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
@@ -90,12 +84,6 @@ func main() {
 	// Must set the logger before using controller-runtime.
 	runtimelog.SetLogger(logger)
 
-	// Load portable resource config.
-	prOptions, err := hostoptions.NewHostOptionsFromEnvironment(portableResourceConfigFile)
-	if err != nil {
-		log.Fatal(err) //nolint:forbidigo // this is OK inside the main function.
-	}
-
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
 		options.Config.StorageProvider.ETCD.InMemory {
 		// For in-memory etcd we need to register another service to manage its lifecycle.
@@ -105,10 +93,6 @@ func main() {
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
 		options.Config.SecretProvider.ETCD.Client = client
-
-		// Portable resource options
-		prOptions.Config.StorageProvider.ETCD.Client = client
-		prOptions.Config.SecretProvider.ETCD.Client = client
 
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
@@ -122,12 +106,6 @@ func main() {
 		hostingSvc,
 		server.NewAPIService(options, builders),
 		server.NewAsyncWorker(options, builders),
-
-		// Configure Portable Resources to run it with Applications.Core RP.
-		//
-		// This is temporary until we migrate these resources to use the new registration model.
-		pr_frontend.NewService(prOptions),
-		pr_backend.NewService(prOptions),
 	)
 
 	tracerOpts := options.Config.TracerProvider
@@ -159,6 +137,7 @@ func builders(options hostoptions.HostOptions) ([]builder.Builder, error) {
 
 	return []builder.Builder{
 		corerp_setup.SetupNamespace(config).GenerateBuilder(),
+		daprrp_setup.SetupNamespace(config).GenerateBuilder(),
 		msgrp_setup.SetupNamespace(config).GenerateBuilder(),
 		dsrp_setup.SetupNamespace(config).GenerateBuilder(),
 		// Add resource provider builders...

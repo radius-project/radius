@@ -35,8 +35,13 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
+	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
 	"github.com/radius-project/radius/test/radcli"
@@ -66,7 +71,13 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	target := fmt.Sprintf("br:ghcr.io/radius-project/dev/test-bicep-recipes/redis-recipe:%s", generateUniqueTag())
 
 	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType)
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType, false)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+	})
+
+	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
+		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKind, recipeTemplate, resourceType, true)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
@@ -77,6 +88,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		require.Regexp(t, recipeName, output)
 		require.Regexp(t, resourceType, output)
 		require.Regexp(t, recipeTemplate, output)
+		require.Regexp(t, "true", output)
 	})
 
 	t.Run("Validate rad recipe unregister", func(t *testing.T) {
@@ -89,7 +101,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		showRecipeName := "mongodbtest"
 		showRecipeTemplate := "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0"
 		showRecipeResourceType := "Applications.Datastores/mongoDatabases"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeResourceType)
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, templateKind, showRecipeTemplate, showRecipeResourceType, false)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 		output, err = cli.RecipeShow(ctx, envName, showRecipeName, resourceType)
@@ -112,7 +124,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 		}
 		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip", moduleServer)
 		showRecipeResourceType := "Applications.Datastores/redisCaches"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType)
+		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
@@ -131,7 +143,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad recipe register with recipe name conflicting with dev recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, resourceType)
+		output, err := cli.RecipeRegister(ctx, envName, "mongo-azure", templateKind, recipeTemplate, resourceType, false)
 		require.Contains(t, output, "Successfully linked recipe")
 		require.NoError(t, err)
 		output, err = cli.RecipeList(ctx, envName)
@@ -192,6 +204,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		// We don't want to be too fragile so we're not validating the logs in depth
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
+
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
 		t.Skip("https://github.com/radius-project/radius/issues/3232")
 		port, err := GetAvailablePort()
@@ -688,6 +701,57 @@ func Test_RecipeCommands(t *testing.T) {
 	})
 
 	test.Test(t)
+}
+
+// This test creates an environment by directly calling the CreateEnvironment function to test dev recipes.
+// After dev recipes are confirmed, the environment is deleted.
+func Test_DevRecipes(t *testing.T) {
+	ctx, cancel := testcontext.NewWithCancel(t)
+	t.Cleanup(cancel)
+
+	options := shared.NewTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	envName := "test-dev-recipes"
+	envNamespace := "test-dev-recipes"
+
+	basicRunner := radinit.NewRunner(
+		&framework.Impl{
+			ConnectionFactory: connections.DefaultFactory,
+		},
+	)
+	basicRunner.UpdateEnvironmentOptions(true, envName, envNamespace)
+	basicRunner.UpdateRecipePackOptions(true)
+	basicRunner.DevRecipeClient = radinit.NewDevRecipeClient()
+	basicRunner.Workspace = &workspaces.Workspace{
+		Name: envName,
+		Connection: map[string]any{
+			"kind": workspaces.KindKubernetes,
+		},
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/kind-radius/providers/Applications.Core/environments/%s", envName),
+		Scope:       "/planes/radius/local/resourceGroups/kind-radius",
+	}
+
+	// Create the environment
+	err := basicRunner.CreateEnvironment(ctx)
+	require.NoError(t, err)
+
+	output, err := cli.RecipeList(ctx, envName)
+	require.NoError(t, err)
+	require.Regexp(t, "default", output)
+
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
+	for _, devRecipe := range radinit.AvailableDevRecipes() {
+		require.Regexp(t, devRecipe.ResourceType, output)
+		require.Regexp(t, devRecipe.RepoPath+":"+tag, output)
+	}
+
+	err = cli.EnvDelete(ctx, envName)
+	require.NoError(t, err)
 }
 
 // GetAvailablePort attempts to find an available port on the localhost and returns it, or returns an error if it fails.

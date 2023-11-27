@@ -52,7 +52,8 @@ model ApplicationProperties {
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("The ID of the environment resource this application belongs to. Specified in the fully-qualified UCP ID format.")
+
+  @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment: string;
 
   @doc("List of extensions on the container. Used to specify additional behavior of the application.")
