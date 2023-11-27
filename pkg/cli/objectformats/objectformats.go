@@ -56,6 +56,7 @@ func GetApplicationGatewaysTableFormat() output.FormatterOptions {
 }
 
 // GetResourceTableFormat returns the fields to output from a resource object.
+// This function should be used with the generated CoreRP and other portable resource types.
 func GetResourceTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -76,6 +77,7 @@ func GetResourceTableFormat() output.FormatterOptions {
 }
 
 // GetGenericResourceTableFormat returns the fields to output from a generic resource object.
+// This function should be used with the Go type GenericResource.
 // The difference between this function and the GetResourceTableFormat function above is that
 // GenericResource properties is a map and the way to get the ProvisioningState is different.
 func GetGenericResourceTableFormat() output.FormatterOptions {
