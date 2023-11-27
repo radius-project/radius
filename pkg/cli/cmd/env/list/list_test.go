@@ -87,10 +87,10 @@ func Test_Run(t *testing.T) {
 	defer ctrl.Finish()
 
 	environments := []v20231001preview.EnvironmentResource{
-		v20231001preview.EnvironmentResource{
+		{
 			Name: to.Ptr("A"),
 		},
-		v20231001preview.EnvironmentResource{
+		{
 			Name: to.Ptr("B"),
 		},
 	}
@@ -124,7 +124,7 @@ func Test_Run(t *testing.T) {
 		output.FormattedOutput{
 			Format:  "table",
 			Obj:     environments,
-			Options: objectformats.GetGenericEnvironmentTableFormat(),
+			Options: objectformats.GetResourceTableFormat(),
 		},
 	}
 

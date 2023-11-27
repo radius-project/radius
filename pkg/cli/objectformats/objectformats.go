@@ -55,8 +55,7 @@ func GetApplicationGatewaysTableFormat() output.FormatterOptions {
 	}
 }
 
-// GetResourceTableFormat() returns a FormatterOptions struct containing two columns, one for the resource name and one for
-// the resource type.
+// GetResourceTableFormat returns the fields to output from a resource object.
 func GetResourceTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -67,6 +66,32 @@ func GetResourceTableFormat() output.FormatterOptions {
 			{
 				Heading:  "TYPE",
 				JSONPath: "{ .Type }",
+			},
+			{
+				Heading:  "STATE",
+				JSONPath: "{ .Properties.ProvisioningState }",
+			},
+		},
+	}
+}
+
+// GetGenericResourceTableFormat returns the fields to output from a generic resource object.
+// The difference between this function and the GetResourceTableFormat function above is that
+// GenericResource properties is a map and the way to get the ProvisioningState is different.
+func GetGenericResourceTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "RESOURCE",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .Type }",
+			},
+			{
+				Heading:  "STATE",
+				JSONPath: "{ .Properties.provisioningState }",
 			},
 		},
 	}

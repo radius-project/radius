@@ -118,15 +118,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environments, err := client.ListApplications(ctx)
+	apps, err := client.ListApplications(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, environments, objectformats.GetResourceTableFormat())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.Output.WriteFormatted(r.Format, apps, objectformats.GetResourceTableFormat())
 }
