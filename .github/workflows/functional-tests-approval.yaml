@@ -11,4 +11,4 @@ jobs:
     runs-on: ubuntu-latest
   save_pr_as_artifact:
       name: 'Approve Functional Tests'
-      uses: test-org-admin/radius-mai≈≈n/.github/workflows/save-pr-as-artifact.yaml@main
+      uses: test-org-admin/radius-main/.github/workflows/save-pr-as-artifact.yaml@main
