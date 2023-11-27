@@ -6,9 +6,8 @@ on:
       - features/*
       - release/*
 jobs:
-  wait_for_approval:
-    environment: functional-tests
-    runs-on: ubuntu-latest
   save_pr_as_artifact:
-      name: 'Approve Functional Tests'
-      uses: test-org-admin/radius-main/.github/workflows/save-pr-as-artifact.yaml@main
+    runs-on: ubuntu-latest
+    steps:
+    - name: Approve Functional Tests
+      uses: test-org-admin/radius-main/.github/workflows/wait-for-approval.yaml@main
