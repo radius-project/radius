@@ -362,7 +362,13 @@ func Test_Container_FailDueToBadReadinessProbe(t *testing.T) {
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
 		Code:            "ResourceDeploymentFailure",
-		MessageContains: "Container failed readiness probe",
+		MessageContains: "Canceled",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "OperationCanceled",
+				MessageContains: "Container failed readiness probe",
+			},
+		},
 	})
 
 	test := shared.NewRPTest(t, name, []shared.TestStep{
