@@ -78,7 +78,7 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    needs: download_pr_number
+    needs: download_pr_data
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
