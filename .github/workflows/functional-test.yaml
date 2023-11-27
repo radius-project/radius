@@ -109,7 +109,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            echo "PR number = ${{ needs.download_pr_data.outputs.pr_number }}"
             const payload = context.payload.workflow_run;
             let fs = require('fs');
             // Set environment variables
