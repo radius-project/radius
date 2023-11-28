@@ -166,7 +166,7 @@ jobs:
           echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
+          echo "AZURE_TEST_RESOURCE_GROUP=shruku-dev" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
@@ -321,7 +321,7 @@ jobs:
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
+      AZURE_TEST_RESOURCE_GROUP: shruku-dev
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
@@ -391,17 +391,17 @@ jobs:
           append: true
           message: |
             :hourglass: Starting ${{ matrix.name }} functional tests...
-      - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-        run: |
-          current_time=$(date +%s)
-          az group create \
-            --location ${{ env.AZURE_LOCATION }} \
-            --name $RESOURCE_GROUP \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-            --tags creationTime=$current_time
-          while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
-        env:
-          RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      # - name: Get azure resource group - shruku-dev
+      #   run: |
+      #     current_time=$(date +%s)
+      #     az group create \
+      #       --location ${{ env.AZURE_LOCATION }} \
+      #       --name $RESOURCE_GROUP \
+      #       --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+      #       --tags creationTime=$current_time
+      #     while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
+      #   env:
+      #     RESOURCE_GROUP: shruku-dev
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
@@ -599,28 +599,14 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: cancelled() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - uses: LouisBrunner/checks-action@v1.6.1
-        if: always()
-        with:
-          token: ${{ steps.get_installation_token.outputs.token }}
-          name: 'Functional Test Run'
-          repo: ${{ github.repository }}
-          sha: ${{ env.CHECKOUT_REF }}
-          status: completed
-          conclusion: ${{ job.status }}
-          output: |
-            {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      #   if: always()
+      #   run: |
+      #     # if deletion fails, purge workflow will purge the resource group and its resources later.
+      #     az group delete \
+      #       --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+      #       --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
+      #       --yes --verbose
       # TODO add once tested: if: failure() && steps.publish-tf-recipes.outcome == 'failure' 
       - name: Get pod logs for recipe publishing failure
         id: get-pod-logs
