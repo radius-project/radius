@@ -482,7 +482,7 @@ func waitForStateWaiting(t *testing.T, client client.Client, name types.Namespac
 	ctx := testcontext.New(t)
 
 	logger := t
-	var annotations *deploymentAnnotations
+	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
 		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
@@ -499,14 +499,14 @@ func waitForStateWaiting(t *testing.T, client client.Client, name types.Namespac
 		}
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for state to be Waiting")
 
-	return annotations
+	return &annotations
 }
 
 func waitForStateUpdating(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
 	logger := t
-	var annotations *deploymentAnnotations
+	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
 		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
@@ -523,14 +523,14 @@ func waitForStateUpdating(t *testing.T, client client.Client, name types.Namespa
 		}
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for state to be Updating")
 
-	return annotations
+	return &annotations
 }
 
 func waitForStateReady(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
 	logger := t
-	var annotations *deploymentAnnotations
+	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
 		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
@@ -547,14 +547,14 @@ func waitForStateReady(t *testing.T, client client.Client, name types.Namespaced
 		}
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for state to be Ready")
 
-	return annotations
+	return &annotations
 }
 
 func waitForStateDeleting(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
 	ctx := testcontext.New(t)
 
 	logger := t
-	var annotations *deploymentAnnotations
+	var annotations deploymentAnnotations
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
 		logger.Logf("Fetching Deployment: %+v", name)
 		current := &appsv1.Deployment{}
@@ -571,7 +571,7 @@ func waitForStateDeleting(t *testing.T, client client.Client, name types.Namespa
 		}
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for state to be Deleting")
 
-	return annotations
+	return &annotations
 }
 
 func waitForRadiusContainerDeleted(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
