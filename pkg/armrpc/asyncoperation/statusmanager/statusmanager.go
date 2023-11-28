@@ -216,6 +216,7 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMR
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,
 		OperationTimeout: &operationTimeout,
+		OperationStatus:  &aos.AsyncOperationStatus,
 	}
 
 	return aom.queue.Enqueue(ctx, queue.NewMessage(msg))

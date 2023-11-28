@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	armrpcv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -41,15 +42,15 @@ func NewDeploymentWaiter(clientSet k8s.Interface) *deploymentWaiter {
 	}
 }
 
-func (handler *deploymentWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string) {
+func (handler *deploymentWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, operationStatus *armrpcv1.AsyncOperationStatus) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
-			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh, operationProgress)
+			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh, operationStatus)
 		},
 		UpdateFunc: func(_, newObj any) {
-			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh, operationProgress)
+			handler.checkDeploymentStatus(ctx, informerFactory, item, doneCh, operationStatus)
 		},
 	})
 
@@ -67,7 +68,8 @@ type deploymentStatus struct {
 	err                  error
 }
 
-func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client.Object, operationProgress chan string) error {
+func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client.Object, operationStatus *armrpcv1.AsyncOperationStatus) error {
+	fmt.Println("@@@@@ Inside waitUntilReady, operationStatus: ", operationStatus)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// When the deployment is done, an error nil will be sent
@@ -78,7 +80,7 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 	// This ensures that the informer is stopped when this function is returned.
 	defer cancel()
 
-	err := handler.startInformers(ctx, item, doneCh, operationProgress)
+	err := handler.startInformers(ctx, item, doneCh, operationStatus)
 	if err != nil {
 		logger.Error(err, "failed to start deployment informer")
 		return err
@@ -139,7 +141,7 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 }
 
 // Check if all the pods in the deployment are ready
-func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string) bool {
+func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, item client.Object, doneCh chan<- deploymentStatus, operationStatus *armrpcv1.AsyncOperationStatus) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", item.GetName(), "namespace", item.GetNamespace())
 
 	// Get the deployment
@@ -155,7 +157,7 @@ func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, info
 		return false
 	}
 
-	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh, operationProgress)
+	allReady := handler.checkAllPodsReady(ctx, informerFactory, deployment, deploymentReplicaSet, doneCh, operationStatus)
 	if !allReady {
 		logger.Info("All pods are not ready yet for deployment")
 		return false
@@ -185,21 +187,21 @@ func (handler *deploymentWaiter) checkDeploymentStatus(ctx context.Context, info
 	return false
 }
 
-func (handler *deploymentWaiter) startInformers(ctx context.Context, item client.Object, doneCh chan<- deploymentStatus, operationProgress chan string) error {
+func (handler *deploymentWaiter) startInformers(ctx context.Context, item client.Object, doneCh chan<- deploymentStatus, operationStatus *armrpcv1.AsyncOperationStatus) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, handler.cacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 	// Add event handlers to the pod informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh, operationProgress)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Pods().Informer(), item, doneCh, operationStatus)
 
 	// Add event handlers to the deployment informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().Deployments().Informer(), item, doneCh, operationProgress)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().Deployments().Informer(), item, doneCh, operationStatus)
 
 	// Add event handlers to the replicaset informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().ReplicaSets().Informer(), item, doneCh, operationProgress)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Apps().V1().ReplicaSets().Informer(), item, doneCh, operationStatus)
 
 	// Add event handlers to the events informer
-	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Events().Informer(), item, doneCh, operationProgress)
+	handler.addEventHandler(ctx, informerFactory, informerFactory.Core().V1().Events().Informer(), item, doneCh, operationStatus)
 
 	// Start the informers
 	informerFactory.Start(ctx.Done())
@@ -258,7 +260,7 @@ func (handler *deploymentWaiter) getCurrentReplicaSetForDeployment(ctx context.C
 	return nil
 }
 
-func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- deploymentStatus, operationProgress chan string) bool {
+func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informerFactory informers.SharedInformerFactory, obj *v1.Deployment, deploymentReplicaSet *v1.ReplicaSet, doneCh chan<- deploymentStatus, operationStatus *armrpcv1.AsyncOperationStatus) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("deploymentName", obj.GetName(), "namespace", obj.GetNamespace())
 	logger.Info("Checking if all pods in the deployment are ready")
 
@@ -270,7 +272,7 @@ func (handler *deploymentWaiter) checkAllPodsReady(ctx context.Context, informer
 
 	allReady := true
 	for _, pod := range podsInDeployment {
-		podReady, status := handler.checkPodStatus(ctx, informerFactory, &pod, operationProgress)
+		podReady, status := handler.checkPodStatus(ctx, informerFactory, &pod, operationStatus)
 		if status != nil {
 			fmt.Println("@@@@@ Sent status to doneCh: ", status.possibleFailureCause)
 			doneCh <- *status
@@ -311,7 +313,7 @@ func (handler *deploymentWaiter) getPodsInDeployment(ctx context.Context, inform
 	return pods, nil
 }
 
-func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, pod *corev1.Pod, operationProgress chan string) (bool, *deploymentStatus) {
+func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFactory informers.SharedInformerFactory, pod *corev1.Pod, operationStatus *armrpcv1.AsyncOperationStatus) (bool, *deploymentStatus) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("podName", pod.Name, "namespace", pod.Namespace)
 
 	conditionPodReady := true
@@ -378,8 +380,14 @@ func (handler *deploymentWaiter) checkPodStatus(ctx context.Context, informerFac
 			for _, event := range events {
 				fmt.Println("@@@@@ event.Message", event.Message)
 				if strings.Contains(event.Message, "Readiness probe failed") {
-					fmt.Println("@@@@@@ Sending message to operationProgress", fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message))
-					operationProgress <- fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message)
+					fmt.Println("@@@@@@ Setting operation progress", fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message))
+					*operationStatus = armrpcv1.AsyncOperationStatus{
+						Status: armrpcv1.ProvisioningStateUpdating,
+						Error: &armrpcv1.ErrorDetails{
+							Code:    armrpcv1.CodeInternal,
+							Message: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message),
+						},
+					}
 					return false, &deploymentStatus{possibleFailureCause: fmt.Sprintf("Container failed readiness probe. Reason: %s, Message: %s", event.Reason, event.Message), err: nil}
 				}
 			}

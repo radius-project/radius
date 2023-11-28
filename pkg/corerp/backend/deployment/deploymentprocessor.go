@@ -54,7 +54,7 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, operationProgress chan string) (rpv1.DeploymentOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, operationStatus *v1.AsyncOperationStatus) (rpv1.DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []rpv1.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
@@ -160,6 +160,7 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 }
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, computedValues map[string]any, putOptions *handlers.PutOptions) error {
+	fmt.Println("@@@@@ Inside deployOutputResource, operationStatus: ", putOptions.OperationStatus)
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	or := putOptions.Resource
@@ -244,8 +245,9 @@ func (dp *deploymentProcessor) getApplicationAndEnvironmentForResourceID(ctx con
 // Deploy deploys the given radius resource by ordering the output resources in deployment dependency order, deploying each
 // output resource, updating static values for connections, and transforming the radius resource with computed values. It
 // returns a DeploymentOutput and an error if one occurs.
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, operationProgress chan string) (rpv1.DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, operationStatus *v1.AsyncOperationStatus) (rpv1.DeploymentOutput, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	fmt.Println("@@@@@ Inside Deploy, operationStatus: ", operationStatus)
 
 	_, env, err := dp.getApplicationAndEnvironmentForResourceID(ctx, id)
 	if err != nil {
@@ -285,7 +287,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		resourceType := outputResource.GetResourceType()
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, resourceType))
 
-		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties, OperationProgress: operationProgress})
+		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties, OperationStatus: operationStatus})
 		if err != nil {
 			return rpv1.DeploymentOutput{}, err
 		}

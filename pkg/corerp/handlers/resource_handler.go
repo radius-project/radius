@@ -19,6 +19,7 @@ package handlers
 import (
 	"context"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
@@ -48,8 +49,8 @@ type PutOptions struct {
 	// DependencyProperties is a map of output resource localID to resource properties populated during deployment in the resource handler
 	DependencyProperties map[string]map[string]string
 
-	// Operation Progress channel
-	OperationProgress chan string
+	// Operation Status
+	OperationStatus *v1.AsyncOperationStatus
 }
 
 // DeleteOptions represents the options for ResourceHandler.Delete.

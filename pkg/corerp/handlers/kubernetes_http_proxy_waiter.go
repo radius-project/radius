@@ -8,6 +8,7 @@ import (
 	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
@@ -61,10 +62,10 @@ func (handler *httpProxyWaiter) addDynamicEventHandler(ctx context.Context, info
 }
 
 // addEventHandler is not implemented for HTTPProxyWaiter
-func (handler *httpProxyWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, _ chan string) {
+func (handler *httpProxyWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- deploymentStatus, _ *v1.AsyncOperationStatus) {
 }
 
-func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.Object, _ chan string) error {
+func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.Object, _ *v1.AsyncOperationStatus) error {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
 
 	doneCh := make(chan error, 1)
