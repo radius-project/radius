@@ -33,6 +33,7 @@ jobs:
   analysis:
     name: OpenSSF scorecard analysis
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     permissions:
       # Needed to upload the results to code-scanning dashboard.
       security-events: write

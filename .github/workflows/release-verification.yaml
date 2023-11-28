@@ -28,6 +28,7 @@ on:
 jobs:
   release-verification:
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     steps:
       - uses: actions/checkout@v3
       - name: Ensure inputs.version is valid semver
