@@ -13,6 +13,7 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     strategy:
       matrix:
         include:

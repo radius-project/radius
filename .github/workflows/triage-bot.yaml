@@ -25,6 +25,7 @@ jobs:
   build:
     name: 'Process Triage Labels'
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     env: 
       RADIUS_TRIAGE_BOT_APP_ID: 417813
     steps:
