@@ -38,11 +38,18 @@ As much as possible, the tests use product functionality such as the Radius CLI 
 
 1. Place `rad` on your path
 2. Make sure `rad-bicep` is downloaded (`rad bicep download`)
-3. Create a container registry
-4. Log-in to the container registry
-5. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
-6. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
-7. Create a Radius Environment with `rad init` and specify the default namespace
+3. Make sure your [local dev environment is setup](../contributing-code-control-plane/running-controlplane-locally.md)
+4. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+5. Log-in to the container registry of your Github organization. 
+   
+    `export CR_PAT=<your_pat>`
+    
+    `echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin`
+
+6. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
+7. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
+8. Change the visibility of the published packages to 'public'
+   
 
 > ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
 > test failures.
@@ -70,7 +77,7 @@ You can also run/debug individual tests from VSCode.
 ### Tips
 
 > 💡 If you make changes to recipes, make sure to re-run the *publish test recipe* step from prerequisites.
-
+> 💡 Make sure the packages published to your organization have their visibility set to "public"
 > 💡 If you make changes to the `rad` CLI make sure to copy it to your path. 
 
 ### Seeing log output
