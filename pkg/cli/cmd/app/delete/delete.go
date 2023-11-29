@@ -163,7 +163,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if deleted {
-		r.Output.LogInfo("Application deleted")
+		r.Output.LogInfo("Application %s deleted", r.ApplicationName)
 	} else {
 		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
 	}

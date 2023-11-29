@@ -149,7 +149,8 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application deleted",
+				Format: "Application %s deleted",
+				Params: []any{"test-app"},
 			},
 		}
 
@@ -195,7 +196,8 @@ func Test_Show(t *testing.T) {
 
 		expected := []any{
 			output.LogOutput{
-				Format: "Application deleted",
+				Format: "Application %s deleted",
+				Params: []any{"test-app"},
 			},
 		}
 
