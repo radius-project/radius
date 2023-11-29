@@ -307,7 +307,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 					_, err := resources.ParseResource(id)
 					if err != nil {
 						// The Azure resources Ids that doesnt not follow relative ID format are mostly Non ARM resources and not added to the recipe output.
-						logger.Info("Resource ID %s does not represent ARM resource and is not added to recipe output", id)
+						logger.Info("Resource ID does not represent ARM resource and is not added to recipe output", "ResourceID", id)
 					} else {
 						recipeResources = append(recipeResources, id)
 					}
