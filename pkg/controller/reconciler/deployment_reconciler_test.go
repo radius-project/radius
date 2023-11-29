@@ -446,6 +446,96 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	require.True(t, apierrors.IsNotFound(err))
 }
 
+// Creates a deployment with Radius disabled.
+//
+// Then checks the Events for Disabled-Disabled.
+func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled_ByAnnotation(t *testing.T) {
+	ctx := testcontext.New(t)
+	_, client := SetupDeploymentTest(t)
+
+	name := types.NamespacedName{
+		Namespace: "deployment-disabled-disabled-by-annotation",
+		Name:      "test-deployment-disabled-disabled-by-annotation",
+	}
+	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	require.NoError(t, err)
+
+	deployment := makeDeployment(name)
+	err = client.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	waitForEvent(t, client,
+		expectedEvent{
+			EventType: "Normal",
+			Reason:    "NoOp",
+			Message:   fmt.Sprintf("Radius is not enabled for %s", deployment.Name),
+			Count:     1,
+		},
+	)
+
+	// Explicitly setting Radius disabled
+	deployment.Annotations = map[string]string{
+		AnnotationRadiusEnabled: "false",
+	}
+	err = client.Update(ctx, deployment)
+	require.NoError(t, err)
+
+	// We expect the same event to be generated.
+	// Because Radius was disabled and is still disabled for the deployment.
+	waitForEvent(t, client,
+		expectedEvent{
+			EventType: "Normal",
+			Reason:    "NoOp",
+			Message:   fmt.Sprintf("Radius is not enabled for %s", deployment.Name),
+			Count:     2,
+		},
+	)
+}
+
+// Creates a deployment with Radius disabled.
+//
+// Then checks the Events for Disabled-Disabled.
+func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled(t *testing.T) {
+	ctx := testcontext.New(t)
+	_, client := SetupDeploymentTest(t)
+
+	name := types.NamespacedName{
+		Namespace: "deployment-disabled-disabled",
+		Name:      "test-deployment-disabled-disabled",
+	}
+	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	require.NoError(t, err)
+
+	deployment := makeDeployment(name)
+	err = client.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	waitForEvent(t, client,
+		expectedEvent{
+			EventType: "Normal",
+			Reason:    "NoOp",
+			Message:   fmt.Sprintf("Radius is not enabled for %s", deployment.Name),
+			Count:     1,
+		},
+	)
+
+	// Update Labels of the Deployment so that the Reconciler can detect a change.
+	deployment.Labels = map[string]string{"foo": "bar"}
+	err = client.Update(ctx, deployment)
+	require.NoError(t, err)
+
+	// We expect the same event to be generated.
+	// Because Radius was disabled and is still disabled for the deployment.
+	waitForEvent(t, client,
+		expectedEvent{
+			EventType: "Normal",
+			Reason:    "NoOp",
+			Message:   fmt.Sprintf("Radius is not enabled for %s", deployment.Name),
+			Count:     2,
+		},
+	)
+}
+
 func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -572,6 +662,39 @@ func waitForStateDeleting(t *testing.T, client client.Client, name types.Namespa
 	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "waiting for state to be Deleting")
 
 	return &annotations
+}
+
+type expectedEvent struct {
+	EventType string
+	Reason    string
+	Message   string
+	Count     int
+}
+
+// waitForEvent waits for the expected event to occur in the cluster.
+//
+// We can have multiple events as the result of the List function but we are only interested in the expected event.
+func waitForEvent(t *testing.T, client client.Client, event expectedEvent) {
+	ctx := testcontext.New(t)
+	logger := t
+
+	require.EventuallyWithTf(t, func(t *assert.CollectT) {
+		logger.Log("Fetching Events")
+
+		events := &corev1.EventList{}
+		err := client.List(ctx, events)
+		require.NoError(t, err)
+
+		found := false
+		for _, e := range events.Items {
+			// If the event is the one we are looking for, check the count.
+			if e.Type == event.EventType && e.Reason == event.Reason &&
+				e.Message == event.Message && assert.Equal(t, event.Count, int(e.Count)) {
+				found = true
+			}
+		}
+		assert.True(t, found)
+	}, deploymentTestWaitDuration, deploymentTestWaitInterval, "Waiting for the expected event")
 }
 
 func waitForRadiusContainerDeleted(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {

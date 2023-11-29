@@ -107,7 +107,8 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// and repair it on the next reconcile.
 	}
 
-	if annotations.Status != nil && annotations.Status.Operation != nil {
+	// If there is an operation in progress, then we need to continue polling it.
+	if annotations.OperationInProgress() {
 		// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 		// this means the operation has completed and we should continue processing.
 		result, err := r.reconcileOperation(ctx, &deployment, &annotations)
@@ -126,11 +127,23 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// If the Deployment is being deleted **or** if Radius is no longer enabled, then we should
 	// clean up any Radius state.
-	if deployment.DeletionTimestamp != nil || (annotations.Configuration == nil && annotations.Status != nil) {
+	//
+	// If the DeletionTimestamp is not nil, then it means that the Deployment is being deleted.
+	//
+	// If the Configuration is nil, which means that Radius is disabled, and Status is not nil,
+	// then we need to reconcile the deletion of the Deployment.
+	if deployment.DeletionTimestamp != nil || annotations.needsCleanup() {
 		return r.reconcileDelete(ctx, &deployment, &annotations)
 	}
 
-	return r.reconcileUpdate(ctx, &deployment, &annotations)
+	// When do we need to reconcile update? When Radius is enabled, no matter
+	// if it was previously enabled or disabled.
+	if annotations.isRadiusEnabled() {
+		return r.reconcileUpdate(ctx, &deployment, &annotations)
+	}
+
+	r.EventRecorder.Event(&deployment, corev1.EventTypeNormal, "NoOp", fmt.Sprintf("Radius is not enabled for %s", deployment.Name))
+	return ctrl.Result{}, nil
 }
 
 // reconcileOperation reconciles a Deployment that has an operation in progress.
@@ -249,12 +262,12 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 	}
 
 	environmentName := "default"
-	if annotations.Configuration != nil && annotations.Configuration.Environment != "" {
+	if annotations.Configuration.Environment != "" {
 		environmentName = annotations.Configuration.Environment
 	}
 
 	applicationName := deployment.Namespace
-	if annotations.Configuration != nil && annotations.Configuration.Application != "" {
+	if annotations.Configuration.Application != "" {
 		applicationName = annotations.Configuration.Application
 	}
 
