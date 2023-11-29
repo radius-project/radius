@@ -340,8 +340,8 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 						deployedResources, err = dynamic.Resource(mapping.Resource).List(ctx, metav1.ListOptions{})
 					}
 					assert.NoErrorf(t, err, "could not list deployed resources of type %s in namespace %s", resourceGVR.GroupResource(), namespace)
-
-					validated = validated && matchesActualLabels(expectedInNamespace, deployedResources.Items)
+					t.Logf("Listed %d deployed resources of type %s in namespace %s", len(deployedResources.Items), resourceGVR.GroupResource(), namespace)
+					validated = validated && matchesActualLabels(t, expectedInNamespace, deployedResources.Items)
 
 				}
 			case <-ctx.Done():
@@ -532,7 +532,7 @@ func logPods(t *testing.T, pods []corev1.Pod) {
 	}
 }
 
-func matchesActualLabels(expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
+func matchesActualLabels(t *testing.T, expectedResources []K8sObject, actualResources []unstructured.Unstructured) bool {
 	remaining := []K8sObject{}
 
 	for _, expectedResource := range expectedResources {
@@ -552,6 +552,8 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 					break
+				} else {
+					t.Logf("Resource: %s Expected labels %v, got %v", actualResource.GetName(), expectedResource.Labels, actualResource.GetLabels())
 				}
 			}
 		}
