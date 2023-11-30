@@ -44,6 +44,8 @@
             "args": [
                 "--config-file",
                 "${workspaceFolder}/cmd/controller/controller-self-hosted.yaml",
+                "--cert-dir",
+                ""
             ],
             "env": {
                 "RADIUS_ENV": "self-hosted"

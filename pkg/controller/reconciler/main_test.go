@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	admissionv1 "k8s.io/api/admissionregistration/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -33,6 +35,15 @@ var config *rest.Config
 
 // scheme holds a reference to the scheme for the test environment.
 var scheme *runtime.Scheme
+
+// testOptions holds a reference to the webhook install options for the test environment.
+var testOptions *testWebhookOptions
+
+type testWebhookOptions struct {
+	LocalServingHost    string
+	LocalServingPort    int
+	LocalServingCertDir string
+}
 
 // TestMain will be called before running any tests in the package.
 //
@@ -49,6 +60,7 @@ func TestMain(m *testing.M) {
 		ErrorIfCRDPathMissing: true,
 	}
 
+	initializeWebhookInEnvironment(env)
 	cfg, err := env.Start()
 	if err != nil {
 		panic("failed to start envtest" + err.Error())
@@ -60,6 +72,11 @@ func TestMain(m *testing.M) {
 
 	config = cfg
 	scheme = s
+	testOptions = &testWebhookOptions{
+		LocalServingHost:    env.WebhookInstallOptions.LocalServingHost,
+		LocalServingPort:    env.WebhookInstallOptions.LocalServingPort,
+		LocalServingCertDir: env.WebhookInstallOptions.LocalServingCertDir,
+	}
 
 	exitCode := m.Run()
 
@@ -76,5 +93,55 @@ func SkipWithoutEnvironment(t *testing.T) {
 	if config == nil {
 		t.Skip("Skipping test because envtest could not be started. Running `make test` will run tests with the correct setting.")
 		return
+	}
+}
+
+// initializeWebhookInEnvironment initializes the webhook installation options and validating configuration  in the given environment for validating webhooks.
+func initializeWebhookInEnvironment(env *envtest.Environment) {
+	defaultScopeV1 := admissionv1.AllScopes
+	failedTypeV1 := admissionv1.Ignore
+	equivalentTypeV1 := admissionv1.Equivalent
+	noSideEffectsV1 := admissionv1.SideEffectClassNone
+	recipeWebhookPathV1 := "/validate-radapp-io-v1alpha3-recipe"
+
+	env.WebhookInstallOptions = envtest.WebhookInstallOptions{
+		ValidatingWebhooks: []*admissionv1.ValidatingWebhookConfiguration{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "recipe-webhook-config",
+				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ValidatingWebhookConfiguration",
+					APIVersion: "admissionregistration.k8s.io/v1",
+				},
+				Webhooks: []admissionv1.ValidatingWebhook{
+					{
+						Name: "recipe-webhook.radapp.io",
+						Rules: []admissionv1.RuleWithOperations{
+							{
+								Operations: []admissionv1.OperationType{"CREATE", "UPDATE"},
+								Rule: admissionv1.Rule{
+									APIGroups:   []string{"radapp.io"},
+									APIVersions: []string{"v1alpha3"},
+									Resources:   []string{"recipes"},
+									Scope:       &defaultScopeV1,
+								},
+							},
+						},
+						FailurePolicy: &failedTypeV1,
+						MatchPolicy:   &equivalentTypeV1,
+						SideEffects:   &noSideEffectsV1,
+						ClientConfig: admissionv1.WebhookClientConfig{
+							Service: &admissionv1.ServiceReference{
+								Name:      "controller",
+								Namespace: "default",
+								Path:      &recipeWebhookPathV1,
+							},
+						},
+						AdmissionReviewVersions: []string{"v1"},
+					},
+				},
+			},
+		},
 	}
 }

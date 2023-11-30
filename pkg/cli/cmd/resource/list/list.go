@@ -21,6 +21,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -143,17 +144,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	if r.ApplicationName == "" {
-		resourceList, err := client.ListAllResourcesByType(ctx, r.ResourceType)
-		if err != nil {
-			return err
-		}
+	var resourceList []generated.GenericResource
 
-		err = r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetResourceTableFormat())
+	if r.ApplicationName == "" {
+		resourceList, err = client.ListAllResourcesByType(ctx, r.ResourceType)
 		if err != nil {
 			return err
 		}
-		return nil
 	} else {
 		_, err = client.ShowApplication(ctx, r.ApplicationName)
 		if clients.Is404Error(err) {
@@ -162,15 +159,11 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		resourceList, err := client.ListAllResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		resourceList, err = client.ListAllResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
 		if err != nil {
 			return err
 		}
-
-		err = r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetResourceTableFormat())
-		if err != nil {
-			return err
-		}
-		return nil
 	}
+
+	return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
 }

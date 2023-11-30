@@ -59,6 +59,7 @@ jobs:
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
@@ -227,6 +228,7 @@ jobs:
   build-and-push-images:
     name: Build and publish container images
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -278,7 +280,7 @@ jobs:
     needs: ['build-and-push-images']
     runs-on: ubuntu-latest
     # Don't push on PR, agent will not have permission.
-    if: (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main')
+    if: github.repository == 'radius-project/radius' && ((startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'))
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -325,9 +327,9 @@ jobs:
     name: Publish GitHub Release
     needs: ['build-and-push-cli']
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
     env:
       GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -361,7 +363,7 @@ jobs:
   delete_artifacts:
     name: Delete artifacts
     needs: ['build-and-push-cli']
-    if: ${{ always() && !contains(needs.build-and-push-cli.result, 'failure') }}
+    if: github.repository == 'radius-project/radius' && ${{ always() && !contains(needs.build-and-push-cli.result, 'failure') }}
     runs-on: ubuntu-latest
     steps:
       - name: Delete release artifacts

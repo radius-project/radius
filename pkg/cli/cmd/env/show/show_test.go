@@ -131,7 +131,7 @@ func Test_Show(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     environment,
-				Options: objectformats.GetGenericEnvironmentTableFormat(),
+				Options: objectformats.GetResourceTableFormat(),
 			},
 		}
 

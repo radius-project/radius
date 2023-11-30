@@ -42,8 +42,8 @@ func main() {
 	config := fmt.Sprintf("controller-%s.yaml", hostoptions.Environment())
 	pflag.StringVar(&config, "config-file", config, "The service configuration file.")
 
-	tlsCertDir := ""
-	pflag.StringVar(&tlsCertDir, "cert-dir", "", "The directory containing the TLS certificates.")
+	tlsCertDir := "/var/tls/cert"
+	pflag.StringVar(&tlsCertDir, "cert-dir", tlsCertDir, "The directory containing the TLS certificates.")
 
 	pflag.Parse()
 	options, err := hostoptions.NewHostOptionsFromEnvironment(config)

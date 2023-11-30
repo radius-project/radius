@@ -28,6 +28,7 @@ jobs:
   purge_gchr_dev:
     name: Delete old unused container images
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     steps:
       - name: Delete 'dev' containers older than a week
         uses: snok/container-retention-policy@v2
@@ -40,6 +41,7 @@ jobs:
   purge_azure_resources:
     name: Azure resources clean-ups
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     steps:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
