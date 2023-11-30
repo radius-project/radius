@@ -17,6 +17,7 @@ limitations under the License.
 package portableresources
 
 import (
+	"sort"
 	"strings"
 
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
@@ -47,4 +48,21 @@ func IsValidPortableResourceType(resourceType string) bool {
 	}
 
 	return false
+}
+
+// GetValidPortableResourceTypes returns list of valid portable resource types.
+func GetValidPortableResourceTypes() []string {
+	resourceTypes := []string{
+		dapr_ctrl.DaprPubSubBrokersResourceType,
+		dapr_ctrl.DaprSecretStoresResourceType,
+		dapr_ctrl.DaprStateStoresResourceType,
+		msg_ctrl.RabbitMQQueuesResourceType,
+		ds_ctrl.MongoDatabasesResourceType,
+		ds_ctrl.RedisCachesResourceType,
+		ds_ctrl.SqlDatabasesResourceType,
+		ExtendersResourceType,
+	}
+	sort.Strings(resourceTypes)
+
+	return resourceTypes
 }

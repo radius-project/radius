@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -44,7 +45,12 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspaceAndApplication(t),
+				Config:         radcli.LoadConfigWithWorkspace(t),
+				DirectoryConfig: &config.DirectoryConfig{
+					Workspace: config.DirectoryWorkspaceConfig{
+						Application: "test-application",
+					},
+				},
 			},
 		},
 		{
@@ -71,7 +77,12 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspaceAndApplication(t),
+				Config:         radcli.LoadConfigWithWorkspace(t),
+				DirectoryConfig: &config.DirectoryConfig{
+					Workspace: config.DirectoryWorkspaceConfig{
+						Application: "test-application",
+					},
+				},
 			},
 		},
 		{
@@ -98,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspaceAndApplication(t),
+				Config:         radcli.LoadConfigWithWorkspace(t),
 			},
 		},
 	}

@@ -35,7 +35,7 @@ jobs:
   generate_release_note:
     name: Generate release note from template
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request'
     env:
       RELNOTE_FOUND: false
     steps:
@@ -118,7 +118,7 @@ jobs:
         run: exit 1
   release:
     name: Create a new Radius release
-    if: github.event_name == 'push'
+    if: github.repository == 'radius-project/radius' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout radius-project/radius@main

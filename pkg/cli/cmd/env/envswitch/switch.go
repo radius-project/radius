@@ -107,7 +107,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.EnvironmentId = r.Scope.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
 
-	// Keep the logic below here in sync with `rad app switch`
 	if strings.EqualFold(r.Workspace.Environment, r.EnvironmentId.String()) {
 		r.Output.LogInfo("Default environment is already set to %v", r.EnvironmentName)
 		return nil

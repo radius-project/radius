@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	app_switch "github.com/radius-project/radius/pkg/cli/cmd/app/appswitch"
 	app_connections "github.com/radius-project/radius/pkg/cli/cmd/app/connections"
 	app_delete "github.com/radius-project/radius/pkg/cli/cmd/app/delete"
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
@@ -283,9 +282,6 @@ func initSubCommands() {
 
 	appStatusCmd, _ := app_status.NewCommand(framework)
 	applicationCmd.AddCommand(appStatusCmd)
-
-	appSwitchCmd, _ := app_switch.NewCommand(framework)
-	applicationCmd.AddCommand(appSwitchCmd)
 
 	appConnectionsCmd, _ := app_connections.NewCommand(framework)
 	applicationCmd.AddCommand(appConnectionsCmd)

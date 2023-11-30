@@ -157,19 +157,26 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
 	containerName := "containerA"
-	//spacing in output will change based on resource names
-	showSpacing := ""
 	if strings.EqualFold(appName, "kubernetes-cli-json") {
 		containerName = "containerA-json"
-		showSpacing = "     "
 	}
 
 	t.Run("Validate rad application show", func(t *testing.T) {
-		output, err := cli.ApplicationShow(ctx, appName)
+		actualOutput, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
-		expected := regexp.MustCompile(`RESOURCE      ` + showSpacing + `  TYPE\n` + appName + `  Applications.Core/applications\n`)
-		match := expected.MatchString(output)
-		require.Equal(t, true, match, "output: %s", output)
+
+		lines := strings.Split(actualOutput, "\n")
+		require.GreaterOrEqual(t, len(lines), 2, "Actual output should have 2 lines")
+
+		headers := strings.Fields(lines[0])
+		require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
+		require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
+		require.Equal(t, "STATE", headers[2], "Third header should be STATE")
+
+		values := strings.Fields(lines[1])
+		require.Equal(t, appName, values[0], "First value should be %s", appName)
+		require.Equal(t, "Applications.Core/applications", values[1], "Second value should be Applications.Core/applications")
+		require.Equal(t, "Succeeded", values[2], "Third value should be Succeeded")
 	})
 
 	t.Run("Validate rad resource list", func(t *testing.T) {
@@ -187,14 +194,21 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ResourceShow(ctx, "containers", containerName)
+		actualOutput, err := cli.ResourceShow(ctx, "containers", containerName)
 		require.NoError(t, err)
-		// We are more interested in the content and less about the formatting, which
-		// is already covered by unit tests. The spaces change depending on the input
-		// and it takes very long to get a feedback from CI.
-		expected := regexp.MustCompile(`RESOURCE  ` + showSpacing + `  TYPE\n` + containerName + `  Applications.Core/containers\n`)
-		match := expected.MatchString(output)
-		require.Equal(t, true, match, "output: %s", output)
+
+		lines := strings.Split(actualOutput, "\n")
+		require.GreaterOrEqual(t, len(lines), 2, "Actual output should have 2 lines")
+
+		headers := strings.Fields(lines[0])
+		require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
+		require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
+		require.Equal(t, "STATE", headers[2], "Third header should be STATE")
+
+		values := strings.Fields(lines[1])
+		require.Equal(t, containerName, values[0], "First value should be %s", containerName)
+		require.Equal(t, "Applications.Core/containers", values[1], "Second value should be Applications.Core/applications")
+		require.Equal(t, "Succeeded", values[2], "Third value should be Succeeded")
 	})
 
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {

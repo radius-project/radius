@@ -26,6 +26,7 @@ jobs:
   publish:
     name: Assets
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     steps:
       - name: Checkout
         uses: actions/checkout@v3

@@ -162,10 +162,6 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 	}
 
 	if applicationName == "" {
-		applicationName = workspace.DefaultApplication
-	}
-
-	if applicationName == "" {
 		applicationName = workspace.DirectoryConfig.Workspace.Application
 	}
 
@@ -191,10 +187,6 @@ func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (st
 	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
 		return "", err
-	}
-
-	if applicationName == "" {
-		applicationName = workspace.DefaultApplication
 	}
 
 	if applicationName == "" {

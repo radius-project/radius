@@ -23,7 +23,11 @@ on:
     - cron: "30 0,12 * * 0,6"
   # Dispatch on external events
   repository_dispatch:
-    types: [functional-tests, de-functional-test]
+    types: [de-functional-test]
+  workflow_run:
+    workflows: ['Approve Functional Tests']
+    types:
+      - completed
 
 env:
   # Go version
@@ -38,7 +42,7 @@ env:
   # KinD cluster version
   KIND_VER: 'v0.20.0'
   # Dapr version
-  DAPR_VER: '1.11.0'
+  DAPR_VER: '1.12.0'
   DAPR_DASHBOARD_VER: '0.14.0'
   # Kubectl version
   KUBECTL_VER: 'v1.25.0'
@@ -71,6 +75,7 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius')
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -102,22 +107,23 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-      - name: Set up checkout target (repository_dispatch from /ok-to-test)
-        if: github.event_name == 'repository_dispatch'
+      - name: 'Download PR data artifacts'
+        if: github.event_name == 'workflow_run'
+        uses: ./.github/actions/download-pr-data-artifact
+        id: get-pr-number
+      - name: 'Set PR context (workflow_run)'
+        if: github.event_name == 'workflow_run'
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const testPayload = context.payload.client_payload;
-            if (testPayload && testPayload.command === `ok-to-test`) {
-              var fs = require('fs');
-              // Set environment variables
-              fs.appendFileSync(process.env.GITHUB_ENV,
-                `CHECKOUT_REPO=${testPayload.pull_head_repo}\n`+
-                `CHECKOUT_REF=${testPayload.pull_head_ref}\n`+
-                `PR_NUMBER=${testPayload.issue.number}`
-              );
-            }
+            const payload = context.payload.workflow_run;
+            let fs = require('fs');
+            // Set environment variables
+            fs.appendFileSync(process.env.GITHUB_ENV,
+              `CHECKOUT_REPO=${payload.head_repository.full_name}\n`+
+              `CHECKOUT_REF=${payload.head_sha}\n` +
+              `PR_NUMBER=${{ steps.get-pr-number.outputs.pr_number }}\n`);
       - name: Set DE image and tag (repository_dispatch from de-functional-test)
         if: github.event_name == 'repository_dispatch'
         uses: actions/github-script@v6
@@ -294,6 +300,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius')
     strategy:
       fail-fast: true
       matrix:
@@ -613,7 +620,7 @@ jobs:
     name: Report test failure
     needs: [build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'schedule'
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v6
