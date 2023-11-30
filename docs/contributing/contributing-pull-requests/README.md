@@ -80,6 +80,8 @@ Our GitHub Actions workflows will run against your pull request to validate the 
 
 Ideally everything works the first time, but you may not be so lucky! Our automation will add comments to your pull request that helps explain what's happening. This will include links to logs where you can diagnose what's happening.
 
+The functional tests workflow requires an approval to run by one of our approvers who will be automatically notified when the PR is submitted. Our approvers will scan the PR and will approve the test run if everything in the PR looks acceptable to run tests. Once the test run is approved, you should see the functional tests start running for your PR.
+
 If you get stuck with a failure you can't understand, feel free to ask the maintainers for help.
 
 ### CodeQL security analysis
