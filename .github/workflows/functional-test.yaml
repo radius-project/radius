@@ -79,6 +79,7 @@ jobs:
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
+      FUNCTIONAL_TEST_APP_ID: 425843
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -89,6 +90,12 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
+      - name: Login as the GitHub App
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -164,6 +171,7 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           hide: true
@@ -208,6 +216,7 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -229,6 +238,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -238,6 +248,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -247,6 +258,7 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -269,6 +281,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -278,6 +291,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -308,7 +322,23 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      FUNCTIONAL_TEST_APP_ID: 425843
     steps:
+      - name: Login as the GitHub App
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Test Run'
+          status: in_progress
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -351,6 +381,7 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -443,6 +474,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -482,6 +514,7 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -545,6 +578,7 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -554,19 +588,34 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: cancelled() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - uses: LouisBrunner/checks-action@v1.6.1
         if: always()
-        run: |
-          # if deletion fails, purge workflow will purge the resource group and its resources later.
-          az group delete \
-            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-            --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
-            --yes --verbose
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Test Run'
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: completed
+          conclusion: ${{ job.status }}
+          output: |
+            {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
   report-failure:
     name: Report test failure
     needs: [build, tests]
