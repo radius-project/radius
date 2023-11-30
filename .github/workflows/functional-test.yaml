@@ -71,6 +71,7 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius')
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
@@ -280,6 +281,7 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
+    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius')
     strategy:
       fail-fast: true
       matrix:
@@ -564,7 +566,7 @@ jobs:
     name: Report test failure
     needs: [build, tests]
     runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'schedule'
+    if: failure() && github.event_name == 'schedule' && github.repository == 'radius-project/radius'
     steps:
       - name: Create failure issue for failing scheduled run
         uses: actions/github-script@v6
