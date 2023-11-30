@@ -70,20 +70,51 @@ var tag string = uuid.New().String()
 func TestValidateEtag_IfMatch(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
+		name         string
 		ifMatchEtag  string
 		etagProvided string
 		shouldFail   bool
 	}{
-		{"", "existingEtag", false},
-		{"", "", false},
-		{tag, tag, false},
-		{tag, uuid.New().String(), true},
-		{"*", "", true},
-		{"*", tag, false},
+		{
+			"etag-provided-if-match-empty",
+			"",
+			"existingEtag",
+			false,
+		},
+		{
+			"etag-and-if-match-not-provided",
+			"",
+			"",
+			false,
+		},
+		{
+			"etag-if-match-provided-match",
+			tag,
+			tag,
+			false,
+		},
+		{
+			"etag-if-match-provided-no-match",
+			tag,
+			uuid.New().String(),
+			true,
+		},
+		{
+			"etag-not-provided-if-match-wildcard",
+			"*",
+			"",
+			true,
+		},
+		{
+			"etag-provided-if-match-wildcard",
+			"*",
+			tag,
+			false,
+		},
 	}
 
 	for _, tt := range cases {
-		t.Run(tt.ifMatchEtag, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			armRequestContext := v1.ARMRequestContextFromContext(
 				v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
@@ -104,18 +135,39 @@ func TestValidateEtag_IfMatch(t *testing.T) {
 func TestValidateEtag_IfNoneMatch(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
+		name            string
 		ifNoneMatchEtag string
 		etagProvided    string
 		shouldFail      bool
 	}{
-		{"", "", false},
-		{"", tag, false},
-		{"*", "", false},
-		{"*", tag, true},
+		{
+			"etag-and-if-none-match-empty",
+			"",
+			"",
+			false,
+		},
+		{
+			"etag-provided-if-none-match-empty",
+			"",
+			tag,
+			false,
+		},
+		{
+			"etag-empty-if-none-match-wildcard",
+			"*",
+			"",
+			false,
+		},
+		{
+			"etag-provided-if-none-match-wildcard",
+			"*",
+			tag,
+			true,
+		},
 	}
 
 	for _, tt := range cases {
-		t.Run(tt.ifNoneMatchEtag, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			armRequestContext := v1.ARMRequestContextFromContext(
 				v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
