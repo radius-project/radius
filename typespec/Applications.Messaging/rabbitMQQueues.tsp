@@ -82,7 +82,7 @@ model RabbitMQQueueProperties {
   @doc("Username to use when connecting to the target RabbitMQ.")
   username?: string;
 
-  @doc("	An array of IDs of the underlying resources.")
+  @doc("An array of IDs of the underlying resources.")
   resources?: ResourceReference[];
 
   @doc("Specifies whether to use SSL when connecting to the RabbitMQ instance.")

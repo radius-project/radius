@@ -38,14 +38,14 @@ using OpenAPI;
 namespace Applications.Core;
 
 model ContainerResource is TrackedResource<ContainerProperties> {
-  @doc("The name of your resource. See [common values]({{< ref "resource-schema.md#common-values" >}}) for more information.")
+  @doc("The name of your container resource")
   @path
   @key("containerName")
   @segment("containers")
   name: ResourceNameString;
 }
 
-@doc("Properties of the resource.")
+@doc("Properties of the container resource.")
 model ContainerProperties {
   ...ApplicationScopedResource;
 
@@ -108,7 +108,7 @@ model KubernetesPodSpec is Record<unknown>;
 
 @doc("Kubernetes specific configuration for the container.")
 model KubernetesRuntimeProperties {
-  @doc("The base Kubernetes resource manifest on top of which Radius specified properties will be applied. Supported resource types are documented [here]({{<ref "guides/author-apps/containers/overview#base-kubernetes-yaml">}}).")
+  @doc("The base Kubernetes resource manifest on top of which Radius specified properties will be applied.")
   base?: string;
 
   #suppress "@azure-tools/typespec-azure-core/bad-record-type"
@@ -243,7 +243,7 @@ model Container {
   @doc("A list of environment variables to be set for the container.")
   env?: Record<string>;
 
-  @doc("Ports the container provides")
+  @doc("Ports the container provides.")
   ports?: Record<ContainerPortProperties>;
 
   @doc("Readiness probe configuration.")

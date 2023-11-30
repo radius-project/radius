@@ -39,7 +39,7 @@ namespace Applications.Core;
 
 @doc("The environment resource")
 model EnvironmentResource is TrackedResource<EnvironmentProperties> {
-  @doc("The name of your resource. See [common values]({{< ref "resource-schema.md#common-values" >}}) for more information.")
+  @doc("The name of your resource.")
   @key("environmentName")
   @path
   @segment("environments")

@@ -66,7 +66,7 @@ model RedisCacheProperties {
   @doc("Secrets used when building the resource from values.")
   secrets?: RedisCacheSecrets;
 
-  @doc("	The Redis host name.")
+  @doc("The Redis host name.")
   host?: string;
 
   @doc("The Redis port value.")
