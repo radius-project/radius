@@ -2638,7 +2638,7 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "extensions": {
           "type": "array",
@@ -2795,7 +2795,12 @@
     "BicepRecipeProperties": {
       "type": "object",
       "description": "Represents Bicep recipe properties.",
-      "properties": {},
+      "properties": {
+        "plainHTTP": {
+          "type": "boolean",
+          "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
+        }
+      },
       "allOf": [
         {
           "$ref": "#/definitions/RecipeProperties"
@@ -2806,7 +2811,12 @@
     "BicepRecipePropertiesUpdate": {
       "type": "object",
       "description": "Represents Bicep recipe properties.",
-      "properties": {},
+      "properties": {
+        "plainHTTP": {
+          "type": "boolean",
+          "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
+        }
+      },
       "allOf": [
         {
           "$ref": "#/definitions/RecipePropertiesUpdate"
@@ -3073,11 +3083,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -3225,11 +3235,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "container": {
           "$ref": "#/definitions/ContainerUpdate",
@@ -3807,11 +3817,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -3919,11 +3929,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "internal": {
           "type": "boolean",
@@ -4059,11 +4069,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -4163,11 +4173,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "hostname": {
           "type": "string",
@@ -4633,7 +4643,7 @@
     },
     "ProvisioningState": {
       "type": "string",
-      "description": "Provisioning state of the portable resource at the time the operation was called",
+      "description": "Provisioning state of the resource at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -4742,6 +4752,10 @@
           "type": "object",
           "description": "The key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
+        },
+        "plainHTTP": {
+          "type": "boolean",
+          "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
         }
       },
       "required": [
@@ -5011,11 +5025,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -5113,11 +5127,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "type": {
           "$ref": "#/definitions/SecretStoreDataType",
@@ -5345,11 +5359,11 @@
         },
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
@@ -5432,11 +5446,11 @@
       "properties": {
         "environment": {
           "type": "string",
-          "description": "Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)"
+          "description": "Fully qualified resource ID for the environment that the application is linked to"
         },
         "application": {
           "type": "string",
-          "description": "Fully qualified resource ID for the application that the portable resource is consumed by"
+          "description": "Fully qualified resource ID for the application"
         }
       }
     },

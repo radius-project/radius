@@ -109,6 +109,7 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 		TemplatePath:    recipeProperties.TemplatePath,
 		TemplateVersion: recipeProperties.TemplateVersion,
 		ResourceType:    recipeDataModel.ResourceType,
+		PlainHTTP:       recipeProperties.PlainHTTP,
 	}
 
 	recipeParameters = make(map[string]any)

@@ -53,6 +53,9 @@ spec:
           name: metrics
           protocol: TCP
         {{- end }}
+        - containerPort: 3000
+          name: healthz
+          protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.controller.resources }}

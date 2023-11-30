@@ -25,7 +25,7 @@ require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.7.1
-	github.com/charmbracelet/x/exp/teatest v0.0.0-20230707174939-50fb4f48b5b3
+	github.com/charmbracelet/x/exp/teatest v0.0.0-20231116172829-450eedbca1ab
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/fatih/color v1.15.0
 	github.com/go-chi/chi/v5 v5.0.10
@@ -48,7 +48,7 @@ require (
 	github.com/hashicorp/hc-install v0.5.2
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20230614215431-f32df32a01cd
 	github.com/hashicorp/terraform-exec v0.18.1
-	github.com/mattn/go-isatty v0.0.19
+	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/novln/docker-parser v1.0.0
 	github.com/opencontainers/go-digest v1.0.0
@@ -77,8 +77,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/sync v0.4.0
-	golang.org/x/text v0.11.0
+	golang.org/x/sync v0.5.0
+	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.12.2
 	k8s.io/api v0.27.4
@@ -94,6 +94,7 @@ require (
 
 require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/stretchr/objx v0.5.1 // indirect
 	github.com/tidwall/gjson v1.14.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
@@ -271,8 +272,8 @@ require (
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/term v0.10.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/term v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect

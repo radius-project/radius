@@ -61,6 +61,8 @@ type EnvironmentDefinition struct {
 	TemplatePath string
 	// TemplateVersion represents the version of the terraform module provided by the recipe.
 	TemplateVersion string
+	// Allows insecure connections to registry without SSL check.
+	PlainHTTP bool
 }
 
 // ResourceMetadata represents recipe details provided while creating a portable resource.

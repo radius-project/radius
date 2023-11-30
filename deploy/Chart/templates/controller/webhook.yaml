@@ -1,6 +1,7 @@
 {{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "controller-cert"}}
-{{- $ca := genCA "ucp-ca" 3650 }}
-{{- $cn := printf "ucp" }}
+{{- $existingWebhook := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "recipe-webhook.radapp.io"}}
+{{- $ca := genCA "controller-ca" 3650 }}
+{{- $cn := printf "controller" }}
 {{- $altName1 := printf "controller.%s" .Release.Namespace }}
 {{- $altName2 := printf "controller.%s.svc" .Release.Namespace }}
 {{- $altName3 := printf "controller.%s.svc.cluster" .Release.Namespace }}
@@ -22,3 +23,31 @@ data:
   {{ if $existingSecret }}tls.key: {{ index $existingSecret.data "tls.key" }}
   {{ else }}tls.key: {{ b64enc $cert.Key }}
   {{ end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: recipe-webhook.radapp.io
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    caBundle: {{ b64enc $ca.Cert }}
+    service:
+      name: controller
+      namespace: {{ .Release.Namespace }}
+      path: /validate-radapp-io-v1alpha3-recipe
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: recipe-webhook.radapp.io
+  rules:
+  - apiGroups:
+    - radapp.io
+    apiVersions:
+    - v1alpha3
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - recipes
+  sideEffects: None

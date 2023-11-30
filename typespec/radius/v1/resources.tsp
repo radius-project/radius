@@ -47,10 +47,10 @@ model EnvironmentScopedResource {
 
 @doc("Base properties of a Application-scoped resource")
 model ApplicationScopedResource {
-  @doc("Fully qualified resource ID for the environment that the portable resource is linked to (if applicable)")
+  @doc("Fully qualified resource ID for the environment that the application is linked to")
   environment?: string;
 
-  @doc("Fully qualified resource ID for the application that the portable resource is consumed by")
+  @doc("Fully qualified resource ID for the application")
   application: string;
 
   @doc("The status of the asynchronous operation.")
@@ -146,7 +146,7 @@ model ResourceReference {
   id: string;
 }
 
-@doc("Provisioning state of the portable resource at the time the operation was called")
+@doc("Provisioning state of the resource at the time the operation was called")
 @lroStatus
 enum ProvisioningState {
   ...ResourceProvisioningState,

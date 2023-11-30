@@ -122,7 +122,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     resource,
-				Options: objectformats.GetResourceTableFormat(),
+				Options: objectformats.GetGenericResourceTableFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

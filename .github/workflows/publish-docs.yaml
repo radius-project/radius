@@ -21,6 +21,7 @@ jobs:
   reference-docs:
     name: Generate and PR reference documentation
     runs-on: ubuntu-latest
+    if: github.repository == 'radius-project/radius'
     env:
       GOVER: '^1.21'
       GOPRIVATE: github.com/radius-project
