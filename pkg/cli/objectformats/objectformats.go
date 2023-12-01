@@ -17,43 +17,8 @@ limitations under the License.
 package objectformats
 
 import (
-	"strings"
-
 	"github.com/radius-project/radius/pkg/cli/output"
 )
-
-// GetApplicationStatusTableFormat() sets up the columns and headings for a table to display application names and resource counts.
-func GetApplicationStatusTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "APPLICATION",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "RESOURCES",
-				JSONPath: "{ .ResourceCount }",
-			},
-		},
-	}
-}
-
-// GetApplicationGatewaysTableFormat() returns a FormatterOptions object which contains a list of columns to be used for
-// formatting the output of a list of application gateways.
-func GetApplicationGatewaysTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "GATEWAY",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "ENDPOINT",
-				JSONPath: "{ .Endpoint }",
-			},
-		},
-	}
-}
 
 // GetResourceTableFormat returns the fields to output from a resource object.
 // This function should be used with the generated CoreRP and other portable resource types.
@@ -67,6 +32,11 @@ func GetResourceTableFormat() output.FormatterOptions {
 			{
 				Heading:  "TYPE",
 				JSONPath: "{ .Type }",
+			},
+			{
+				Heading:     "GROUP",
+				JSONPath:    "{ .ID }",
+				Transformer: &ResourceIDToResourceGroupNameTransformer{},
 			},
 			{
 				Heading:  "STATE",
@@ -92,229 +62,13 @@ func GetGenericResourceTableFormat() output.FormatterOptions {
 				JSONPath: "{ .Type }",
 			},
 			{
+				Heading:     "GROUP",
+				JSONPath:    "{ .ID }",
+				Transformer: &ResourceIDToResourceGroupNameTransformer{},
+			},
+			{
 				Heading:  "STATE",
 				JSONPath: "{ .Properties.provisioningState }",
-			},
-		},
-	}
-}
-
-// GetResourceGroupTableFormat() returns a FormatterOptions object containing a list of columns with their headings and JSONPaths.
-func GetResourceGroupTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "ID",
-				JSONPath: "{ .ID }",
-			},
-			{
-				Heading:  "NAME",
-				JSONPath: "{ .Name }",
-			},
-		},
-	}
-}
-
-// GetGenericEnvironmentTableFormat returns a FormatterOptions struct containing a slice of Columns, each of which
-// contains a Heading and JSONPath.
-func GetGenericEnvironmentTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "NAME",
-				JSONPath: "{ .Name }",
-			},
-		},
-	}
-}
-
-// GetGenericEnvErrorTableFormat() returns a FormatterOptions struct containing a single column with the heading "errors:"
-// and a JSONPath to the Errors field.
-func GetGenericEnvErrorTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "errors:",
-				JSONPath: "{ .Errors }",
-			},
-		},
-	}
-}
-
-// "GetWorkspaceTableFormat() returns a FormatterOptions object which contains a list of columns to be used for displaying
-// workspace information such as name, kind, kubecontext and environment."
-func GetWorkspaceTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "WORKSPACE",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "KIND",
-				JSONPath: "{ .Connection.kind }",
-			},
-			{
-				Heading:  "KUBECONTEXT",
-				JSONPath: "{ .Connection.context }",
-			},
-			{
-				Heading:  "ENVIRONMENT",
-				JSONPath: "{ .Environment }",
-			},
-		},
-	}
-}
-
-// CloudProviderTableFormat() configures the output format of a table to display the Name and Status of a cloud provider.
-func CloudProviderTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "NAME",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "REGISTERED",
-				JSONPath: "{ .Enabled }",
-			},
-		},
-	}
-}
-
-// GetCloudProviderTableFormat function returns a FormatterOptions struct based on the credentialType parameter, which can
-// be either "azure" or "aws".
-func GetCloudProviderTableFormat(credentialType string) output.FormatterOptions {
-	if strings.EqualFold(credentialType, "azure") {
-		return output.FormatterOptions{
-			Columns: []output.Column{
-				{
-					Heading:  "NAME",
-					JSONPath: "{ .Name }",
-				},
-				{
-					Heading:  "REGISTERED",
-					JSONPath: "{ .Enabled }",
-				},
-				{
-					Heading:  "CLIENTID",
-					JSONPath: "{ .AzureCredentials.ClientID }",
-				},
-				{
-					Heading:  "TENANTID",
-					JSONPath: "{ .AzureCredentials.TenantID }",
-				},
-			},
-		}
-	} else if strings.EqualFold(credentialType, "aws") {
-		return output.FormatterOptions{
-			Columns: []output.Column{
-				{
-					Heading:  "NAME",
-					JSONPath: "{ .Name }",
-				},
-				{
-					Heading:  "REGISTERED",
-					JSONPath: "{ .Enabled }",
-				},
-				{
-					Heading:  "ACCESSKEYID",
-					JSONPath: "{ .AWSCredentials.AccessKeyID }",
-				},
-			},
-		}
-	}
-	return output.FormatterOptions{}
-}
-
-// GetEnvironmentRecipesTableFormat() returns a FormatterOptions struct containing a list of Columns with their respective
-// Headings and JSONPaths to be used for formatting the output of environment recipes.
-func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "NAME",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "TYPE",
-				JSONPath: "{ .ResourceType }",
-			},
-			{
-				Heading:  "TEMPLATE KIND",
-				JSONPath: "{ .TemplateKind }",
-			},
-			{
-				Heading:  "TEMPLATE VERSION",
-				JSONPath: "{ .TemplateVersion }",
-			},
-			{
-				Heading:  "TEMPLATE",
-				JSONPath: "{ .TemplatePath }",
-			},
-		},
-	}
-}
-
-type OutputEnvObject struct {
-	EnvName     string
-	ComputeKind string
-	Recipes     int
-	Providers   int
-}
-
-// GetUpdateEnvironmentTableFormat returns the fields to output from env object after upation.
-//
-
-// GetUpdateEnvironmentTableFormat() returns a FormatterOptions object containing the column headings and JSONPaths for the
-// environment table.
-func GetUpdateEnvironmentTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "NAME",
-				JSONPath: "{ .EnvName }",
-			},
-			{
-				Heading:  "COMPUTE",
-				JSONPath: "{ .ComputeKind }",
-			},
-			{
-				Heading:  "RECIPES",
-				JSONPath: "{ .Recipes }",
-			},
-			{
-				Heading:  "PROVIDERS",
-				JSONPath: "{ .Providers }",
-			},
-		},
-	}
-}
-
-// GetRecipeParamsTableFormat returns a FormatterOptions struct containing the column headings and JSONPaths for the
-// recipe parameters table.
-func GetRecipeParamsTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "PARAMETER NAME",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "TYPE",
-				JSONPath: "{ .Type }",
-			},
-			{
-				Heading:  "DEFAULT VALUE",
-				JSONPath: "{ .DefaultValue }",
-			},
-			{
-				Heading:  "MIN",
-				JSONPath: "{ .MinValue }",
-			},
-			{
-				Heading:  "MAX",
-				JSONPath: "{ .MaxValue }",
 			},
 		},
 	}

@@ -22,10 +22,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -118,7 +118,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     resourceGroup,
-				Options: objectformats.GetResourceGroupTableFormat(),
+				Options: common.ResourceGroupFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

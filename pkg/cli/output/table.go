@@ -52,7 +52,7 @@ func (f *TableFormatter) Format(obj any, writer io.Writer, options FormatterOpti
 
 	headings := []string{}
 	parsers := []*jsonpath.JSONPath{}
-	transformers := []func(string) string{}
+	transformers := []ColumnTransformer{}
 	for _, c := range options.Columns {
 		headings = append(headings, c.Heading)
 
@@ -86,7 +86,7 @@ func (f *TableFormatter) Format(obj any, writer io.Writer, options FormatterOpti
 
 			text := buf.String()
 			if transformer != nil {
-				text = transformer(text)
+				text = transformer.Transform(text)
 			}
 
 			lines := strings.Split(text, "\n")

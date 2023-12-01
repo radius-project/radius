@@ -21,9 +21,9 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -128,7 +128,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, resourceGroup, objectformats.GetResourceGroupTableFormat())
+	err = r.Output.WriteFormatted(r.Format, resourceGroup, common.ResourceGroupFormat())
 
 	if err != nil {
 		return err

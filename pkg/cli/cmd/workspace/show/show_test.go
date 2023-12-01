@@ -20,8 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/cmd/workspace/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
@@ -107,7 +107,7 @@ func Test_Run(t *testing.T) {
 					Environment: "test-environment",
 					Connection:  map[string]any{},
 				},
-				Options: objectformats.GetWorkspaceTableFormat(),
+				Options: common.WorkspaceFormat(),
 			},
 		}
 
@@ -130,7 +130,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "",
 				Obj:     runner.Workspace,
-				Options: objectformats.GetWorkspaceTableFormat(),
+				Options: common.WorkspaceFormat(),
 			},
 		}
 

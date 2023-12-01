@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -126,7 +125,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if !providers.Enabled {
 		return clierrors.Message("The credentials for cloud provider %q could not be found.", r.Kind)
 	}
-	err = r.Output.WriteFormatted(r.Format, providers, objectformats.GetCloudProviderTableFormat(r.Kind))
+	err = r.Output.WriteFormatted(r.Format, providers, credentialFormat(r.Kind))
 	if err != nil {
 		return err
 	}

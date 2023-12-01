@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/config"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -186,7 +185,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     applicationStatus,
-				Options: objectformats.GetApplicationStatusTableFormat(),
+				Options: statusFormat(),
 			},
 			output.LogOutput{
 				Format: "",
@@ -194,7 +193,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     applicationStatus.Gateways,
-				Options: objectformats.GetApplicationGatewaysTableFormat(),
+				Options: gatewayFormat(),
 			},
 		}
 

@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -253,14 +252,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	if env.Properties.Compute != nil {
 		computeKind = *env.Properties.Compute.GetEnvironmentCompute().Kind
 	}
-	obj := objectformats.OutputEnvObject{
-		EnvName:     *env.Name,
+	obj := environmentForDisplay{
+		Name:        *env.Name,
 		ComputeKind: computeKind,
 		Recipes:     recipeCount,
 		Providers:   providerCount,
 	}
 
-	err = r.Output.WriteFormatted("table", obj, objectformats.GetUpdateEnvironmentTableFormat())
+	err = r.Output.WriteFormatted("table", obj, environmentFormat())
 	if err != nil {
 		return err
 	}

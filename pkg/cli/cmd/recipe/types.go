@@ -24,3 +24,11 @@ type EnvironmentRecipe struct {
 	TemplateVersion string `json:"templateVersion"`
 	PlainHTTP       bool   `json:"plainHTTP"`
 }
+
+type RecipeParameter struct {
+	Name         string      `json:"name,omitempty"`
+	DefaultValue interface{} `json:"defaultValue,omitempty"`
+	Type         string      `json:"type,omitempty"`
+	MaxValue     string      `json:"maxValue,omitempty"`
+	MinValue     string      `json:"minValue,omitempty"`
+}

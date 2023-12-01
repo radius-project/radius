@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -170,7 +169,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	err = r.Output.WriteFormatted(r.Format, applicationStatus, objectformats.GetApplicationStatusTableFormat())
+	err = r.Output.WriteFormatted(r.Format, applicationStatus, statusFormat())
 	if err != nil {
 		return err
 	}
@@ -179,7 +178,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		// Print newline for readability
 		r.Output.LogInfo("")
 
-		err = r.Output.WriteFormatted(r.Format, applicationStatus.Gateways, objectformats.GetApplicationGatewaysTableFormat())
+		err = r.Output.WriteFormatted(r.Format, applicationStatus.Gateways, gatewayFormat())
 		if err != nil {
 			return err
 		}
