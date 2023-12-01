@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -110,7 +109,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, providers, objectformats.CloudProviderTableFormat())
+	err = r.Output.WriteFormatted(r.Format, providers, credentialFormat())
 	if err != nil {
 		return err
 	}

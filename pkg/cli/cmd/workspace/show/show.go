@@ -21,8 +21,8 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/workspace/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -99,7 +99,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad workspace show` command.
 func (r *Runner) Run(ctx context.Context) error {
-	err := r.Output.WriteFormatted(r.Format, r.Workspace, objectformats.GetWorkspaceTableFormat())
+	err := r.Output.WriteFormatted(r.Format, r.Workspace, common.WorkspaceFormat())
 	if err != nil {
 		return err
 	}

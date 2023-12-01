@@ -41,6 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/radius-project/radius/test/functional"
 	"github.com/radius-project/radius/test/functional/shared"
@@ -161,6 +162,9 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		containerName = "containerA-json"
 	}
 
+	scope, err := resources.ParseScope(options.Workspace.Scope)
+	require.NoError(t, err)
+
 	t.Run("Validate rad application show", func(t *testing.T) {
 		actualOutput, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
@@ -171,12 +175,14 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		headers := strings.Fields(lines[0])
 		require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
 		require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
-		require.Equal(t, "STATE", headers[2], "Third header should be STATE")
+		require.Equal(t, "GROUP", headers[2], "Third header should be GROUP")
+		require.Equal(t, "STATE", headers[3], "Fourth header should be STATE")
 
 		values := strings.Fields(lines[1])
 		require.Equal(t, appName, values[0], "First value should be %s", appName)
 		require.Equal(t, "Applications.Core/applications", values[1], "Second value should be Applications.Core/applications")
-		require.Equal(t, "Succeeded", values[2], "Third value should be Succeeded")
+		require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
+		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
 	})
 
 	t.Run("Validate rad resource list", func(t *testing.T) {
@@ -203,12 +209,14 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		headers := strings.Fields(lines[0])
 		require.Equal(t, "RESOURCE", headers[0], "First header should be RESOURCE")
 		require.Equal(t, "TYPE", headers[1], "Second header should be TYPE")
-		require.Equal(t, "STATE", headers[2], "Third header should be STATE")
+		require.Equal(t, "GROUP", headers[2], "Third header should be GROUP")
+		require.Equal(t, "STATE", headers[3], "Fourth header should be STATE")
 
 		values := strings.Fields(lines[1])
 		require.Equal(t, containerName, values[0], "First value should be %s", containerName)
 		require.Equal(t, "Applications.Core/containers", values[1], "Second value should be Applications.Core/applications")
-		require.Equal(t, "Succeeded", values[2], "Third value should be Succeeded")
+		require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
+		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
 	})
 
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {

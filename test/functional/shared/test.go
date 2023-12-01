@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/test"
@@ -85,6 +86,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 		ManagementClient: client,
 		AWSClient:        awsClient,
 		Connection:       connection,
+		Workspace:        workspace,
 	}
 }
 
@@ -96,4 +98,7 @@ type RPTestOptions struct {
 
 	// Connection gets access to the Radius connection which can be used to create API clients.
 	Connection sdk.Connection
+
+	// Workspace gets access to the Radius workspace which can be used to create API clients.
+	Workspace *workspaces.Workspace
 }

@@ -24,9 +24,9 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/cmd/recipe/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -115,7 +115,7 @@ func Test_Run(t *testing.T) {
 			TemplateKind: recipes.TemplateKindBicep,
 			TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 		}
-		recipeParams := []RecipeParameter{
+		recipeParams := []types.RecipeParameter{
 			{
 				Name:         "throughput",
 				Type:         "float64",
@@ -155,7 +155,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipe,
-				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+				Options: common.RecipeFormat(),
 			},
 			output.LogOutput{
 				Format: "",
@@ -163,7 +163,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipeParams,
-				Options: objectformats.GetRecipeParamsTableFormat(),
+				Options: common.RecipeParametersFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)
@@ -192,7 +192,7 @@ func Test_Run(t *testing.T) {
 			TemplatePath: "localhost:8000/mongodatabases:v1",
 			PlainHTTP:    true,
 		}
-		recipeParams := []RecipeParameter{
+		recipeParams := []types.RecipeParameter{
 			{
 				Name:         "throughput",
 				Type:         "float64",
@@ -232,7 +232,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipe,
-				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+				Options: common.RecipeFormat(),
 			},
 			output.LogOutput{
 				Format: "",
@@ -240,7 +240,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipeParams,
-				Options: objectformats.GetRecipeParamsTableFormat(),
+				Options: common.RecipeParametersFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)
@@ -269,7 +269,7 @@ func Test_Run(t *testing.T) {
 			TemplatePath:    "Azure/cosmosdb/azurerm",
 			TemplateVersion: "1.1.0",
 		}
-		recipeParams := []RecipeParameter{
+		recipeParams := []types.RecipeParameter{
 			{
 				Name:         "throughput",
 				Type:         "float64",
@@ -309,7 +309,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipe,
-				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+				Options: common.RecipeFormat(),
 			},
 			output.LogOutput{
 				Format: "",
@@ -317,7 +317,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipeParams,
-				Options: objectformats.GetRecipeParamsTableFormat(),
+				Options: common.RecipeParametersFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

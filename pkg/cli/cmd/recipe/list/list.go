@@ -23,9 +23,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/cmd/recipe/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -145,7 +145,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	sort.Slice(envRecipes, func(i, j int) bool {
 		return envRecipes[i].Name < envRecipes[j].Name
 	})
-	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
+	err = r.Output.WriteFormatted(r.Format, envRecipes, common.RecipeFormat())
 	if err != nil {
 		return err
 	}

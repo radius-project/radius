@@ -25,9 +25,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/cmd/recipe/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -154,7 +154,7 @@ func Test_Run(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     recipes,
-				Options: objectformats.GetEnvironmentRecipesTableFormat(),
+				Options: common.RecipeFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)
