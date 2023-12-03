@@ -86,8 +86,8 @@ env:
 jobs:
   build:
     name: Build Radius for test
-    runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    runs-on: arc-runner-set
+    # if: github.repository == 'radius-project/radius'
     outputs:
       SKIP_BUILD: ${{ steps.skip-build.outputs.SKIP_BUILD }}
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
@@ -275,8 +275,8 @@ jobs:
   tests:
     name: Run functional tests
     needs: build
-    runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius'
+    runs-on: arc-runner-set
+    # if: github.repository == 'radius-project/radius'
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
       UNIQUE_ID: ${{ needs.build.outputs.UNIQUE_ID }}
