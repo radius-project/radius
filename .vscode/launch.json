@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug radius cli",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/rad",
+            "args": "${input:cliArgs}",
+            "console": "integratedTerminal",
+        },
+        {
             "name": "Launch Applications RP",
             "type": "go",
             "request": "launch",
@@ -88,6 +97,14 @@
                 "Launch Deployment Engine",
             ],
             "stopAll": true
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cliArgs",
+            "type": "promptString",
+            "description": "Args for launching Radius cli. Use --cwd to set the working directory.",
+            "default": "init --full"
         }
     ]
 }
