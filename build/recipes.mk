@@ -47,6 +47,9 @@ publish-test-terraform-recipes: ## Publishes test terraform recipes to the curre
 	@echo "$(ARROW) Deploying web server..."
 	kubectl apply -f ./deploy/tf-module-server/resources.yaml -n $(TERRAFORM_MODULE_SERVER_NAMESPACE)
 
+	@echo "$(ARROW) Ensuring web server deployment is rolled out successfully..."
+	kubectl rollout status deployment.apps/tf-module-server -n $(TERRAFORM_MODULE_SERVER_NAMESPACE)
+
 	@echo "$(ARROW) Waiting for web server to be ready..."
 	kubectl wait --for=condition=ready pod -l  app.kubernetes.io/name=tf-module-server -n $(TERRAFORM_MODULE_SERVER_NAMESPACE) --timeout=600s
 
