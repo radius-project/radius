@@ -20,37 +20,45 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_GenericEnvTableFormat(t *testing.T) {
-	obj := v20231001preview.EnvironmentResource{
-		Name: to.Ptr("test_env_resource"),
+func Test_GetResourceTableFormat(t *testing.T) {
+	obj := corerpv20231001preview.EnvironmentResource{
+		Name: to.Ptr("test"),
+		Type: to.Ptr("test-type"),
+		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
+		Properties: &corerpv20231001preview.EnvironmentProperties{
+			ProvisioningState: to.Ptr(corerpv20231001preview.ProvisioningStateUpdating),
+		},
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, GetGenericEnvironmentTableFormat())
+	err := output.Write(output.FormatTable, obj, buffer, GetResourceTableFormat())
 	require.NoError(t, err)
 
-	expected := "NAME\ntest_env_resource\n"
+	expected := "RESOURCE  TYPE       GROUP       STATE\ntest      test-type  test-group  Updating\n"
 	require.Equal(t, expected, buffer.String())
 }
 
-func Test_EnvTableFormat(t *testing.T) {
-	obj := OutputEnvObject{
-		EnvName:     "test_env_resource",
-		ComputeKind: "kubernetes",
-		Recipes:     3,
-		Providers:   2,
+func Test_GetGenericResourceTableFormat(t *testing.T) {
+	obj := generated.GenericResource{
+		Name: to.Ptr("test"),
+		Type: to.Ptr("test-type"),
+		ID:   to.Ptr("/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test"),
+		Properties: map[string]any{
+			"provisioningState": corerpv20231001preview.ProvisioningStateUpdating,
+		},
 	}
 
 	buffer := &bytes.Buffer{}
-	err := output.Write(output.FormatTable, obj, buffer, GetUpdateEnvironmentTableFormat())
+	err := output.Write(output.FormatTable, obj, buffer, GetGenericResourceTableFormat())
 	require.NoError(t, err)
 
-	expected := "NAME               COMPUTE     RECIPES   PROVIDERS\ntest_env_resource  kubernetes  3         2\n"
+	expected := "RESOURCE  TYPE       GROUP       STATE\ntest      test-type  test-group  Updating\n"
 	require.Equal(t, expected, buffer.String())
 }

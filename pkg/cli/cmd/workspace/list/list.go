@@ -22,8 +22,8 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/workspace/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -105,7 +105,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		items = append(items, section.Items[name])
 	}
 
-	err = r.Output.WriteFormatted(r.Format, items, objectformats.GetWorkspaceTableFormat())
+	err = r.Output.WriteFormatted(r.Format, items, common.WorkspaceFormat())
 	if err != nil {
 		return err
 	}

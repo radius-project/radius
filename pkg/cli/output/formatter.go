@@ -31,7 +31,14 @@ type FormatterOptions struct {
 type Column struct {
 	Heading     string
 	JSONPath    string
-	Transformer func(string) string
+	Transformer ColumnTransformer
+}
+
+// ColumnTransformer is an interface for transforming a column value for display.
+//
+// NOTE: this is an interface so that we can easily compare data in tests.
+type ColumnTransformer interface {
+	Transform(input string) string
 }
 
 type Formatter interface {

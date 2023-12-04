@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/test/radcli"
@@ -141,7 +140,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: objectformats.GetCloudProviderTableFormat(runner.Kind),
+					Options: credentialFormat(runner.Kind),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -208,7 +207,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     provider,
-					Options: objectformats.GetCloudProviderTableFormat(runner.Kind),
+					Options: credentialFormat(runner.Kind),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

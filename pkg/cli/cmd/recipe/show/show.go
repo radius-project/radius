@@ -24,9 +24,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	types "github.com/radius-project/radius/pkg/cli/cmd/recipe"
+	"github.com/radius-project/radius/pkg/cli/cmd/recipe/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -171,19 +171,19 @@ func (r *Runner) Run(ctx context.Context) error {
 		recipe.PlainHTTP = *recipeDetails.PlainHTTP
 	}
 
-	err = r.Output.WriteFormatted(r.Format, recipe, objectformats.GetEnvironmentRecipesTableFormat())
+	err = r.Output.WriteFormatted(r.Format, recipe, common.RecipeFormat())
 	if err != nil {
 		return err
 	}
 
 	r.Output.LogInfo("")
 
-	var recipeParams []RecipeParameter
+	var recipeParams []types.RecipeParameter
 
 	for parameter := range recipeDetails.Parameters {
 		values := recipeDetails.Parameters[parameter].(map[string]any)
 
-		paramItem := RecipeParameter{
+		paramItem := types.RecipeParameter{
 			Name:         parameter,
 			DefaultValue: "-",
 			MaxValue:     "-",
@@ -211,7 +211,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return recipeParams[i].Name > recipeParams[j].Name
 	})
 
-	err = r.Output.WriteFormatted(r.Format, recipeParams, objectformats.GetRecipeParamsTableFormat())
+	err = r.Output.WriteFormatted(r.Format, recipeParams, common.RecipeParametersFormat())
 	if err != nil {
 		return err
 	}
@@ -221,12 +221,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-type RecipeParameter struct {
-	Name         string      `json:"name,omitempty"`
-	DefaultValue interface{} `json:"defaultValue,omitempty"`
-	Type         string      `json:"type,omitempty"`
-	MaxValue     string      `json:"maxValue,omitempty"`
-	MinValue     string      `json:"minValue,omitempty"`
 }

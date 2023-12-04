@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -336,8 +335,8 @@ func Test_Update(t *testing.T) {
 		require.NoError(t, err)
 
 		environment.Properties.Providers = testProviders
-		obj := objectformats.OutputEnvObject{
-			EnvName:     "test-env",
+		obj := environmentForDisplay{
+			Name:        "test-env",
 			Recipes:     0,
 			Providers:   2,
 			ComputeKind: "kubernetes",
@@ -350,7 +349,7 @@ func Test_Update(t *testing.T) {
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     obj,
-				Options: objectformats.GetUpdateEnvironmentTableFormat(),
+				Options: environmentFormat(),
 			},
 			output.LogOutput{
 				Format: "Successfully updated environment %q.",
@@ -513,8 +512,8 @@ func Test_Update(t *testing.T) {
 					return numberOfProviders
 				}
 
-				obj := objectformats.OutputEnvObject{
-					EnvName:   "test-env",
+				obj := environmentForDisplay{
+					Name:      "test-env",
 					Recipes:   0,
 					Providers: numberOfProviders(),
 				}
@@ -526,7 +525,7 @@ func Test_Update(t *testing.T) {
 					output.FormattedOutput{
 						Format:  "table",
 						Obj:     obj,
-						Options: objectformats.GetUpdateEnvironmentTableFormat(),
+						Options: environmentFormat(),
 					},
 					output.LogOutput{
 						Format: "Successfully updated environment %q.",

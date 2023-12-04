@@ -51,9 +51,16 @@ var tableInputOptions = FormatterOptions{
 		{
 			Heading:     "Lowered",
 			JSONPath:    "Some-Value",
-			Transformer: strings.ToLower,
+			Transformer: &lowercaseTransformer{},
 		},
 	},
+}
+
+type lowercaseTransformer struct {
+}
+
+func (l *lowercaseTransformer) Transform(input string) string {
+	return strings.ToLower(input)
 }
 
 func Test_Table_NoColumns(t *testing.T) {
