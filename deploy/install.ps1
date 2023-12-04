@@ -120,7 +120,7 @@ if ($Version -eq "edge") {
     }
 
     $downloadURL = "ghcr.io/radius-project/rad/${OS}-${Arch}:latest"
-    Write-Output "Downloading edge CLI from ${downloadURL}"
+    Write-Output "Downloading edge CLI from ${downloadURL}..."
     oras pull $downloadURL -o $RadiusRoot
 }
 else {
