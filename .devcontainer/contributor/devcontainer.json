@@ -1,11 +1,8 @@
 {
-    "name": "Radius CLI - Contributor",
+    "name": "Radius - Contributor",
     "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
-        "ghcr.io/devcontainers/features/go:1": {
-            "version": "1.21"
-        },
-        "ghcr.io/guiyomh/features/golangci-lint:0": {},
+        "ghcr.io/devcontainers/features/go:1": {},
         "ghcr.io/devcontainers/features/git:1": {},
         "ghcr.io/devcontainers/features/github-cli:1": {},
         "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
@@ -20,10 +17,8 @@
         "vscode": {
             "extensions": [
                 "redhat.vscode-yaml",
-                "streetsidesoftware.code-spell-checker",
                 "golang.go",
-                "ms-azuretools.vscode-bicep",
-                "eamodio.gitlens",
+                "ms-azuretools.rad-vscode-bicep",
                 "ms-kubernetes-tools.vscode-kubernetes-tools"
             ]
         }
