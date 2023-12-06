@@ -534,6 +534,7 @@ func Test_CLI_Delete(t *testing.T) {
 
 	options := shared.NewRPTestOptions(t)
 	appName := "kubernetes-cli-with-resources"
+	appNameUnassociatedResources := "kubernetes-cli-with-unassociated-resources"
 	appNameEmptyResources := "kubernetes-cli-empty-resources"
 
 	cwd, err := os.Getwd()
@@ -541,6 +542,9 @@ func Test_CLI_Delete(t *testing.T) {
 
 	templateWithResources := "testdata/corerp-kubernetes-cli-with-resources.bicep"
 	templateFilePathWithResources := filepath.Join(cwd, templateWithResources)
+
+	templateWithResourcesUnassociated := "testdata/corerp-kubernetes-cli-with-unassociated-resources.bicep"
+	templateFilePathWithResourcesUnassociated := filepath.Join(cwd, templateWithResourcesUnassociated)
 
 	templateEmptyResources := "testdata/corerp-kubernetes-cli-app-empty-resources.bicep"
 	templateFilePathEmptyResources := filepath.Join(cwd, templateEmptyResources)
@@ -584,34 +588,34 @@ func Test_CLI_Delete(t *testing.T) {
 	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
 		t.Logf("deploying from file %s", templateWithResources)
 
-		err := cli.Deploy(ctx, templateFilePathWithResources, "", appName, functional.GetMagpieImage())
-		require.NoErrorf(t, err, "failed to deploy %s", appName)
+		err := cli.Deploy(ctx, templateFilePathWithResourcesUnassociated, "", appNameUnassociatedResources, functional.GetMagpieImage())
+		require.NoErrorf(t, err, "failed to deploy %s", appNameUnassociatedResources)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				"default-kubernetes-cli-with-resources": {
-					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
-					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
+				"default-kubernetes-cli-with-unassociated-resources": {
+					validation.NewK8sPodForResource(appNameUnassociatedResources, "containerX"),
+					validation.NewK8sPodForResource(appNameUnassociatedResources, "containerY"),
 				},
 			},
 		})
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerb-app-with-resources")
-		require.NoErrorf(t, err, "failed to delete resource containerb-app-with-resources")
-		err = DeleteAppWithoutDeletingResources(t, ctx, options, appName)
-		require.NoErrorf(t, err, "failed to delete application %s", appName)
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerY")
+		require.NoErrorf(t, err, "failed to delete resource containerY")
+		err = DeleteAppWithoutDeletingResources(t, ctx, options, appNameUnassociatedResources)
+		require.NoErrorf(t, err, "failed to delete application %s", appNameUnassociatedResources)
 
 		t.Logf("deploying from file %s", templateEmptyResources)
-		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", appName)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", appNameEmptyResources)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
 		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containera-app-with-resources")
-		require.NoErrorf(t, err, "failed to delete resource containera-app-with-resources")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerX")
+		require.NoErrorf(t, err, "failed to delete resource containerX")
 
 	})
 }

@@ -44,13 +44,29 @@ type deploymentAnnotations struct {
 	// This will be nil if Radius is not enabled for the Deployment.
 	Configuration *deploymentConfiguration
 
-	//ConfigurationHash is the hash of the user-provided configuration.
+	// ConfigurationHash is the hash of the user-provided configuration.
 	// This will be used to diff the configuration and determine if the Deployment needs to be updated.
 	ConfigurationHash string
 
 	// Status is the status of the Deployment (Radius related status).
 	Status *deploymentStatus
 }
+
+// There are 4 cases that is possible based on the previous state and the current state of the Deployment:
+// Case 1: Previous State: Enabled - Current State: Disabled
+// Case 2: Previous State: Disabled - Current State: Enabled
+// Case 3: Previous State: Enabled - Current State: Enabled
+// Case 4: Previous State: Disabled - Current State: Disabled
+//
+// How to understand the previous state:
+// 1. If "radapp.io/status" annotation is set, then the previous state is Enabled.
+//
+// Ways to disable Radius:
+// 1. "radapp.io/enabled" annotation is set to "false".
+// 2. "radapp.io/enabled" annotation is not set.
+//
+// Ways to enable Radius:
+// 1. "radapp.io/enabled" annotation is set to "true".
 
 // deploymentConfiguration is the configuration of the Deployment provided by the user via annotations.
 type deploymentConfiguration struct {
@@ -98,9 +114,9 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 		if err != nil {
 			return result, fmt.Errorf("failed to unmarshal status annotation: %w", err)
 		}
-	}
 
-	result.Status = &s
+		result.Status = &s
+	}
 
 	// Note: we need to read and return the configuration even if Radius is not enabled for the Deployment.
 	// This is important so that can clean up previously created connections when Radius is disabled.
@@ -183,4 +199,20 @@ func (annotations *deploymentAnnotations) IsUpToDate() bool {
 	}
 
 	return hash == annotations.ConfigurationHash
+}
+
+// OperationInProgress returns true if there is an operation in progress for the given deployment.
+func (annotations *deploymentAnnotations) OperationInProgress() bool {
+	return annotations.Status != nil && annotations.Status.Operation != nil
+}
+
+// isRadiusEnabled returns true if Radius is enabled for the given deployment.
+func (annotations *deploymentAnnotations) isRadiusEnabled() bool {
+	return annotations.Configuration != nil
+}
+
+// needsCleanup returns true if Radius was previously enabled on the deployment and now is disabled.
+// This means that we need to clean up the resources created by Radius.
+func (annotations *deploymentAnnotations) needsCleanup() bool {
+	return annotations.Configuration == nil && annotations.Status != nil
 }
