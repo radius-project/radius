@@ -23,7 +23,7 @@ The `versions.yaml` file is a declarative version tracking file that the Radius 
 
 ### Test tutorials and samples
 
-In the project-radius/samples repo, run the [Test Quickstarts](https://github.com/project-radius/samples/actions/workflows/test.yaml) workflow.
+In the project-radius/samples repo, run the [Test Samples](https://github.com/project-radius/samples/actions/workflows/test.yaml) workflow. Run the workflow from the edge branch and using the Radius release or pre-release version number being released.
 
 > For now, this is a manual task. Soon, this workflow will be triggered automatically.
 > There is a possibility that the workflow run failed because of flaky tests. Try re-running, and if the failure is persistent, then there should be further investigation.
