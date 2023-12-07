@@ -1,0 +1,31 @@
+name: "Release dev container feature"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-workflow-test:
+    uses: ./.github/workflows/devcontainer-feature-test.yaml
+
+  
+  deploy:
+    needs: 
+      - call-workflow-test
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: "Publish Features"
+        uses: devcontainers/action@v1
+        with:
+          publish-features: "true"
+          base-path-to-features: "./ext/devcontainer/src"
+          generate-docs: "false"
+          
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
