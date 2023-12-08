@@ -48,7 +48,6 @@ import (
 )
 
 func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
-	t.Skip("Skipping for now, will reenable before merging.")
 	ctx := testcontext.New(t)
 	opts := shared.NewRPTestOptions(t)
 
@@ -79,11 +78,11 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 
 	t.Run("Deploy", func(t *testing.T) {
 		t.Log("Creating recipe")
-		err = opts.Client.Create(ctx, deployment)
+		err = opts.Client.Create(ctx, recipe)
 		require.NoError(t, err)
 
 		t.Log("Creating deployment")
-		err = opts.Client.Create(ctx, recipe)
+		err = opts.Client.Create(ctx, deployment)
 		require.NoError(t, err)
 	})
 

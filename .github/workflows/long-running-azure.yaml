@@ -45,11 +45,11 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/long-running-azure.yaml"
+      - '.github/workflows/long-running-azure.yaml'
 
 env:
   # Go version
-  GOVER: "^1.21"
+  GOVER: '^1.21'
   GOPROXY: https://proxy.golang.org
 
   # gotestsum version - see: https://github.com/gotestyourself/gotestsum
@@ -68,21 +68,23 @@ env:
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
-  AWS_REGION: "us-west-2"
+  AWS_REGION: us-west-2
   # The AWS account ID
-  AWS_ACCOUNT_ID: "${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}"
+  AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
   # The valid radius build time window in seconds to rebuild radius. 24 hours = 24 * 60 * 60 = 86400
   VALID_RADIUS_BUILD_WINDOW: 86400
 
   # The AKS cluster name
-  AKS_CLUSTER_NAME: "radiuse2e00-aks"
+  AKS_CLUSTER_NAME: 'radiuse2e00-aks'
   # The resource group for AKS_CLUSTER_NAME resource.
-  AKS_RESOURCE_GROUP:
-    "radiuse2e00"
+  AKS_RESOURCE_GROUP: 'radiuse2e00'
 
-    # Server where terraform test modules are deployed
-  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  # Server where terraform test modules are deployed
+  TF_RECIPE_MODULE_SERVER_URL: 'http://tf-module-server.radius-test-tf-module-server.svc.cluster.local'
+
+  # Radius test environment name
+  RADIUS_TEST_ENVIRONMENT_NAME: 'kind-radius'
 
 jobs:
   build:
@@ -277,7 +279,7 @@ jobs:
   tests:
     name: Run functional tests
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     if: github.repository == 'radius-project/radius'
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
@@ -295,6 +297,13 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+      - name: Checkout samples repo
+        uses: actions/checkout@v3
+        with:
+          repository: radius-project/samples
+          ref: refs/heads/edge
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: samples
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v4
         with:
@@ -371,25 +380,27 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
 
           echo "*** Create workspace, group and environment for test ***"
-          rad workspace create kubernetes
-          rad workspace list
-          rad group create radius-e2e
-          rad group switch radius-e2e
+          rad workspace create kubernetes --force
+          rad group create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          rad group switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create radius-e2e --namespace default
-          rad env switch radius-e2e
-          rad workspace list
+          rad env create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --namespace default
+          rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+
+          # Temporary workaround to fix the x509 certificate error in the controller.
+          # https://github.com/radius-project/radius/issues/6989
+          kubectl delete secrets controller-cert -n radius-system
 
           echo "*** Configuring Azure provider ***"
-          rad env update radius-e2e --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
             --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
           echo "*** Configuring AWS provider ***"
-          rad env update radius-e2e --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - name: Log radius installation status (failure)
@@ -432,6 +443,24 @@ jobs:
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/all-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: all_container_logs
+          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
       - name: Log radius e2e test status (success)
         if: success()
         run: |
