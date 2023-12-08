@@ -269,6 +269,21 @@ func (amc *UCPApplicationsManagementClient) ShowApplication(ctx context.Context,
 	return result, nil
 }
 
+// GetGraph creates a new ApplicationsClient, returns the application graph or an error if one occurs.
+func (amc *UCPApplicationsManagementClient) GetGraph(ctx context.Context, applicationName string) (corerpv20231001.ApplicationGraphResponse, error) {
+	client, err := corerpv20231001.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return corerpv20231001.ApplicationGraphResponse{}, err
+	}
+
+	getResponse, err := client.GetGraph(ctx, applicationName, map[string]any{}, &corerpv20231001.ApplicationsClientGetGraphOptions{})
+	if err != nil {
+		return corerpv20231001.ApplicationGraphResponse{}, err
+	}
+
+	return getResponse.ApplicationGraphResponse, nil
+}
+
 // DeleteApplication deletes an application and all its associated resources, and returns an error if any of the operations fail.
 func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (bool, error) {
 	// This handles the case where the application doesn't exist.

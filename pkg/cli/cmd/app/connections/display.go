@@ -20,42 +20,35 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // display builds the formatted output for the application graph as text.
-func display(graph *applicationGraph) string {
-	applicationResources := []resourceEntry{}
-	for _, resource := range graph.Resources {
-		applicationResources = append(applicationResources, resource)
-	}
-
+func display(applicationResources []*v20231001preview.ApplicationGraphResource, applicationName string) string {
 	// Sort by type (containers first), and then by name, then by id.
 	containerType := "Applications.Core/containers"
 	sort.Slice(applicationResources, func(i, j int) bool {
-		if strings.EqualFold(applicationResources[i].Type, containerType) !=
-			strings.EqualFold(applicationResources[j].Type, containerType) {
+		if strings.EqualFold(*applicationResources[i].Type, containerType) !=
+			strings.EqualFold(*applicationResources[j].Type, containerType) {
 
-			return strings.EqualFold(applicationResources[i].Type, containerType)
+			return strings.EqualFold(*applicationResources[i].Type, containerType)
 		}
 
-		if applicationResources[i].Type != applicationResources[j].Type {
-			return applicationResources[i].Type < applicationResources[j].Type
+		if *applicationResources[i].Type != *applicationResources[j].Type {
+			return *applicationResources[i].Type < *applicationResources[j].Type
 		}
 
-		if applicationResources[i].Name != applicationResources[j].Name {
-			return applicationResources[i].Name < applicationResources[j].Name
+		if *applicationResources[i].Name != *applicationResources[j].Name {
+			return *applicationResources[i].Name < *applicationResources[j].Name
 		}
+		return *applicationResources[i].ID < *applicationResources[j].ID
 
-		if applicationResources[i].ID != applicationResources[j].ID {
-			return applicationResources[i].ID < applicationResources[j].ID
-		}
-
-		return applicationResources[i].Error < applicationResources[j].Error
 	})
 
 	output := &strings.Builder{}
-
-	output.WriteString(fmt.Sprintf("Displaying application: %s\n\n", graph.ApplicationName))
+	output.WriteString(fmt.Sprintf("Displaying application: %s\n\n", applicationName))
 
 	if len(applicationResources) == 0 {
 		output.WriteString("(empty)")
@@ -64,71 +57,43 @@ func display(graph *applicationGraph) string {
 	}
 
 	for _, resource := range applicationResources {
-		if resource.Error != "" {
-			output.WriteString(fmt.Sprintf("Error: %s\n", resource.Error))
-			continue
-		}
-
-		output.WriteString(fmt.Sprintf("Name: %s (%s)\n", resource.Name, resource.Type))
+		output.WriteString(fmt.Sprintf("Name: %s (%s)\n", *resource.Name, *resource.Type))
 
 		if len(resource.Connections) == 0 {
 			output.WriteString("Connections: (none)\n")
 		} else {
 			output.WriteString("Connections:\n")
 			for _, connection := range resource.Connections {
-				if connection.To.Error != "" {
-					output.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", connection.From.Name, "error", connection.To.Error))
+				connectionID, err := resources.Parse(*connection.ID)
+				if err != nil {
+					output.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
 					continue
 				}
 
-				// We format the connection differently depending on whether it's inbound or outbound.
-				if connection.From.ID == resource.ID {
+				connectionName := connectionID.Name()
+				connectionType := connectionID.Type()
+
+				if *connection.Direction == v20231001preview.DirectionOutbound {
 					// Outbound
-					output.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", connection.From.Name, connection.To.Name, connection.To.Type))
+					output.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", *resource.Name, connectionName, connectionType))
 				} else {
 					// Inbound
-					output.WriteString(fmt.Sprintf("  %s (%s) -> %s\n", connection.From.Name, connection.From.Type, connection.To.Name))
+					output.WriteString(fmt.Sprintf("  %s (%s) -> %s\n", connectionName, connectionType, *resource.Name))
 				}
 			}
 		}
 
-		if len(resource.Resources) == 0 {
+		if len(resource.OutputResources) == 0 {
 			output.WriteString("Resources: (none)\n")
 		} else {
 			output.WriteString("Resources:\n")
-			for _, resource := range resource.Resources {
-				if resource.Error != "" {
-					output.WriteString(fmt.Sprintf("Error: %s\n", resource.Error))
-					continue
-				}
-
-				link := makeHyperlink(resource)
-				if link == "" {
-					output.WriteString(fmt.Sprintf("  %s (%s: %s)\n", resource.Name, resource.Provider, resource.Type))
-				} else {
-					output.WriteString(fmt.Sprintf("  %s (%s: %s) %s\n", resource.Name, resource.Provider, resource.Type, link))
-				}
+			for _, resource := range resource.OutputResources {
+				output.WriteString(fmt.Sprintf("  %s (%s)\n", *resource.Name, *resource.Type))
 			}
 		}
 
 		output.WriteString("\n")
-	}
 
+	}
 	return output.String()
-}
-
-func makeHyperlink(resource outputResourceEntry) string {
-	// Just azure for now.
-	if resource.Provider != "azure" {
-		return ""
-	}
-
-	// format of an Azure portal URL:
-	//
-	// https://portal.azure.com/#@{tenantId}/resource{resourceId}
-	url := fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", "72f988bf-86f1-41af-91ab-2d7cd011db47", resource.ID)
-
-	// This is the magic incantation for a console hyperlink.
-	// \x1b]8;;h { URL } \x07 { link text } \x1b]8;;\x07
-	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07\n", url, "open portal")
 }
