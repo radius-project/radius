@@ -73,7 +73,7 @@ func SetDefault() (string, string) {
 	defaultDockerReg := os.Getenv("DOCKER_REGISTRY")
 	imageTag := os.Getenv("REL_VERSION")
 	if defaultDockerReg == "" {
-		defaultDockerReg = "ghcr.io/radius-project"
+		defaultDockerReg = "ghcr.io/radius-project/dev"
 	}
 	if imageTag == "" {
 		imageTag = "latest"
