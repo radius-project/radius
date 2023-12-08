@@ -25,7 +25,8 @@ $ErrorActionPreference = 'stop'
 # Constants
 $RadiusCliFileName = "rad.exe"
 $RadiusCliFilePath = "${RadiusRoot}\${RadiusCliFileName}"
-$OsArch = "windows-x64"
+$OS = "windows"
+$Arch = "amd64"
 $GitHubOrg = "radius-project"
 $GitHubRepo = "radius"
 $GitHubReleaseJsonUrl = "https://api.github.com/repos/${GitHubOrg}/${GitHubRepo}/releases"
@@ -50,7 +51,7 @@ function GetWindowsAsset {
     param (
         $Release
     )
-    $windowsAsset = $Release | Select-Object -ExpandProperty assets | Where-Object { $_.name -Like "*windows_amd64.exe" }
+    $windowsAsset = $Release | Select-Object -ExpandProperty assets | Where-Object { $_.name -Like "*${OS}_${Arch}.exe" }
     if (!$windowsAsset) {
         throw "Cannot find the Windows rad CLI binary"
     }
@@ -109,47 +110,66 @@ if (-Not (Test-Path $RadiusRoot -PathType Container)) {
     }
 }
 
-# Get the list of releases from GitHub
-$releases = Invoke-RestMethod -Headers $githubHeader -Uri $GitHubReleaseJsonUrl -Method Get
-if ($releases.Count -eq 0) {
-    throw "No releases from github.com/${GitHubOrg}/${GitHubRepo}"
+if ($Version -eq "edge") {
+    # Check if oras CLI is installed
+    $orasExists = Get-Command oras -ErrorAction SilentlyContinue
+    if (-Not $orasExists) {
+        Write-Output "Error: oras CLI is not installed or not found in PATH."
+        Write-Output "Please visit https://edge.docs.radapp.io/installation for edge build installation instructions."
+        Exit 1
+    }
+
+    $downloadURL = "ghcr.io/${GitHubOrg}/rad/${OS}-${Arch}:latest"
+    Write-Output "Downloading edge CLI from ${downloadURL}..."
+    oras pull $downloadURL -o $RadiusRoot
+}
+else {
+    # Get the list of releases from GitHub
+    $releases = Invoke-RestMethod -Headers $githubHeader -Uri $GitHubReleaseJsonUrl -Method Get
+    if ($releases.Count -eq 0) {
+        throw "No releases from github.com/${GitHubOrg}/${GitHubRepo}"
+    }
+
+    $release = GetVersionInfo -Version $Version -Releases $releases
+    if (!$release) {
+        throw "Cannot find the specified rad CLI binary version"
+    }
+    $asset = GetWindowsAsset -Release $release
+    $assetName = $asset.name
+    $exeFileUrl = $asset.url
+    $exeFilePath = $RadiusRoot + "\" + $assetName
+
+    # Download rad CLI
+    try {
+        Write-Output "Downloading $exeFileUrl..."
+        $githubHeader.Accept = "application/octet-stream"
+        $oldProgressPreference = $ProgressPreference
+        $ProgressPreference = "SilentlyContinue" # Do not show progress bar
+        Invoke-WebRequest -Headers $githubHeader -Uri $exeFileUrl -OutFile $exeFilePath
+    }
+    catch [Net.WebException] {
+        throw "ERROR: The specified release version: $Version does not exist."
+    }
+    finally {
+        $ProgressPreference = $oldProgressPreference;
+    }
+
+    if (!(Test-Path $exeFilePath -PathType Leaf)) {
+      throw "Failed to download rad CLI binary - $exeFilePath"
+    }
+    
+    # Remove old rad CLI if exists
+    if (Test-Path $RadiusCliFilePath -PathType Leaf) {
+        Remove-Item -Recurse -Force $RadiusCliFilePath
+    }
+    
+    # Rename the downloaded rad CLI binary
+    Rename-Item -Path $exeFilePath -NewName $RadiusCliFileName -Force
 }
 
-$release = GetVersionInfo -Version $Version -Releases $releases
-if (!$release) {
-    throw "Cannot find the specified rad CLI binary version"
+if (!(Test-Path $RadiusCliFilePath -PathType Leaf)) {
+  throw "Failed to download rad CLI binary - $exeFilePath"
 }
-$asset = GetWindowsAsset -Release $release
-$assetName = $asset.name
-$exeFileUrl = $asset.url
-$exeFilePath = $RadiusRoot + "\" + $assetName
-
-# Download rad CLI
-try {
-    Write-Output "Downloading $exeFileUrl..."
-    $githubHeader.Accept = "application/octet-stream"
-    $oldProgressPreference = $ProgressPreference
-    $ProgressPreference = "SilentlyContinue" # Do not show progress bar
-    Invoke-WebRequest -Headers $githubHeader -Uri $exeFileUrl -OutFile $exeFilePath
-}
-catch [Net.WebException] {
-    throw "ERROR: The specified release version: $Version does not exist."
-}
-finally {
-    $ProgressPreference = $oldProgressPreference;
-}
-
-if (!(Test-Path $exeFilePath -PathType Leaf)) {
-    throw "Failed to download rad Cli binary - $exeFilePath"
-}
-
-# Remove old rad CLI if exists
-if (Test-Path $RadiusCliFilePath -PathType Leaf) {
-    Remove-Item -Recurse -Force $RadiusCliFilePath
-}
-
-# Rename the downloaded rad CLI binary
-Rename-Item -Path $exeFilePath -NewName $RadiusCliFileName -Force
 
 # Print the version string of the installed CLI
 Write-Output "rad CLI version: $(&$RadiusCliFilePath version -o json | ConvertFrom-JSON | Select-Object -ExpandProperty version)"

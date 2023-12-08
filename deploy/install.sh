@@ -110,49 +110,41 @@ getLatestRelease() {
 }
 
 downloadFile() {
-    LATEST_RELEASE_TAG=$1
+    RELEASE_TAG=$1
 
     RADIUS_CLI_ARTIFACT="${RADIUS_CLI_FILENAME}_${OS}_${ARCH}"
-    DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
-    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${RADIUS_CLI_ARTIFACT}"
 
     # Create the temp directory
     RADIUS_TMP_ROOT=$(mktemp -dt radius-install-XXXXXX)
     ARTIFACT_TMP_FILE="$RADIUS_TMP_ROOT/$RADIUS_CLI_ARTIFACT"
 
-    echo "Downloading ${DOWNLOAD_URL}..."
-    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
-        curl -SsL "$DOWNLOAD_URL" -o "$ARTIFACT_TMP_FILE"
+    if [ "$RELEASE_TAG" == "edge" ]; then
+        if ! command -v oras &> /dev/null; then
+            echo "Error: oras CLI is not installed or not found in PATH."
+            echo "Please visit https://edge.docs.radapp.io/installation for edge CLI installation instructions."
+            exit 1
+        fi
+
+        DOWNLOAD_URL="ghcr.io/radius-project/rad/${OS}-${ARCH}:latest"
+        echo "Downloading edge CLI from ${DOWNLOAD_URL}..."
+        oras pull $DOWNLOAD_URL -o $RADIUS_TMP_ROOT
+        mv $RADIUS_TMP_ROOT/rad $ARTIFACT_TMP_FILE
     else
-        wget -q -O "$ARTIFACT_TMP_FILE" "$DOWNLOAD_URL"
+        DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
+        DOWNLOAD_URL="${DOWNLOAD_BASE}/${RELEASE_TAG}/${RADIUS_CLI_ARTIFACT}"
+
+        echo "Downloading ${DOWNLOAD_URL}..."
+        if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
+            curl -SsL "$DOWNLOAD_URL" -o "$ARTIFACT_TMP_FILE"
+        else
+            wget -q -O "$ARTIFACT_TMP_FILE" "$DOWNLOAD_URL"
+        fi
     fi
 
     if [ ! -f "$ARTIFACT_TMP_FILE" ]; then
         echo "failed to download ${DOWNLOAD_URL}..."
         exit 1
     fi
-}
-
-isReleaseAvailable() {
-    LATEST_RELEASE_TAG=$1
-
-    RADIUS_CLI_ARTIFACT="${RADIUS_CLI_FILENAME}_${OS}_${ARCH}"
-    DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
-    DOWNLOAD_URL="${DOWNLOAD_BASE}/${LATEST_RELEASE_TAG}/${RADIUS_CLI_ARTIFACT}"
-
-    if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
-        httpstatus=$(curl -sSLI -o /dev/null -w "%{http_code}" "$DOWNLOAD_URL")
-        if [ "$httpstatus" == "200" ]; then
-            return 0
-        fi
-    else
-        wget -q --spider "$DOWNLOAD_URL"
-        exitstatus=$?
-        if [ $exitstatus -eq 0 ]; then
-            return 0
-        fi
-    fi
-    return 1
 }
 
 installFile() {
@@ -223,6 +215,8 @@ checkHttpRequestCLI
 if [ -z "$1" ]; then
     echo "Getting the latest Radius CLI..."
     getLatestRelease
+elif [ "$1" == "edge" ]; then
+    ret_val="edge"
 else
     ret_val=v$1
 fi
