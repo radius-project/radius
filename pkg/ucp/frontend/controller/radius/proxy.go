@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -37,7 +38,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/store"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -55,7 +55,7 @@ const (
 )
 
 type updater interface {
-	Update(ctx context.Context, downstream string, id resources.ID, version string) error
+	Update(ctx context.Context, opts trackedresource.UpdateOptions) error
 }
 
 var _ armrpc_controller.Controller = (*ProxyController)(nil)
@@ -67,6 +67,9 @@ type ProxyController struct {
 	// transport is the http.RoundTripper to use for proxying requests. Can be overridden for testing.
 	transport http.RoundTripper
 
+	// internalTransport is the http.RoundTripper to use for internal requests. Can be overridden for testing.
+	internalTransport http.RoundTripper
+
 	// updater is used to process tracked resources. Can be overridden for testing.
 	updater updater
 }
@@ -75,13 +78,13 @@ type ProxyController struct {
 //
 // NewProxyController creates a new ProxyPlane controller with the given options and returns it, or returns an error if the
 // controller cannot be created.
-func NewProxyController(opts armrpc_controller.Options) (armrpc_controller.Controller, error) {
-	transport := otelhttp.NewTransport(http.DefaultTransport)
-	updater := trackedresource.NewUpdater(opts.StorageClient, &http.Client{Transport: transport})
+func NewProxyController(opts armrpc_controller.Options, transport http.RoundTripper, internalTransport http.RoundTripper) (armrpc_controller.Controller, error) {
+	updater := trackedresource.NewUpdater(opts.StorageClient)
 	return &ProxyController{
-		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{}),
-		transport: transport,
-		updater:   updater,
+		Operation:         armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.RadiusPlane]{}),
+		transport:         transport,
+		internalTransport: internalTransport,
+		updater:           updater,
 	}, nil
 }
 
@@ -100,7 +103,7 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	id := requestCtx.ResourceID
 	relativePath := middleware.GetRelativePath(p.Options().PathBase, requestCtx.OriginalURL.Path)
 
-	downstreamURL, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), id)
+	downstreamURL, routingType, err := resourcegroups.ValidateDownstream(ctx, p.StorageClient(), id, requestCtx.Location)
 	if errors.Is(err, &resourcegroups.NotFoundError{}) {
 		return armrpc_rest.NewNotFoundResponse(id), nil
 	} else if errors.Is(err, &resourcegroups.InvalidError{}) {
@@ -110,13 +113,24 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return nil, fmt.Errorf("failed to validate downstream: %w", err)
 	}
 
+	transport := p.transport
+	if routingType == resourcegroups.RoutingTypeInternal {
+		transport = p.internalTransport
+
+		// For internal requests, the downstream URL doesn't need to change.
+		// We only need the scheme and hostname.
+		downstreamURL = &url.URL{
+			Scheme: requestCtx.OriginalURL.Scheme,
+			Host:   requestCtx.OriginalURL.Host,
+		}
+	}
+
 	proxyReq, err := p.PrepareProxyRequest(ctx, req, downstreamURL.String(), relativePath)
 	if err != nil {
 		return nil, err
 	}
 
-	interceptor := &responseInterceptor{Inner: p.transport}
-
+	interceptor := &responseInterceptor{Inner: transport}
 	sender := proxy.NewARMProxy(proxy.ReverseProxyOptions{RoundTripper: interceptor}, downstreamURL, nil)
 	sender.ServeHTTP(w, proxyReq)
 
@@ -138,7 +152,13 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 
 	if p.IsTerminalResponse(interceptor.Response) {
 		logger.V(ucplog.LevelDebug).Info("response is terminal, updating tracked resource synchronously")
-		err = p.UpdateTrackedResource(ctx, downstreamURL.String(), id, requestCtx.APIVersion)
+		opts := trackedresource.UpdateOptions{
+			Downstream: downstreamURL.String(),
+			Transport:  transport,
+			ID:         id,
+			APIVersion: requestCtx.APIVersion,
+		}
+		err = p.UpdateTrackedResource(ctx, opts)
 		if errors.Is(err, &trackedresource.InProgressErr{}) {
 			logger.V(ucplog.LevelDebug).Info("synchronous update failed, updating tracked resource asynchronously")
 			// Continue executing
@@ -192,6 +212,9 @@ func (p *ProxyController) PrepareProxyRequest(ctx context.Context, originalReq *
 	proxyReq.Header.Set("X-Forwarded-Proto", refererURL.Scheme)
 	proxyReq.Header.Set(v1.RefererHeader, refererURL.String())
 
+	// Clear route context, we don't want to inherit any state from Chi.
+	proxyReq = proxyReq.WithContext(context.WithValue(ctx, chi.RouteCtxKey, nil))
+
 	return proxyReq, nil
 }
 
@@ -220,8 +243,8 @@ func (p *ProxyController) IsTerminalResponse(resp *http.Response) bool {
 }
 
 // UpdateTrackedResource updates the tracked resource synchronously.
-func (p *ProxyController) UpdateTrackedResource(ctx context.Context, downstream string, id resources.ID, apiVersion string) error {
-	return p.updater.Update(ctx, downstream, id, apiVersion)
+func (p *ProxyController) UpdateTrackedResource(ctx context.Context, opts trackedresource.UpdateOptions) error {
+	return p.updater.Update(ctx, opts)
 }
 
 // EnqueueTrackedResourceUpdate enqueues an async operation to update the tracked resource.

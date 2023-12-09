@@ -1,0 +1,38 @@
+{
+  "location": "global",
+  "tags": {
+    "test": "my-test"
+  },
+  "properties": {
+    "locations": {
+      "global": {
+        "address": "internal"
+      }
+    },
+    "resourceTypes": [
+      {
+        "resourceType": "exampleResources",
+        "routingType": "Internal",
+        "apiVersions": {
+          "2024-01-01": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "capabilities": [
+          "awesomeness"
+        ],
+        "defaultApiVersion": "2024-01-01",
+        "locations": [
+          "global"
+        ]
+      }
+    ]
+  }
+}

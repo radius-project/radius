@@ -69,6 +69,11 @@ func (c *ClientFactory) NewResourceGroupsClient() *ResourceGroupsClient {
 	return subClient
 }
 
+func (c *ClientFactory) NewResourceProvidersClient() *ResourceProvidersClient {
+	subClient, _ := NewResourceProvidersClient(c.credential, c.options)
+	return subClient
+}
+
 func (c *ClientFactory) NewResourcesClient() *ResourcesClient {
 	subClient, _ := NewResourcesClient(c.credential, c.options)
 	return subClient

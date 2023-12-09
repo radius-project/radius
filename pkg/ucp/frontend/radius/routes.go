@@ -18,11 +18,14 @@ package radius
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/middleware"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -30,20 +33,30 @@ import (
 	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
 	radius_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/radius"
 	resourcegroups_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/validator"
 )
 
 const (
-	planeCollectionPath         = "/planes/radius"
-	planeResourcePath           = "/planes/radius/{planeName}"
-	resourceGroupCollectionPath = planeResourcePath + "/resourcegroups"
-	resourceGroupResourcePath   = planeResourcePath + "/resourcegroups/{resourceGroupName}"
+	planeCollectionPath            = "/planes/radius"
+	planeResourcePath              = "/planes/radius/{planeName}"
+	resourceProviderCollectionPath = planeResourcePath + "/providers"
+	resourceProviderResourcePath   = planeResourcePath + "/providers/{resourceProviderName}"
+	resourceGroupCollectionPath    = planeResourcePath + "/resourcegroups"
+	resourceGroupResourcePath      = planeResourcePath + "/resourcegroups/{resourceGroupName}"
 
 	// OperationTypeUCPRadiusProxy is the operation type for proxying Radius API calls.
 	OperationTypeUCPRadiusProxy = "UCPRADIUSPROXY"
 )
 
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
+	ctrlOptions := controller.Options{
+		Address:       m.options.Address,
+		PathBase:      m.options.PathBase,
+		DataProvider:  m.options.DataProvider,
+		StatusManager: m.options.StatusManager,
+	}
+
 	baseRouter := server.NewSubrouter(m.router, m.options.PathBase)
 
 	apiValidator := validator.APIValidator(validator.Options{
@@ -69,6 +82,10 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	// URLs for lifecycle of resource groups
 	resourceGroupCollectionRouter := server.NewSubrouter(baseRouter, resourceGroupCollectionPath, apiValidator)
 	resourceGroupResourceRouter := server.NewSubrouter(baseRouter, resourceGroupResourcePath, apiValidator)
+
+	// URLs for lifecycle of resource providers
+	resourceProviderCollectionRouter := server.NewSubrouter(baseRouter, resourceProviderCollectionPath, apiValidator)
+	resourceProviderResourceRouter := server.NewSubrouter(baseRouter, resourceProviderResourcePath, apiValidator)
 
 	handlerOptions := []server.HandlerOptions{
 		{
@@ -107,6 +124,61 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			},
 		},
 		{
+			ParentRouter: resourceProviderCollectionRouter,
+			ResourceType: datamodel.ResourceProviderResourceType,
+			Method:       v1.OperationList,
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					controller.ResourceOptions[datamodel.ResourceProvider]{
+						RequestConverter:  converter.ResourceProviderDataModelFromVersioned,
+						ResponseConverter: converter.ResourceProviderDataModelToVersioned,
+					})
+			},
+			Middlewares: []func(http.Handler) http.Handler{middleware.OverrideResourceID(resourceIDForResourceProviderCollection(m.options.PathBase))},
+		},
+		{
+			ParentRouter: resourceProviderResourceRouter,
+			ResourceType: datamodel.ResourceProviderResourceType,
+			Method:       v1.OperationGet,
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					controller.ResourceOptions[datamodel.ResourceProvider]{
+						RequestConverter:  converter.ResourceProviderDataModelFromVersioned,
+						ResponseConverter: converter.ResourceProviderDataModelToVersioned,
+					},
+				)
+			},
+			Middlewares: []func(http.Handler) http.Handler{middleware.OverrideResourceID(resourceIDForResourceProviderResource(m.options.PathBase))},
+		},
+		{
+			ParentRouter: resourceProviderResourceRouter,
+			ResourceType: datamodel.ResourceProviderResourceType,
+			Method:       v1.OperationPut,
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncPut(opt,
+					controller.ResourceOptions[datamodel.ResourceProvider]{
+						RequestConverter:  converter.ResourceProviderDataModelFromVersioned,
+						ResponseConverter: converter.ResourceProviderDataModelToVersioned,
+					},
+				)
+			},
+			Middlewares: []func(http.Handler) http.Handler{middleware.OverrideResourceID(resourceIDForResourceProviderResource(m.options.PathBase))},
+		},
+		{
+			ParentRouter: resourceProviderResourceRouter,
+			ResourceType: datamodel.ResourceProviderResourceType,
+			Method:       v1.OperationDelete,
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
+				return defaultoperation.NewDefaultSyncDelete(opt,
+					controller.ResourceOptions[datamodel.ResourceProvider]{
+						RequestConverter:  converter.ResourceProviderDataModelFromVersioned,
+						ResponseConverter: converter.ResourceProviderDataModelToVersioned,
+					},
+				)
+			},
+			Middlewares: []func(http.Handler) http.Handler{middleware.OverrideResourceID(resourceIDForResourceProviderResource(m.options.PathBase))},
+		},
+		{
 			ParentRouter:      resourceGroupCollectionRouter,
 			ResourceType:      v20231001preview.ResourceGroupType,
 			Method:            v1.OperationList,
@@ -138,7 +210,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		},
 		{
 			ParentRouter: resourceGroupResourceRouter,
-			ResourceType: v20231001preview.ResourceType,
+			ResourceType: v20231001preview.GenericResourceType,
 			Path:         "/resources",
 			Method:       v1.OperationList,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
@@ -151,25 +223,31 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		// Note that the API validation is not applied for CatchAllPath(/*).
 		{
 			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/resourcegroups/{resourceGroupName}.
-			ParentRouter:      resourceGroupResourceRouter,
-			Path:              server.CatchAllPath,
-			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: radius_ctrl.NewProxyController,
+			ParentRouter:  resourceGroupResourceRouter,
+			Path:          server.CatchAllPath,
+			OperationType: &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
+				return radius_ctrl.NewProxyController(o, m.transport, m.internalTransport)
+			},
+		},
+		{
+			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/resourcegroups/{resourceGroupName}/providers/{resourceNamespace}/{resourceType}.
+			ParentRouter:  resourceProviderResourceRouter,
+			Path:          server.CatchAllPath,
+			OperationType: &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
+				return radius_ctrl.NewProxyController(o, m.transport, m.internalTransport)
+			},
 		},
 		{
 			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/.
-			ParentRouter:      planeResourceRouter,
-			Path:              server.CatchAllPath,
-			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: radius_ctrl.NewProxyController,
+			ParentRouter:  planeResourceRouter,
+			Path:          server.CatchAllPath,
+			OperationType: &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
+			ControllerFactory: func(o controller.Options) (controller.Controller, error) {
+				return radius_ctrl.NewProxyController(o, m.transport, m.internalTransport)
+			},
 		},
-	}
-
-	ctrlOptions := controller.Options{
-		Address:       m.options.Address,
-		PathBase:      m.options.PathBase,
-		DataProvider:  m.options.DataProvider,
-		StatusManager: m.options.StatusManager,
 	}
 
 	for _, h := range handlerOptions {
@@ -179,4 +257,24 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}
 
 	return m.router, nil
+}
+
+func resourceIDForResourceProviderCollection(pathBase string) func(req *http.Request) (resources.ID, error) {
+	return func(req *http.Request) (resources.ID, error) {
+		// URL should look like: /planes/radius/local/providers
+		scope := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, pathBase), "/providers")
+		return resources.Parse(scope + "/providers/System.Resources/resourceProviders")
+	}
+}
+
+func resourceIDForResourceProviderResource(pathBase string) func(req *http.Request) (resources.ID, error) {
+	return func(req *http.Request) (resources.ID, error) {
+		// URL should look like: /planes/radius/local/providers/My.Namespaces
+		scope, namespace, found := strings.Cut(strings.TrimPrefix(req.URL.Path, pathBase), "/providers/")
+		if !found {
+			return resources.ID{}, fmt.Errorf("unexpected resource provider URL: %s", req.URL.Path)
+		}
+
+		return resources.Parse(scope + "/providers/System.Resources/resourceProviders/" + namespace)
+	}
 }

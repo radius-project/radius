@@ -187,6 +187,29 @@ type ResourceGroupsClientUpdateResponse struct {
 	ResourceGroupResource
 }
 
+// ResourceProvidersClientCreateOrUpdateResponse contains the response from method ResourceProvidersClient.BeginCreateOrUpdate.
+type ResourceProvidersClientCreateOrUpdateResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
+	ResourceProviderResource
+}
+
+// ResourceProvidersClientDeleteResponse contains the response from method ResourceProvidersClient.BeginDelete.
+type ResourceProvidersClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// ResourceProvidersClientGetResponse contains the response from method ResourceProvidersClient.Get.
+type ResourceProvidersClientGetResponse struct {
+	// Concrete tracked resource types can be created by aliasing this type using a specific property type.
+	ResourceProviderResource
+}
+
+// ResourceProvidersClientListResponse contains the response from method ResourceProvidersClient.NewListPager.
+type ResourceProvidersClientListResponse struct {
+	// The response of a ResourceProviderResource list operation.
+	ResourceProviderResourceListResult
+}
+
 // ResourcesClientListResponse contains the response from method ResourcesClient.NewListPager.
 type ResourcesClientListResponse struct {
 	// The response of a GenericResource list operation.

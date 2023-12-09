@@ -69,7 +69,7 @@ func Test_ListResources(t *testing.T) {
 			Return(&store.Object{Data: resourceGroupDatamodel}, nil).
 			Times(1)
 
-		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
+		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.GenericResourceType}
 		storage.EXPECT().
 			Query(gomock.Any(), expectedQuery).
 			Return(&store.ObjectQueryResult{Items: []store.Object{{Data: entryDatamodel}}}, nil).
@@ -95,7 +95,7 @@ func Test_ListResources(t *testing.T) {
 			Return(&store.Object{Data: resourceGroupDatamodel}, nil).
 			Times(1)
 
-		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.ResourceType}
+		expectedQuery := store.Query{RootScope: resourceGroupID, ResourceType: v20231001preview.GenericResourceType}
 		storage.EXPECT().
 			Query(gomock.Any(), expectedQuery).
 			Return(&store.ObjectQueryResult{Items: []store.Object{}}, nil).
