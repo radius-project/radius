@@ -2,6 +2,9 @@
     "name": "Radius CLI",
     "id": "radcli",
     "version": "0.1.0",
+    "dependsOn": {
+        "ghcr.io/dhoeric/features/oras:1": {}
+    },
     "description": "Installs the Radius CLI along with needed dependencies.",
     "documentationURL": "https://docs.radapp.io/installation/",
     "options": {
