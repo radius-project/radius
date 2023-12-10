@@ -12,7 +12,7 @@
                 "edge"
             ],
             "default": "latest",
-            "description": "Select or enter an Radius CLI version. Use 'latest' for the latest stable version, 'edge' for the latest development version, or a specific version number (e.g. 0.27.0)."
+            "description": "Select or enter an Radius CLI version. Use 'latest' for the latest stable version, 'edge' for the latest development version, or a specific version number (e.g. 0.28.0)."
         }
     }
 }
