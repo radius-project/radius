@@ -27,7 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
-	planes_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/planes"
+	radius_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/radius"
 	resourcegroups_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/validator"
 )
@@ -117,21 +117,22 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			ParentRouter:      resourceGroupResourceRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyController,
+			ControllerFactory: radius_ctrl.NewProxyController,
 		},
 		{
 			// Proxy request should use CatchAllPath(/*) to process all requests under /planes/radius/{planeName}/.
 			ParentRouter:      baseRouter,
 			Path:              server.CatchAllPath,
 			OperationType:     &v1.OperationType{Type: OperationTypeUCPRadiusProxy, Method: v1.OperationProxy},
-			ControllerFactory: planes_ctrl.NewProxyController,
+			ControllerFactory: radius_ctrl.NewProxyController,
 		},
 	}
 
 	ctrlOptions := controller.Options{
-		Address:      m.options.Address,
-		PathBase:     m.options.PathBase,
-		DataProvider: m.options.DataProvider,
+		Address:       m.options.Address,
+		PathBase:      m.options.PathBase,
+		DataProvider:  m.options.DataProvider,
+		StatusManager: m.options.StatusManager,
 	}
 
 	for _, h := range handlerOptions {

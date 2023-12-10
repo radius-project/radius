@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -252,6 +251,14 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 
 		logger.Info("Start processing operation.")
 		result, err := asyncCtrl.Run(asyncReqCtx, asyncReq)
+
+		code := ""
+		if result.Error != nil {
+			code = result.Error.Code
+		}
+
+		logger.Info("Operation returned", "success", result.Error == nil, "code", code, "provisioningState", result.ProvisioningState(), "err", err)
+
 		// There are two cases when asyncReqCtx is canceled.
 		// 1. When the operation is timed out, w.completeOperation will be called in L186
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
@@ -262,6 +269,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 				result.SetFailed(armErr, false)
 				logger.Error(err, "Operation Failed")
 			}
+
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
 		trace.SetAsyncResultStatus(result, span)
@@ -347,10 +355,10 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 		return err
 	}
 
-	opType, _ := v1.ParseOperationType(req.OperationType)
-
 	err = updateResourceState(ctx, sc, rID.String(), state)
-	if err != nil && !(opType.Method == http.MethodDelete && errors.Is(&store.ErrNotFound{ID: rID.String()}, err)) {
+	if errors.Is(err, &store.ErrNotFound{}) {
+		logger.Info("failed to update the provisioningState in resource because it no longer exists.")
+	} else if err != nil {
 		logger.Error(err, "failed to update the provisioningState in resource.")
 		return err
 	}
