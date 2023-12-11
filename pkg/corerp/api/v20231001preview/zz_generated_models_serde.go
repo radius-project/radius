@@ -423,7 +423,7 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 func (b BicepRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "parameters", b.Parameters)
-	populate(objectMap, "plainHTTP", b.PlainHTTP)
+	populate(objectMap, "plainHttp", b.PlainHTTP)
 	objectMap["templateKind"] = "bicep"
 	populate(objectMap, "templatePath", b.TemplatePath)
 	return json.Marshal(objectMap)
@@ -441,7 +441,7 @@ func (b *BicepRecipeProperties) UnmarshalJSON(data []byte) error {
 		case "parameters":
 				err = unpopulate(val, "Parameters", &b.Parameters)
 			delete(rawMsg, key)
-		case "plainHTTP":
+		case "plainHttp":
 				err = unpopulate(val, "PlainHTTP", &b.PlainHTTP)
 			delete(rawMsg, key)
 		case "templateKind":
@@ -462,7 +462,7 @@ func (b *BicepRecipeProperties) UnmarshalJSON(data []byte) error {
 func (b BicepRecipePropertiesUpdate) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "parameters", b.Parameters)
-	populate(objectMap, "plainHTTP", b.PlainHTTP)
+	populate(objectMap, "plainHttp", b.PlainHTTP)
 	objectMap["templateKind"] = "bicep"
 	populate(objectMap, "templatePath", b.TemplatePath)
 	return json.Marshal(objectMap)
@@ -480,7 +480,7 @@ func (b *BicepRecipePropertiesUpdate) UnmarshalJSON(data []byte) error {
 		case "parameters":
 				err = unpopulate(val, "Parameters", &b.Parameters)
 			delete(rawMsg, key)
-		case "plainHTTP":
+		case "plainHttp":
 				err = unpopulate(val, "PlainHTTP", &b.PlainHTTP)
 			delete(rawMsg, key)
 		case "templateKind":
@@ -3264,7 +3264,7 @@ func (r *RecipeGetMetadata) UnmarshalJSON(data []byte) error {
 func (r RecipeGetMetadataResponse) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "parameters", r.Parameters)
-	populate(objectMap, "plainHTTP", r.PlainHTTP)
+	populate(objectMap, "plainHttp", r.PlainHTTP)
 	populate(objectMap, "templateKind", r.TemplateKind)
 	populate(objectMap, "templatePath", r.TemplatePath)
 	populate(objectMap, "templateVersion", r.TemplateVersion)
@@ -3283,7 +3283,7 @@ func (r *RecipeGetMetadataResponse) UnmarshalJSON(data []byte) error {
 		case "parameters":
 				err = unpopulate(val, "Parameters", &r.Parameters)
 			delete(rawMsg, key)
-		case "plainHTTP":
+		case "plainHttp":
 				err = unpopulate(val, "PlainHTTP", &r.PlainHTTP)
 			delete(rawMsg, key)
 		case "templateKind":

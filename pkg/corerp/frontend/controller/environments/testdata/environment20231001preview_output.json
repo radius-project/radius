@@ -18,7 +18,7 @@
                 "mongo-azure": {
                     "templateKind": "bicep",
                     "templatePath": "ghcr.io/radius-project/dev/recipes/mongodatabases/azure:1.0",
-                    "plainHTTP": false,
+                    "plainHttp": false,
                     "parameters": {
                         "throughput": 400
                     }
