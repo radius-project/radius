@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -36,7 +37,7 @@ using OpenAPI;
 namespace Applications.Datastores;
 
 @doc("RedisCache portable resource")
-model RedisCacheResource is TrackedResource<RedisCacheProperties> {
+model RedisCacheResource is TrackedResourceRequired<RedisCacheProperties, "redisCaches">{
   @path
   @doc("The name of the RedisCache portable resource resource")
   @key("redisCacheName")

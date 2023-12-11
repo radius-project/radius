@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -39,7 +40,7 @@ namespace Applications.Core;
 model ExtenderListSecretResponse {}
 
 @doc("ExtenderResource portable resource")
-model ExtenderResource is TrackedResource<ExtenderProperties> {
+model ExtenderResource is TrackedResourceRequired<ExtenderProperties, "extenders">{
   @path
   @doc("The name of the ExtenderResource portable resource")
   @key("extenderName")

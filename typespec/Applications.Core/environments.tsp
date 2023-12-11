@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 import "./extensions.tsp";
 
 using TypeSpec.Http;
@@ -38,7 +39,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("The environment resource")
-model EnvironmentResource is TrackedResource<EnvironmentProperties> {
+model EnvironmentResource is TrackedResourceRequired<EnvironmentProperties, "environments">{
   @doc("environment name")
   @key("environmentName")
   @path

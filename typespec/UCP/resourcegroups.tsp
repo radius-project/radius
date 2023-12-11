@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
@@ -38,7 +39,7 @@ using OpenAPI;
 namespace Ucp;
 
 @doc("The resource group resource")
-model ResourceGroupResource is TrackedResource<ResourceGroupProperties> {
+model ResourceGroupResource is TrackedResourceRequired<ResourceGroupProperties, "resourceGroups"> {
   @doc("The name of resource group")
   @path
   @key("resourceGroupName")

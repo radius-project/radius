@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 import "./extensions.tsp";
 
 using TypeSpec.Http;
@@ -37,7 +38,7 @@ using OpenAPI;
 
 namespace Applications.Core;
 
-model ContainerResource is TrackedResource<ContainerProperties> {
+model ContainerResource is TrackedResourceRequired<ContainerProperties, "containers">{
   @doc("Container name")
   @path
   @key("containerName")

@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
@@ -39,7 +40,7 @@ using OpenAPI;
 namespace Ucp;
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
-model AwsCredentialResource is TrackedResource<AwsCredentialProperties> {
+model AwsCredentialResource is TrackedResourceRequired<AwsCredentialProperties, "awsCredentials"> {
   @key("credentialName")
   @doc("The AWS credential name.")
   @path

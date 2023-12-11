@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 import "./extensions.tsp";
 
 using TypeSpec.Http;
@@ -38,13 +39,15 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Radius Application resource")
-model ApplicationResource is TrackedResource<ApplicationProperties> {
+model ApplicationResource is TrackedResourceRequired<ApplicationProperties, "applications">{
   @doc("The application name")
   @path
   @key("applicationName")
   @segment("applications")
+  @visibility("read", "create")
   name: ResourceNameString;
 }
+
 
 @doc("Application properties")
 model ApplicationProperties {

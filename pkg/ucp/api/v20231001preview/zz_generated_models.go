@@ -53,7 +53,7 @@ type AwsCredentialResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties AwsCredentialPropertiesClassification
 
 	// Resource tags.
@@ -104,7 +104,7 @@ type AzureCredentialResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties AzureCredentialPropertiesClassification
 
 	// Resource tags.
@@ -277,7 +277,7 @@ type PlaneResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *PlaneResourceProperties
 
 	// Resource tags.
@@ -368,7 +368,7 @@ type ResourceGroupResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *ResourceGroupProperties
 
 	// Resource tags.
