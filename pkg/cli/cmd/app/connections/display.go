@@ -27,7 +27,7 @@ import (
 
 // display builds the formatted output for the application graph as text.
 func display(applicationResources []*v20231001preview.ApplicationGraphResource, applicationName string) string {
-	// Sort by type (containers first), and then by name, then by id.
+	// Sort by type (containers first), and then by other types, name and then by id.
 	containerType := "Applications.Core/containers"
 	sort.Slice(applicationResources, func(i, j int) bool {
 		if strings.EqualFold(*applicationResources[i].Type, containerType) !=
