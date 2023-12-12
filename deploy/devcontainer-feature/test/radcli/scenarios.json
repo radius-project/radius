@@ -1,0 +1,18 @@
+{
+    "edge": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "radcli": {
+                "version": "edge"
+            }
+        }
+    },
+    "version": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "radcli": {
+                "version": "0.27.0"
+            }
+        }
+    }
+}
