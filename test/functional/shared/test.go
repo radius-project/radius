@@ -82,16 +82,17 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 
 	return RPTestOptions{
 		TestOptions:      test.NewTestOptions(t),
+		Workspace:        workspace,
 		CustomAction:     customAction,
 		ManagementClient: client,
 		AWSClient:        awsClient,
 		Connection:       connection,
-		Workspace:        workspace,
 	}
 }
 
 type RPTestOptions struct {
 	test.TestOptions
+
 	CustomAction     *clientv2.CustomActionClient
 	ManagementClient clients.ApplicationsManagementClient
 	AWSClient        aws.AWSCloudControlClient
