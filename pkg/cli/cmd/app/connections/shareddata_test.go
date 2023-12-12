@@ -18,7 +18,6 @@ package connections
 
 import (
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 )
 
 // This file contains shared variables, constants and functions used in tests.
@@ -37,52 +36,3 @@ var redisResourceName = "redis"
 
 var awsMemoryDBResourceID = "/planes/aws/aws/accounts/00000000/regions/us-west-2/providers/AWS.MemoryDB/Cluster/redis-aqbjixghynqgg"
 var azureRedisCacheResourceID = "/planes/azure/azure/subscriptions/00000000/resourceGroups/azure-group/providers/Microsoft.Cache/Redis/redis"
-
-func makeRedisResourceID(name string) string {
-	return "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/" + name
-}
-
-var containerDeploymentOutputResource any = makeKubernetesOutputResource("apps", "Deployment", "default-demo", "demo")
-var redisAWSOutputResource any = makeOutputResource(awsMemoryDBResourceID)
-var redisAzureOutputResource any = makeOutputResource(azureRedisCacheResourceID)
-
-// makeKubernetesOutputResource creates a Kubernetes output resource.
-func makeKubernetesOutputResource(group string, kind string, namespace string, name string) map[string]any {
-	return map[string]any{
-		"id": resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, group, kind, namespace, name),
-	}
-}
-
-// makeOutputResource creates an AWS output resource.
-func makeOutputResource(id string) map[string]any {
-	return map[string]any{
-		"id": id,
-	}
-}
-
-// makeResourceProperties creates a map of resource properties for a resource.
-//
-// connections should contain a map of name -> resource ID.
-// outputResources should contain the list of output resources.
-func makeResourceProperties(connections map[string]string, outputResources []any) map[string]any {
-	properties := map[string]any{}
-
-	if connections != nil {
-		c := map[string]any{}
-		for name, id := range connections {
-			c[name] = map[string]any{
-				"source": id,
-			}
-		}
-		properties["connections"] = c
-	}
-
-	if len(outputResources) > 0 {
-		status := map[string]any{
-			"outputResources": outputResources,
-		}
-		properties["status"] = status
-	}
-
-	return properties
-}
