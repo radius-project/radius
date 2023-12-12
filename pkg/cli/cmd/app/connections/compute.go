@@ -222,6 +222,22 @@ func outputResourceEntryFromID(id resources.ID) outputResourceEntry {
 	return entry
 }
 
+func providerFromID(id string) string {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return ""
+	}
+
+	if len(parsed.ScopeSegments()) > 0 && parsed.IsUCPQualified() {
+		return parsed.ScopeSegments()[0].Type
+	} else if len(parsed.ScopeSegments()) > 0 {
+		// Relative Resource ID (ARM)
+		return resourcemodel.ProviderAzure
+	}
+
+	return ""
+}
+
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
 // and produces a list of output resources.
 func outputResourcesFromAPIData(resource generated.GenericResource) []outputResourceEntry {

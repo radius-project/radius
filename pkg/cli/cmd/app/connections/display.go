@@ -88,7 +88,12 @@ func display(applicationResources []*v20231001preview.ApplicationGraphResource, 
 		} else {
 			output.WriteString("Resources:\n")
 			for _, resource := range resource.OutputResources {
-				output.WriteString(fmt.Sprintf("  %s (%s)\n", *resource.Name, *resource.Type))
+				link := makeHyperlink(resource)
+				if link == "" {
+					output.WriteString(fmt.Sprintf("  %s (%s)\n", *resource.Name, *resource.Type))
+				} else {
+					output.WriteString(fmt.Sprintf("  %s (%s) %s\n", *resource.Name, *resource.Type, link))
+				}
 			}
 		}
 
@@ -96,4 +101,18 @@ func display(applicationResources []*v20231001preview.ApplicationGraphResource, 
 
 	}
 	return output.String()
+}
+
+func makeHyperlink(resource *v20231001preview.ApplicationGraphOutputResource) string {
+	// Just azure for now.
+	provider := providerFromID(*resource.ID)
+	if provider != "azure" {
+		return ""
+	}
+	// https://portal.azure.com/#@{tenantId}/resource{resourceId}
+	url := fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", "72f988bf-86f1-41af-91ab-2d7cd011db47", *resource.ID)
+
+	// This is the magic incantation for a console hyperlink.
+	// \x1b]8;;h { URL } \x07 { link text } \x1b]8;;\x07
+	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07\n", url, "open portal")
 }
