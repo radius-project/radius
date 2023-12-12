@@ -106,7 +106,7 @@ model BicepRecipeProperties extends RecipeProperties {
   templateKind: "bicep";
 
   @doc("Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).")
-  plainHTTP?: boolean;
+  plainHttp?: boolean;
 }
 
 @doc("Represents Terraform recipe properties.")
@@ -142,7 +142,7 @@ model RecipeGetMetadataResponse {
   parameters: {};
 
   @doc("Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS).")
-  plainHTTP?: boolean;
+  plainHttp?: boolean;
 }
 
 @armResourceOperations
