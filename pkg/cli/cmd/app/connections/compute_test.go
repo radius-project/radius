@@ -87,6 +87,13 @@ func Test_compute(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
+	t.Run("get provider from ID", func(t *testing.T) {
+		require.Equal(t, "aws", providerFromID(awsMemoryDBResourceID))
+		require.Equal(t, "azure", providerFromID(azureRedisCacheResourceID))
+		require.Equal(t, "", providerFromID(containerResourceID))
+		require.Equal(t, "", providerFromID("asdf-invalid-YO"))
+	})
+
 	t.Run("connections to multiple", func(t *testing.T) {
 		applicationResources := []generated.GenericResource{
 			{
