@@ -26,6 +26,8 @@ jobs:
           publish-features: "true"
           base-path-to-features: "./deploy/devcontainer-feature/src"
           generate-docs: "false"
+          # disable validation due to used preview feature
+          disable-schema-validation: "true"
           
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
