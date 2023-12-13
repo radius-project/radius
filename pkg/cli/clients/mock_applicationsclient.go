@@ -168,6 +168,21 @@ func (mr *MockApplicationsManagementClientMockRecorder) GetEnvDetails(arg0, arg1
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvDetails", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvDetails), arg0, arg1)
 }
 
+// GetGraph mocks base method.
+func (m *MockApplicationsManagementClient) GetGraph(arg0 context.Context, arg1 string) (v20231001preview.ApplicationGraphResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGraph", arg0, arg1)
+	ret0, _ := ret[0].(v20231001preview.ApplicationGraphResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGraph indicates an expected call of GetGraph.
+func (mr *MockApplicationsManagementClientMockRecorder) GetGraph(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGraph", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetGraph), arg0, arg1)
+}
+
 // ListAllResourcesByApplication mocks base method.
 func (m *MockApplicationsManagementClient) ListAllResourcesByApplication(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()

@@ -13,12 +13,12 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -116,27 +116,53 @@ func Test_Run(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	applicationResources := []generated.GenericResource{
-		{
-			ID:         to.Ptr(containerResourceID),
-			Properties: makeResourceProperties(map[string]string{"db": redisResourceID}, []any{containerDeploymentOutputResource}),
-		},
-	}
-	environmentResources := []generated.GenericResource{
-		{
-			ID:         to.Ptr(redisResourceID),
-			Properties: makeResourceProperties(nil, []any{redisAWSOutputResource}),
+	graph := corerpv20231001preview.ApplicationGraphResponse{
+		Resources: []*corerpv20231001preview.ApplicationGraphResource{
+			{
+				ID:                to.Ptr(containerResourceID),
+				Name:              to.Ptr(containerResourceName),
+				Type:              to.Ptr(containerResourceType),
+				ProvisioningState: to.Ptr(provisioningStateSuccess),
+				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
+					{
+						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
+						Type: to.Ptr("kubernetes: apps/Deployment"),
+						Name: to.Ptr("demo"),
+					},
+				},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						ID:        to.Ptr(redisResourceID),
+						Direction: &directionOutbound,
+					},
+				},
+			},
+			{
+				ID:                to.Ptr(redisResourceID),
+				Name:              to.Ptr(redisResourceName),
+				Type:              to.Ptr(redisResourceType),
+				ProvisioningState: to.Ptr(provisioningStateSuccess),
+				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
+					{
+						ID:   to.Ptr("/planes/radius/local/resourcegroups/test-group/providers/AWS.MemoryDB/Cluster/redis-aqbjixghynqgg"),
+						Type: to.Ptr("aws: AWS.MemoryDB/Cluster"),
+						Name: to.Ptr("redis-aqbjixghynqgg"),
+					},
+				},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						ID:        to.Ptr(containerResourceID),
+						Direction: &directionInbound,
+					},
+				},
+			},
 		},
 	}
 
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 	appManagementClient.EXPECT().
-		ListAllResourcesByApplication(gomock.Any(), "test-app").
-		Return(applicationResources, nil).
-		Times(1)
-	appManagementClient.EXPECT().
-		ListAllResourcesByEnvironment(gomock.Any(), "test-env").
-		Return(environmentResources, nil).
+		GetGraph(gomock.Any(), "test-app").
+		Return(graph, nil).
 		Times(1)
 
 	workspace := &workspaces.Workspace{
