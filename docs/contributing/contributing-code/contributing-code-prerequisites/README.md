@@ -39,7 +39,7 @@ The best way to launch VS Code for Go is to do *File* -> *Open Folder* on the re
 
 You can easily do this from the command shell with `code .`, which opens the current directory as a folder in VS Code.
 
-## Tool Overview
+## Tool overview
 
 Contributing to Project Radius requires several tools to get started. This section lists them grouped by their context
 
@@ -49,7 +49,7 @@ Contributing to Project Radius requires several tools to get started. This secti
     Note: some of this content is synchronized with the first-commit guide for simplicity. Keep these in sync!
 -->
 
-### Required Tools
+### Required tools
 
 This is the list of core dependencies to install for the most common tasks. In general we expect all contributors to have all of these tools present:
 
@@ -63,7 +63,7 @@ This is the list of core dependencies to install for the most common tasks. In g
 
 To build our containers, you also need [Docker](https://docs.docker.com/engine/install/).  
 
-### Additional Tools
+### Additional tools
 
 The following tools are required depending on the task at hand.
 
@@ -75,7 +75,7 @@ The easiest way to run Radius is on Kubernetes. To do this you will need the abi
 - [Install Helm](https://helm.sh/docs/intro/install/)
 - [Install Kind](https://kubernetes.io/docs/tasks/tools/#kind)
 
-#### Troubleshooting Kubernetes
+#### Troubleshooting kubernetes
 
 You might want tools that can help debug Kubernetes problems and understand what's going on in the cluster. Here are some recommendations from the team:
 
@@ -95,7 +95,7 @@ The default `go test` output can be hard to read when you have many tests. We re
 
 - [gotestsum](https://github.com/gotestyourself/gotestsum#install)
 
-## Development Environment - Setup Options
+## Development environment - setup options
 
 The following sections describe the aforementioned alternatives of development setups in more detail.
 
@@ -108,7 +108,7 @@ The steps to execute are:
 1. Press this button[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=340522752&skip_quickstart=true&machine=basicLinux32gb&devcontainer_path=.devcontainer%2Fcontributor%2Fdevcontainer.json&geo=UsWest)
 1. There is no second step - you are ready to contribute 😎
 
-> **Note** - When using GitHub Codespoces cost can occur on your side after you have used up the monthly included storage and core hours for your account. You find more details [here](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces).
+> **Note** - When using GitHub Codespaces cost can occur on your side after you have used up the monthly included storage and core hours for your account. You find more details [here](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces).
 
 ### VS Code and Dev Container
 
@@ -136,7 +136,7 @@ Once the container is up and running you can start with your contribution.
 
 > 📝 **Tip** - You find more information about developing inside a container [here](https://code.visualstudio.com/docs/devcontainers/containers)
 
-### Local Installation
+### Local installation
 
 to have all prerequisites installed locally you must install the tools mentioned in the sections [Tool Overview - Required Tools](#required-tools) and [Tool Overview - Additional Tools](#additional-tools) on your local machine.
 
@@ -161,7 +161,7 @@ Using Homebrew:
 brew install make
 ```
 
-## Testing Required Tools
+## Testing required tools
 
 Independent of the setup option you have chosen, you can now test your tooling. If not already done, navigate to the cloned project in your command shell and build the main outputs using `make`:
 
@@ -171,7 +171,7 @@ make build && make lint
 
 Running these steps will run our build and lint steps and verify that the tools are installed correctly. If you get stuck or suspect something is not working in these instructions please [open an issue](https://github.com/radius-project/radius/issues/new/choose).
 
-### Code Generation
+### Code generation
 
 Our code generation targets are used to update generated OpenAPI specs and generated Go code based on those OpenAPI specs. Additionally, some Go code is generated mocks or Kubernetes API types.
 

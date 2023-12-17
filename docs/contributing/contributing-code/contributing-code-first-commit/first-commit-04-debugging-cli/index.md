@@ -2,67 +2,76 @@
 
 ## Debugging your changes
 
-### Creating debug settings
+The following sections describe the debugging in Visual Studio Code (VS Code). If you are using another editor you can skip the following sections.
 
-You can debug your changes right from VS Code. It requires a small amount of set up for Go.
+>📝 **Tip** The first time you debug on **macOS** with a given version of Go you will be prompted to enter your password. It is normal for this to take 1-2 minutes for the prompt to appear the first time.
 
-First, open the [**Run View**](https://code.visualstudio.com/docs/editor/debugging#_run-view) in VS Code. You can do this either by clicking the icon or using the keyboard shortcut `shift+command+D` (`shift+control+d`) on Windows.
+## Predefined debug configurations
 
-<img width="300px" src="run-view.png" alt="Selecting the run view">
+You can debug your changes right from VS Code. The repository has a `.vscode` directory which contains several launch configurations containing debugging configurations. We describe the configurations in the following sections.
 
-At the top of the new pane you should see something like the following:
+### Debugging rad CLI
 
-<img width="400px" src="options-in-run-view.png" alt="Opens in the run view"><br />
+This section describes the configuration named **"Debug rad CLI"**. This is a basic Go debugger configuration that is set up to launch the `rad` CLI. To try it out, set a breakpoint in `main.go`. Set the breakpoint by clicking in the *gutter* to the left of the line numbers in you editor. Place the breakpoint on the new line you added in `main.go`.
 
-Click on `create a launch.json file`.
+![Placing a breakpoint in main.go](img/main-with-breakpoint.png)
 
+The debugger will stop the program prior to crossing over your breakpoint. Execute the following steps to launch the CLI in the debugger:
 
-This will open the file `.vscode/launch.json` in the editor. This is where VS Code stores information about different debugging configurations.
+- Open the debug pane.
 
-Replace the contents with the following text:
+![VS Code debug pane](img/vscode-debug-pane.png)
 
-```bash
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "rad CLI",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "program": "${workspaceFolder}/cmd/rad/main.go",
-            "cwd": "${workspaceFolder}",
+- Select the **"Debug rad CLI"** entry from the drop down list.
 
-            // If you need to specify command line arguments
-            // for the CLI they go here as a JSON array of strings
-            "args": []
-        }
-    ]
-}
-```
+![VS Code debug configuration selection](img/vscode-debug-config-selection.png)
 
-> This is a basic Go debugger configuration that is set up to launch the `rad` CLI. You can create definitions for any set of debug settings you want to keep handy.
+- Click the icon with the green triangle to launch the debugging session.
 
-### Running with the debugger
+![VS Code start selected debug configuration](img/vscode-debug-start.png)
 
-To try it out, first you should set a breakpoint in `main.go`. The debugger will stop the program prior to crossing over your breakpoint.
+Before the debugging will start the project is build in the background. This might take some time. After the build is completed the program will start and the breakpoint should be hit.
 
-Set a breakpoint by clicking in the *gutter* to the left of the line numbers in you editor. Place the breakpoint on the new line you added in `main.go`.
+![Hitting a breakpoint in main.go](img/main-breakpoint-hit.png)
 
-<img width="600px" src="main-with-breakpoint.png" alt="Placing a breakpoint">
+You can play around with the various debugger features, like stepping into code. When you're done, hit the red square *stop* icon in the debugger tools to end the debugging session.
 
-Now you can launch the CLI in the debugger. Press `F5` to launch the debugger. Alternatively, you can click the icon with the green triangle in the *run view* to launch.
+> 📝 **Tip** - You can create definitions for any set of debug settings you want to keep handy.
 
-After some time the program will start and the breakpoint should be hit.
+### Debug rad CLI (prompt for args)
 
->**macOS permissions** <br>
-The first time you debug on macOS with a given version of Go you will be prompted to enter your password. It is normal for this to take 1-2 minutes for the prompt to appear the first time.
+This section describes the configuration named **"Debug rad CLI (prompt for args)"**. In contrast to the previous generic one this one uses the specific `rad CLI` commands to kick of the debugger.  
 
-<img width="600px" src="main-breakpoint-hit.png" alt="Hitting a breakpoint">
+Let us test this setup by checking debugging the `rad version` command. The file is located at `cmd/rad/cmd/version.go`. Set a breakpoint at the beginning of the function `writeVersionString`:
+
+![Placing a breakpoint in version.go](img/version-with-breakpoint.png)
+
+The debugger will stop the program prior to crossing over your breakpoint. Execute the following steps to launch the CLI command in the debugger:
+
+- Open the debug pane.
+
+![VS Code debug pane](img/vscode-debug-pane.png)
+
+- Select the **"Debug rad CLI (prompt for args)"** entry from the drop down list.
+
+![VS Code debug configuration selection with arguments](img/vscode-debug-config-selection-with-args.png)
+
+- Click the icon with the green triangle to launch the debugging session.
+
+![VS Code start selected debug configuration with arguments](img/vscode-debug-start-version-with-args.png)
+
+- The system will open up the command palette. Enter the command you want to debug i.e. `version` and confirm.  
+
+![VS Code debug command prompt](img/vscode-debug-prompt-cmd.png)
+
+Before the debugging will start the project is build in the background. This might take some time. After the build is completed the program will start and the breakpoint should be hit.
+
+![Hitting a breakpoint in version.go](img/version-breakpoint-hit.png)
 
 You can play around with the various debugger features, like stepping into code. When you're done, hit the red square *stop* icon in the debugger tools to end the debugging session.
 
 ## Next step
+
 - [Run tests](../first-commit-05-running-tests/index.md)
 
 ## Related Links
