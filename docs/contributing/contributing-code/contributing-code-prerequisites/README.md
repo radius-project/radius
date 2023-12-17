@@ -122,13 +122,16 @@ To get the Dev Container up and running
 
 1. If not already done, clone your fork of the Project Radius repository to your local file system and open the folder with VS Code.
 1. Click the "X"-like button in VS Code to open a remote window
-![Button for opening remote window command palette](img/vscode-devcontainer-open-remote-button.png)
+
+    ![Button for opening remote window command palette](img/vscode-devcontainer-open-remote-button.png)
 
 1. Select the option "Reopen in Container" in the command palette
-![Remote window command palette](img/vscode-cmd-palette-container.png)
+
+    ![Remote window command palette](img/vscode-cmd-palette-container.png)
 
 The dev container will be started automatically.
-![Dev container startup process](img/vscode-devcontainer-opening-process.png)
+
+    ![Dev container startup process](img/vscode-devcontainer-opening-process.png)
 
 When doing this the first time this might take a bit as all dependencies need to be downloaded and installed in your container - so grab a cup of ☕ and enjoy the work done by the container.
 
@@ -140,15 +143,20 @@ Once the container is up and running you can start with your contribution.
 
 to have all prerequisites installed locally you must install the tools mentioned in the sections [Tool Overview - Required Tools](#required-tools) and [Tool Overview - Additional Tools](#additional-tools) on your local machine.
 
-For `make` we advice the following steps depending on you OS:
+#### Install make
+
+For `make` we advice the following installation steps depending on you OS
   
-**Linux**: Install the `build-essential` package:
+##### Linux
+
+Install the `build-essential` package:
 
 ```bash
 sudo apt-get install build-essential
 ```
 
-**Mac**:
+##### Mac
+
 Using Xcode:
 
 ```bash  

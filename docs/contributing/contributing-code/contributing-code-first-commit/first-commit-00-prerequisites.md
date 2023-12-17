@@ -31,26 +31,32 @@ However, you can also install all tools locally. This is the list of core depend
 - [Golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
 - [jq](https://jqlang.github.io/jq/download/)  
 - Make  
-
-  **Linux**: Install the `build-essential` package:
-
-  ```bash
-  sudo apt-get install build-essential
-  ```
-
-  **Mac**:
-
-  Using Xcode:
   
-  ```bash  
-  xcode-select --install
-  ```
-  
-  Using Homebrew:
+### Install make
 
-  ```bash  
-  brew install make
-  ```
+For `make` we advice the following installation steps depending on you OS.
+
+#### Linux
+
+Install the `build-essential` package:
+
+```bash
+sudo apt-get install build-essential
+```
+
+#### Mac
+
+Using Xcode:
+
+```bash  
+xcode-select --install
+```
+
+Using Homebrew:
+
+```bash  
+brew install make
+```
 
 ## Next step
 
