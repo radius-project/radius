@@ -33,7 +33,7 @@ Install both of these and then follow the steps in the *Quick Start* for the Go 
 
 The extension will walk you through an automated install of some additional tools that match your installed version of Go.
 
-**Launching VS Code**
+### Launching VS Code
 
 The best way to launch VS Code for Go is to do *File* -> *Open Folder* on the repository.
 

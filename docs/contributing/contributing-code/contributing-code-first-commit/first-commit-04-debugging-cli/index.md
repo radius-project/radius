@@ -38,7 +38,7 @@ You can play around with the various debugger features, like stepping into code.
 
 > 📝 **Tip** - You can create definitions for any set of debug settings you want to keep handy.
 
-### Debug rad CLI (prompt for args)
+### Debug rad CLI - prompt for args
 
 This section describes the configuration named **"Debug rad CLI (prompt for args)"**. In contrast to the previous generic one this one uses the specific `rad CLI` commands to kick of the debugger.  
 

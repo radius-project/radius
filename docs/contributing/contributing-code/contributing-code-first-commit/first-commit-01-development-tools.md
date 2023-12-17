@@ -25,7 +25,7 @@ The extension will walk you through an automated install of some additional tool
 
 At this point you should be able to open any of the Go files in the repo and see syntax highlighting working.
 
-**Launching VS Code**
+## Launching VS Code
 
 The best way to launch VS Code for Go is to do *File* -> *Open Folder* on the repository.
 

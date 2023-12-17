@@ -13,7 +13,7 @@ We support developing on macOS, Linux and Windows with [WSL](https://docs.micros
 On our supported OSes using a package manager to install these dependencies is a much easier way to keep them updated.
 
 - For macOS, this likely means you should be using [Homebrew](https://brew.sh/).
-- On Linux, use your distro's package manager.
+- On Linux, use your distribution's package manager.
 
 ## Required installs
 
