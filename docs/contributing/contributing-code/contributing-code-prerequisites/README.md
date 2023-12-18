@@ -41,7 +41,7 @@ You can easily do this from the command shell with `code .`, which opens the cur
 
 ## Tool overview
 
-Contributing to Project Radius requires several tools to get started. This section lists them grouped by their context
+Contributing to Radius requires several tools to get started. This section lists them grouped by their context
 
 > 📝 **Tip** - If your are using GitHub Codespaces or Dev Containers, all these tools are already in place. The following sections give you an overview what tools you have at hand in these environments. You directly jump to section [GitHub Codespaces](#github-codespaces) or [VS Code and Dev Container](#vs-code-and-dev-container).
 
