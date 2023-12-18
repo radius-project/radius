@@ -18,6 +18,7 @@ package v20231001preview
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -25,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	types "github.com/radius-project/radius/pkg/recipes"
 
+	tfaddr "github.com/hashicorp/terraform-registry-address"
 	rp_util "github.com/radius-project/radius/pkg/rp/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
@@ -32,7 +34,7 @@ import (
 
 const (
 	EnvironmentComputeKindKubernetes = "kubernetes"
-	invalidLocalModulePathFmt        = "local module paths are not supported with Terraform Recipes. The 'templatePath' '%s' was detected as a local module path because it begins with '/' or './' or '../'."
+	invalidModulePathFmt             = "only Terraform registry and HTTP URLs are supported as module sources with Terraform Recipes. The 'templatePath' '%s' was detected as an invalid module source."
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
@@ -298,10 +300,16 @@ func toEnvExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 func toEnvironmentRecipeProperties(e RecipePropertiesClassification) (datamodel.EnvironmentRecipeProperties, error) {
 	switch c := e.(type) {
 	case *TerraformRecipeProperties:
+		// Radius only supports Terraform registry and HTTP URLs as module sources.
 		if c.TemplatePath != nil {
-			// Check for local paths
-			if strings.HasPrefix(to.String(c.TemplatePath), "/") || strings.HasPrefix(to.String(c.TemplatePath), "./") || strings.HasPrefix(to.String(c.TemplatePath), "../") {
-				return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidLocalModulePathFmt, to.String(c.TemplatePath)))
+			// We first validate if the template path is a valid Terraform registry module source.
+			_, err := tfaddr.ParseModuleSource(to.String(c.TemplatePath))
+			if err != nil {
+				// If the template path is not a Terraform registry module source, we validate if it is an HTTP URL.
+				_, err = url.ParseRequestURI(to.String(c.TemplatePath))
+				if err != nil {
+					return datamodel.EnvironmentRecipeProperties{}, v1.NewClientErrInvalidRequest(fmt.Sprintf(invalidModulePathFmt, to.String(c.TemplatePath)))
+				}
 			}
 		}
 		return datamodel.EnvironmentRecipeProperties{

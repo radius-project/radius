@@ -40,6 +40,10 @@
           "templateKind": "bicep",
           "templatePath": "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
           "plainHttp": true
+        },
+        "terraform-recipe": {
+          "templateKind": "terraform",
+          "templatePath": "git::https://example.com/vpc.git"
         }
       },
       "Applications.Dapr/stateStores":{

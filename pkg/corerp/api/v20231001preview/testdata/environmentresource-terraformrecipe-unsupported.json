@@ -17,7 +17,7 @@
         "Applications.Datastores/mongoDatabases":{
           "cosmos-recipe": {
             "templateKind": "terraform",
-            "templatePath": "../not-allowed/"
+            "templatePath": "github.com/hashicorp/example"
           }
         }
       }

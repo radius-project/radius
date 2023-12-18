@@ -142,6 +142,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 								TemplatePath: "br:ghcr.io/sampleregistry/radius/recipes/rediscaches",
 								PlainHTTP:    true,
 							},
+							"terraform-recipe": datamodel.EnvironmentRecipeProperties{
+								TemplateKind: recipes.TemplateKindTerraform,
+								TemplatePath: "git::https://example.com/vpc.git",
+							},
 						},
 						dapr_ctrl.DaprStateStoresResourceType: {
 							"statestore-recipe": datamodel.EnvironmentRecipeProperties{
@@ -291,7 +295,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-terraformrecipe-localpath.json",
-			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidLocalModulePathFmt, "../not-allowed/")},
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidModulePathFmt, "../not-allowed/")},
+		},
+		{
+			filename: "environmentresource-terraformrecipe-unsupported.json",
+			err:      &v1.ErrClientRP{Code: v1.CodeInvalid, Message: fmt.Sprintf(invalidModulePathFmt, "github.com/hashicorp/example")},
 		},
 	}
 
