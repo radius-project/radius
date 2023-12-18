@@ -8,7 +8,7 @@ This page lists the prerequisites for working with the repository. In general, y
 
 We will walk you through the options in the following sections.
 
-> 📝 **Tip** - We recommend the usage of GitHub Codespaces of local dev containers as they are the most convenient way to get started.
+> 📝 **Tip** - We recommend the usage of GitHub Codespaces or Dev Containers in VS Code as they are the most convenient way to get started.
 
 Depending on the task you need to perform, you may need to install more tools, but basic prerequisites should be sufficient for most contributors to get started.
 
