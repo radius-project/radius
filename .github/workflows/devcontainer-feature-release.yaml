@@ -32,7 +32,7 @@ jobs:
           disable-repo-tagging: "true"
           # We don't want to include the repo name, being consistent without
           # examples at https://containers.dev/collections
-          features-namespace: "devcontainer-features"
+          features-namespace: "radius-project/devcontainer-features"
           
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
