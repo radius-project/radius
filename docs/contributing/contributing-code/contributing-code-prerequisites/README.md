@@ -45,7 +45,7 @@ To use the dev container you must have the following tools installed and running
 - [Dev Container Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 - [Docker](https://docs.docker.com/engine/install/)
 
-> 📝 **Tip** - If you are new to *dev containers* you find more information about developing inside a container [here](https://code.visualstudio.com/docs/devcontainers/containers) and a comprehensive tutorial [here](https://code.visualstudio.com/docs/devcontainers/tutorial)
+> 📝 **Tip** - If you are new to *dev containers* you find more information about developing inside a container [here](https://code.visualstudio.com/docs/devcontainers/containers) and a comprehensive tutorial [here](https://code.visualstudio.com/docs/devcontainers/tutorial).
 
 To get the dev container up and running
 
@@ -61,7 +61,7 @@ To get the dev container up and running
 
 The dev container will be started automatically.
 
-    ![Dev container startup process](img/vscode-devcontainer-opening-process.png)
+![Dev container startup process](img/vscode-devcontainer-opening-process.png)
 
 When doing this the first time this might take a bit as all dependencies need to be downloaded and installed in your container - so grab a cup of ☕ and enjoy the work done by the container.
 
