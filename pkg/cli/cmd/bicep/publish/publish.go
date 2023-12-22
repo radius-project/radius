@@ -168,7 +168,12 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	err = r.publish(ctx)
 	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q.", r.File, r.Target)
+		if strings.Contains(r.Target, "azurecr.io") && strings.Contains(r.Target, "authentication required") {
+			const azCliHelp = "https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
+			return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q. Please login to az cli and az aci detailed here: %q", r.File, r.Target, azCliHelp)
+		} else {
+			return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
+		}
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
