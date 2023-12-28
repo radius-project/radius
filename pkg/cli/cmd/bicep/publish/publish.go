@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -30,6 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 
+	"net/http"
+
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -39,6 +42,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
@@ -167,11 +171,28 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Destination = dest
 
 	err = r.publish(ctx)
-	if err != nil {
-		if strings.Contains(r.Target, "azurecr.io") && strings.Contains(r.Target, "authentication required") {
-			const azCliHelp = "https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
-			return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q. Please login to az cli and az aci detailed here: %q", r.File, r.Target, azCliHelp)
-		} else {
+
+	var httpErr *errcode.ErrorResponse
+
+	if errors.As(err, &httpErr) {
+		acrInfo := ""
+
+		if strings.Contains(httpErr.URL.Host, "azurecr.io") {
+			acrInfo = "Visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
+		}
+
+		switch httpErr.StatusCode {
+		case http.StatusUnauthorized:
+			if acrInfo == "" {
+				return clierrors.MessageWithCause(err, "Unauthorized: Please login to %q\nError: %q", httpErr.URL.Host, r.Target)
+			} else {
+				return clierrors.MessageWithCause(err, "Unauthorized: Please login to %q\n%q\nError: %q", httpErr.URL.Host, acrInfo, r.Target)
+			}
+		case http.StatusForbidden:
+			return clierrors.MessageWithCause(err, "Forbidden: You don't have permission to push to %q\nError: %q", httpErr.URL.Host, r.Target)
+		case http.StatusNotFound:
+			return clierrors.MessageWithCause(err, "Not Found: Unable to find registry %q\nError: %q", httpErr.URL.Host, r.Target)
+		default:
 			return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
 		}
 	}
