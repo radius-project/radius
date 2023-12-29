@@ -5,6 +5,10 @@ on:
       - main
       - features/*
       - release/*
+# Ignore updating of versions.yaml file to avoid unnecessary functional tests
+    paths-ignore:
+      - 'versions.yaml'
+        
 jobs:
   approve-functional-tests-run:
     name: 'Approve Functional Tests'
