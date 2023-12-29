@@ -1,0 +1,71 @@
+name: Engineering Improvement
+description: Report problems or suggestions to improve the Radius engineering processes and/or pipelines
+title: "<TITLE>"
+labels: ["maintenance"]
+body:
+  - type: markdown
+    attributes:
+      value: "## Engineering Improvement"
+  - type: textarea
+    attributes:
+      label: Area for Improvement
+      description: What engineering process or tools can be improved? Build? Testing? ...? Be specific.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Observed behavior
+      description: What you're experiencing that you believe could be improved.
+      placeholder: |
+        If applicable, add screenshots to help explain your problem.
+
+        Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Desired behavior
+      description: What you'd like to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed Fix
+      description: Have you found a way to implement or fix the issue?
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: "## System information"
+  - type: input
+    attributes:
+      label: rad Version
+      description: What rad cli version are you running?
+      placeholder: PASTE OUTPUT OF "rad version"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Operating system
+      description: What operating system (macOS Monterey, Windows 11, etc.) and architecture (x86, x64, arm64, etc.) are you running?
+      placeholder: |
+        For example: macOS Monterey, M1 chip
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here
+      placeholder: |
+        Links? References? Anything that will give us more context about the issue you are encountering!
+
+        Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false
+  - type: checkboxes
+    attributes:
+      label: Would you like to support us?
+      description: Would you like to support us in improving Radius engineering processes and/or pipelines?
+      options:
+        - label: Yes, I would like to support you
+          required: false
