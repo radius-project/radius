@@ -176,25 +176,30 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	if errors.As(err, &httpErr) {
 		acrInfo := ""
+		message := fmt.Sprintf("Failed to publish Bicep file %s to %s", r.File, r.Target)
 
 		if strings.Contains(httpErr.URL.Host, "azurecr.io") {
-			acrInfo = "Visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
+			acrInfo = "For more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
 		}
 
 		switch httpErr.StatusCode {
 		case http.StatusUnauthorized:
 			if acrInfo == "" {
-				return clierrors.MessageWithCause(err, "Unauthorized: Please login to %q\nError: %q", httpErr.URL.Host, r.Target)
+				return clierrors.MessageWithCause(err, "%q\nUnauthorized: Please login to %q", message, httpErr.URL.Host)
 			} else {
-				return clierrors.MessageWithCause(err, "Unauthorized: Please login to %q\n%q\nError: %q", httpErr.URL.Host, acrInfo, r.Target)
+				return clierrors.MessageWithCause(err, "%q\nUnauthorized: Please login to %q\n%q", message, httpErr.URL.Host, acrInfo)
 			}
 		case http.StatusForbidden:
-			return clierrors.MessageWithCause(err, "Forbidden: You don't have permission to push to %q\nError: %q", httpErr.URL.Host, r.Target)
+			return clierrors.MessageWithCause(err, "%q\nForbidden: You don't have permission to push to %q", message, httpErr.URL.Host)
 		case http.StatusNotFound:
-			return clierrors.MessageWithCause(err, "Not Found: Unable to find registry %q\nError: %q", httpErr.URL.Host, r.Target)
+			return clierrors.MessageWithCause(err, "%q\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
 		default:
-			return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
+			return clierrors.MessageWithCause(err, "%q", message)
 		}
+	}
+
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
