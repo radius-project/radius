@@ -171,39 +171,38 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Destination = dest
 
 	err = r.publish(ctx)
-
 	var httpErr *errcode.ErrorResponse
-
 	if errors.As(err, &httpErr) {
-		acrInfo := ""
 		message := fmt.Sprintf("Failed to publish Bicep file %s to %s", r.File, r.Target)
-
-		if strings.Contains(httpErr.URL.Host, "azurecr.io") {
-			acrInfo = "For more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
-		}
-
-		switch httpErr.StatusCode {
-		case http.StatusUnauthorized:
-			if acrInfo == "" {
-				return clierrors.MessageWithCause(err, "%q\nUnauthorized: Please login to %q", message, httpErr.URL.Host)
-			} else {
-				return clierrors.MessageWithCause(err, "%q\nUnauthorized: Please login to %q\n%q", message, httpErr.URL.Host, acrInfo)
-			}
-		case http.StatusForbidden:
-			return clierrors.MessageWithCause(err, "%q\nForbidden: You don't have permission to push to %q", message, httpErr.URL.Host)
-		case http.StatusNotFound:
-			return clierrors.MessageWithCause(err, "%q\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
-		default:
-			return clierrors.MessageWithCause(err, "%q", message)
-		}
-	}
-
-	if err != nil {
+		return handleErrorResponse(httpErr, message)
+	} else if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
 	return nil
+}
+
+func handleErrorResponse(httpErr *errcode.ErrorResponse, message string) error {
+	acrInfo := ""
+	if strings.Contains(httpErr.URL.Host, "azurecr.io") {
+		acrInfo = "For more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
+	}
+
+	switch httpErr.StatusCode {
+	case http.StatusUnauthorized:
+		if acrInfo == "" {
+			return clierrors.MessageWithCause(httpErr, "%q\nUnauthorized: Please login to %q", message, httpErr.URL.Host)
+		} else {
+			return clierrors.MessageWithCause(httpErr, "%q\nUnauthorized: Please login to %q\n%q", message, httpErr.URL.Host, acrInfo)
+		}
+	case http.StatusForbidden:
+		return clierrors.MessageWithCause(httpErr, "%q\nForbidden: You don't have permission to push to %q", message, httpErr.URL.Host)
+	case http.StatusNotFound:
+		return clierrors.MessageWithCause(httpErr, "%q\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
+	default:
+		return clierrors.MessageWithCause(httpErr, "%q", message)
+	}
 }
 
 func (r *Runner) publish(ctx context.Context) error {
