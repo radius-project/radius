@@ -173,7 +173,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	err = r.publish(ctx)
 	var httpErr *errcode.ErrorResponse
 	if errors.As(err, &httpErr) {
-		message := fmt.Sprintf("Failed to publish Bicep file %s to %s", r.File, r.Target)
+		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", r.File, r.Target)
 		return handleErrorResponse(httpErr, message)
 	} else if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
@@ -192,16 +192,16 @@ func handleErrorResponse(httpErr *errcode.ErrorResponse, message string) error {
 	switch httpErr.StatusCode {
 	case http.StatusUnauthorized:
 		if acrInfo == "" {
-			return clierrors.MessageWithCause(httpErr, "%q\nUnauthorized: Please login to %q", message, httpErr.URL.Host)
+			return clierrors.MessageWithCause(httpErr, "%s\nUnauthorized: Please login to %q", message, httpErr.URL.Host)
 		} else {
-			return clierrors.MessageWithCause(httpErr, "%q\nUnauthorized: Please login to %q\n%q", message, httpErr.URL.Host, acrInfo)
+			return clierrors.MessageWithCause(httpErr, "%s\nUnauthorized: Please login to %q\n%s", message, httpErr.URL.Host, acrInfo)
 		}
 	case http.StatusForbidden:
-		return clierrors.MessageWithCause(httpErr, "%q\nForbidden: You don't have permission to push to %q", message, httpErr.URL.Host)
+		return clierrors.MessageWithCause(httpErr, "%s\nForbidden: You don't have permission to push to %q", message, httpErr.URL.Host)
 	case http.StatusNotFound:
-		return clierrors.MessageWithCause(httpErr, "%q\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
+		return clierrors.MessageWithCause(httpErr, "%s\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
 	default:
-		return clierrors.MessageWithCause(httpErr, "%q", message)
+		return clierrors.MessageWithCause(httpErr, "%s", message)
 	}
 }
 
