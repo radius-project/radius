@@ -28,12 +28,12 @@ import "./common.tsp";
 import "./extensions.tsp";
 
 using TypeSpec.Http;
+using TypeSpec.OpenAPI;
 using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Autorest;
 using Azure.Core;
 using Azure.ResourceManager;
-using OpenAPI;
 
 namespace Applications.Core;
 
@@ -105,11 +105,11 @@ model ApplicationGraphResource {
   outputResources: Array<ApplicationGraphOutputResource>;
 
   @doc("The connections between resources in the application graph.")
-  @extension("x-ms-identifiers",[])
+  @extension("x-ms-identifiers", [])
   connections: Array<ApplicationGraphConnection>;
 
-  @doc("provisioningState of this resource.") 
-  provisioningState: string
+  @doc("provisioningState of this resource.")
+  provisioningState: string;
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")

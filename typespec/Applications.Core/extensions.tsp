@@ -16,7 +16,7 @@ limitations under the License.
 
 import "@typespec/openapi";
 
-using OpenAPI;
+using TypeSpec.OpenAPI;
 
 @doc("Extension of a environment/application resource.")
 @discriminator("kind")

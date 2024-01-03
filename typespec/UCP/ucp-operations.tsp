@@ -21,10 +21,10 @@ import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 
 using TypeSpec.Http;
+using TypeSpec.OpenAPI;
 using TypeSpec.Rest;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Foundations;
-using OpenAPI;
 
 // These operation helpers are created based on the following TypeSpec operations:
 // https://github.com/Azure/typespec-azure/blob/main/packages/typespec-azure-resource-manager/lib/operations.tsp

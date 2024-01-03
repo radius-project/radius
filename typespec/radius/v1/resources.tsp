@@ -19,7 +19,7 @@ import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
 import "@typespec/openapi";
 
-using OpenAPI;
+using TypeSpec.OpenAPI;
 using Azure.Core;
 using Azure.ResourceManager;
 

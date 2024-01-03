@@ -16,7 +16,7 @@ limitations under the License.
 
 import "@typespec/openapi";
 
-using OpenAPI;
+using TypeSpec.OpenAPI;
 
 @doc("The base properties of a Dapr component object.")
 model DaprResourceProperties {

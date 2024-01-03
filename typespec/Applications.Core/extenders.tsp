@@ -27,11 +27,11 @@ import "../radius/v1/resources.tsp";
 import "./common.tsp";
 
 using TypeSpec.Http;
+using TypeSpec.OpenAPI;
 using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Autorest;
 using Azure.ResourceManager;
-using OpenAPI;
 
 namespace Applications.Core;
 

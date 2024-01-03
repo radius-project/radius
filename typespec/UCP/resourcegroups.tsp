@@ -28,12 +28,12 @@ import "./common.tsp";
 import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
+using TypeSpec.OpenAPI;
 using TypeSpec.Rest;
 using TypeSpec.Versioning;
 using Autorest;
 using Azure.Core;
 using Azure.ResourceManager;
-using OpenAPI;
 
 namespace Ucp;
 
