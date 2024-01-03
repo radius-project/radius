@@ -1268,6 +1268,25 @@
         }
       ]
     },
+    "AzureContainerInstanceCompute": {
+      "type": "object",
+      "description": "The Azure container instance compute configuration",
+      "properties": {
+        "resourceGroup": {
+          "type": "string",
+          "description": "The resource group to use for the environment."
+        }
+      },
+      "required": [
+        "resourceGroup"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "aci"
+    },
     "DaprConfigurationStoreProperties": {
       "type": "object",
       "description": "Dapr configuration store portable resource properties",

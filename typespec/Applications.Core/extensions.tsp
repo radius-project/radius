@@ -31,6 +31,15 @@ model KubernetesNamespaceExtension extends Extension {
   `namespace`: string;
 }
 
+@doc("Azure container instance resource group extension of a environment/application resource.")
+model AzureContainerInstanceExtension extends Extension {
+  @doc("The kind of the resource.")
+  kind: "aci";
+
+  @doc("The resource group of the application environment.")
+  resourceGroup: string;
+}
+
 @doc("Kubernetes metadata extension of a environment/application resource.")
 model KubernetesMetadataExtension extends Extension {
   @doc("The kind of the resource.")
