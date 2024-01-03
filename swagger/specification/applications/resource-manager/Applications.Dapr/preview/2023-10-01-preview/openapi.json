@@ -982,8 +982,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1085,8 +1084,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1142,8 +1140,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1238,8 +1235,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1288,8 +1284,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1391,8 +1386,7 @@
         },
         "metadata": {
           "type": "object",
-          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec",
-          "properties": {}
+          "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
         },
         "type": {
           "type": "string",
@@ -1588,8 +1582,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -1628,8 +1621,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       }
     },

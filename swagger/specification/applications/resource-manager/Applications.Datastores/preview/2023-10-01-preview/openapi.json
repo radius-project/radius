@@ -199,11 +199,11 @@
           }
         },
         "x-ms-examples": {
-          "Create or update a MongoDatabase resource with recipe": {
-            "$ref": "./examples/MongoDatabases_CreateOrUpdateRecipe.json"
-          },
           "Create or update a MongoDatabase resource": {
             "$ref": "./examples/MongoDatabases_CreateOrUpdateValues.json"
+          },
+          "Create or update a MongoDatabase resource with recipe": {
+            "$ref": "./examples/MongoDatabases_CreateOrUpdateRecipe.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -367,8 +367,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -715,8 +714,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -1057,8 +1055,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -1479,8 +1476,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -1519,8 +1515,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       }
     },

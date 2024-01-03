@@ -337,8 +337,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -1256,8 +1255,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -2070,11 +2068,11 @@
           }
         },
         "x-ms-examples": {
-          "Update a secret store resource": {
-            "$ref": "./examples/SecretStores_Delete.json"
-          },
           "Update a secret store": {
             "$ref": "./examples/SecretStores_Update.json"
+          },
+          "Update a secret store resource": {
+            "$ref": "./examples/SecretStores_Delete.json"
           }
         },
         "x-ms-long-running-operation-options": {
@@ -2168,8 +2166,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -3648,8 +3645,7 @@
     },
     "ExtenderListSecretResponse": {
       "type": "object",
-      "description": "Response for list secrets API call",
-      "properties": {}
+      "description": "Response for list secrets API call"
     },
     "ExtenderProperties": {
       "type": "object",
@@ -3675,8 +3671,7 @@
         },
         "secrets": {
           "type": "object",
-          "description": "The secrets for referenced resource",
-          "properties": {}
+          "description": "The secrets for referenced resource"
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -3690,11 +3685,10 @@
       "required": [
         "environment"
       ],
-      "additionalProperties": true,
       "allOf": [
         {
           "type": "object",
-          "additionalProperties": true
+          "additionalProperties": {}
         }
       ]
     },
@@ -3770,8 +3764,7 @@
         },
         "secrets": {
           "type": "object",
-          "description": "The secrets for referenced resource",
-          "properties": {}
+          "description": "The secrets for referenced resource"
         },
         "recipe": {
           "$ref": "#/definitions/RecipeUpdate",
@@ -4442,7 +4435,7 @@
     "KubernetesPodSpec": {
       "type": "object",
       "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed.",
-      "additionalProperties": true
+      "additionalProperties": {}
     },
     "KubernetesRuntimeProperties": {
       "type": "object",
@@ -4706,8 +4699,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -4750,8 +4742,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "The key/value parameters to pass to the recipe template at deployment.",
-          "properties": {}
+          "description": "The key/value parameters to pass to the recipe template at deployment."
         },
         "plainHttp": {
           "type": "boolean",
@@ -4778,8 +4769,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass to the recipe template at deployment"
         }
       },
       "discriminator": "templateKind",
@@ -4802,8 +4792,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass to the recipe template at deployment"
         }
       },
       "discriminator": "templateKind",
@@ -4843,8 +4832,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       }
     },
