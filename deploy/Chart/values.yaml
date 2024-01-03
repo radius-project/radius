@@ -6,9 +6,9 @@ global:
     secretName: "root-ca-cert"
     volumeName: "root-ca-vol"
     mountPath: "/tmp/sslcerts"
-    # SSL_CERT_DIRS is used to override the default root CA location.
+    # SSL_CERT_DIR is used to override the default root CA location.
     # Dotnet runtime and Go use this environment variable to load the root CA.
-    sslCertDirEnvVar: "SSL_CERT_DIRS"
+    sslCertDirEnvVar: "SSL_CERT_DIR"
 
   prometheus:
     enabled: true
