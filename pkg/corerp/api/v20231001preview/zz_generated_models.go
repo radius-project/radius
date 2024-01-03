@@ -127,6 +127,70 @@ type AuthConfig struct {
 	Git *GitAuthConfig
 }
 
+// AzureContainerInstanceCompute - The Azure container instance compute configuration
+type AzureContainerInstanceCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+	// REQUIRED; The resource group to use for the environment.
+	ResourceGroup *string
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
+func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity: a.Identity,
+		Kind: a.Kind,
+		ResourceID: a.ResourceID,
+	}
+}
+
+// AzureContainerInstanceComputeUpdate - The Azure container instance compute configuration
+type AzureContainerInstanceComputeUpdate struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettingsUpdate
+
+	// The resource group to use for the environment.
+	ResourceGroup *string
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentComputeUpdate implements the EnvironmentComputeUpdateClassification interface for type AzureContainerInstanceComputeUpdate.
+func (a *AzureContainerInstanceComputeUpdate) GetEnvironmentComputeUpdate() *EnvironmentComputeUpdate {
+	return &EnvironmentComputeUpdate{
+		Identity: a.Identity,
+		Kind: a.Kind,
+		ResourceID: a.ResourceID,
+	}
+}
+
+// AzureContainerInstanceExtension - Azure container instance resource group extension of a environment/application resource.
+type AzureContainerInstanceExtension struct {
+	// REQUIRED; Discriminator property for Extension.
+	Kind *string
+
+	// REQUIRED; The resource group of the application environment.
+	ResourceGroup *string
+}
+
+// GetExtension implements the ExtensionClassification interface for type AzureContainerInstanceExtension.
+func (a *AzureContainerInstanceExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
 type AzureKeyVaultVolumeProperties struct {
 // REQUIRED; Fully qualified resource ID for the application

@@ -25,6 +25,30 @@ type AzureResourceManagerCommonTypesTrackedResourceUpdate struct {
 	Type *string
 }
 
+// AzureContainerInstanceCompute - The Azure container instance compute configuration
+type AzureContainerInstanceCompute struct {
+	// REQUIRED; Discriminator property for EnvironmentCompute.
+	Kind *string
+
+	// REQUIRED; The resource group to use for the environment.
+	ResourceGroup *string
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings
+
+	// The resource id of the compute resource for application environment.
+	ResourceID *string
+}
+
+// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
+func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
+	return &EnvironmentCompute{
+		Identity: a.Identity,
+		Kind: a.Kind,
+		ResourceID: a.ResourceID,
+	}
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 // REQUIRED; Discriminator property for EnvironmentCompute.

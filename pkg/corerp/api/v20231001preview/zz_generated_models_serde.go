@@ -342,6 +342,115 @@ func (a *AuthConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type AzureContainerInstanceCompute.
+func (a AzureContainerInstanceCompute) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "identity", a.Identity)
+	objectMap["kind"] = "aci"
+	populate(objectMap, "resourceGroup", a.ResourceGroup)
+	populate(objectMap, "resourceId", a.ResourceID)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureContainerInstanceCompute.
+func (a *AzureContainerInstanceCompute) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "identity":
+				err = unpopulate(val, "Identity", &a.Identity)
+			delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+			delete(rawMsg, key)
+		case "resourceGroup":
+				err = unpopulate(val, "ResourceGroup", &a.ResourceGroup)
+			delete(rawMsg, key)
+		case "resourceId":
+				err = unpopulate(val, "ResourceID", &a.ResourceID)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureContainerInstanceComputeUpdate.
+func (a AzureContainerInstanceComputeUpdate) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "identity", a.Identity)
+	objectMap["kind"] = "aci"
+	populate(objectMap, "resourceGroup", a.ResourceGroup)
+	populate(objectMap, "resourceId", a.ResourceID)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureContainerInstanceComputeUpdate.
+func (a *AzureContainerInstanceComputeUpdate) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "identity":
+				err = unpopulate(val, "Identity", &a.Identity)
+			delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+			delete(rawMsg, key)
+		case "resourceGroup":
+				err = unpopulate(val, "ResourceGroup", &a.ResourceGroup)
+			delete(rawMsg, key)
+		case "resourceId":
+				err = unpopulate(val, "ResourceID", &a.ResourceID)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type AzureContainerInstanceExtension.
+func (a AzureContainerInstanceExtension) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	objectMap["kind"] = "aci"
+	populate(objectMap, "resourceGroup", a.ResourceGroup)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureContainerInstanceExtension.
+func (a *AzureContainerInstanceExtension) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+			delete(rawMsg, key)
+		case "resourceGroup":
+				err = unpopulate(val, "ResourceGroup", &a.ResourceGroup)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultVolumeProperties.
 func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
