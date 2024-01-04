@@ -23,11 +23,3 @@ Please update the following to link the associated issue. This is required for s
 -->
 
 Fixes: #issue_number
-
-## Auto-generated summary
-
-<!--
-GitHub Copilot for docs will auto-generate a summary of the PR
--->
-
-copilot:all
