@@ -19,6 +19,9 @@ package bicep
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -32,6 +35,7 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 func TestRunner_extractDestination(t *testing.T) {
@@ -312,4 +316,98 @@ func TestRunner_Validate(t *testing.T) {
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, tests)
+}
+
+type MockErrorResponse struct {
+	Method     string
+	URL        *url.URL
+	StatusCode int
+}
+
+// Error implements error.
+func (e *MockErrorResponse) Error() string {
+	// panic("unimplemented")
+	return e.Method
+}
+
+func (e *MockErrorResponse) GetMethod() string {
+	return e.Method
+}
+
+func (e *MockErrorResponse) GetURL() *url.URL {
+	return e.URL
+}
+
+func (e *MockErrorResponse) GetStatusCode() int {
+	return e.StatusCode
+}
+
+func TestHandleErrorResponse(t *testing.T) {
+	// Test case 1: Unauthorized with ACR info
+
+	httpErr1 := &MockErrorResponse{
+		URL:        &url.URL{Host: "myregistry.azurecr.io"},
+		StatusCode: http.StatusUnauthorized,
+	}
+
+	message1 := "Failure reason A"
+	expectedError1 := fmt.Sprintf("%s\nUnauthorized: Please login to %q\nFor more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli Cause: \"//myregistry.azurecr.io\": response status code 401: Unauthorized.", message1, httpErr1.URL.Host)
+
+	// Test case 2: Unauthorized without ACR info
+	httpErr2 := &MockErrorResponse{
+		URL:        &url.URL{Host: "otherregistry.gcr.io"},
+		StatusCode: http.StatusUnauthorized,
+	}
+	message2 := "Failure reason B"
+	expectedError2 := fmt.Sprintf("%s\nUnauthorized: Please login to %q Cause: %q: response status code 401: Unauthorized.", message2, httpErr2.URL.Host, "//"+httpErr2.URL.Host)
+
+	// Test case 3: Forbidden
+	httpErr3 := &MockErrorResponse{
+		URL:        &url.URL{Host: "myregistry.azurecr.io"},
+		StatusCode: http.StatusForbidden,
+	}
+	message3 := "Failure reason C"
+	expectedError3 := fmt.Sprintf("%s\nForbidden: You don't have permission to push to %q Cause: %q: response status code 403: Forbidden.", message3, httpErr3.URL.Host, "//"+httpErr3.URL.Host)
+
+	// Test case 4: Not Found
+	httpErr4 := &MockErrorResponse{
+		URL:        &url.URL{Host: "myregistry.azurecr.io"},
+		StatusCode: http.StatusNotFound,
+	}
+	message4 := "Faure reason D"
+	expectedError4 := fmt.Sprintf("%s\nNot Found: Unable to find registry %q Cause: %q: response status code 404: Not Found.", message4, httpErr4.URL.Host, "//"+httpErr4.URL.Host)
+
+	// Test case 5: Other status code
+	httpErr5 := &MockErrorResponse{
+		URL:        &url.URL{Host: "myregistry.azurecr.io"},
+		StatusCode: http.StatusInternalServerError,
+	}
+	message5 := "Faure reason E"
+	expectedError5 := fmt.Sprintf("%s Cause: %q: response status code 500: Internal Server Error.", message5, "//"+httpErr5.URL.Host)
+
+	testCases := []struct {
+		httpErr       *MockErrorResponse
+		message       string
+		expectedError string
+	}{
+		{httpErr1, message1, expectedError1},
+		{httpErr2, message2, expectedError2},
+		{httpErr3, message3, expectedError3},
+		{httpErr4, message4, expectedError4},
+		{httpErr5, message5, expectedError5},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.message, func(t *testing.T) {
+			httpErr := &errcode.ErrorResponse{
+				Method:     tc.httpErr.GetMethod(),
+				URL:        tc.httpErr.GetURL(),
+				StatusCode: tc.httpErr.GetStatusCode(),
+			}
+			result := handleErrorResponse(httpErr, tc.message)
+			if result.Error() != tc.expectedError {
+				t.Errorf("Expected error: %s, but got: %s", tc.expectedError, result)
+			}
+		})
+	}
 }
