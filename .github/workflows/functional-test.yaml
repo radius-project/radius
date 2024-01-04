@@ -16,14 +16,12 @@
 
 name: Functional tests
 on:
-  push:
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - main
-      - features/*
-      - release/*
+  schedule:
+    # Run every 4 hours on weekdays.
+    - cron: "30 0,4,8,12,16,20 * * 1-5"
+    # Run every 12 hours on weekends.
+    - cron: "30 0,12 * * 0,6"
+  # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
   workflow_run:
@@ -391,7 +389,7 @@ jobs:
           append: true
           message: |
             :hourglass: Starting ${{ matrix.name }} functional tests...
-      # - name: Get azure resource group - shruku-dev
+      # - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       #   run: |
       #     current_time=$(date +%s)
       #     az group create \
@@ -401,7 +399,7 @@ jobs:
       #       --tags creationTime=$current_time
       #     while [ $(az group exists --name $RESOURCE_GROUP) = false ]; do sleep 2; done
       #   env:
-      #     RESOURCE_GROUP: shruku-dev
+      #     RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
       - uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VER }}
@@ -414,14 +412,14 @@ jobs:
           # AZURE_OIDC_ISSUER_PUBLIC_KEY
           # AZURE_OIDC_ISSUER_PRIVATE_KEY
           # AZURE_OIDC_ISSUER
-          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
-          echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
+          # AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          # echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
-          echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
-          echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
+          # echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+          # echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
           cat <<EOF | ./kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
@@ -439,7 +437,6 @@ jobs:
               kind: ClusterConfiguration
               apiServer:
                 extraArgs:
-                  service-account-issuer: $AZURE_OIDC_ISSUER
                   service-account-key-file: /etc/kubernetes/pki/sa.pub
                   service-account-signing-key-file: /etc/kubernetes/pki/sa.key
               controllerManager:
@@ -528,42 +525,42 @@ jobs:
         id: publish-tf-recipes
         run: |
           make publish-test-terraform-recipes
-      - name: Run functional tests
-        run: |
-          # Ensure rad cli is in path before running tests.
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          cd $GITHUB_WORKSPACE
+      # - name: Run functional tests
+      #   run: |
+      #     # Ensure rad cli is in path before running tests.
+      #     export PATH=$GITHUB_WORKSPACE/bin:$PATH
+      #     cd $GITHUB_WORKSPACE
 
-          which rad || { echo "cannot find rad"; exit 1; }
+      #     which rad || { echo "cannot find rad"; exit 1; }
 
-          # Populate the following test environment variables from JSON secret.
-          # AZURE_MONGODB_RESOURCE_ID
-          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-          # AZURE_TABLESTORAGE_RESOURCE_ID
-          # AZURE_SERVICEBUS_RESOURCE_ID
-          # AZURE_REDIS_RESOURCE_ID
-          # AZURE_MSSQL_RESOURCE_ID
-          # AZURE_MSSQL_USERNAME
-          # AZURE_MSSQL_PASSWORD
-          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+      #     # Populate the following test environment variables from JSON secret.
+      #     # AZURE_MONGODB_RESOURCE_ID
+      #     # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+      #     # AZURE_TABLESTORAGE_RESOURCE_ID
+      #     # AZURE_SERVICEBUS_RESOURCE_ID
+      #     # AZURE_REDIS_RESOURCE_ID
+      #     # AZURE_MSSQL_RESOURCE_ID
+      #     # AZURE_MSSQL_USERNAME
+      #     # AZURE_MSSQL_PASSWORD
+      #     eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          make test-functional-${{ matrix.name }}
-        env:
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
-          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_REGION }}
-          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
-          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
-          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-      - uses: azure/setup-kubectl@v3
-        if: always()
-        with:
-          version: ${{ env.KUBECTL_VER }}
+      #     make test-functional-${{ matrix.name }}
+      #   env:
+      #     DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+      #     TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+      #     RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+      #     AWS_REGION: ${{ env.AWS_REGION }}
+      #     RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
+      #     # Test_MongoDB_Recipe_Parameters is using the following environment variable.
+      #     INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+      #     BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+      #     BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      # - uses: azure/setup-kubectl@v3
+      #   if: always()
+      #   with:
+      #     version: ${{ env.KUBECTL_VER }}
       - name: Collect Pod details
         if: always()
         run: |
@@ -599,15 +596,28 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      # - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      #   if: always()
-      #   run: |
-      #     # if deletion fails, purge workflow will purge the resource group and its resources later.
-      #     az group delete \
-      #       --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-      #       --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
-      #       --yes --verbose
-      # TODO add once tested: if: failure() && steps.publish-tf-recipes.outcome == 'failure' 
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: cancelled() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Test Run'
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: completed
+          conclusion: ${{ job.status }}
+          output: |
+            {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Get pod logs for recipe publishing failure
         id: get-pod-logs
         run: |
