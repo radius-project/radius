@@ -1,0 +1,38 @@
+name: PR Title Check
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        run: |
+          const title = context.payload.pull_request.title;
+          const regex = /\[(Add|Remove|Update|Fix)\]\s*.+/;
+          const regexNoBrackets = /(Add|Remove|Update|Fix)\s*.+/i;
+          const regexNoSpace = /\[(Add|Remove|Update|Fix)\].+/i;
+          const regexLowerCase = /\[(add|remove|update|fix)\]\s*.+/i;
+          const issue_number = context.payload.pull_request.number;
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          let body = '';
+
+          if (!regex.test(title)) {
+            if (regexNoBrackets.test(title)) {
+              body = 'Your PR title is missing square brackets. Please update it to: [Add | Remove | Update | Fix] <Title>. For example: [Add] New feature';
+            } else if (regexNoSpace.test(title)) {
+              body = 'Your PR title is missing a space after the keyword. Please update it to: [Add | Remove | Update | Fix] <Title>. For example: [Remove] Old feature';
+            } else if (regexLowerCase.test(title)) {
+              body = 'The keyword in your PR title is not capitalized. Please update it to: [Add | Remove | Update | Fix] <Title>. For example: [Update] Existing feature';
+            } else {
+              body = 'Your PR does not have a [Add | Remove | Update | Fix] <Title>. Please add one to help streamline our changelog. For example: [Fix] Bug in feature';
+            }
+            github.issues.createComment({ issue_number, owner, repo, body });
+          }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
