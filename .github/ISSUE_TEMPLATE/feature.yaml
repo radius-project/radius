@@ -14,7 +14,7 @@ body:
       label: Acceptance criteria
       description: What will need to be completed/working for this feature to be marked "Done"?
     validations:
-      required: true
+      required: false
   - type: textarea
     attributes:
       label: Additional context

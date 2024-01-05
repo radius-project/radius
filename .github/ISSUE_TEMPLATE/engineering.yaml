@@ -21,7 +21,7 @@ body:
 
         Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.
     validations:
-      required: true
+      required: false
   - type: textarea
     attributes:
       label: Desired behavior
@@ -51,7 +51,7 @@ body:
       placeholder: |
         For example: macOS Monterey, M1 chip
     validations:
-      required: true
+      required: false
   - type: textarea
     attributes:
       label: Additional context
