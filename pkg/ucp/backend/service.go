@@ -20,12 +20,17 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 const (
-	UCPProviderName = "ucp"
+	UCPProviderName = "System.Resources"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -65,5 +70,24 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 	}
 
+	opts := ctrl.Options{
+		DataProvider: w.StorageProvider,
+	}
+
+	err := RegisterControllers(ctx, w.Controllers, opts)
+	if err != nil {
+		return err
+	}
+
 	return w.Start(ctx, workerOpts)
+}
+
+// RegisterControllers registers the controllers for the UCP backend.
+func RegisterControllers(ctx context.Context, registry *worker.ControllerRegistry, opts ctrl.Options) error {
+	err := registry.Register(ctx, v20231001preview.ResourceType, v1.OperationMethod(datamodel.OperationProcess), resourcegroups.NewTrackedResourceProcessController, opts)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

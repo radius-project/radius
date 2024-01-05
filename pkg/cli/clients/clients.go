@@ -146,6 +146,7 @@ type ApplicationsManagementClient interface {
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error)
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
+	GetGraph(ctx context.Context, applicationName string) (corerp.ApplicationGraphResponse, error)
 
 	// CreateOrUpdateApplication creates or updates an application.
 	CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error

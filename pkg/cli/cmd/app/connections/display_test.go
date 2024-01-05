@@ -17,106 +17,90 @@ limitations under the License.
 package connections
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_display(t *testing.T) {
 	t.Run("empty graph", func(t *testing.T) {
-		graph := &applicationGraph{
-			ApplicationName: "test-app",
-			Resources:       map[string]resourceEntry{},
-		}
-
-		expected := `Displaying application: test-app
+		graph := []*v20231001preview.ApplicationGraphResource{}
+		expected := `Displaying application: cool-app
 
 (empty)
 
 `
-		actual := display(graph)
+		actual := display(graph, "cool-app")
 		require.Equal(t, expected, actual)
 	})
 
 	t.Run("complex application", func(t *testing.T) {
-		graph := &applicationGraph{
-			ApplicationName: "test-app",
-			Resources: map[string]resourceEntry{
-				containerResourceID: {
-					node: nodeFromID(containerResourceID),
-					Connections: []connectionEntry{
-						{
-							Name: "A",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID(makeRedisResourceID("a")),
-						},
-						{
-							Name: "B",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID(makeRedisResourceID("b")),
-						},
-						{
-							Name: "C",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID(azureRedisCacheResourceID),
-						},
-						{
-							Name: "D",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID("asdf-invalid-YO"),
-						},
-					},
-					Resources: []outputResourceEntry{
-						{
-							node: node{
-								Name: "demo",
-								Type: "apps/Deployment",
-							},
-							Provider: "kubernetes",
-						},
+		sqlRteID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
+		sqlRteType := "Applications.Core/httpRoutes"
+		sqlRteName := "sql-rte"
+
+		sqlAppCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr"
+		sqlAppCntrName := "sql-app-ctnr"
+		sqlAppCntrType := "Applications.Core/containers"
+
+		sqlCntrID := "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-ctnr"
+		sqlCntrName := "sql-ctnr"
+		sqlCntrType := "Applications.Core/containers"
+
+		sqlDbID := "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db"
+		sqlDbName := "sql-db"
+		sqlDbType := "Applications.Datastores/sqlDatabases"
+
+		provisioningStateSuccess := "Succeeded"
+		dirInbound := corerpv20231001preview.DirectionInbound
+		dirOutbound := corerpv20231001preview.DirectionOutbound
+
+		graph := []*corerpv20231001preview.ApplicationGraphResource{
+			{
+				ID:                &sqlRteID,
+				Name:              &sqlRteName,
+				Type:              &sqlRteType,
+				ProvisioningState: &provisioningStateSuccess,
+				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						ID:        &sqlCntrID,
+						Direction: &dirInbound,
 					},
 				},
-				makeRedisResourceID("a"): {
-					node: nodeFromID(makeRedisResourceID("a")),
-					Connections: []connectionEntry{
-						{
-							Name: "A",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID(makeRedisResourceID("a")),
-						},
-					},
-					Resources: []outputResourceEntry{
-						{
-							node:     nodeFromID(azureRedisCacheResourceID),
-							Provider: "azure",
-						},
+			},
+			{
+				ID:                &sqlCntrID,
+				Name:              &sqlCntrName,
+				Type:              &sqlCntrType,
+				ProvisioningState: &provisioningStateSuccess,
+				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						Direction: &dirOutbound,
+						ID:        &sqlRteID,
 					},
 				},
-				makeRedisResourceID("b"): {
-					node: nodeFromID(makeRedisResourceID("b")),
-					Connections: []connectionEntry{
-						{
-							Name: "B",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID(makeRedisResourceID("b")),
-						},
-					},
-					Resources: []outputResourceEntry{
-						{
-							node:     nodeFromID(awsMemoryDBResourceID),
-							Provider: "aws",
-						},
-					},
-				},
-				azureRedisCacheResourceID: {
-					node: nodeFromID(azureRedisCacheResourceID),
-					Connections: []connectionEntry{
-						{
-							Name: "C",
-							From: nodeFromID(containerResourceID),
-							To:   nodeFromID(azureRedisCacheResourceID),
-						},
+			},
+			{
+				ID:                &sqlDbID,
+				Name:              &sqlDbName,
+				Type:              &sqlDbType,
+				ProvisioningState: &provisioningStateSuccess,
+				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+			},
+			{
+				ID:                &sqlAppCntrID,
+				Name:              &sqlAppCntrName,
+				Type:              &sqlAppCntrType,
+				ProvisioningState: &provisioningStateSuccess,
+				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+					{
+						Direction: &dirInbound,
+						ID:        &sqlDbID,
 					},
 				},
 			},
@@ -124,39 +108,28 @@ func Test_display(t *testing.T) {
 
 		expected := `Displaying application: test-app
 
-Name: webapp (Applications.Core/containers)
+Name: sql-app-ctnr (Applications.Core/containers)
 Connections:
-  webapp -> a (Applications.Datastores/redisCaches)
-  webapp -> b (Applications.Datastores/redisCaches)
-  webapp -> redis (Microsoft.Cache/Redis)
-  webapp -> error ('asdf-invalid-YO' is not a valid resource id)
-Resources:
-  demo (kubernetes: apps/Deployment)
+  sql-db (Applications.Datastores/sqlDatabases) -> sql-app-ctnr
+Resources: (none)
 
-Name: a (Applications.Datastores/redisCaches)
+Name: sql-ctnr (Applications.Core/containers)
 Connections:
-  webapp (Applications.Core/containers) -> a
-Resources:
-  redis (azure: Microsoft.Cache/Redis) %s
+  sql-ctnr -> sql-rte (Applications.Core/httpRoutes)
+Resources: (none)
 
-Name: b (Applications.Datastores/redisCaches)
+Name: sql-rte (Applications.Core/httpRoutes)
 Connections:
-  webapp (Applications.Core/containers) -> b
-Resources:
-  redis-aqbjixghynqgg (aws: AWS.MemoryDB/Cluster)
+  sql-ctnr (Applications.Core/containers) -> sql-rte
+Resources: (none)
 
-Name: redis (Microsoft.Cache/Redis)
-Connections:
-  webapp (Applications.Core/containers) -> redis
+Name: sql-db (Applications.Datastores/sqlDatabases)
+Connections: (none)
 Resources: (none)
 
 `
-
-		// The link contains escape sequences that we can't write in an `` string.
-		link := makeHyperlink(graph.Resources[makeRedisResourceID("a")].Resources[0])
-		expected = fmt.Sprintf(expected, link)
-
-		actual := display(graph)
+		actual := display(graph, "test-app")
 		require.Equal(t, expected, actual)
 	})
+
 }

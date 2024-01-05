@@ -11,6 +11,7 @@ You can find our full **contributor documentation** including instructions at th
 - [Install prerequisites](./docs/contributing/contributing-code/contributing-code-prerequisites/)
 - [Create your first commit (full walkthrough)](./docs/contributing/contributing-code/contributing-code-first-commit/)
 - [Building the repo](./docs/contributing/contributing-code/contributing-code-building/)
+- [Run tests](./docs/contributing/contributing-code/contributing-code-tests/README.md)
 - [Understanding repo organization](./docs/contributing/contributing-code/contributing-code-organization/)
 - [Contribute to issues](./docs/contributing/contributing-issues/)
 - [Create pull requests](./docs/contributing/contributing-pull-requests/)

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	hostOpts "github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	hostopts "github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	metricsprovider "github.com/radius-project/radius/pkg/metrics/provider"
 	metricsservice "github.com/radius-project/radius/pkg/metrics/service"
@@ -69,7 +69,7 @@ type Options struct {
 	Location                string
 }
 
-const UCPProviderName = "ucp"
+const UCPProviderName = "System.Resources"
 
 // NewServerOptionsFromEnvironment creates a new Options struct from environment variables and returns it along with any errors.
 func NewServerOptionsFromEnvironment() (Options, error) {
@@ -187,8 +187,12 @@ func NewServer(options *Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, profilerservice.NewService(profilerOptions))
 	}
 
-	backendServiceOptions := hostOpts.HostOptions{
-		Config: &hostOpts.ProviderConfig{
+	backendServiceOptions := hostopts.HostOptions{
+
+		Config: &hostopts.ProviderConfig{
+			Env: hostopts.EnvironmentOptions{
+				RoleLocation: options.Config.Location,
+			},
 			StorageProvider:  options.StorageProviderOptions,
 			SecretProvider:   options.SecretProviderOptions,
 			QueueProvider:    options.QueueProviderOptions,

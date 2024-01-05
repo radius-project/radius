@@ -42,6 +42,9 @@ const (
 	testResourceGroupID      = testRadiusPlaneID + "/resourceGroups/test-rg"
 	testResourceCollectionID = testResourceGroupID + "/providers/System.Test/testResources"
 	testResourceID           = testResourceCollectionID + "/test-resource"
+
+	assertTimeout = time.Second * 10
+	assertRetry   = time.Second * 2
 )
 
 func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {
@@ -72,6 +75,12 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 
 	message := "here is some test data"
 
+	expectedTrackedResource := v20231001preview.GenericResource{
+		ID:   to.Ptr(testResourceID),
+		Name: to.Ptr("test-resource"),
+		Type: to.Ptr("System.Test/testResources"),
+	}
+
 	t.Run("PUT", func(t *testing.T) {
 		data := testrp.TestResource{
 			Properties: testrp.TestResourceProperties{
@@ -101,6 +110,17 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 		require.Equal(t, message, *resources.Value[0].Properties.Message)
 	})
 
+	t.Run("List - Tracked Resources", func(t *testing.T) {
+		response := ucp.MakeRequest(http.MethodGet, testResourceGroupID+"/resources?api-version="+v20231001preview.Version, nil)
+		response.EqualsStatusCode(http.StatusOK)
+
+		resources := &v20231001preview.GenericResourceListResult{}
+		err := json.Unmarshal(response.Body.Bytes(), resources)
+		require.NoError(t, err)
+		require.Len(t, resources.Value, 1)
+		require.Equal(t, expectedTrackedResource, *resources.Value[0])
+	})
+
 	t.Run("GET", func(t *testing.T) {
 		response := ucp.MakeRequest(http.MethodGet, testResourceID+"?api-version="+testrp.Version, nil)
 		response.EqualsStatusCode(http.StatusOK)
@@ -121,6 +141,16 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 		response.EqualsStatusCode(http.StatusNotFound)
 	})
 
+	t.Run("List - Tracked Resources (after delete)", func(t *testing.T) {
+		response := ucp.MakeRequest(http.MethodGet, testResourceGroupID+"/resources?api-version="+v20231001preview.Version, nil)
+		response.EqualsStatusCode(http.StatusOK)
+
+		resources := &v20231001preview.GenericResourceListResult{}
+		err := json.Unmarshal(response.Body.Bytes(), resources)
+		require.NoError(t, err)
+		require.Empty(t, resources.Value)
+	})
+
 	t.Run("DELETE (again)", func(t *testing.T) {
 		response := ucp.MakeRequest(http.MethodDelete, testResourceID+"?api-version="+testrp.Version, nil)
 		response.EqualsStatusCode(http.StatusNoContent)
@@ -132,16 +162,19 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 	rp := testrp.Start(t)
 
 	// Block background work item completion until we're ready.
-	putCh := make(chan struct{})
-	deleteCh := make(chan struct{})
+	putCh := make(chan backend_ctrl.Result)
+	deleteCh := make(chan backend_ctrl.Result)
 	onPut := func(ctx context.Context, request *backend_ctrl.Request) (backend_ctrl.Result, error) {
 		t.Log("PUT operation is waiting for completion")
-		<-putCh
-		return backend_ctrl.Result{}, nil
+		result := <-putCh
+		return result, nil
 	}
 	onDelete := func(ctx context.Context, request *backend_ctrl.Request) (backend_ctrl.Result, error) {
 		t.Log("DELETE operation is waiting for completion")
-		<-deleteCh
+		result := <-deleteCh
+		if result.Requeue || result.Error != nil {
+			return result, nil
+		}
 
 		client, err := ucp.Clients.StorageProvider.GetStorageClient(ctx, "System.Test/testResources")
 		require.NoError(t, err)
@@ -162,7 +195,14 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 
 	message := "here is some test data"
 
+	expectedTrackedResource := v20231001preview.GenericResource{
+		ID:   to.Ptr(testResourceID),
+		Name: to.Ptr("test-resource"),
+		Type: to.Ptr("System.Test/testResources"),
+	}
+
 	t.Run("PUT", func(t *testing.T) {
+		t.Log("starting PUT operation")
 		data := testrp.TestResource{
 			Properties: testrp.TestResourceProperties{
 				Message: to.Ptr(message),
@@ -178,7 +218,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		err = json.Unmarshal(response.Body.Bytes(), resource)
 		require.NoError(t, err)
 		require.Equal(t, message, *resource.Properties.Message)
-		require.Equal(t, string(v1.ProvisioningStateAccepted), *resource.Properties.ProvisioningState)
+		require.False(t, v1.ProvisioningState(*resource.Properties.ProvisioningState).IsTerminal())
 
 		location := response.Raw.Header.Get("Location")
 		azureAsyncOperation := response.Raw.Header.Get("Azure-AsyncOperation")
@@ -195,7 +235,18 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, resources.Value, 1)
 		require.Equal(t, message, *resources.Value[0].Properties.Message)
-		require.Equal(t, string(v1.ProvisioningStateAccepted), *resources.Value[0].Properties.ProvisioningState)
+		require.False(t, v1.ProvisioningState(*resources.Value[0].Properties.ProvisioningState).IsTerminal())
+	})
+
+	t.Run("List - Tracked Resources (during PUT)", func(t *testing.T) {
+		response := ucp.MakeRequest(http.MethodGet, testResourceGroupID+"/resources?api-version="+v20231001preview.Version, nil)
+		response.EqualsStatusCode(http.StatusOK)
+
+		resources := &v20231001preview.GenericResourceListResult{}
+		err := json.Unmarshal(response.Body.Bytes(), resources)
+		require.NoError(t, err)
+		require.Len(t, resources.Value, 1)
+		require.Equal(t, expectedTrackedResource, *resources.Value[0])
 	})
 
 	t.Run("GET (during PUT)", func(t *testing.T) {
@@ -210,7 +261,8 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 	})
 
 	t.Run("Complete PUT", func(t *testing.T) {
-		putCh <- struct{}{}
+		t.Log("completing PUT operation")
+		putCh <- backend_ctrl.Result{}
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			response := ucp.MakeRequest(http.MethodGet, testResourceID+"?api-version="+testrp.Version, nil)
 			assert.Equal(collect, http.StatusOK, response.Raw.StatusCode)
@@ -219,10 +271,46 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 			err := json.Unmarshal(response.Body.Bytes(), resource)
 			assert.NoError(collect, err)
 			assert.Equal(collect, string(v1.ProvisioningStateSucceeded), *resource.Properties.ProvisioningState)
-		}, time.Second*5, time.Millisecond*100)
+		}, assertTimeout, assertRetry)
+	})
+
+	t.Run("DELETE FAILURE", func(t *testing.T) {
+		t.Log("starting DELETE FAILURE operation")
+		response := ucp.MakeRequest(http.MethodDelete, testResourceID+"?api-version="+testrp.Version, nil)
+		response.EqualsStatusCode(http.StatusAccepted)
+	})
+
+	t.Run("Complete DELETE FAILURE", func(t *testing.T) {
+		t.Log("completing DELETE FAILURE operation")
+		deleteCh <- backend_ctrl.NewFailedResult(v1.ErrorDetails{
+			Code:    v1.CodeInternal,
+			Message: "Oh no!",
+		})
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			response := ucp.MakeRequest(http.MethodGet, testResourceID+"?api-version="+testrp.Version, nil)
+			assert.Equal(collect, http.StatusOK, response.Raw.StatusCode)
+
+			resource := &testrp.TestResource{}
+			err := json.Unmarshal(response.Body.Bytes(), resource)
+			assert.NoError(collect, err)
+			assert.Equal(collect, string(v1.ProvisioningStateFailed), *resource.Properties.ProvisioningState)
+			t.Logf("Resource provisioning state: %s", *resource.Properties.ProvisioningState)
+		}, assertTimeout, assertRetry)
+	})
+
+	t.Run("List - Tracked Resources (after failed delete)", func(t *testing.T) {
+		response := ucp.MakeRequest(http.MethodGet, testResourceGroupID+"/resources?api-version="+v20231001preview.Version, nil)
+		response.EqualsStatusCode(http.StatusOK)
+
+		resources := &v20231001preview.GenericResourceListResult{}
+		err := json.Unmarshal(response.Body.Bytes(), resources)
+		require.NoError(t, err)
+		require.Len(t, resources.Value, 1)
+		require.Equal(t, expectedTrackedResource, *resources.Value[0])
 	})
 
 	t.Run("DELETE", func(t *testing.T) {
+		t.Log("starting DELETE operation")
 		response := ucp.MakeRequest(http.MethodDelete, testResourceID+"?api-version="+testrp.Version, nil)
 		response.EqualsStatusCode(http.StatusAccepted)
 	})
@@ -236,7 +324,18 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, resources.Value, 1)
 		require.Equal(t, message, *resources.Value[0].Properties.Message)
-		require.Equal(t, string(v1.ProvisioningStateAccepted), *resources.Value[0].Properties.ProvisioningState)
+		require.False(t, v1.ProvisioningState(*resources.Value[0].Properties.ProvisioningState).IsTerminal())
+	})
+
+	t.Run("List - Tracked Resources (during delete)", func(t *testing.T) {
+		response := ucp.MakeRequest(http.MethodGet, testResourceGroupID+"/resources?api-version="+v20231001preview.Version, nil)
+		response.EqualsStatusCode(http.StatusOK)
+
+		resources := &v20231001preview.GenericResourceListResult{}
+		err := json.Unmarshal(response.Body.Bytes(), resources)
+		require.NoError(t, err)
+		require.Len(t, resources.Value, 1)
+		require.Equal(t, expectedTrackedResource, *resources.Value[0])
 	})
 
 	t.Run("GET (during delete)", func(t *testing.T) {
@@ -247,20 +346,34 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		err := json.Unmarshal(response.Body.Bytes(), resource)
 		require.NoError(t, err)
 		require.Equal(t, message, *resource.Properties.Message)
-		require.Equal(t, string(v1.ProvisioningStateAccepted), *resource.Properties.ProvisioningState)
+		require.False(t, v1.ProvisioningState(*resource.Properties.ProvisioningState).IsTerminal())
 	})
 
 	t.Run("Complete DELETE", func(t *testing.T) {
-		deleteCh <- struct{}{}
+		t.Log("completing DELETE operation")
+		deleteCh <- backend_ctrl.Result{}
 		require.EventuallyWithT(t, func(collect *assert.CollectT) {
 			response := ucp.MakeRequest(http.MethodGet, testResourceID+"?api-version="+testrp.Version, nil)
 			assert.Equal(collect, http.StatusNotFound, response.Raw.StatusCode)
-		}, time.Second*5, time.Millisecond*100)
+		}, assertTimeout, assertRetry)
 	})
 
 	t.Run("GET (after delete)", func(t *testing.T) {
 		response := ucp.MakeRequest(http.MethodGet, testResourceID+"?api-version="+testrp.Version, nil)
 		response.EqualsStatusCode(http.StatusNotFound)
+	})
+
+	t.Run("List - Tracked Resources (after delete)", func(t *testing.T) {
+		// This is eventually consistent.
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			response := ucp.MakeRequest(http.MethodGet, testResourceGroupID+"/resources?api-version="+v20231001preview.Version, nil)
+			assert.Equal(collect, http.StatusOK, response.Raw.StatusCode)
+
+			resources := &v20231001preview.GenericResourceListResult{}
+			err := json.Unmarshal(response.Body.Bytes(), resources)
+			assert.NoError(collect, err)
+			assert.Empty(collect, resources.Value)
+		}, assertTimeout, assertRetry)
 	})
 
 	t.Run("DELETE (again)", func(t *testing.T) {

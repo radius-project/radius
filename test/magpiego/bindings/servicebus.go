@@ -2,7 +2,6 @@ package bindings
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -113,7 +112,7 @@ func GetMessage(ctx context.Context, count int, queueName string, client *azserv
 		body := message.Body
 		log.Printf("%s\n", string(body))
 
-		result = append(result, fmt.Sprintf("%s", body))
+		result = append(result, string(body)) // Store the message body in the result slice
 
 		err = receiver.CompleteMessage(ctx, message, nil)
 		if err != nil {

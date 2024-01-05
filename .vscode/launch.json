@@ -5,6 +5,26 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug rad CLI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "preLaunchTask": "Build Radius (all)",
+            "program": "${workspaceFolder}/cmd/rad/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": [],
+        },
+        {
+            "name": "Debug rad CLI (prompt for args)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "preLaunchTask": "Build Radius (all)",
+            "program": "${workspaceFolder}/cmd/rad",
+            "args": "${input:cliArgs}",
+            "console": "integratedTerminal",
+        },
+        {
             "name": "Launch Applications RP",
             "type": "go",
             "request": "launch",
@@ -52,16 +72,6 @@
             }
         },
         {
-            "name": "Launch rad CLI",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "preLaunchTask": "Build Radius (all)",
-            "program": "${workspaceFolder}/cmd/rad/main.go",
-            "cwd": "${workspaceFolder}",
-            "args": [],
-        },
-        {
             "name": "Launch Deployment Engine",
             "type": "coreclr",
             "request": "launch",
@@ -88,6 +98,14 @@
                 "Launch Deployment Engine",
             ],
             "stopAll": true
+        }
+    ],
+    "inputs": [
+        {
+            "id": "cliArgs",
+            "type": "promptString",
+            "description": "Args for launching Radius cli. Use --cwd to set the working directory.",
+            "default": "init --full"
         }
     ]
 }

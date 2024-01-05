@@ -1,6 +1,7 @@
 package bindings
 
 import (
+	"context"
 	"log"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -49,6 +50,7 @@ func RabbitMQBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "Failed to declare a queue"}
 	}
 	msg := "Hello World!"
+	ctx := context.Background()
 	err = ch.PublishWithContext(
 		ctx,
 		"",     // exchange

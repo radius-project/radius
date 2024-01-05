@@ -18,12 +18,12 @@ Follow the steps below to create an RC release.
 The `versions.yaml` file is a declarative version tracking file that the Radius community maintains. Update it to reflect the new release candidate version that we would like to release. ([Example](https://github.com/project-radius/radius/pull/6077/files))
 1. Push these changes to a remote branch and create a pull request against `main`.
 1. After maintainer approval, merge the pull request to `main`.
-1. Verify that [GitHub actions triggers a build](https://github.com/project-radius/radius/actions), and that the build completes. This will build and push Radius assets.
-1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow.
+1. Verify that [GitHub actions triggers a build](https://github.com/project-radius/radius/actions), and that the build completes. This will build and push Radius assets to [GHCR](https://github.com/orgs/radius-project/packages)
+1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: release/x.y) and use the Radius RC release version number being released.
 
 ### Test tutorials and samples
 
-In the project-radius/samples repo, run the [Test Quickstarts](https://github.com/project-radius/samples/actions/workflows/test.yaml) workflow.
+In the project-radius/samples repo, run the [Test Samples](https://github.com/project-radius/samples/actions/workflows/test.yaml) workflow. Run the workflow from the edge branch and using the Radius release or pre-release version number being released.
 
 > For now, this is a manual task. Soon, this workflow will be triggered automatically.
 > There is a possibility that the workflow run failed because of flaky tests. Try re-running, and if the failure is persistent, then there should be further investigation.
@@ -34,13 +34,13 @@ If this workflow run fails, or if we encounter an issue with an RC release, plea
 
 If sample validation passes, we can start the process of creating the final release.
 
-1. In the `radius-project/bicep` repo, in the release branch, change the `version.json` version to the new release number. Create a pull request and merge this change.
+1. In the `radius-project/bicep` repo, in the release branch, change the `version.json` version to the new release number. Create a pull request and merge this change into the bicep-extensibility and release/\<release-version\> branch.
 
 1. Go through steps 1-4 of "Creating an RC release" above, substituting the final release version instead of the RC version. For example, if the RC version number is `0.1.0-rc1`, the final release version would be `0.1.0`.
 
-1. After creating the pull request, there should be an automatically generated release notes comment. Create a new release note document in the [release-notes](../../release-notes/) directory. Follow the directory's README.md for instructions on how to create a new release note document. Include this file in the release version pull request. [Example](https://github.com/project-radius/radius/pull/6092/files)
+1. In this PR, create a new release note document in the [release-notes](../../release-notes/) directory using the automatically generated release notes comment. Follow the directory's README.md for instructions on how to create a new release note document. Include this file in the release version pull request. [Example](https://github.com/project-radius/radius/pull/6092/files)
 
-1. Cherry-pick the `version.yaml` changes and the release notes into the release branch. This will ensure that the version changes and release notes are included in the release branch. [Example](https://github.com/radius-project/radius/pull/6114/files)
+1. Create a PR to merge into the release branch (format: release/x.y) in the radius repo. Cherry-pick the `version.yaml` changes and the release notes from the previous step in this PR. This will ensure that the version changes and release notes are included in the release branch. [Example](https://github.com/radius-project/radius/pull/6114/files)
 
    ```bash
    git cherry-pick -x <COMMIT HASH>
@@ -50,7 +50,11 @@ If sample validation passes, we can start the process of creating the final rele
 
 1. In the project-radius/docs repository, run the [Release samples](https://github.com/project-radius/samples/actions/workflows/release.yaml) workflow.
 
-1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow.
+1. In the project-radius/radius repo, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow. Run the workflow from the release branch (format: release/x.y) and use the Radius release version number being released.
+
+1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases/download/\<VERSION\>/rad-vscode-bicep.vsix, replacing the \<VERSION\> as necessary.
+
+1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage). You may need access permissions, if so, ask a maintainer. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
 
 ## How releases work
 
@@ -105,9 +109,7 @@ Let's say we have a bug in a release that needs to be patched for an already-cre
 
 1. Verify that a patch release was created on Github Releases for the current patch version. [Example](https://github.com/radius-project/radius/releases)
 
-1. Download the Radius Bicep .vsix file from here: https://github.com/radius-project/bicep/releases/download/<VERSION>/rad-vscode-bicep.vsix, replacing the <VERSION> as necessary.
-
-1. Upload the Radius Bicep .vsix to the [VS marketplace](https://marketplace.visualstudio.com/manage). You may need access permissions, if so, ask a maintainer. Click on the ... for Radius Bicep, then Update, then upload the .vsix file. The site will verify it then the version number should be updated to the right one.
+1. Rerun steps 8-9 described [here](#creating-the-final-release) to upload updated rad-vscode-bicep.vsix file
 
 ## Cadence
 

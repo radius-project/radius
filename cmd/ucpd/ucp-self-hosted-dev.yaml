@@ -9,6 +9,7 @@
 # - Talk to Portable Resources' Providers on port 8081
 # - Disables metrics and profiler
 #
+location: 'global'
 storageProvider:
   provider: "apiserver"
   apiserver:

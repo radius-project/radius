@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/dataprovider"
 	"github.com/radius-project/radius/pkg/ucp/hostoptions"
@@ -70,6 +71,9 @@ type Options struct {
 
 	// SpecLoader is the OpenAPI spec loader containing specs for the UCP APIs.
 	SpecLoader *validator.Loader
+
+	// StatusManager is the async operation status manager.
+	StatusManager statusmanager.StatusManager
 
 	// UCPConnection is the connection used to communicate with UCP APIs.
 	UCPConnection sdk.Connection

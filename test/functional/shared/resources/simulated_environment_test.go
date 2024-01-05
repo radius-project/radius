@@ -74,7 +74,7 @@ func Test_Deployment_SimulatedEnv(t *testing.T) {
 			SkipObjectValidation:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct shared.RPTest) {
 				// Get pods in app namespace
-				label := fmt.Sprintf("radius.dev/application=%s", name)
+				label := fmt.Sprintf("radapp.io/application=%s", name)
 				pods, err := ct.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: label,
 				})

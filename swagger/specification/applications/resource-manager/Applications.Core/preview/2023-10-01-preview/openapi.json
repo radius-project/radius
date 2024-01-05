@@ -2796,7 +2796,7 @@
       "type": "object",
       "description": "Represents Bicep recipe properties.",
       "properties": {
-        "plainHTTP": {
+        "plainHttp": {
           "type": "boolean",
           "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
         }
@@ -2812,7 +2812,7 @@
       "type": "object",
       "description": "Represents Bicep recipe properties.",
       "properties": {
-        "plainHTTP": {
+        "plainHttp": {
           "type": "boolean",
           "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
         }
@@ -4753,7 +4753,7 @@
           "description": "The key/value parameters to pass to the recipe template at deployment.",
           "properties": {}
         },
-        "plainHTTP": {
+        "plainHttp": {
           "type": "boolean",
           "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
         }

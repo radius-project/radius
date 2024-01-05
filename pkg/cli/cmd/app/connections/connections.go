@@ -114,18 +114,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	applicationResources, err := client.ListAllResourcesByApplication(ctx, r.ApplicationName)
+	applicationGraphResponse, err := client.GetGraph(ctx, r.ApplicationName)
 	if err != nil {
 		return err
 	}
-
-	environmentResources, err := client.ListAllResourcesByEnvironment(ctx, r.EnvironmentName)
-	if err != nil {
-		return err
-	}
-
-	graph := compute(r.ApplicationName, applicationResources, environmentResources)
-	display := display(graph)
+	graph := applicationGraphResponse.Resources
+	display := display(graph, r.ApplicationName)
 	r.Output.LogInfo(display)
 
 	return nil
