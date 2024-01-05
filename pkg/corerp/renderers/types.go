@@ -64,6 +64,9 @@ type RendererDependency struct {
 type EnvironmentOptions struct {
 	// Namespace represents the Kubernetes namespace.
 	Namespace string
+
+	ResourceGroup string
+
 	// Providers represents the cloud provider's configurations.
 	CloudProviders *datamodel.Providers
 	// Gateway represents the gateway options.
