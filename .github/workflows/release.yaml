@@ -25,17 +25,19 @@ on:
   pull_request:
     branches:
       - main
+      - 'release/*'
     paths:
       - 'versions.yaml'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+  STOPPED: false
 
 jobs:
   generate_release_note:
     name: Generate release note from template
     runs-on: ubuntu-latest
-    if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request'
+    if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'main'
     env:
       RELNOTE_FOUND: false
     steps:
@@ -163,7 +165,30 @@ jobs:
         id: get-version
         run: |
           ./radius/.github/scripts/release-get-version.sh ${{ steps.get-supported-versions.outputs.result }} radius
+      - name: Check if release branch exists
+        id: release-branch-exists
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const { data } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: '${{ steps.get-version.outputs.release-branch-name }}',
+            })
+
+            if (data.name == '${{ steps.get-version.outputs.release-branch-name }}') {
+              return 'true'
+            } else {
+              return 'false'
+            }
+      - name: Stop workflow if release branch exists and the event is a push to main
+        if: steps.release-branch-exists == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists. Stop the workflow."
+          echo "STOPPED=true" >> $GITHUB_ENV
       - name: Generate release summary
+        if: env.STOPPED == 'false'
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
           echo "* Release driver: $GITHUB_ACTOR ">> $GITHUB_STEP_SUMMARY
@@ -172,18 +197,18 @@ jobs:
           echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
+        if: success() && env.STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh radius ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
-        if: success()
       - name: Release radius-project/bicep version ${{ steps.get-version.outputs.release-version }}
+        if: success() && env.STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
-        if: success()
       - name: Release radius-project/deployment-engine version ${{ steps.get-version.outputs.release-version }}
+        if: success() && env.STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh deployment-engine ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
-        if: success()
       - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
+        if: success() && env.STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
-        if: success()
