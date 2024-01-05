@@ -109,6 +109,11 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ExtensionCla
 			Kind:      to.Ptr(string(e.Kind)),
 			Namespace: to.Ptr(e.KubernetesNamespace.Namespace),
 		}
+	case datamodel.ACIExtension:
+		return &AzureContainerInstanceExtension{
+			Kind:          to.Ptr(string(e.Kind)),
+			ResourceGroup: to.Ptr(e.AzureContainerInstance.ResourceGroup),
+		}
 	}
 
 	return nil
@@ -133,6 +138,13 @@ func toAppExtensionDataModel(e ExtensionClassification) *datamodel.Extension {
 			Kind: datamodel.KubernetesNamespaceExtension,
 			KubernetesNamespace: &datamodel.KubeNamespaceExtension{
 				Namespace: to.String(c.Namespace),
+			},
+		}
+	case *AzureContainerInstanceExtension:
+		return &datamodel.Extension{
+			Kind: datamodel.ACIExtension,
+			AzureContainerInstance: &datamodel.AzureContainerInstanceExtension{
+				ResourceGroup: to.String(c.ResourceGroup),
 			},
 		}
 	}
