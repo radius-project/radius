@@ -201,7 +201,7 @@ func handleErrorResponse(httpErr *errcode.ErrorResponse, message string) error {
 	case http.StatusNotFound:
 		return clierrors.MessageWithCause(httpErr, "%s\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
 	default:
-		return clierrors.MessageWithCause(httpErr, "%s", message)
+		return clierrors.MessageWithCause(httpErr, "%s\nSomething went wrong", message)
 	}
 }
 

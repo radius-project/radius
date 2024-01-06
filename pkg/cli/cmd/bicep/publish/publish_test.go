@@ -342,59 +342,34 @@ func (e *MockErrorResponse) GetStatusCode() int {
 	return e.StatusCode
 }
 
+func getError(registerUrl string, statusCode int) *MockErrorResponse {
+
+	err := &MockErrorResponse{
+		URL:        &url.URL{Host: registerUrl},
+		StatusCode: statusCode,
+	}
+
+	return err
+}
+
 func TestHandleErrorResponse(t *testing.T) {
-	// Test case 1: Unauthorized with ACR info
 
-	httpErr1 := &MockErrorResponse{
-		URL:        &url.URL{Host: "myregistry.azurecr.io"},
-		StatusCode: http.StatusUnauthorized,
-	}
-
-	message1 := "Failure reason A"
-	expectedError1 := fmt.Sprintf("%s\nUnauthorized: Please login to %q\nFor more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli Cause: \"//myregistry.azurecr.io\": response status code 401: Unauthorized.", message1, httpErr1.URL.Host)
-
-	// Test case 2: Unauthorized without ACR info
-	httpErr2 := &MockErrorResponse{
-		URL:        &url.URL{Host: "otherregistry.gcr.io"},
-		StatusCode: http.StatusUnauthorized,
-	}
-	message2 := "Failure reason B"
-	expectedError2 := fmt.Sprintf("%s\nUnauthorized: Please login to %q Cause: %q: response status code 401: Unauthorized.", message2, httpErr2.URL.Host, "//"+httpErr2.URL.Host)
-
-	// Test case 3: Forbidden
-	httpErr3 := &MockErrorResponse{
-		URL:        &url.URL{Host: "myregistry.azurecr.io"},
-		StatusCode: http.StatusForbidden,
-	}
-	message3 := "Failure reason C"
-	expectedError3 := fmt.Sprintf("%s\nForbidden: You don't have permission to push to %q Cause: %q: response status code 403: Forbidden.", message3, httpErr3.URL.Host, "//"+httpErr3.URL.Host)
-
-	// Test case 4: Not Found
-	httpErr4 := &MockErrorResponse{
-		URL:        &url.URL{Host: "myregistry.azurecr.io"},
-		StatusCode: http.StatusNotFound,
-	}
-	message4 := "Faure reason D"
-	expectedError4 := fmt.Sprintf("%s\nNot Found: Unable to find registry %q Cause: %q: response status code 404: Not Found.", message4, httpErr4.URL.Host, "//"+httpErr4.URL.Host)
-
-	// Test case 5: Other status code
-	httpErr5 := &MockErrorResponse{
-		URL:        &url.URL{Host: "myregistry.azurecr.io"},
-		StatusCode: http.StatusInternalServerError,
-	}
-	message5 := "Faure reason E"
-	expectedError5 := fmt.Sprintf("%s Cause: %q: response status code 500: Internal Server Error.", message5, "//"+httpErr5.URL.Host)
+	httpErrA := getError("myregistry.azurecr.io", http.StatusUnauthorized)
+	httpErrB := getError("otherregistry.gcr.io", http.StatusUnauthorized)
+	httpErrC := getError("myregistry.azurecr.io", http.StatusForbidden)
+	httpErrD := getError("myregistry.azurecr.io", http.StatusNotFound)
+	httpErrE := getError("myregistry.azurecr.io", http.StatusInternalServerError)
 
 	testCases := []struct {
 		httpErr       *MockErrorResponse
 		message       string
 		expectedError string
 	}{
-		{httpErr1, message1, expectedError1},
-		{httpErr2, message2, expectedError2},
-		{httpErr3, message3, expectedError3},
-		{httpErr4, message4, expectedError4},
-		{httpErr5, message5, expectedError5},
+		{httpErrA, "Unauthorized - Includes Azure login info", fmt.Sprintf("Unauthorized: Please login to %q\nFor more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli Cause: \"//myregistry.azurecr.io\": response status code 401: Unauthorized.", httpErrA.URL.Host)},
+		{httpErrB, "Standard unauthorized message", fmt.Sprintf("Unauthorized: Please login to %q Cause: %q: response status code 401: Unauthorized.", httpErrB.URL.Host, "//"+httpErrB.URL.Host)},
+		{httpErrC, "Forbidden error", fmt.Sprintf("Forbidden: You don't have permission to push to %q Cause: %q: response status code 403: Forbidden.", httpErrC.URL.Host, "//"+httpErrC.URL.Host)},
+		{httpErrD, "Not found error", fmt.Sprintf("Not Found: Unable to find registry %q Cause: %q: response status code 404: Not Found.", httpErrD.URL.Host, "//"+httpErrD.URL.Host)},
+		{httpErrE, "Internal server error", fmt.Sprintf("Something went wrong Cause: %q: response status code 500: Internal Server Error.", "//"+httpErrE.URL.Host)},
 	}
 
 	for _, tc := range testCases {
@@ -405,7 +380,8 @@ func TestHandleErrorResponse(t *testing.T) {
 				StatusCode: tc.httpErr.GetStatusCode(),
 			}
 			result := handleErrorResponse(httpErr, tc.message)
-			require.Equal(t, tc.expectedError, result.Error())
+			expected := fmt.Sprintf("%s\n%s", tc.message, tc.expectedError)
+			require.Equal(t, expected, result.Error())
 		})
 	}
 }
