@@ -390,7 +390,7 @@ jobs:
 
           # Temporary workaround to fix the x509 certificate error in the controller.
           # https://github.com/radius-project/radius/issues/6989
-          kubectl delete secrets controller-cert -n radius-system
+          kubectl delete secrets controller-cert -n radius-system --ignore-not-found
 
           echo "*** Configuring Azure provider ***"
           rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
