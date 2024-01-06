@@ -116,6 +116,13 @@ param systemAgentPoolAgentCount int = 2
 ])
 param systemAgentPoolOsType string = 'Linux'
 
+@description('Specifies the OS SKU type for the vms in the system node pool. Choose from AzureLinux and Ubuntu. Default to AzureLinux.')
+@allowed([
+  'AzureLinux'
+  'Ubuntu'
+])
+param systemAgentPoolOsSKU string = 'AzureLinux'
+
 @description('Specifies the maximum number of pods that can run on a node in the system node pool. The maximum number of pods per node in an AKS cluster is 250. The default maximum number of pods per node varies between kubenet and Azure CNI networking, and the method of cluster deployment.')
 param systemAgentPoolMaxPods int = 30
 
@@ -146,7 +153,7 @@ param systemAgentPoolScaleSetEvictionPolicy string = 'Delete'
 param systemAgentPoolNodeLabels object = {}
 
 @description('Specifies the taints added to new nodes during node pool create and scale. For example, key=value:NoSchedule.')
-param systemAgentPoolNodeTaints array = ['CriticalAddonsOnly=true:NoSchedule']
+param systemAgentPoolNodeTaints array = [ 'CriticalAddonsOnly=true:NoSchedule' ]
 
 @description('Determines the placement of emptyDir volumes, container runtime data root, and Kubelet ephemeral storage.')
 @allowed([
@@ -194,6 +201,13 @@ param userAgentPoolAgentCount int = 2
   'Windows'
 ])
 param userAgentPoolOsType string = 'Linux'
+
+@description('Specifies the OS SKU type for the vms in the user node pool. Choose from AzureLinux and Ubuntu. Default to AzureLinux.')
+@allowed([
+  'AzureLinux'
+  'Ubuntu'
+])
+param userAgentPoolOsSKU string = 'AzureLinux'
 
 @description('Specifies the maximum number of pods that can run on a node in the user node pool. The maximum number of pods per node in an AKS cluster is 250. The default maximum number of pods per node varies between kubenet and Azure CNI networking, and the method of cluster deployment.')
 param userAgentPoolMaxPods int = 30
@@ -384,6 +398,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
         osDiskType: systemAgentPoolOsDiskType
         maxPods: systemAgentPoolMaxPods
         osType: systemAgentPoolOsType
+        osSKU: systemAgentPoolOsSKU
         maxCount: systemAgentPoolMaxCount
         minCount: systemAgentPoolMinCount
         scaleSetPriority: systemAgentPoolScaleSetPriority
@@ -404,6 +419,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2023-05-01' = {
         osDiskType: userAgentPoolOsDiskType
         maxPods: userAgentPoolMaxPods
         osType: userAgentPoolOsType
+        osSKU: userAgentPoolOsSKU
         maxCount: userAgentPoolMaxCount
         minCount: userAgentPoolMinCount
         scaleSetPriority: userAgentPoolScaleSetPriority
