@@ -405,9 +405,7 @@ func TestHandleErrorResponse(t *testing.T) {
 				StatusCode: tc.httpErr.GetStatusCode(),
 			}
 			result := handleErrorResponse(httpErr, tc.message)
-			if result.Error() != tc.expectedError {
-				t.Errorf("Expected error: %s, but got: %s", tc.expectedError, result)
-			}
+			require.Equal(t, tc.expectedError, result.Error())
 		})
 	}
 }
