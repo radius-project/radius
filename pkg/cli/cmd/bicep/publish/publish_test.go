@@ -318,33 +318,9 @@ func TestRunner_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, tests)
 }
 
-type MockErrorResponse struct {
-	Method     string
-	URL        *url.URL
-	StatusCode int
-}
+func getError(registerUrl string, statusCode int) *errcode.ErrorResponse  {
 
-// Error implements error.
-func (e *MockErrorResponse) Error() string {
-	// panic("unimplemented")
-	return e.Method
-}
-
-func (e *MockErrorResponse) GetMethod() string {
-	return e.Method
-}
-
-func (e *MockErrorResponse) GetURL() *url.URL {
-	return e.URL
-}
-
-func (e *MockErrorResponse) GetStatusCode() int {
-	return e.StatusCode
-}
-
-func getError(registerUrl string, statusCode int) *MockErrorResponse {
-
-	err := &MockErrorResponse{
+	err := &errcode.ErrorResponse{
 		URL:        &url.URL{Host: registerUrl},
 		StatusCode: statusCode,
 	}
@@ -361,7 +337,7 @@ func TestHandleErrorResponse(t *testing.T) {
 	httpErrE := getError("myregistry.azurecr.io", http.StatusInternalServerError)
 
 	testCases := []struct {
-		httpErr       *MockErrorResponse
+		httpErr       *errcode.ErrorResponse
 		message       string
 		expectedError string
 	}{
@@ -375,10 +351,11 @@ func TestHandleErrorResponse(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.message, func(t *testing.T) {
 			httpErr := &errcode.ErrorResponse{
-				Method:     tc.httpErr.GetMethod(),
-				URL:        tc.httpErr.GetURL(),
-				StatusCode: tc.httpErr.GetStatusCode(),
+				Method:     tc.httpErr.Method,
+				URL:        tc.httpErr.URL,
+				StatusCode: tc.httpErr.StatusCode,
 			}
+
 			result := handleErrorResponse(httpErr, tc.message)
 			expected := fmt.Sprintf("%s\n%s", tc.message, tc.expectedError)
 			require.Equal(t, expected, result.Error())
