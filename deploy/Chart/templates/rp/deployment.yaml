@@ -73,8 +73,6 @@ spec:
           mountPath: {{ .Values.global.rootCA.mountPath }}
           readOnly: true
         {{- end }}
-        securityContext:
-          allowPrivilegeEscalation: false
         {{- if .Values.rp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
