@@ -39,13 +39,6 @@ The following tips should help you decide which option to choose:
 
 We use Task as a catch-all for changes that have no direct user-visible impact. In practice many changes are Tasks, and we don't include them in the release notes. This includes minor refactors, code/style cleanup, test improvements, correcting misspellings in comments, changes to build processes, etc.
 
-
-### Copilot summary
-
-Our pull-request template includes a summary from Github Copilot. This will generate a description of your changes as well as links to the most relevant files. 
-
-You can find an example [here](https://github.com/radius-project/radius/pull/5614).
-
 ## Tips
 
 Keep reading for some tips about how to get your pull requests accepted!

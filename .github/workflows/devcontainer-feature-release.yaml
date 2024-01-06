@@ -28,6 +28,11 @@ jobs:
           generate-docs: "false"
           # disable validation due to used preview feature
           disable-schema-validation: "true"
+          # We handle tagging ourselves
+          disable-repo-tagging: "true"
+          # We don't want to include the repo name, being consistent without
+          # examples at https://containers.dev/collections
+          features-namespace: "radius-project/devcontainer-features"
           
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

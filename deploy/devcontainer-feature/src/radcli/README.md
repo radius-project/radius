@@ -8,7 +8,7 @@ This will install the latest stable release of the `rad` CLI.
 
 ```json
 "features": {
-    "ghcr.io/devcontainers/radius/radiuscli:latest": {
+    "ghcr.io/radius-project/devcontainer-features/radcli:latest": {
         "version": "latest"
     }
 }
@@ -20,7 +20,7 @@ This will install the edge (unstable) release of the `rad` CLI.
 
 ```json
 "features": {
-    "ghcr.io/devcontainers/radius/radiuscli:latest": {
+    "ghcr.io/radius-project/devcontainer-features/radcli:latest": {
         "version": "edge"
     }
 }
@@ -32,7 +32,7 @@ This will install version 0.28.0 of the `rad` CLI.
 
 ```json
 "features": {
-    "ghcr.io/devcontainers/radius/radiuscli:latest": {
+    "ghcr.io/radius-project/devcontainer-features/radcli:latest": {
         "version": "0.28.0"
     }
 }
