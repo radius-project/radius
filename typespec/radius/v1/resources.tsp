@@ -125,7 +125,7 @@ model AzureContainerInstanceCompute extends EnvironmentCompute {
   kind: "aci";
 
   @doc("The resource group to use for the environment.")
-  resourceGroup: string;
+  resourceGroup?: string;
 }
 
 @doc("Recipe status at deployment time for a resource.")
