@@ -65,6 +65,8 @@ const (
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
 	LocalIDFederatedIdentity            = "FederatedIdentity"
 	LocalIDRoleAssignmentPrefix         = "RoleAssignment"
+	LocalIDAzureCGProfile               = "AzureCGProfile"
+	LocalIDAzureCGScaleSet              = "AzureCGScaleSet"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys = "RoleAssignment-KVKeys"
