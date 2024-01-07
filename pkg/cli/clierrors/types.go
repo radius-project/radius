@@ -16,6 +16,8 @@ limitations under the License.
 
 package clierrors
 
+import "strings"
+
 // FriendlyError defines an interface for errors that should be gracefully handled by the CLI and
 // display a friendly error message to the user.
 type FriendlyError interface {
@@ -42,7 +44,7 @@ func (e *ErrorMessage) Error() string {
 		return e.Message
 	}
 
-	return e.Message + " Cause: " + e.Cause.Error() + "."
+	return e.Message + " Cause: " + strings.TrimSpace(e.Cause.Error()) + "."
 }
 
 // IsFriendlyError returns true for ErrorMessage. These errors are always handled gracefully by the CLI.

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -30,6 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 
+	"net/http"
+
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -39,6 +42,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
@@ -167,12 +171,38 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Destination = dest
 
 	err = r.publish(ctx)
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q.", r.File, r.Target)
+	var httpErr *errcode.ErrorResponse
+	if errors.As(err, &httpErr) {
+		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", r.File, r.Target)
+		return handleErrorResponse(httpErr, message)
+	} else if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
 	return nil
+}
+
+func handleErrorResponse(httpErr *errcode.ErrorResponse, message string) error {
+	acrInfo := ""
+	if strings.Contains(httpErr.URL.Host, "azurecr.io") {
+		acrInfo = "For more details visit: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-authentication?tabs=azure-cli"
+	}
+
+	switch httpErr.StatusCode {
+	case http.StatusUnauthorized:
+		if acrInfo == "" {
+			return clierrors.MessageWithCause(httpErr, "%s\nUnauthorized: Please login to %q", message, httpErr.URL.Host)
+		} else {
+			return clierrors.MessageWithCause(httpErr, "%s\nUnauthorized: Please login to %q\n%s", message, httpErr.URL.Host, acrInfo)
+		}
+	case http.StatusForbidden:
+		return clierrors.MessageWithCause(httpErr, "%s\nForbidden: You don't have permission to push to %q", message, httpErr.URL.Host)
+	case http.StatusNotFound:
+		return clierrors.MessageWithCause(httpErr, "%s\nNot Found: Unable to find registry %q", message, httpErr.URL.Host)
+	default:
+		return clierrors.MessageWithCause(httpErr, "%s\nSomething went wrong", message)
+	}
 }
 
 func (r *Runner) publish(ctx context.Context) error {
