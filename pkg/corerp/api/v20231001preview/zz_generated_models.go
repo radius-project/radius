@@ -132,11 +132,11 @@ type AzureContainerInstanceCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.
 	Kind *string
 
-	// REQUIRED; The resource group to use for the environment.
-	ResourceGroup *string
-
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings
+
+	// The resource group to use for the environment.
+	ResourceGroup *string
 
 	// The resource id of the compute resource for application environment.
 	ResourceID *string
