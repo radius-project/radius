@@ -2463,9 +2463,6 @@
           "description": "The resource group to use for the environment."
         }
       },
-      "required": [
-        "resourceGroup"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/EnvironmentCompute"

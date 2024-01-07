@@ -347,7 +347,7 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1,
+        "flags": 0,
         "description": "The resource group to use for the environment."
       },
       "kind": {
