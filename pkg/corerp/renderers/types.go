@@ -65,7 +65,7 @@ type EnvironmentOptions struct {
 	// Namespace represents the Kubernetes namespace.
 	Namespace string
 
-	ResourceGroup string
+	Compute *rpv1.EnvironmentCompute
 
 	// Providers represents the cloud provider's configurations.
 	CloudProviders *datamodel.Providers
