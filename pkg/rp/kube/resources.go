@@ -29,6 +29,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
+var (
+	ErrNonKubernetesEnvironment = errors.New("cannot get namespace because the current environment is not Kubernetes")
+)
+
 // FindNamespaceByEnvID finds the environment-scope Kubernetes namespace. If the environment ID is invalid or the environment is not a Kubernetes
 // environment, an error is returned.
 func FindNamespaceByEnvID(ctx context.Context, databaseClient database.Client, envID string) (namespace string, err error) {
@@ -52,7 +56,7 @@ func FindNamespaceByEnvID(ctx context.Context, databaseClient database.Client, e
 	}
 
 	if env.Properties.Compute.Kind != rpv1.KubernetesComputeKind {
-		err = errors.New("cannot get namespace because the current environment is not Kubernetes")
+		err = ErrNonKubernetesEnvironment
 		return
 	}
 
