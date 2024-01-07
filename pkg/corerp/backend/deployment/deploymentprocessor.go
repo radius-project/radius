@@ -398,6 +398,16 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 		}
 		envOpts.Namespace = kubeProp.Namespace
 
+	case rpv1.ACIComputeKind:
+		c := &env.Properties.Compute.ACICompute
+		if c.ResourceGroup == "" {
+			c.ResourceGroup = env.Properties.Providers.Azure.Scope
+		}
+		if c.ResourceGroup == "" {
+			return renderers.EnvironmentOptions{}, errors.New("resource group is not specified")
+		}
+		envOpts.Compute = &env.Properties.Compute
+
 	default:
 		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)
 	}
