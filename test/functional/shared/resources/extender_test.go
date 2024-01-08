@@ -98,7 +98,6 @@ func Test_Extender_Recipe(t *testing.T) {
 }
 
 func Test_Extender_RecipeAWS(t *testing.T) {
-	t.Skip("Skipping until we resolve https://github.com/radius-project/radius/issues/6535")
 	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
 	awsRegion := os.Getenv("AWS_REGION")
 	// Error the test if the required environment variables are not set
