@@ -24,6 +24,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -249,10 +250,15 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
 func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = retries
+	client := retryablehttp.NewClient()
+	client.RetryMax = retries
+	client.RequestLogHook = func(_ retryablehttp.Logger, _ *http.Request, retry int) {
+		t.Logf("failed to get connect to resource - %d", retry)
+	}
+	client.RetryWaitMin = 2 * time.Second
+	client.Backoff = retryablehttp.LinearJitterBackoff
 
-	resp, err := retryClient.Get(fmt.Sprintf("http://localhost:%d/healthz", port))
+	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/healthz", port))
 	require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
 	defer resp.Body.Close()
 	content, err := io.ReadAll(resp.Body)
