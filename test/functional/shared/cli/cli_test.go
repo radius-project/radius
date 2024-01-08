@@ -24,7 +24,6 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,6 +32,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
@@ -228,66 +228,37 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 	})
 
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
-		t.Skip("https://github.com/radius-project/radius/issues/3232")
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 
 		// We open a local port-forward and then make a request to it.
 		child, cancel := context.WithCancel(ctx)
+		t.Cleanup(cancel)
 
-		done := make(chan error)
+		errCh := make(chan error)
 		go func() {
 			_, err = cli.ResourceExpose(child, appName, containerName, port, 3000)
-			done <- err
+			errCh <- err
 		}()
 
 		callHealthEndpointOnLocalPort(t, retries, port)
-
-		cancel()
-		err = <-done
-
-		// The error should be due to cancellation (we can canceled the command).
-		require.Equal(t, context.Canceled, err)
+		require.NoError(t, <-errCh, "failed to expose endpoint from container")
 	})
 }
 
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
 func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
-	for i := 0; i < retries; i++ {
-		url := fmt.Sprintf("http://localhost:%d/healthz", port)
-		t.Logf("making request to %s", url)
-		response, err := http.Get(url)
-		if err != nil {
-			if i == retries-1 {
-				// last retry failed, report failure
-				require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
-			}
-			t.Logf("got error %s", err.Error())
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		if response.Body != nil {
-			defer response.Body.Close()
-		}
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = retries
 
-		if response.StatusCode > 299 || response.StatusCode < 200 {
-			if i == retries-1 {
-				// last retry failed, report failure
-				require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
-			}
-			t.Logf("got status %d", response.StatusCode)
-			time.Sleep(1 * time.Second)
-			continue
-		}
+	resp, err := retryClient.Get(fmt.Sprintf("http://localhost:%d/healthz", port))
+	require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
+	defer resp.Body.Close()
+	content, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
 
-		defer response.Body.Close()
-		content, err := io.ReadAll(response.Body)
-		require.NoError(t, err)
-
-		t.Logf("[response] %s", string(content))
-		return
-	}
+	t.Logf("[response] %s", string(content))
 }
 
 func Test_Run_Logger(t *testing.T) {
