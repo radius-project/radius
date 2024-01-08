@@ -324,7 +324,7 @@ jobs:
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
-      FUNCTIONAL_TEST_APP_ID: 425843
+      FUNCTIONAL_TEST_APP_ID: 791299
     steps:
       - name: Login as the GitHub App
         uses: tibdex/github-app-token@v1
