@@ -233,7 +233,6 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 		// We open a local port-forward and then make a request to it.
 		child, cancel := context.WithCancel(ctx)
-		t.Cleanup(cancel)
 
 		errCh := make(chan error)
 		go func() {
@@ -242,6 +241,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		}()
 
 		callHealthEndpointOnLocalPort(t, retries, port)
+		cancel()
 		require.NoError(t, <-errCh, "failed to expose endpoint from container")
 	})
 }
