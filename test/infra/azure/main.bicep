@@ -87,19 +87,21 @@ resource azureMonitorWorkspace 'microsoft.monitor/accounts@2023-04-03' = {
 // Deploy AKS cluster with OIDC Issuer profile and Dapr.
 module aksCluster './modules/akscluster.bicep' = {
   name: aksClusterName
-  params:{
+  params: {
     name: aksClusterName
     location: location
-    kubernetesVersion: '1.26.3'
+    kubernetesVersion: '1.28.3'
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
     systemAgentPoolName: 'agentpool'
-    systemAgentPoolVmSize: 'Standard_DS2_v2'
+    systemAgentPoolVmSize: 'Standard_D4as_v5'
     systemAgentPoolAvailabilityZones: []
     systemAgentPoolOsDiskType: 'Managed'
+    systemAgentPoolOsSKU: 'AzureLinux'
     userAgentPoolName: 'userpool'
-    userAgentPoolVmSize: 'Standard_DS2_v2'
+    userAgentPoolVmSize: 'Standard_D4as_v5'
     userAgentPoolAvailabilityZones: []
     userAgentPoolOsDiskType: 'Managed'
+    userAgentPoolOsSKU: 'AzureLinux'
     daprEnabled: true
     daprHaEnabled: false
     oidcIssuerProfileEnabled: true
@@ -113,7 +115,7 @@ module aksCluster './modules/akscluster.bicep' = {
 // Deploy data collection for log analytics.
 module logAnalyticsDataCollection './modules/loganalytics-datacollection.bicep' = if (grafanaEnabled) {
   name: 'loganalytics-datacollection'
-  params:{
+  params: {
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.outputs.id
     logAnalyticsWorkspaceLocation: logAnalyticsWorkspace.outputs.location
     clusterResourceId: aksCluster.outputs.id
@@ -125,7 +127,7 @@ module logAnalyticsDataCollection './modules/loganalytics-datacollection.bicep' 
 // Deploy Grafana dashboard.
 module grafanaDashboard './modules/grafana.bicep' = if (grafanaEnabled) {
   name: grafanaDashboardName
-  params:{
+  params: {
     name: grafanaDashboardName
     location: location
     adminObjectId: grafanaAdminObjectId
@@ -139,7 +141,7 @@ module grafanaDashboard './modules/grafana.bicep' = if (grafanaEnabled) {
 // Deploy data collection for metrics.
 module dataCollection './modules/datacollection.bicep' = if (grafanaEnabled) {
   name: 'dataCollection'
-  params:{
+  params: {
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
     azureMonitorWorkspaceId: azureMonitorWorkspace.id
     clusterResourceId: aksCluster.outputs.id
@@ -154,7 +156,7 @@ module dataCollection './modules/datacollection.bicep' = if (grafanaEnabled) {
 // Deploy alert rules using prometheus metrics.
 module alertManagement './modules/alert-management.bicep' = if (grafanaEnabled) {
   name: 'alertManagement'
-  params:{
+  params: {
     azureMonitorWorkspaceLocation: azureMonitorWorkspace.location
     azureMonitorWorkspaceResourceId: azureMonitorWorkspace.id
     clusterResourceId: aksCluster.outputs.id
