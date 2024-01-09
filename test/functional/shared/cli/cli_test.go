@@ -237,8 +237,8 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		done := make(chan error)
 		go func() {
 			output, err := cli.ResourceExpose(child, appName, containerName, port, 3000)
-			done <- err
 			t.Logf("ResourceExpose - output: %s", output)
+			done <- err
 		}()
 
 		callHealthEndpointOnLocalPort(t, retries, port)
@@ -264,7 +264,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 				require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
 			}
 			t.Logf("got error %s", err.Error())
-			time.Sleep(1 * time.Second)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 		if response.Body != nil {
