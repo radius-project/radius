@@ -33,7 +33,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
@@ -235,36 +234,59 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 		// We open a local port-forward and then make a request to it.
 		child, cancel := context.WithCancel(ctx)
 
-		errCh := make(chan error)
+		done := make(chan error)
 		go func() {
 			_, err = cli.ResourceExpose(child, appName, containerName, port, 3000)
-			errCh <- err
+			done <- err
 		}()
 
 		callHealthEndpointOnLocalPort(t, retries, port)
+
 		cancel()
-		require.NoError(t, <-errCh, "failed to expose endpoint from container")
+		err = <-done
+
+		// The error should be due to cancellation (we can canceled the command).
+		require.Equal(t, context.Canceled, err)
 	})
 }
 
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
 func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
-	client := retryablehttp.NewClient()
-	client.RetryMax = retries
-	client.RequestLogHook = func(_ retryablehttp.Logger, _ *http.Request, retry int) {
-		t.Logf("failed to get connect to resource - %d", retry)
+	for i := 0; i < retries; i++ {
+		url := fmt.Sprintf("http://localhost:%d/healthz", port)
+		t.Logf("making request to %s", url)
+		response, err := http.Get(url)
+		if err != nil {
+			if i == retries-1 {
+				// last retry failed, report failure
+				require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
+			}
+			t.Logf("got error %s", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		if response.Body != nil {
+			defer response.Body.Close()
+		}
+
+		if response.StatusCode > 299 || response.StatusCode < 200 {
+			if i == retries-1 {
+				// last retry failed, report failure
+				require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
+			}
+			t.Logf("got status %d", response.StatusCode)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		defer response.Body.Close()
+		content, err := io.ReadAll(response.Body)
+		require.NoError(t, err)
+
+		t.Logf("[response] %s", string(content))
+		return
 	}
-	client.RetryWaitMin = 2 * time.Second
-	client.Backoff = retryablehttp.LinearJitterBackoff
-
-	resp, err := client.Get(fmt.Sprintf("http://localhost:%d/healthz", port))
-	require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
-	defer resp.Body.Close()
-	content, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	t.Logf("[response] %s", string(content))
 }
 
 func Test_Run_Logger(t *testing.T) {
