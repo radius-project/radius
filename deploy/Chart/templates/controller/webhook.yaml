@@ -1,5 +1,5 @@
 {{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "controller-cert"}}
-{{- $existingWebhook := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "recipe-webhook.radapp.io"}}
+{{- $existingWebhook := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "validating-webhook-configuration"}}
 {{- $ca := genCA "controller-ca" 3650 }}
 {{- $cn := printf "controller" }}
 {{- $altName1 := printf "controller.%s" .Release.Namespace }}
@@ -27,19 +27,19 @@ data:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: recipe-webhook.radapp.io
+  name: validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
   - v1
   clientConfig:
     caBundle: {{ b64enc $ca.Cert }}
     service:
-      name: controller
+      name: controller-webhook-service
       namespace: {{ .Release.Namespace }}
       path: /validate-radapp-io-v1alpha3-recipe
   failurePolicy: Fail
   matchPolicy: Equivalent
-  name: recipe-webhook.radapp.io
+  name: vrecipe.radapp.io
   rules:
   - apiGroups:
     - radapp.io

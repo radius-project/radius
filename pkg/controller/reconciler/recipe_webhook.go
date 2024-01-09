@@ -42,6 +42,8 @@ func (r *RecipeWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
+//+kubebuilder:webhook:path=/validate-radapp-io-v1alpha3-recipe,mutating=false,failurePolicy=fail,sideEffects=None,groups=radapp.io,resources=recipes,verbs=create;update,versions=v1alpha3,name=vrecipe.radapp.io,admissionReviewVersions=v1
+
 // RecipeWebhook implements the validating webhook functions for the Recipe type.
 type RecipeWebhook struct{}
 
@@ -55,7 +57,7 @@ func (r *RecipeWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) 
 	}
 
 	logger.Info("Validating Create Recipe %s", recipe.Name)
-	return r.validateRecipeType(ctx, recipe)
+	return nil, r.validateRecipeType(ctx, recipe)
 }
 
 // ValidateUpdate validates the update of a Recipe object.
@@ -68,7 +70,7 @@ func (r *RecipeWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runti
 	}
 
 	logger.Info("Validating Update Recipe %s", recipe.Name)
-	return r.validateRecipeType(ctx, recipe)
+	return nil, r.validateRecipeType(ctx, recipe)
 }
 
 // ValidateDelete validates the deletion of a Recipe object.
@@ -86,7 +88,7 @@ func (r *RecipeWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) 
 }
 
 // validateRecipeType validates Recipe object.
-func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappiov1alpha3.Recipe) (admission.Warnings, error) {
+func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappiov1alpha3.Recipe) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	var errList field.ErrorList
 	flPath := field.NewPath("spec").Child("type")
@@ -96,11 +98,11 @@ func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappio
 	if !portableresources.IsValidPortableResourceType(recipe.Spec.Type) {
 		errList = append(errList, field.Invalid(flPath, recipe.Spec.Type, fmt.Sprintf("allowed values are: %s", validResourceTypes)))
 
-		return nil, apierrors.NewInvalid(
+		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "radapp.io", Kind: "Recipe"},
 			recipe.Name,
 			errList)
 	}
 
-	return nil, nil
+	return nil
 }

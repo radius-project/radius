@@ -116,7 +116,7 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 				},
 				Webhooks: []admissionv1.ValidatingWebhook{
 					{
-						Name: "recipe-webhook.radapp.io",
+						Name: "vrecipe.radapp.io",
 						Rules: []admissionv1.RuleWithOperations{
 							{
 								Operations: []admissionv1.OperationType{"CREATE", "UPDATE"},

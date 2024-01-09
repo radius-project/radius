@@ -13,4 +13,4 @@ spec:
       protocol: TCP
       targetPort: 9443
   selector:
-      app.kubernetes.io/name: controller
+    app.kubernetes.io/name: controller
