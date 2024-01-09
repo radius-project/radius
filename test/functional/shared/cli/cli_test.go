@@ -236,8 +236,9 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test shared.RPTest) {
 
 		done := make(chan error)
 		go func() {
-			_, err = cli.ResourceExpose(child, appName, containerName, port, 3000)
+			output, err := cli.ResourceExpose(child, appName, containerName, port, 3000)
 			done <- err
+			t.Logf("ResourceExpose - output: %s", output)
 		}()
 
 		callHealthEndpointOnLocalPort(t, retries, port)
