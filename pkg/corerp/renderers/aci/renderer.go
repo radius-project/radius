@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	// hard-coded for PoC.
 	aciLocation = "West US 3"
 )
 
@@ -106,11 +107,14 @@ func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options 
 		Name:     to.Ptr(ssName),
 		Location: to.Ptr(aciLocation),
 		Properties: &cs2client.ContainerScaleSetProperties{
+			UpdateProfile: &cs2client.UpdateProfile{
+				UpdateMode: to.Ptr(cs2client.UpdateModeRolling),
+			},
 			ElasticProfile: &cs2client.ElasticProfile{
 				DesiredCount: to.Ptr(desiredCount),
 				ContainerGroupNamingPolicy: &cs2client.ContainerGroupNamingPolicy{
 					GUIDNamingPolicy: &cs2client.GUIDNamingPolicy{
-						Prefix: to.Ptr(resource.Name),
+						Prefix: to.Ptr(resource.Name + "-"),
 					},
 				},
 			},
