@@ -260,7 +260,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = retries
 	retryClient.RetryWaitMin = 5 * time.Second
-	retryClient.RetryWaitMax = 60 * time.Second
+	retryClient.RetryWaitMax = 20 * time.Second
 	retryClient.Backoff = retryablehttp.LinearJitterBackoff
 	retryClient.RequestLogHook = func(_ retryablehttp.Logger, req *http.Request, retry int) {
 		t.Logf("retry calling healthz endpoint %s, retry: %d", healthzURL, retry)
