@@ -52,12 +52,12 @@ resource sql 'apps/Deployment@v1' = {
             ]
             resources: {
               requests: {
-                cpu: '600m'
-                memory: '1024Mi'
+                cpu: '1200m'
+                memory: '2048Mi'
               }
               limits: {
-                cpu: '900m'
-                memory: '1024Mi'
+                cpu: '1500m'
+                memory: '4096Mi'
               }
             }
             ports: [

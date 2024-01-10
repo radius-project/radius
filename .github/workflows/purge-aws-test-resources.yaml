@@ -39,4 +39,4 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Delete old AWS resources
         run: |
-          ./.github/scripts/delete_aws_resources.sh ${{ env.AWS_RESOURCE_TYPES }}
+          ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}

@@ -1,4 +1,5 @@
 import radius as radius
+
 @description('Specifies the location for resources.')
 param location string = 'global'
 
