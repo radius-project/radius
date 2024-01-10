@@ -259,12 +259,12 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = retries
-	retryClient.RequestLogHook = func(_ retryablehttp.Logger, req *http.Request, retry int) {
-		t.Logf("retry calling healthz endpoint %s, retry: %d", healthzURL, retry)
-	}
 	retryClient.RetryWaitMin = 5 * time.Second
 	retryClient.RetryWaitMax = 60 * time.Second
 	retryClient.Backoff = retryablehttp.LinearJitterBackoff
+	retryClient.RequestLogHook = func(_ retryablehttp.Logger, req *http.Request, retry int) {
+		t.Logf("retry calling healthz endpoint %s, retry: %d", healthzURL, retry)
+	}
 
 	resp, err := retryClient.Get(healthzURL)
 	require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
