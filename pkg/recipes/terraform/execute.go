@@ -281,7 +281,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	// Load the downloaded module to retrieve providers and variables required by the module.
 	// This is needed to add the appropriate providers config and populate the value of recipe context variable.
 	logger.Info(fmt.Sprintf("Inspecting the downloaded Terraform module: %s", options.EnvRecipe.TemplatePath))
-	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe.Name)
+	loadedModule, err := inspectModule(tf.WorkingDir(), options.EnvRecipe.Name, options.EnvRecipe.TemplatePath)
 	if err != nil {
 		return nil, err
 	}

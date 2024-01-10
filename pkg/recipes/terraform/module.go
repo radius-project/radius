@@ -20,15 +20,12 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
-)
-
-const (
-	moduleRootDir = ".terraform/modules"
 )
 
 // moduleInspectResult contains the result of inspecting a Terraform module config.
@@ -53,13 +50,19 @@ type moduleInspectResult struct {
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
-func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, error) {
+func inspectModule(workingDir, localModuleName string, templatePath string) (*moduleInspectResult, error) {
+	moduleRootDir := filepath.Join(".terraform/modules", localModuleName)
 	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
-	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, localModuleName))
+	//
+	// If the template path is for a submodule, we'll add the submodule path to the module root directory.
+	if strings.Contains(templatePath, "//") {
+		moduleRootDir += "/" + strings.Split(templatePath, "//")[1]
+	}
+	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir))
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
