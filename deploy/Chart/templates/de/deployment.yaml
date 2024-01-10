@@ -62,7 +62,7 @@ spec:
         - name: kubernetes
           value: "true"
         - name: RADIUSBACKENDURL
-          value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+          value: https://ucp.{{ .Release.Namespace }}:443/apis/api.ucp.dev/v1alpha3
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}

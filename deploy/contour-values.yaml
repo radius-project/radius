@@ -1,0 +1,10 @@
+envoy:
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet
+  containerPorts:
+    http: 80
+    https: 443
+  service:
+    ports:
+      http: 8080
+      https: 8443 

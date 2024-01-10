@@ -12,21 +12,13 @@ data:
       host: "0.0.0.0"
       port: 9443
 
-    storageProvider:
-      provider: "apiserver"
-      apiserver:
-        context: ""
-        namespace: "radius-system"
-
+    storageProvider: {{ toYaml .Values.global.storageProvider | nindent 6 }}
+      
     secretProvider:
       provider: kubernetes
 
-    queueProvider:
-      provider: "apiserver"
+    queueProvider: {{ toYaml .Values.global.queueProvider | nindent 6 }}
       name: "ucp"
-      apiserver:
-        context: ""
-        namespace: "radius-system"
 
     profilerProvider:
       enabled: true

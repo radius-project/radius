@@ -13,17 +13,9 @@ data:
     environment:
       name: self-hosted
       roleLocation: "global"
-    storageProvider:
-      provider: "apiserver"
-      apiserver:
-        context: ""
-        namespace: "radius-system"
-    queueProvider:
-      provider: "apiserver"
+    storageProvider: {{ toYaml .Values.global.storageProvider | nindent 6 }}
+    queueProvider: {{ toYaml .Values.global.queueProvider | nindent 6 }} 
       name: "radius"
-      apiserver:
-        context: ""
-        namespace: "radius-system"
     metricsProvider:
       prometheus:
         enabled: true

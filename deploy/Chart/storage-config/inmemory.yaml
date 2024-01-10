@@ -1,0 +1,8 @@
+global:
+  storageProvider:
+    provider: "etcd"
+    etcd:
+      inmemory: true
+  queueProvider:
+    provider: inmemory
+  
