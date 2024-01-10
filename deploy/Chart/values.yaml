@@ -10,8 +10,6 @@ global:
     # Dotnet runtime and Go use this environment variable to load the root CA.
     sslCertDirEnvVar: "SSL_CERT_DIR"
 
-  
-
   prometheus:
     enabled: true
     path: "/metrics"
