@@ -13,7 +13,6 @@ metadata:
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
-type: kubernetes.io/tls
 data:
   tls.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.crt" "defaultValue" $cert.Cert) }}
   tls.key: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.key" "defaultValue" $cert.Key) }}
