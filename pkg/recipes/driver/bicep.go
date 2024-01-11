@@ -26,7 +26,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	"github.com/radius-project/radius/pkg/to"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
 
@@ -39,7 +38,8 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	clients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"

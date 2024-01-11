@@ -89,15 +89,6 @@ func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag str
 	if err != nil {
 		return "", err
 	}
-	layers, ok := manifest["layers"]
-	if !ok {
-		return "", fmt.Errorf("failed to decode the layers from manifest")
-	}
-
-	arr := layers.([]any)
-	if len(arr) == 0 {
-		return "", fmt.Errorf("no layers found in manifest")
-	}
 
 	// get the layers digest to fetch the blob
 	layer, ok := manifest["layers"].([]any)[0].(map[string]any)
