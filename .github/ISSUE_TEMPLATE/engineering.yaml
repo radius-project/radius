@@ -37,7 +37,7 @@ body:
   - type: markdown
     attributes:
       value: "## System information"
-  - type: input
+  - type: textarea
     attributes:
       label: rad Version
       description: What rad cli version are you running?
