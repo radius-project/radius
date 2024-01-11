@@ -32,7 +32,7 @@ import (
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
 // if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
 // the data fails to be unmarshalled.
-func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinition, data *map[string]any) error {
+func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinition, data *map[string]any, client remote.Client) error {
 	registryRepo, tag, err := parsePath(definition.TemplatePath)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
@@ -42,6 +42,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 	if err != nil {
 		return fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
+	repo.Client = client
 
 	if definition.PlainHTTP {
 		repo.PlainHTTP = true
@@ -88,6 +89,16 @@ func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag str
 	if err != nil {
 		return "", err
 	}
+	layers, ok := manifest["layers"]
+	if !ok {
+		return "", fmt.Errorf("failed to decode the layers from manifest")
+	}
+
+	arr := layers.([]any)
+	if len(arr) == 0 {
+		return "", fmt.Errorf("no layers found in manifest")
+	}
+
 	// get the layers digest to fetch the blob
 	layer, ok := manifest["layers"].([]any)[0].(map[string]any)
 	if !ok {
