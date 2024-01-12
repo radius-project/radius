@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -17,21 +17,21 @@
 # This workflow performs functional tests every an hour on a pre-provisioned
 # AKS (Azure Kubernetes Service) cluster.
 #
-# There are two types of tests in Radius: functional-test and e2e-azure-test. 
-# 'functional-test' checks the functionality of our application using a local 
-# Kubernetes cluster (kind), while 'e2e-azure-test' is executed on an AKS cluster 
-# focusing on performance and reliability. 
+# There are two types of tests in Radius: functional-test and e2e-azure-test.
+# 'functional-test' checks the functionality of our application using a local
+# Kubernetes cluster (kind), while 'e2e-azure-test' is executed on an AKS cluster
+# focusing on performance and reliability.
 #
-# The test AKS cluster is pre-provisioned with various monitoring tools using the 
-# Bicep template in /test/infra/azure. Additionally, this cluster has a 
-# monitoring and alerting system in place, configured to notify the team of any 
+# The test AKS cluster is pre-provisioned with various monitoring tools using the
+# Bicep template in /test/infra/azure. Additionally, this cluster has a
+# monitoring and alerting system in place, configured to notify the team of any
 # abnormalities during the test.
 #
-# It's also important to note that this workflow does not build the Radius in every 
-# run. Instead, Radius CLI and container images are built from the main branch every 
-# 12 hours. We leverage the GitHub Actions cache to store the 'rad cli' and test 
-# information. On workflow initiation, it checks the last build time to determine if 
-# the previous build is still valid. If valid, the workflow skips the build steps 
+# It's also important to note that this workflow does not build the Radius in every
+# run. Instead, Radius CLI and container images are built from the main branch every
+# 12 hours. We leverage the GitHub Actions cache to store the 'rad cli' and test
+# information. On workflow initiation, it checks the last build time to determine if
+# the previous build is still valid. If valid, the workflow skips the build steps
 # and uses the cached 'rad cli' for testing.
 #
 # Grafana dashboard URL: https://radiuse2e00-dashboard-audycmffgberbghy.wus3.grafana.azure.com/
@@ -68,7 +68,7 @@ env:
   # The Radius helm chart location.
   RADIUS_CHART_LOCATION: deploy/Chart/
   # The region for AWS resources
-  AWS_REGION: 'us-west-2'
+  AWS_REGION: us-west-2
   # The AWS account ID
   AWS_ACCOUNT_ID: '${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}'
 
@@ -80,8 +80,11 @@ env:
   # The resource group for AKS_CLUSTER_NAME resource.
   AKS_RESOURCE_GROUP: 'radiuse2e00'
 
-    # Server where terraform test modules are deployed
-  TF_RECIPE_MODULE_SERVER_URL: "http://tf-module-server.radius-test-tf-module-server.svc.cluster.local"
+  # Server where terraform test modules are deployed
+  TF_RECIPE_MODULE_SERVER_URL: 'http://tf-module-server.radius-test-tf-module-server.svc.cluster.local'
+
+  # Radius test environment name
+  RADIUS_TEST_ENVIRONMENT_NAME: 'kind-radius'
 
 jobs:
   build:
@@ -123,9 +126,9 @@ jobs:
       - name: Set up checkout target (pull_request)
         if: steps.skip-build.outputs.SKIP_BUILD != 'true' && github.event_name == 'pull_request'
         run: |
-            echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
-            echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REPO=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
+          echo "CHECKOUT_REF=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -151,18 +154,18 @@ jobs:
             echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
       - name: Check out code
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/checkout@v3
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
       - name: Set up Go ${{ env.GOVER }}
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/setup-go@v4
         with:
           go-version: ${{ env.GOVER }}
       - name: Log the summary of build info for new version.
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         continue-on-error: true
         run: |
           cat <<EOF > summary.md
@@ -186,15 +189,15 @@ jobs:
           * ucp test image location: `${{ env.CONTAINER_REGISTRY }}/ucpd:${{ steps.gen-id.outputs.REL_VERSION }}`
 
           </details>
-          
+
           ## Test Status
           EOF
           cat summary.md >> $GITHUB_STEP_SUMMARY
       - name: Setup Azure CLI
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Login to Azure
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.INTEGRATION_TEST_SP_APP_ID }}","clientSecret":"${{ secrets.INTEGRATION_TEST_SP_PASSWORD }}","subscriptionId":"${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.INTEGRATION_TEST_TENANT_ID }}"}'
@@ -205,14 +208,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and Push container images
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
           make build && make docker-build && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
       - name: Upload CLI binary
-        if: steps.skip-build.outputs.SKIP_BUILD != 'true' 
+        if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.gen-id.outputs.RAD_CLI_ARTIFACT_NAME }}
@@ -261,6 +264,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
+          make publish-test-bicep-recipes
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
@@ -275,7 +279,7 @@ jobs:
   tests:
     name: Run functional tests
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     if: github.repository == 'radius-project/radius'
     env:
       SKIP_BUILD: ${{ needs.build.outputs.SKIP_BUILD }}
@@ -293,6 +297,13 @@ jobs:
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
+      - name: Checkout samples repo
+        uses: actions/checkout@v3
+        with:
+          repository: radius-project/samples
+          ref: refs/heads/edge
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          path: samples
       - name: Set up Go ${{ env.GOVER }}
         uses: actions/setup-go@v4
         with:
@@ -369,25 +380,27 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
 
           echo "*** Create workspace, group and environment for test ***"
-          rad workspace create kubernetes
-          rad workspace list
-          rad group create radius-e2e
-          rad group switch radius-e2e
+          rad workspace create kubernetes --force
+          rad group create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          rad group switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create radius-e2e --namespace default
-          rad env switch radius-e2e
-          rad workspace list
+          rad env create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --namespace default
+          rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+
+          # Temporary workaround to fix the x509 certificate error in the controller.
+          # https://github.com/radius-project/radius/issues/6989
+          kubectl delete secrets controller-cert -n radius-system --ignore-not-found
 
           echo "*** Configuring Azure provider ***"
-          rad env update radius-e2e --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
             --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
             --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
           echo "*** Configuring AWS provider ***"
-          rad env update radius-e2e --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           rad credential register aws \
             --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - name: Log radius installation status (failure)
@@ -430,6 +443,24 @@ jobs:
           # Test_MongoDB_Recipe_Parameters is using the following environment variable.
           INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           FUNC_TEST_OIDC_ISSUER: ${{ env.FUNCTEST_OIDC_ISSUER }}
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      - name: Collect Pod details
+        if: always()
+        run: |
+          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/all-tests-pod-states.log'
+          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          echo "kubectl get pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl get pods -A >> $POD_STATE_LOG_FILENAME
+          echo "kubectl describe pods -A" >> $POD_STATE_LOG_FILENAME
+          kubectl describe pods -A >> $POD_STATE_LOG_FILENAME
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: all_container_logs
+          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
       - name: Log radius e2e test status (success)
         if: success()
         run: |

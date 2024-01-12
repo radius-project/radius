@@ -93,6 +93,7 @@ func GetBicepRecipeRegistry() string {
 	if defaultRecipeRegistry == "" {
 		defaultRecipeRegistry = "ghcr.io/radius-project"
 	}
+
 	return "registry=" + defaultRecipeRegistry
 }
 
@@ -103,6 +104,7 @@ func GetBicepRecipeVersion() string {
 	if defaultVersion == "" {
 		defaultVersion = "latest"
 	}
+
 	return "version=" + defaultVersion
 }
 
