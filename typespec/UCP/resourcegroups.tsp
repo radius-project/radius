@@ -39,7 +39,7 @@ using OpenAPI;
 namespace Ucp;
 
 @doc("The resource group resource")
-model ResourceGroupResource is TrackedResourceRequired<ResourceGroupProperties, "resourceGroups"> {
+model ResourceGroupResource is TrackedResource<ResourceGroupProperties> {
   @doc("The name of resource group")
   @path
   @key("resourceGroupName")

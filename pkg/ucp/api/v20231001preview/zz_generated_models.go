@@ -368,7 +368,7 @@ type ResourceGroupResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// REQUIRED; The resource-specific properties for this resource.
+	// The resource-specific properties for this resource.
 	Properties *ResourceGroupProperties
 
 	// Resource tags.
