@@ -21,7 +21,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -73,42 +72,34 @@ func NewFakeRegistryServer(t *testing.T) fakeServerInfo {
 
 	r := chi.NewRouter()
 	r.Route("/v2/test", func(r chi.Router) {
-		r.Route("/manifests", func(r chi.Router) {
-			r.Head("/{ref}", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", indexDesc.MediaType)
-				w.Header().Set("Docker-Content-Digest", indexDesc.Digest.String())
-				w.Header().Set("Content-Length", strconv.Itoa(int(indexDesc.Size)))
-				w.WriteHeader(http.StatusOK)
-			})
-
-			r.Get("/"+indexDesc.Digest.String(), func(w http.ResponseWriter, r *http.Request) {
-				if accept := r.Header.Get("Accept"); !strings.Contains(accept, indexDesc.MediaType) {
-					t.Errorf("manifest not convertable: %s", accept)
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-				w.Header().Set("Content-Type", indexDesc.MediaType)
-				w.Header().Set("Docker-Content-Digest", indexDesc.Digest.String())
-				if _, err := w.Write(index); err != nil {
-					t.Errorf("failed to write %q: %v", r.URL, err)
-				}
-			})
+		r.Head("/manifests/{ref}", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", indexDesc.MediaType)
+			w.Header().Set("Docker-Content-Digest", indexDesc.Digest.String())
+			w.Header().Set("Content-Length", strconv.Itoa(int(indexDesc.Size)))
+			w.WriteHeader(http.StatusOK)
 		})
 
-		r.Route("/blobs", func(r chi.Router) {
-			r.Head("/{digest}", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", blobDesc.MediaType)
-				w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
-				w.Header().Set("Content-Length", strconv.Itoa(int(blobDesc.Size)))
-				w.WriteHeader(http.StatusOK)
-			})
-			r.Get("/"+blobDesc.Digest.String(), func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/octet-stream")
-				w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
-				if _, err := w.Write(blob); err != nil {
-					t.Errorf("failed to write %q: %v", r.URL, err)
-				}
-			})
+		r.Get("/manifests/"+indexDesc.Digest.String(), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", indexDesc.MediaType)
+			w.Header().Set("Docker-Content-Digest", indexDesc.Digest.String())
+			if _, err := w.Write(index); err != nil {
+				t.Errorf("failed to write %q: %v", r.URL, err)
+			}
+		})
+
+		r.Head("/blobs/{digest}", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", blobDesc.MediaType)
+			w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
+			w.Header().Set("Content-Length", strconv.Itoa(int(blobDesc.Size)))
+			w.WriteHeader(http.StatusOK)
+		})
+
+		r.Get("/blobs/"+blobDesc.Digest.String(), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
+			if _, err := w.Write(blob); err != nil {
+				t.Errorf("failed to write %q: %v", r.URL, err)
+			}
 		})
 	})
 
