@@ -158,7 +158,7 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 						Name: "deployment-webhook.apps.io",
 						Rules: []admissionv1.RuleWithOperations{
 							{
-								Operations: []admissionv1.OperationType{"CREATE"},
+								Operations: []admissionv1.OperationType{"CREATE", "UPDATE"},
 								Rule: admissionv1.Rule{
 									APIGroups:   []string{"apps"},
 									APIVersions: []string{"v1"},

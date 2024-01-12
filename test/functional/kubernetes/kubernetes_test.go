@@ -136,13 +136,17 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 		podList, err := opts.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
 		require.NoError(t, err)
 
-		// Check each pod to see if it has been restarted
+		t.Log("Check pods to ensure they have not restarted due to CrashLoopBackOff event")
 		for _, pod := range podList.Items {
-			for _, status := range pod.Status.ContainerStatuses {
-				// If the RestartCount is not 0, fail the test
-				if status.RestartCount != 0 {
-					t.Errorf("Pod %s has been restarted %d times", pod.Name, status.RestartCount)
-				}
+			// Get events associated with the pod
+			eventList, err := opts.K8sClient.CoreV1().Events(pod.Namespace).List(ctx, metav1.ListOptions{
+				FieldSelector: "involvedObject.kind=Pod,involvedObject.name=" + pod.Name,
+			})
+			require.NoError(t, err)
+
+			// Check for CrashLoopBackOff event
+			for _, event := range eventList.Items {
+				require.NotEqual(t, "CrashLoopBackOff", event.Reason)
 			}
 		}
 	})

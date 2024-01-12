@@ -49,7 +49,6 @@ func (a *DeploymentWebhook) Default(ctx context.Context, obj runtime.Object) err
 	}
 
 	if annotationValue, exists := deployment.ObjectMeta.Annotations[AnnotationRadiusEnabled]; exists && annotationValue == "true" {
-
 		logger.Info("Pausing Deployment", "deploymentName", deployment.Name)
 		deployment.Spec.Paused = true
 	}
