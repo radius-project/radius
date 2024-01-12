@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
@@ -40,8 +41,13 @@ type fakeServerInfo struct {
 func NewFakeRegistryServer(t *testing.T) fakeServerInfo {
 	blob := []byte(`{
 	"parameters": {
-		"documentdbName": {"type": "string"},
-		"location": {"defaultValue": "[resourceGroup().location]", "type": "string"}
+		"documentdbName": {
+			"type": "string"
+		},
+		"location": {
+			"defaultValue": "[resourceGroup().location]",
+			"type": "string"
+		}
 	}
 }`)
 
@@ -65,35 +71,17 @@ func NewFakeRegistryServer(t *testing.T) fakeServerInfo {
 		Size:      int64(len(index)),
 	}
 
-	prefixURL := "/v2/test"
-
-	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodHead {
-			if strings.HasPrefix(r.URL.Path, prefixURL+"/manifests/") {
+	r := chi.NewRouter()
+	r.Route("/v2/test", func(r chi.Router) {
+		r.Route("/manifests", func(r chi.Router) {
+			r.Head("/{ref}", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", indexDesc.MediaType)
 				w.Header().Set("Docker-Content-Digest", indexDesc.Digest.String())
 				w.Header().Set("Content-Length", strconv.Itoa(int(indexDesc.Size)))
 				w.WriteHeader(http.StatusOK)
-			} else if strings.HasPrefix(r.URL.Path, prefixURL+"/blobs/") {
-				w.Header().Set("Content-Type", blobDesc.MediaType)
-				w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
-				w.Header().Set("Content-Length", strconv.Itoa(int(blobDesc.Size)))
-				w.WriteHeader(http.StatusOK)
-			} else {
-				w.WriteHeader(http.StatusNotFound)
-			}
+			})
 
-			return
-		} else if r.Method == http.MethodGet {
-			switch r.URL.Path {
-			case prefixURL + "/blobs/" + blobDesc.Digest.String():
-				w.Header().Set("Content-Type", "application/octet-stream")
-				w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
-				if _, err := w.Write(blob); err != nil {
-					t.Errorf("failed to write %q: %v", r.URL, err)
-				}
-
-			case prefixURL + "/manifests/" + indexDesc.Digest.String():
+			r.Get("/"+indexDesc.Digest.String(), func(w http.ResponseWriter, r *http.Request) {
 				if accept := r.Header.Get("Accept"); !strings.Contains(accept, indexDesc.MediaType) {
 					t.Errorf("manifest not convertable: %s", accept)
 					w.WriteHeader(http.StatusBadRequest)
@@ -104,18 +92,27 @@ func NewFakeRegistryServer(t *testing.T) fakeServerInfo {
 				if _, err := w.Write(index); err != nil {
 					t.Errorf("failed to write %q: %v", r.URL, err)
 				}
+			})
+		})
 
-			default:
-				t.Errorf("unexpected access: %s %s", r.Method, r.URL)
-				w.WriteHeader(http.StatusNotFound)
-			}
-		} else {
-			t.Errorf("unexpected access: %s %s", r.Method, r.URL)
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
+		r.Route("/blobs", func(r chi.Router) {
+			r.Head("/{digest}", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", blobDesc.MediaType)
+				w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
+				w.Header().Set("Content-Length", strconv.Itoa(int(blobDesc.Size)))
+				w.WriteHeader(http.StatusOK)
+			})
+			r.Get("/"+blobDesc.Digest.String(), func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
+				if _, err := w.Write(blob); err != nil {
+					t.Errorf("failed to write %q: %v", r.URL, err)
+				}
+			})
+		})
+	})
 
-	}))
+	ts := httptest.NewTLSServer(r)
 
 	url, err := url.Parse(ts.URL)
 	if err != nil {
