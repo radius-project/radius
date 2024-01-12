@@ -1775,8 +1775,7 @@
     },
     "ResourceProperties": {
       "type": "object",
-      "description": "The resource properties",
-      "properties": {}
+      "description": "The resource properties"
     },
     "Versions": {
       "type": "string",

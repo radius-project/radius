@@ -363,8 +363,7 @@
             "description": "The content of the action request",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "type": "object"
             }
           }
         ],
@@ -680,6 +679,9 @@
           ]
         }
       },
+      "required": [
+        "properties"
+      ],
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -806,8 +808,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       },
       "required": [
@@ -846,8 +847,7 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment",
-          "properties": {}
+          "description": "Key/value parameters to pass into the recipe at deployment"
         }
       }
     },

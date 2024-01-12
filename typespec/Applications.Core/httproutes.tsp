@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -37,7 +38,7 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Radius HTTPRoute Resource.")
-model HttpRouteResource is TrackedResource<HttpRouteProperties> {
+model HttpRouteResource is TrackedResourceRequired<HttpRouteProperties, "httpRoutes">{
   @doc("HTTPRoute name")
   @key("httpRouteName")
   @path
