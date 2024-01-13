@@ -16,14 +16,10 @@
 
 name: Functional tests
 on:
-  schedule:
-    # Run every 4 hours on weekdays.
-    - cron: "30 0,4,8,12,16,20 * * 1-5"
-    # Run every 12 hours on weekends.
-    - cron: "30 0,12 * * 0,6"
   # Dispatch on external events
   repository_dispatch:
     types: [de-functional-test]
+  workflow_dispatch:
 
 env:
   # Go version
@@ -71,11 +67,9 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'sk593/radius')
     env:
       DE_IMAGE: 'ghcr.io/radius-project/deployment-engine'
       DE_TAG: 'latest'
-      FUNCTIONAL_TEST_APP_ID: 791299
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -86,12 +80,6 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
     steps:
-      - name: Login as the GitHub App
-        uses: tibdex/github-app-token@v1
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - name: Set up checkout target (scheduled)
         if: github.event_name == 'schedule'
         run: |
@@ -103,8 +91,6 @@ jobs:
             echo "CHECKOUT_REPO=${{ github.repository }}" >> $GITHUB_ENV
             echo "CHECKOUT_REF=${{ github.ref }}" >> $GITHUB_ENV
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-      - name: Use custom actions
-        uses: actions/checkout@v3
       - name: 'Download PR data artifacts'
         if: github.event_name == 'workflow_run'
         uses: ./.github/actions/download-pr-data-artifact
@@ -160,7 +146,7 @@ jobs:
           echo "UNIQUE_ID=${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REPO=${{ env.CHECKOUT_REPO }}" >> $GITHUB_OUTPUT
           echo "CHECKOUT_REF=${{ env.CHECKOUT_REF }}" >> $GITHUB_OUTPUT
-          echo "AZURE_TEST_RESOURCE_GROUP=shruku-dev" >> $GITHUB_OUTPUT
+          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> $GITHUB_OUTPUT
           echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ env.PR_NUMBER }}" >> $GITHUB_OUTPUT
           echo "DE_IMAGE=${{ env.DE_IMAGE }}" >> $GITHUB_OUTPUT
@@ -169,7 +155,6 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           hide: true
@@ -214,7 +199,6 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -236,7 +220,6 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -246,7 +229,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -256,7 +238,6 @@ jobs:
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -279,7 +260,6 @@ jobs:
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -289,7 +269,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -298,7 +277,6 @@ jobs:
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: build
-    if: github.event_name == 'repository_dispatch' || (github.event_name == 'schedule' && github.repository == 'radius-project/radius') || github.event_name == 'workflow_run'
     strategy:
       fail-fast: true
       matrix:
@@ -315,28 +293,12 @@ jobs:
       CHECKOUT_REPO: ${{ needs.build.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.build.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.build.outputs.PR_NUMBER }}
-      AZURE_TEST_RESOURCE_GROUP: shruku-dev
+      AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.build.outputs.UNIQUE_ID }}-${{ matrix.name }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.build.outputs.RAD_CLI_ARTIFACT_NAME }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
-      FUNCTIONAL_TEST_APP_ID: 791299
     steps:
-      - name: Login as the GitHub App
-        uses: tibdex/github-app-token@v1
-        id: get_installation_token
-        with: 
-          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
-          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
-      - uses: LouisBrunner/checks-action@v1.6.1
-        if: always()
-        with:
-          token: ${{ steps.get_installation_token.outputs.token }}
-          name: 'Functional Test Run'
-          status: in_progress
-          repo: ${{ github.repository }}
-          sha: ${{ env.CHECKOUT_REF }}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -379,7 +341,6 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@v2
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -408,36 +369,15 @@ jobs:
           # AZURE_OIDC_ISSUER_PUBLIC_KEY
           # AZURE_OIDC_ISSUER_PRIVATE_KEY
           # AZURE_OIDC_ISSUER
-          # eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          eval "export $(echo "${{ secrets.FUNCTEST_AZURE_OIDC_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-          # AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
-          # echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
+          AUTHKEY=$(echo -n "${{ github.actor }}:${{ secrets.GH_RAD_CI_BOT_PAT }}" | base64)
+          echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
 
           # Create KinD cluster with OIDC Issuer keys
           # echo $AZURE_OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
           # echo $AZURE_OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
-          cat <<EOF | ./kind create cluster --name radius --config=-
-          kind: Cluster
-          apiVersion: kind.x-k8s.io/v1alpha4
-          nodes:
-          - role: control-plane
-            extraMounts:
-              - hostPath: ./sa.pub
-                containerPath: /etc/kubernetes/pki/sa.pub
-              - hostPath: ./sa.key
-                containerPath: /etc/kubernetes/pki/sa.key
-              - hostPath: ./ghcr_secret.json
-                containerPath: /var/lib/kubelet/config.json
-            kubeadmConfigPatches:
-            - |
-              kind: ClusterConfiguration
-              apiServer:
-                extraArgs:
-                  service-account-key-file: /etc/kubernetes/pki/sa.pub
-                  service-account-signing-key-file: /etc/kubernetes/pki/sa.key
-              controllerManager:
-                extraArgs:
-                  service-account-private-key-file: /etc/kubernetes/pki/sa.key
+          cat <<EOF | ./kind create cluster --name radius
           EOF
       - name: Install dapr into cluster
         run: |
@@ -471,7 +411,6 @@ jobs:
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -496,22 +435,21 @@ jobs:
           rad env create kind-radius --namespace default
           rad env switch kind-radius
 
-          echo "*** Configuring Azure provider ***"
-          rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-            --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-          rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
-            --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
-            --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
+          # echo "*** Configuring Azure provider ***"
+          # rad env update kind-radius --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          #   --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          # rad credential register azure --client-id ${{ secrets.INTEGRATION_TEST_SP_APP_ID }} \
+          #   --client-secret ${{ secrets.INTEGRATION_TEST_SP_PASSWORD }} \
+          #   --tenant-id ${{ secrets.INTEGRATION_TEST_TENANT_ID }}
 
-          echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          rad credential register aws \
-            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          # echo "*** Configuring AWS provider ***"
+          # rad env update kind-radius --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          # rad credential register aws \
+          #   --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
       - uses: marocchino/sticky-pull-request-comment@v2
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           header: teststatus-${{ github.run_id }}
           number: ${{ env.PR_NUMBER }}
           append: true
@@ -521,42 +459,42 @@ jobs:
         id: publish-tf-recipes
         run: |
           make publish-test-terraform-recipes
-      # - name: Run functional tests
-      #   run: |
-      #     # Ensure rad cli is in path before running tests.
-      #     export PATH=$GITHUB_WORKSPACE/bin:$PATH
-      #     cd $GITHUB_WORKSPACE
+      - name: Run functional tests
+        run: |
+          # Ensure rad cli is in path before running tests.
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          cd $GITHUB_WORKSPACE
 
-      #     which rad || { echo "cannot find rad"; exit 1; }
+          which rad || { echo "cannot find rad"; exit 1; }
 
-      #     # Populate the following test environment variables from JSON secret.
-      #     # AZURE_MONGODB_RESOURCE_ID
-      #     # AZURE_COSMOS_MONGODB_ACCOUNT_ID
-      #     # AZURE_TABLESTORAGE_RESOURCE_ID
-      #     # AZURE_SERVICEBUS_RESOURCE_ID
-      #     # AZURE_REDIS_RESOURCE_ID
-      #     # AZURE_MSSQL_RESOURCE_ID
-      #     # AZURE_MSSQL_USERNAME
-      #     # AZURE_MSSQL_PASSWORD
-      #     eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
+          # Populate the following test environment variables from JSON secret.
+          # AZURE_MONGODB_RESOURCE_ID
+          # AZURE_COSMOS_MONGODB_ACCOUNT_ID
+          # AZURE_TABLESTORAGE_RESOURCE_ID
+          # AZURE_SERVICEBUS_RESOURCE_ID
+          # AZURE_REDIS_RESOURCE_ID
+          # AZURE_MSSQL_RESOURCE_ID
+          # AZURE_MSSQL_USERNAME
+          # AZURE_MSSQL_PASSWORD
+          eval "export $(echo "${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}" | jq -r 'to_entries | map("\(.key)=\(.value)") | @sh')"
 
-      #     make test-functional-${{ matrix.name }}
-      #   env:
-      #     DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-      #     TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
-      #     RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
-      #     AWS_REGION: ${{ env.AWS_REGION }}
-      #     RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
-      #     # Test_MongoDB_Recipe_Parameters is using the following environment variable.
-      #     INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
-      #     BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
-      #     BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-      # - uses: azure/setup-kubectl@v3
-      #   if: always()
-      #   with:
-      #     version: ${{ env.KUBECTL_VER }}
+          make test-functional-${{ matrix.name }}
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
+          # Test_MongoDB_Recipe_Parameters is using the following environment variable.
+          INTEGRATION_TEST_RESOURCE_GROUP_NAME: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
+      - uses: azure/setup-kubectl@v3
+        if: always()
+        with:
+          version: ${{ env.KUBECTL_VER }}
       - name: Collect Pod details
         if: always()
         run: |
@@ -571,51 +509,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.name }}_container_logs
-          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: success() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :white_check_mark: ${{ matrix.name }} functional tests succeeded
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - uses: marocchino/sticky-pull-request-comment@v2
-        if: cancelled() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus-${{ github.run_id }}
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-      - uses: LouisBrunner/checks-action@v1.6.1
+          path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}     
+      - name: Get Terraform recipe publishing logs
         if: always()
-        with:
-          token: ${{ steps.get_installation_token.outputs.token }}
-          name: 'Functional Test Run'
-          repo: ${{ github.repository }}
-          sha: ${{ env.CHECKOUT_REF }}
-          status: completed
-          conclusion: ${{ job.status }}
-          output: |
-            {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      - name: Get pod logs for recipe publishing failure
-        id: get-pod-logs
         run: |
           # Create pod-logs directory
           mkdir -p recipes/pod-logs
@@ -629,14 +525,40 @@ jobs:
           echo "Pod logs saved to recipes/pod-logs/"
           # Get kubernetes events and save to file
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
-      # TODO add once tested: if: failure() && steps.get-pod-logs.outcome.outcome == 'success'
-      - name: Upload Pod logs for failed steps
+      - name: Upload Terraform recipe publishing logs 
         uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: recipes-pod-logs
           path: recipes/pod-logs
           retention-days: 30
           if-no-files-found: error
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: success() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :white_check_mark: ${{ matrix.name }} functional tests succeeded
+      - uses: marocchino/sticky-pull-request-comment@v2
+        if: failure() && env.PR_NUMBER != ''
+        continue-on-error: true
+        with:
+          header: teststatus-${{ github.run_id }}
+          number: ${{ env.PR_NUMBER }}
+          append: true
+          message: |
+            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
+        if: always()
+        run: |
+          # if deletion fails, purge workflow will purge the resource group and its resources later.
+          az group delete \
+            --subscription ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+            --name ${{ env.AZURE_TEST_RESOURCE_GROUP }} \
+            --yes --verbose
   report-failure:
     name: Report test failure
     needs: [build, tests]
