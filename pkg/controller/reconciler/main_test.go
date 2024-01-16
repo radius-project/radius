@@ -103,6 +103,7 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 	equivalentTypeV1 := admissionv1.Equivalent
 	noSideEffectsV1 := admissionv1.SideEffectClassNone
 	recipeWebhookPathV1 := "/validate-radapp-io-v1alpha3-recipe"
+	deploymentWebhookPathV1 := "/mutate-apps-v1-deployment"
 
 	env.WebhookInstallOptions = envtest.WebhookInstallOptions{
 		ValidatingWebhooks: []*admissionv1.ValidatingWebhookConfiguration{
@@ -136,6 +137,44 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 								Name:      "controller",
 								Namespace: "default",
 								Path:      &recipeWebhookPathV1,
+							},
+						},
+						AdmissionReviewVersions: []string{"v1"},
+					},
+				},
+			},
+		},
+		MutatingWebhooks: []*admissionv1.MutatingWebhookConfiguration{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "deployment-webhook-config",
+				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "MutatingWebhookConfiguration",
+					APIVersion: "admissionregistration.k8s.io/v1",
+				},
+				Webhooks: []admissionv1.MutatingWebhook{
+					{
+						Name: "deployment-webhook.apps.io",
+						Rules: []admissionv1.RuleWithOperations{
+							{
+								Operations: []admissionv1.OperationType{"CREATE"},
+								Rule: admissionv1.Rule{
+									APIGroups:   []string{"apps"},
+									APIVersions: []string{"v1"},
+									Resources:   []string{"deployments"},
+									Scope:       &defaultScopeV1,
+								},
+							},
+						},
+						FailurePolicy: &failedTypeV1,
+						MatchPolicy:   &equivalentTypeV1,
+						SideEffects:   &noSideEffectsV1,
+						ClientConfig: admissionv1.WebhookClientConfig{
+							Service: &admissionv1.ServiceReference{
+								Name:      "controller",
+								Namespace: "default",
+								Path:      &deploymentWebhookPathV1,
 							},
 						},
 						AdmissionReviewVersions: []string{"v1"},

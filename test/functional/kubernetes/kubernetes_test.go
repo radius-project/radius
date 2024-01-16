@@ -38,6 +38,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
@@ -129,6 +130,21 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 
 		_, err = client.Get(ctx, deployment.Name, nil)
 		require.NoError(t, err)
+
+		// Get the list of pods
+		labelSelector := labels.Set{"app": "demo"}.AsSelector().String()
+		podList, err := opts.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+		require.NoError(t, err)
+
+		// Check each pod to see if it has been restarted
+		for _, pod := range podList.Items {
+			for _, status := range pod.Status.ContainerStatuses {
+				// If the RestartCount is not 0, fail the test
+				if status.RestartCount != 0 {
+					t.Errorf("Pod %s has been restarted %d times", pod.Name, status.RestartCount)
+				}
+			}
+		}
 	})
 
 	t.Run("Delete", func(t *testing.T) {

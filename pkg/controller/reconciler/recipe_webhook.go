@@ -54,7 +54,7 @@ func (r *RecipeWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) 
 		return nil, fmt.Errorf("expected a Recipe but got a %T", obj)
 	}
 
-	logger.Info("Validating Create Recipe %s", recipe.Name)
+	logger.Info("Validating Create Recipe.", "recipeName", recipe.Name)
 	return r.validateRecipeType(ctx, recipe)
 }
 
@@ -67,7 +67,7 @@ func (r *RecipeWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runti
 		return nil, fmt.Errorf("expected a Recipe but got a %T", newObj)
 	}
 
-	logger.Info("Validating Update Recipe %s", recipe.Name)
+	logger.Info("Validating Update Recipe.", "recipeName", recipe.Name)
 	return r.validateRecipeType(ctx, recipe)
 }
 
@@ -92,7 +92,7 @@ func (r *RecipeWebhook) validateRecipeType(ctx context.Context, recipe *radappio
 	flPath := field.NewPath("spec").Child("type")
 	validResourceTypes := strings.Join(portableresources.GetValidPortableResourceTypes(), ", ")
 
-	logger.Info("Validating Recipe Type %s in Recipe %s", recipe.Spec.Type, recipe.Name)
+	logger.Info("Validating Recipe Type in Recipe", "recipeType", recipe.Spec.Type, "recipeName", recipe.Name)
 	if !portableresources.IsValidPortableResourceType(recipe.Spec.Type) {
 		errList = append(errList, field.Invalid(flPath, recipe.Spec.Type, fmt.Sprintf("allowed values are: %s", validResourceTypes)))
 

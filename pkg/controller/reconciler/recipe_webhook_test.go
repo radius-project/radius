@@ -284,6 +284,9 @@ func setupWebhookTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	err = (&RecipeWebhook{}).SetupWebhookWithManager(mgr)
 	require.NoError(t, err)
 
+	err = (&DeploymentWebhook{}).SetupWebhookWithManager(mgr)
+	require.NoError(t, err)
+
 	go func() {
 		err := mgr.Start(ctx)
 		require.NoError(t, err)

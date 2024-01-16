@@ -45,3 +45,30 @@ webhooks:
     resources:
     - recipes
   sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: deployment-webhook.apps.io
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    caBundle: {{ include "secrets.lookup" (dict "secret" "controller-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+    service:
+      name: controller
+      namespace: {{ .Release.Namespace }}
+      path: /mutate-apps-v1-deployment
+  failurePolicy: Fail
+  matchPolicy: Equivalent
+  name: deployment-webhook.apps.io
+  rules:
+  - apiGroups:
+    - apps
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    resources:
+    - deployments
+  sideEffects: None

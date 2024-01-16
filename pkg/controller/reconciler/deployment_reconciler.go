@@ -351,6 +351,12 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 		return ctrl.Result{}, fmt.Errorf("failed to update deployment: %w", err)
 	}
 
+	// Deployment is unpaused
+	if deployment.Spec.Paused {
+		deployment.Spec.Paused = false
+		logger.Info("Deployment is unpaused.")
+	}
+
 	err = r.saveState(ctx, deployment, annotations)
 	if err != nil {
 		return ctrl.Result{}, err
