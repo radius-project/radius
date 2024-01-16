@@ -1,5 +1,3 @@
-{{- $existingSecret := lookup "v1" "Secret" .Release.Namespace "controller-cert"}}
-{{- $existingWebhook := lookup "admissionregistration.k8s.io/v1" "ValidatingWebhookConfiguration" .Release.Namespace "recipe-webhook.radapp.io"}}
 {{- $ca := genCA "controller-ca" 3650 }}
 {{- $cn := printf "controller" }}
 {{- $altName1 := printf "controller.%s" .Release.Namespace }}
@@ -15,14 +13,11 @@ metadata:
   labels:
     app.kubernetes.io/name: controller
     app.kubernetes.io/part-of: radius
+type: kubernetes.io/tls
 data:
-  {{ if $existingSecret }}tls.crt: {{ index $existingSecret.data "tls.crt" }}
-  {{ else }}tls.crt: {{ b64enc $cert.Cert }}
-  {{ end }}
-
-  {{ if $existingSecret }}tls.key: {{ index $existingSecret.data "tls.key" }}
-  {{ else }}tls.key: {{ b64enc $cert.Key }}
-  {{ end }}
+  tls.crt: {{ include "secrets.lookup" (dict "secret" "controller-cert" "namespace" .Release.Namespace "key" "tls.crt" "defaultValue" $cert.Cert) }}
+  tls.key: {{ include "secrets.lookup" (dict "secret" "controller-cert" "namespace" .Release.Namespace "key" "tls.key" "defaultValue" $cert.Key) }}
+  ca.crt: {{ include "secrets.lookup" (dict "secret" "controller-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
@@ -32,7 +27,7 @@ webhooks:
 - admissionReviewVersions:
   - v1
   clientConfig:
-    caBundle: {{ b64enc $ca.Cert }}
+    caBundle: {{ include "secrets.lookup" (dict "secret" "controller-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
     service:
       name: controller
       namespace: {{ .Release.Namespace }}
