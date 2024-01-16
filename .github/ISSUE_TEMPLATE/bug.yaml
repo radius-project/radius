@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report broken functionality within Radius
+title: "<BUG TITLE>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "## Bug information"
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: How can we recreate this bug? Be specific.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Observed behavior
+      description: What you're experiencing that you believe is a bug.
+      placeholder: |
+        If applicable, add screenshots to help explain your problem.
+
+        Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Desired behavior
+      description: What you're expecting to happen.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Workaround
+      description: Have you found a workaround to get you unblocked?
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: "## System information"
+  - type: textarea
+    attributes:
+      label: rad Version
+      description: What rad cli version are you running?
+      placeholder: PASTE OUTPUT OF "rad version"
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Operating system
+      description: What operating system (macOS Monterey, Windows 11, etc.) and architecture (x86, x64, arm64, etc.) are you running?
+      placeholder: |
+        For example: macOS Monterey, M1 chip
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
+      placeholder: |
+        Links? References? Anything that will give us more context about the issue you are encountering!
+
+        Tip: You can attach images or files by clicking this area to highlight it and then dragging files in.
+    validations:
+      required: false
+  - type: checkboxes
+    attributes:
+      label: Would you like to support us?
+      description: Would you like to support us in fixing this bug?
+      options:
+        - label: Yes, I would like to support you
+          required: false
