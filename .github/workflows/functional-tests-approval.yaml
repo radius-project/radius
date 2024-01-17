@@ -2,8 +2,8 @@ name: 'Approve Functional Tests'
 on:
   pull_request:
     paths:
-    - 'versions.yaml'
-    - '!**'
+    - '!versions.yaml'
+    - '**'
     branches:
       - main
       - features/*

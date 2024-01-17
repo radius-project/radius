@@ -58,5 +58,3 @@ deprecated:
     version: 'v0.2.1'
   - channel: '0.1'
     version: 'v0.1.0'
-  - channel: '0.01'
-    version: 'v0.01.0'
