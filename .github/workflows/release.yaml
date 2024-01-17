@@ -31,7 +31,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-  STOPPED: false
+  IS_WORKFLOW_STOPPED: false
 
 jobs:
   generate_release_note:
@@ -186,9 +186,9 @@ jobs:
         if: steps.release-branch-exists == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           echo "Release branch ${{ steps.get-version.outputs.release-branch-name }} already exists. Stop the workflow."
-          echo "STOPPED=true" >> $GITHUB_ENV
+          echo "IS_WORKFLOW_STOPPED=true" >> $GITHUB_ENV
       - name: Generate release summary
-        if: env.STOPPED == 'false'
+        if: env.IS_WORKFLOW_STOPPED == 'false'
         run: |
           echo "## Release" >> $GITHUB_STEP_SUMMARY
           echo "* Release driver: $GITHUB_ACTOR ">> $GITHUB_STEP_SUMMARY
@@ -197,18 +197,18 @@ jobs:
           echo "* Desired release branch: ${{ steps.get-version.outputs.release-branch-name }}" >> $GITHUB_STEP_SUMMARY
           echo "* Release date: $(date)" >> $GITHUB_STEP_SUMMARY
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
-        if: success() && env.STOPPED == 'false'
+        if: success() && env.IS_WORKFLOW_STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh radius ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Release radius-project/bicep version ${{ steps.get-version.outputs.release-version }}
-        if: success() && env.STOPPED == 'false'
+        if: success() && env.IS_WORKFLOW_STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Release radius-project/deployment-engine version ${{ steps.get-version.outputs.release-version }}
-        if: success() && env.STOPPED == 'false'
+        if: success() && env.IS_WORKFLOW_STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh deployment-engine ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
       - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
-        if: success() && env.STOPPED == 'false'
+        if: success() && env.IS_WORKFLOW_STOPPED == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
