@@ -1,8 +1,6 @@
-name: 'Approve Functional Tests'
+name: 'Skip Functional Tests'
 on:
   pull_request:
-    paths:
-    - 'versions.yaml'
     branches:
       - main
       - features/*
@@ -15,6 +13,14 @@ jobs:
     env:
       FUNCTIONAL_TEST_APP_ID: 428394
     steps:
+      - name: Check if only versions.yaml has changed
+        id: check_file_changes
+        run: |
+          if [[ $(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}) == *"versions.yaml"* && $(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | wc -l) -eq 1 ]]; then
+            echo "::set-output name=only_versions_yaml::true"
+          else
+            echo "::set-output name=only_versions_yaml::false"
+          fi
       - name: Login as the GitHub App
         uses: tibdex/github-app-token@v1
         id: get_installation_token
@@ -22,7 +28,7 @@ jobs:
           app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
           private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
       - uses: LouisBrunner/checks-action@v1.6.1
-        if: always()
+        if: ${{ steps.check_file_changes.outputs.only_versions_yaml == 'true' }}
         with:
           token: ${{ steps.get_installation_token.outputs.token }}
           name: 'Functional Test Run'
@@ -32,4 +38,3 @@ jobs:
           conclusion: ${{ job.status }}
           output: |
             {"summary":"Functional Test run not required as only versions.yaml has changed."}
-  
