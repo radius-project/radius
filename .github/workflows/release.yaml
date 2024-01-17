@@ -210,7 +210,7 @@ jobs:
           ./radius/.github/scripts/release-wait-for-workflow.sh recipes ${{ steps.get-version.outputs.release-version }} "Publish Recipes" 
 
       - name: Release verification ${{ steps.get-version.outputs.release-version }}
-        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: radius-project
           repo: radius
@@ -224,7 +224,7 @@ jobs:
           trigger_workflow: true
           wait_workflow: true
       - name: Sample validation ${{ steps.get-version.outputs.release-version }}
-        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: radius-project
           repo: samples
@@ -239,8 +239,8 @@ jobs:
           wait_workflow: true
 
       - name: Release docs ${{ steps.get-version.outputs.release-version }}
-        if: success() && ${{ !contains(steps.get-version.outputs.release-version, '-rc') }}
-        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        if: success() && ${{ endsWith(steps.get-version.outputs.release-version, '.0') }}
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: radius-project
           repo: docs
@@ -254,8 +254,8 @@ jobs:
           trigger_workflow: true
           wait_workflow: true
       - name: Release samples ${{ steps.get-version.outputs.release-version }}
-        if: success() && ${{ !contains(steps.get-version.outputs.release-version, '-rc') }}
-        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        if: success() && ${{ endsWith(steps.get-version.outputs.release-version, '.0') }}
+        uses: convictional/trigger-workflow-and-wait@v1.6.5
         with:
           owner: radius-project
           repo: samples
