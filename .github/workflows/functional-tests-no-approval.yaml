@@ -1,0 +1,35 @@
+name: 'Approve Functional Tests'
+on:
+  pull_request:
+    paths:
+    - 'versions.yaml'
+    branches:
+      - main
+      - features/*
+      - release/*
+  
+jobs:
+  skip-functional-tests:
+    name: Skip functional tests
+    runs-on: ubuntu-latest
+    env:
+      FUNCTIONAL_TEST_APP_ID: 428394
+    steps:
+      - name: Login as the GitHub App
+        uses: tibdex/github-app-token@v1
+        id: get_installation_token
+        with: 
+          app_id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          private_key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+      - uses: LouisBrunner/checks-action@v1.6.1
+        if: always()
+        with:
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: 'Functional Test Run'
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          status: completed
+          conclusion: ${{ job.status }}
+          output: |
+            {"summary":"Functional Test run not required as only versions.yaml has changed."}
+  
