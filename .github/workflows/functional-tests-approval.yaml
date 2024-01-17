@@ -1,10 +1,14 @@
 name: 'Approve Functional Tests'
 on:
   pull_request:
+    paths:
+    - 'versions.yaml'
+    - '!**'
     branches:
       - main
       - features/*
       - release/*
+  
 jobs:
   approve-functional-tests-run:
     name: 'Approve Functional Tests'
