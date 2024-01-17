@@ -18,21 +18,24 @@ package driver
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	"github.com/radius-project/radius/pkg/rp/util/registrytest"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testcontext"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -376,7 +379,9 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 }
 
 func Test_Bicep_Execute_SimulatedEnvironment(t *testing.T) {
-	t.Skip("This test makes outbound calls. #6490")
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
 	opts := ExecuteOptions{
 		BaseOptions: BaseOptions{
 			Configuration: recipes.Configuration{
@@ -395,13 +400,13 @@ func Test_Bicep_Execute_SimulatedEnvironment(t *testing.T) {
 			Definition: recipes.EnvironmentDefinition{
 				Name:         "test-recipe",
 				Driver:       recipes.TemplateKindBicep,
-				TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+				TemplatePath: ts.TestImageURL,
 				ResourceType: "Applications.Datastores/mongoDatabases",
 			},
 		},
 	}
 	ctx := testcontext.New(t)
-	d := &bicepDriver{}
+	d := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipesOutput, err := d.Execute(ctx, opts)
 	require.NoError(t, err)
 	require.Nil(t, recipesOutput)
@@ -489,20 +494,21 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 }
 
 func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
-	t.Skip("This test makes outbound calls. #6490")
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
 	ctx := testcontext.New(t)
-	driver := bicepDriver{}
+	driver := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+		TemplatePath: ts.TestImageURL,
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
 	expectedOutput := map[string]any{
 		"documentdbName": map[string]any{"type": "string"},
 		"location":       map[string]any{"defaultValue": "[resourceGroup().location]", "type": "string"},
-		"mongodbName":    map[string]any{"type": "string"},
 	}
 
 	recipeData, err := driver.GetRecipeMetadata(ctx, BaseOptions{
@@ -515,30 +521,31 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 }
 
 func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
-	t.Skip("This test makes outbound calls. #6490")
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
 	ctx := testcontext.New(t)
-	driver := bicepDriver{}
+	driver := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
 		Driver:       recipes.TemplateKindBicep,
-		TemplatePath: "ghcr.io/radius-project/dev/test-non-existent-recipe",
+		TemplatePath: ts.TestServer.URL + "/nonexisting:latest",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
 
-	_, err := driver.GetRecipeMetadata(ctx, BaseOptions{
+	_, actualErr := driver.GetRecipeMetadata(ctx, BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: recipeDefinition,
 	})
 	expErr := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeLanguageFailure,
-			Message: "failed to fetch repository from the path \"ghcr.io/radius-project/dev/test-non-existent-recipe\": ghcr.io/radius-project/dev/test-non-existent-recipe:latest: not found",
+			Message: "failed to fetch repository from the path \"https://<REPLACE_HOST>/nonexisting:latest\": <REPLACE_HOST>/nonexisting:latest: not found",
 		},
 		DeploymentStatus: "setupError",
 	}
-
-	require.Error(t, err)
-	require.Equal(t, err, &expErr)
+	expErr.ErrorDetails.Message = strings.Replace(expErr.ErrorDetails.Message, "<REPLACE_HOST>", ts.URL.Host, -1)
+	require.Equal(t, actualErr, &expErr)
 }
 
 func Test_GetGCOutputResources(t *testing.T) {

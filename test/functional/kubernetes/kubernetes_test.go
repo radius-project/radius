@@ -78,11 +78,11 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 
 	t.Run("Deploy", func(t *testing.T) {
 		t.Log("Creating recipe")
-		err = opts.Client.Create(ctx, deployment)
+		err = opts.Client.Create(ctx, recipe)
 		require.NoError(t, err)
 
 		t.Log("Creating deployment")
-		err = opts.Client.Create(ctx, recipe)
+		err = opts.Client.Create(ctx, deployment)
 		require.NoError(t, err)
 	})
 
@@ -176,7 +176,7 @@ func makeDeployment(name types.NamespacedName, environmentName string, applicati
 					Containers: []corev1.Container{
 						{
 							Name:  "demo",
-							Image: "radius.azurecr.io/tutorial/webapp:edge",
+							Image: "ghcr.io/radius-project/tutorial/webapp:edge",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 3000,

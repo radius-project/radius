@@ -25,10 +25,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/radius-project/radius/pkg/to"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/errgroup"
+	"oras.land/oras-go/v2/registry/remote"
+
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/metrics"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -37,12 +38,11 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	clients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-
-	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 //go:generate mockgen -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
@@ -74,6 +74,9 @@ type bicepDriver struct {
 	DeploymentClient *clients.ResourceDeploymentsClient
 	ResourceClient   processors.ResourceClient
 	options          BicepOptions
+
+	// RegistryClient is the optional client used to interact with the container registry.
+	RegistryClient remote.Client
 }
 
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
@@ -85,7 +88,8 @@ func (d *bicepDriver) Execute(ctx context.Context, opts ExecuteOptions) (*recipe
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData)
+
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -258,7 +262,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts BaseOptions) (
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, d.RegistryClient)
 	if err != nil {
 		return nil, err
 	}
