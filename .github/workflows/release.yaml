@@ -187,3 +187,84 @@ jobs:
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes ${{ steps.get-version.outputs.release-version }} ${{ steps.get-version.outputs.release-branch-name }}
         if: success()
+
+      - name: Wait for the radius-project/radius Build and Test workflow to complete
+        if: always()
+        run: |
+          ./radius/.github/scripts/release-wait-for-workflow.sh radius ${{ steps.get-version.outputs.release-version }} "Build and Test"
+      - name: Wait for the radius-project/radius Assets workflow to complete
+        if: always()
+        run: |
+          ./radius/.github/scripts/release-wait-for-workflow.sh radius ${{ steps.get-version.outputs.release-version }} "Assets"
+      - name: Wait for the radius-project/bicep Radius Build workflow to complete
+        if: always()
+        run: |
+          ./radius/.github/scripts/release-wait-for-workflow.sh bicep ${{ steps.get-version.outputs.release-version }} "Radius Build"
+      - name: Wait for the radius-project/deployment-engine Build workflow to complete
+        if: always()
+        run: |
+          ./radius/.github/scripts/release-wait-for-workflow.sh deployment-engine ${{ steps.get-version.outputs.release-version }} "Build" 
+      - name: Wait for the radius-project/recipes Publish Recipes workflow to complete
+        if: always()
+        run: |
+          ./radius/.github/scripts/release-wait-for-workflow.sh recipes ${{ steps.get-version.outputs.release-version }} "Publish Recipes" 
+
+      - name: Release verification ${{ steps.get-version.outputs.release-version }}
+        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          owner: radius-project
+          repo: radius
+          github_token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github_user: rad-ci-bot
+          workflow_file_name: release-verification.yaml
+          ref: edge
+          wait_interval: 60
+          client_payload: '{ "version": "${{ steps.get-version.outputs.release-version-number }}" }'
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
+      - name: Sample validation ${{ steps.get-version.outputs.release-version }}
+        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          owner: radius-project
+          repo: samples
+          github_token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github_user: rad-ci-bot
+          workflow_file_name: test.yaml
+          ref: edge
+          wait_interval: 60
+          client_payload: '{ "version": "${{ steps.get-version.outputs.release-version-number }}" }'
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
+
+      - name: Release docs ${{ steps.get-version.outputs.release-version }}
+        if: success() && ${{ !contains(steps.get-version.outputs.release-version, '-rc') }}
+        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          owner: radius-project
+          repo: docs
+          github_token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github_user: rad-ci-bot
+          workflow_file_name: release.yaml
+          ref: edge
+          wait_interval: 60
+          client_payload: '{ "version": "${{ steps.get-version.outputs.release-version-number }}" }'
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
+      - name: Release samples ${{ steps.get-version.outputs.release-version }}
+        if: success() && ${{ !contains(steps.get-version.outputs.release-version, '-rc') }}
+        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          owner: radius-project
+          repo: samples
+          github_token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github_user: rad-ci-bot
+          workflow_file_name: release.yaml
+          ref: edge
+          wait_interval: 60
+          client_payload: '{ "release_version": "${{ steps.get-version.outputs.release-version-number }}" }'
+          propagate_failure: true
+          trigger_workflow: true
+          wait_workflow: true
