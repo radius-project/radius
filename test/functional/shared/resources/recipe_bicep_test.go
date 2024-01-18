@@ -110,6 +110,53 @@ func Test_BicepRecipe_ParametersAndOutputs(t *testing.T) {
 	test.Test(t)
 }
 
+// This test validates that the recipe context parameter is populated as expected.
+func Test_BicepRecipe_ContextParameter(t *testing.T) {
+	template := "testdata/corerp-resources-recipe-bicep.bicep"
+	name := "corerp-resources-recipe-bicep-contextparameter"
+
+	parameters := []string{
+		functional.GetBicepRecipeRegistry(),
+		functional.GetBicepRecipeVersion(),
+		fmt.Sprintf("basename=%s", name),
+		fmt.Sprintf("recipe=%s", "context-parameter"),
+	}
+
+	test := shared.NewRPTest(t, name, []shared.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, parameters...),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ExtendersResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test shared.RPTest) {
+				resource, err := test.Options.ManagementClient.ShowResource(ctx, "Applications.Core/extenders", name)
+				require.NoError(t, err)
+
+				text, err := json.MarshalIndent(resource, "", "  ")
+				require.NoError(t, err)
+				t.Logf("resource data:\n %s", text)
+
+				require.Equal(t, name, resource.Properties["environment"])
+				require.Equal(t, name, resource.Properties["application"])
+				require.Equal(t, name, resource.Properties["resource"])
+				require.Equal(t, name+"-app", resource.Properties["namespace"])
+				require.Equal(t, name+"-env", resource.Properties["envNamespace"])
+			},
+		},
+	})
+	test.Test(t)
+}
+
 // This test actually creates a Radius resource using a recipe (yeah, not a real user scenario).
 //
 // The purpose of this test is to test creation and behavior of **output resources**. This way we

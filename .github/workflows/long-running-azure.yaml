@@ -86,6 +86,9 @@ env:
   # Radius test environment name
   RADIUS_TEST_ENVIRONMENT_NAME: 'kind-radius'
 
+  # The current GitHub action link
+  ACTION_LINK: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+
 jobs:
   build:
     name: Build Radius for test
@@ -388,10 +391,6 @@ jobs:
           rad env create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --namespace default
           rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
 
-          # Temporary workaround to fix the x509 certificate error in the controller.
-          # https://github.com/radius-project/radius/issues/6989
-          kubectl delete secrets controller-cert -n radius-system --ignore-not-found
-
           echo "*** Configuring Azure provider ***"
           rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
             --azure-resource-group ${{ env.AZURE_TEST_RESOURCE_GROUP }}
@@ -480,3 +479,20 @@ jobs:
       - name: Clean up cluster
         if: always()
         run: ./.github/scripts/cleanup-cluster.sh
+  report-failure:
+    name: Report test failure
+    needs: [build, tests]
+    runs-on: ubuntu-latest
+    if: failure() && github.repository == 'radius-project/radius'
+    steps:
+      - name: Create failure issue for failing long running test run
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            github.rest.issues.create({
+              ...context.repo,
+              title: `Scheduled long running test failed - Run ID: ${context.runId}`,
+              labels: ['bug', 'test-failure'],
+              body: `## Bug information \n\nThis bug is generated automatically if the scheduled long running test fails. The Radius long running test operates on a schedule of every 2 hours everyday. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+            })
