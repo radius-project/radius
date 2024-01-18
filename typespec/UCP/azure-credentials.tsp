@@ -25,7 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
-import "../radius/v1/radius.tsp";
+import "../radius/v1/trackedresource.tsp";
 import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
