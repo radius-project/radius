@@ -126,6 +126,9 @@ type ApplicationResourceUpdateProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
 
+	// recipeConfig
+	RecipeConfig *string
+
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification
 
@@ -553,6 +556,9 @@ type EnvironmentProperties struct {
 	// Cloud providers configuration for the environment.
 	Providers *Providers
 
+	// recipeConfig
+	RecipeConfig *string
+
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesClassification
 
@@ -615,6 +621,9 @@ type EnvironmentResourceUpdateProperties struct {
 
 	// Cloud providers configuration for the environment.
 	Providers *ProvidersUpdate
+
+	// recipeConfig
+	RecipeConfig *string
 
 	// Specifies Recipes linked to the Environment.
 	Recipes map[string]map[string]RecipePropertiesUpdateClassification

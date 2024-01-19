@@ -101,7 +101,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	// Get resources that the resource being deployed has connection with.
+	// Get resources that the resource x deployed has connection with.
 	requiredResources, _, err := renderer.GetDependencyIDs(ctx, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err

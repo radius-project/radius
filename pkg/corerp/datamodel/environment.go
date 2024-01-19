@@ -38,11 +38,12 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	Compute    rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
-	Recipes    map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
-	Providers  Providers                                         `json:"providers,omitempty"`
-	Extensions []Extension                                       `json:"extensions,omitempty"`
-	Simulated  bool                                              `json:"simulated,omitempty"`
+	Compute      rpv1.EnvironmentCompute                           `json:"compute,omitempty"`
+	Recipes      map[string]map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	Providers    Providers                                         `json:"providers,omitempty"`
+	Extensions   []Extension                                       `json:"extensions,omitempty"`
+	Simulated    bool                                              `json:"simulated,omitempty"`
+	RecipeConfig string                                            `json:"recipeConfig,omitempty"`
 }
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.

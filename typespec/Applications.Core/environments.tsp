@@ -64,6 +64,9 @@ model EnvironmentProperties {
   @doc("Specifies Recipes linked to the Environment.")
   recipes?: Record<Record<RecipeProperties>>;
 
+  @doc("recipeConfig")
+  recipeConfig?: string;
+
   @doc("The environment extension.")
   @extension("x-ms-identifiers", [])
   extensions?: Array<Extension>;

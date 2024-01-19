@@ -19,7 +19,6 @@ package secretstores
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -141,8 +140,9 @@ func getNamespace(ctx context.Context, res *datamodel.SecretStore, options *cont
 			return namespace, nil
 		}
 	}
+	return "radius-system", nil
 
-	return "", errors.New("no Kubernetes namespace")
+	//return "", errors.New("no Kubernetes namespace")
 }
 
 func toResourceID(ns, name string) string {

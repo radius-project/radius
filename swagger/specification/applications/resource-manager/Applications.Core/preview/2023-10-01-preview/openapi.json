@@ -2742,6 +2742,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "type": "string",
+          "description": "recipeConfig"
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -3501,6 +3505,10 @@
             "type": "object"
           }
         },
+        "recipeConfig": {
+          "type": "string",
+          "description": "recipeConfig"
+        },
         "extensions": {
           "type": "array",
           "description": "The environment extension.",
@@ -3597,6 +3605,10 @@
             },
             "type": "object"
           }
+        },
+        "recipeConfig": {
+          "type": "string",
+          "description": "recipeConfig"
         },
         "extensions": {
           "type": "array",

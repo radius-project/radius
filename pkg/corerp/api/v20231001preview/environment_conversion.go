@@ -62,6 +62,7 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		return nil, err
 	}
 	converted.Properties.Compute = *envCompute
+	converted.Properties.RecipeConfig = to.String(src.Properties.RecipeConfig)
 
 	if src.Properties.Recipes != nil {
 		envRecipes := make(map[string]map[string]datamodel.EnvironmentRecipeProperties)
@@ -176,6 +177,7 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		}
 		dst.Properties.Extensions = extensions
 	}
+	dst.Properties.RecipeConfig = to.Ptr(env.Properties.RecipeConfig)
 
 	return nil
 }
