@@ -1,0 +1,23 @@
+[
+    {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend",
+        "name": "frontend",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    },
+    {
+        "connections": [],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
+        "name": "backendapp",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    }
+]

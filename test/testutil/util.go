@@ -32,6 +32,14 @@ func MustGetTestData[T any](file string) *T {
 	return &data
 }
 
+// MustUnmarshalFromFile reads testdata and unmarshals it to the given type, panicking if an error occurs.
+func MustUnmarshalFromFile(file string, out any) {
+	err := json.Unmarshal(ReadFixture(file), out)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // ReadFixture reads testdata fixtures, panicking if an error occurs.
 //
 // The prefix `./testdata/` is automatically added to the filename. Tests can 'escape' the testdata directory by
