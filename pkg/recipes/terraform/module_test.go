@@ -20,12 +20,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_InspectTFModuleConfig(t *testing.T) {
 	tests := []struct {
 		name         string
+		recipe       *recipes.EnvironmentDefinition
 		workingDir   string
 		moduleName   string
 		templatePath string
@@ -33,10 +35,12 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 		err          string
 	}{
 		{
-			name:         "aws provider only",
-			workingDir:   "testdata",
-			moduleName:   "test-module-provideronly",
-			templatePath: "test-module-provideronly",
+			name: "aws provider only",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-provideronly",
+				TemplatePath: "test-module-provideronly",
+			},
+			workingDir: "testdata",
 			result: &moduleInspectResult{
 				ContextVarExists:   false,
 				RequiredProviders:  []string{"aws"},
@@ -45,10 +49,12 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			},
 		},
 		{
-			name:         "aws provider with recipe context variable, output and parameters",
-			workingDir:   "testdata",
-			moduleName:   "test-module-recipe-context-outputs",
-			templatePath: "test-module-recipe-context-outputs",
+			name:       "aws provider with recipe context variable, output and parameters",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-recipe-context-outputs",
+				TemplatePath: "test-module-recipe-context-outputs",
+			},
 			result: &moduleInspectResult{
 				ContextVarExists:   true,
 				RequiredProviders:  []string{"aws"},
@@ -70,17 +76,21 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			},
 		},
 		{
-			name:         "invalid module name - non existent module directory",
-			workingDir:   "testdata",
-			moduleName:   "invalid-module",
-			templatePath: "invalid-module",
-			err:          "error loading the module",
+			name:       "invalid module name - non existent module directory",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "invalid-module",
+				TemplatePath: "invalid-module",
+			},
+			err: "error loading the module",
 		},
 		{
-			name:         "submodule path",
-			workingDir:   "testdata",
-			moduleName:   "test-submodule",
-			templatePath: "test-submodule//submodule",
+			name:       "submodule path",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-submodule",
+				TemplatePath: "test-submodule//submodule",
+			},
 			result: &moduleInspectResult{
 				ContextVarExists:   false,
 				RequiredProviders:  []string{"aws"},
@@ -92,7 +102,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := inspectModule(tc.workingDir, tc.moduleName, tc.templatePath)
+			result, err := inspectModule(tc.workingDir, tc.recipe)
 			if tc.err != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.err)
