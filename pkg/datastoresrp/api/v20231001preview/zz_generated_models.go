@@ -147,7 +147,7 @@ type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *MongoDatabaseProperties
 
 	// Resource tags.
@@ -375,7 +375,7 @@ type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *RedisCacheProperties
 
 	// Resource tags.
@@ -543,7 +543,7 @@ type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *SQLDatabaseProperties
 
 	// Resource tags.

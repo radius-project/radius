@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius/v1/trackedresource.tsp";
 import "./ucp-operations.tsp";
 
 using TypeSpec.Http;
@@ -50,7 +51,7 @@ model AzurePlaneNameParameter {
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 @doc("Represents Azure Credential Resource")
-model AzureCredentialResource is TrackedResource<AzureCredentialProperties> {
+model AzureCredentialResource is TrackedResourceRequired<AzureCredentialProperties, "azureCredentials">{
   @doc("The Azure credential name.")
   @path
   @key("credentialName")
