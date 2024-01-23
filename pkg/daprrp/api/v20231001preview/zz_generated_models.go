@@ -51,7 +51,7 @@ type DaprPubSubBrokerResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *DaprPubSubBrokerProperties
 
 	// Resource tags.
@@ -154,7 +154,7 @@ type DaprSecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *DaprSecretStoreProperties
 
 	// Resource tags.
@@ -257,7 +257,7 @@ type DaprStateStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *DaprStateStoreProperties
 
 	// Resource tags.
