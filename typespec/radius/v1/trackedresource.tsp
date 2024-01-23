@@ -18,7 +18,11 @@ import "@typespec/openapi";
 
 using OpenAPI;
 
-/* Using Azure.ResoureManager namespace here is a workaround for typespec bug: https://github.com/Azure/typespec-azure/issues/110" */
+/* Using Azure.ResoureManager namespace here is a workaround for typespec bug: https://github.com/Azure/typespec-azure/issues/110"
+   ARM TrackedResource resource has "properties" field optional. We do not want this because the user can skip the
+   properties block in the Radius resource and this cannot be caught by validation. Therefore, we are defining our overwhelmingly
+   TrackedResourceRequired class which has the "properties" field as mandatory.
+*/
 namespace Azure.ResourceManager;
  
 @doc("Concrete tracked resource types can be created by aliasing this type using a specific property type.")
