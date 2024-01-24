@@ -25,6 +25,7 @@ import "@azure-tools/typespec-providerhub";
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "./common.tsp";
+import "../radius/v1/trackedresource.tsp";
 
 using TypeSpec.Http;
 using TypeSpec.Rest;
@@ -37,7 +38,7 @@ namespace Applications.Messaging;
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQQueue portable resource")
-model RabbitMQQueueResource is TrackedResource<RabbitMQQueueProperties> {
+model RabbitMQQueueResource is TrackedResourceRequired<RabbitMQQueueProperties, "rabbitMQQueues">{
   @doc("The name of the RabbitMQQueue portable resource resource")
   @key("rabbitMQQueueName")
   @segment("rabbitMQQueues")
