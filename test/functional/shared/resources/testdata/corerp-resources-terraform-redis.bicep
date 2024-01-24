@@ -21,7 +21,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
       'Applications.Core/extenders': {
         default: {
           templateKind: 'terraform'
-          templatePath: '${moduleServer}/kubernetes-redis.zip//kubernetes-redis/modules'
+          templatePath: '${moduleServer}/kubernetes-redis.zip//modules'
         }
       }
     }
