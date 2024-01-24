@@ -18,6 +18,8 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -268,6 +270,11 @@ func Test_ApplicationGraph(t *testing.T) {
 				sort.Slice(res.ApplicationGraphResponse.Resources, func(i, j int) bool {
 					return *res.ApplicationGraphResponse.Resources[i].ID < *res.ApplicationGraphResponse.Resources[j].ID
 				})
+
+				arr1, _ := json.Marshal(expectedGraphResp)
+				fmt.Println("expected: " + string(arr1))
+				arr2, _ := json.Marshal(res)
+				fmt.Println("actual: " + string(arr2))
 
 				require.Equal(t, expectedGraphResp, res)
 			},
