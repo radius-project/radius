@@ -575,7 +575,7 @@ func providesFromAPIData(resource generated.GenericResource) []*corerpv20231001p
 	// If we encounter an error processing this data, just skip "invalid" connection entry.
 	entries := []*corerpv20231001preview.ApplicationGraphConnection{}
 	for _, connection := range connections {
-		dir := corerpv20231001preview.DirectionOutbound
+		dir := corerpv20231001preview.DirectionInbound
 		data := corerpv20231001preview.ContainerPortProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {

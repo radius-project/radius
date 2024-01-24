@@ -2,7 +2,7 @@
     {
         "connections": [
             {
-                "direction": "Outbound",
+                "direction": "Inbound",
                 "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
             }
         ],
@@ -25,12 +25,7 @@
         "type": "Applications.Datastores/sqlDatabases"
     },
     {
-        "connections": [
-            {
-                "direction": "Inbound",
-                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-ctnr"
-            }
-        ],
+        "connections": [],
         "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte",
         "name": "sql-rte",
         "outputResources": [],
