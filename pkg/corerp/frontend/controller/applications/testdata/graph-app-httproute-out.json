@@ -13,6 +13,12 @@
         "type": "Applications.Core/containers"
     },
     {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr"
+            }
+        ],
         "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
         "name": "sql-db",
         "provisioningState": "Succeeded",
@@ -34,7 +40,7 @@
     {
         "connections": [
             {
-                "direction": "Inbound",
+                "direction": "Outbound",
                 "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db"
             }
         ],
