@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	getter "github.com/hashicorp/go-getter"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -53,13 +54,16 @@ type moduleInspectResult struct {
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
-func inspectModule(workingDir, localModuleName string) (*moduleInspectResult, error) {
+func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
 	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: []string{}, ResultOutputExists: false, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
 	// https://developer.hashicorp.com/terraform/tutorials/modules/module-use#understand-how-modules-work
-	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, localModuleName))
+	//
+	// If the template path is for a submodule, we'll add the submodule path to the module directory.
+	_, subModule := getter.SourceDirSubdir(recipe.TemplatePath)
+	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule))
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
 	}
