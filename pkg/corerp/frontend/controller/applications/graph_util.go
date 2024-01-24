@@ -242,7 +242,7 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 			applicationGraphResource.ProvisioningState = &state
 		}
 
-		connections := connectionsFromAPIData(resource)                     // Outbound connections based on 'connections'
+		connections := connectionsFromAPIData(resource, resources)          // Outbound connections based on 'connections'
 		connections = append(connections, providesFromAPIData(resource)...) // Inbound connections based on 'provides'
 
 		sort.Slice(connections, func(i, j int) bool {
@@ -458,7 +458,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 // For example if the resource is an 'Applications.Core/container' then this function can find it's connections
 // to other resources like databases. Conversely if the resource is a database then this function
 // will not find any connections (because they are inbound). Inbound connections are processed later.
-func connectionsFromAPIData(resource generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
+func connectionsFromAPIData(resource generated.GenericResource, allResources []generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
 	// We need to access the connections in a weakly-typed way since the data type we're
 	// working with is a property bag.
 	//
@@ -491,10 +491,7 @@ func connectionsFromAPIData(resource generated.GenericResource) []*corerpv202310
 		data := corerpv20231001preview.ConnectionProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {
-			sourceID, ok := parseSource(to.String(resource.ID), to.String(data.Source))
-			if !ok {
-				continue
-			}
+			sourceID, _ := findSourceResource(to.String(data.Source), allResources)
 
 			entries = append(entries, &corerpv20231001preview.ApplicationGraphConnection{
 				ID:        to.Ptr(sourceID),
@@ -511,28 +508,36 @@ func connectionsFromAPIData(resource generated.GenericResource) []*corerpv202310
 	return entries
 }
 
-func parseSource(parentID, source string) (string, bool) {
+// findSourceResource finds resource id by using source string by the following criteria:
+// 1. It immediately returns return the resource ID if the source is a resource ID.
+// 2. Parse the hostname and look up the hostname from the resource list if the source is an URL.
+// 3. Otherwise, return the original source string with false boolean value.
+func findSourceResource(source string, allResources []generated.GenericResource) (string, bool) {
+	// 1. Return if the source is a resource ID
 	id, err := resources.Parse(source)
 	if err == nil && id.IsResource() {
 		return id.String(), true
 	}
 
+	// 2. Parse hostname from source and look up hostname from resource list.
+	orig := source
+
+	// Add "//" to source to enable url.Parse to parse source correctly if the scheme is not given.
+	if !strings.Contains(source, "//") {
+		source = "//" + source
+	}
+
 	sourceURL, err := url.Parse(source)
-	if err != nil {
-		return "", false
+	if err == nil {
+		for _, resource := range allResources {
+			if to.String(resource.Name) == sourceURL.Hostname() {
+				return to.String(resource.ID), true
+			}
+		}
 	}
 
-	if sourceURL.Hostname() == "" || strings.Contains(sourceURL.Hostname(), ".") {
-		return "", false
-	}
-
-	parentIDParsed, err := resources.Parse(parentID)
-	if err != nil {
-		return "", false
-	}
-
-	sourceID := strings.Join([]string{parentIDParsed.RootScope(), resources.ProvidersSegment, parentIDParsed.Type(), sourceURL.Hostname()}, resources.SegmentSeparator)
-	return sourceID, true
+	// 3. Return the original source string with false boolean value.
+	return orig, false
 }
 
 // providesFromAPIData is specifically to support HTTPRoute.

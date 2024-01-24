@@ -171,41 +171,50 @@ func Test_computeGraph(t *testing.T) {
 	}
 }
 
-func TestParseSource(t *testing.T) {
+func TestFindSourceResource(t *testing.T) {
 	tests := []struct {
-		name     string
-		parentID string
-		source   string
+		name             string
+		source           string
+		resourceDataFile string
 
 		parsedSource string
 		ok           bool
 	}{
 		{
-			name:         "valid source ID",
-			parentID:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr",
-			source:       "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
-			parsedSource: "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
-			ok:           true,
+			name:             "valid source ID",
+			source:           "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
+			resourceDataFile: "graph-app-directroute-in.json",
+			parsedSource:     "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
+			ok:               true,
 		},
 		{
-			name:         "invalid source",
-			parentID:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr",
-			source:       "invalid",
-			parsedSource: "",
-			ok:           false,
+			name:             "invalid source",
+			source:           "invalid",
+			resourceDataFile: "graph-app-directroute-in.json",
+			parsedSource:     "invalid",
+			ok:               false,
 		},
 		{
-			name:         "direct route",
-			parentID:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr",
-			source:       "http://backend:8080",
-			parsedSource: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backend",
-			ok:           true,
+			name:             "direct route without scheme",
+			source:           "backendapp:8080",
+			resourceDataFile: "graph-app-directroute-in.json",
+			parsedSource:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
+			ok:               true,
+		},
+		{
+			name:             "direct route with scheme",
+			source:           "http://backendapp:8080",
+			resourceDataFile: "graph-app-directroute-in.json",
+			parsedSource:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
+			ok:               true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			parsedSource, ok := parseSource(tc.parentID, tc.source)
+			resources := []generated.GenericResource{}
+			testutil.MustUnmarshalFromFile(tc.resourceDataFile, &resources)
+			parsedSource, ok := findSourceResource(tc.source, resources)
 			require.Equal(t, tc.parsedSource, parsedSource)
 			require.Equal(t, tc.ok, ok)
 		})
