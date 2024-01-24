@@ -217,7 +217,7 @@ type RabbitMQQueueResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
-	// The resource-specific properties for this resource.
+	// REQUIRED; The resource-specific properties for this resource.
 	Properties *RabbitMQQueueProperties
 
 	// Resource tags.
