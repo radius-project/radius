@@ -17,6 +17,7 @@ limitations under the License.
 package testutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path"
@@ -25,7 +26,9 @@ import (
 // MustGetTestData reads testdata and unmarshals it to the given type, panicking if an error occurs.
 func MustGetTestData[T any](file string) *T {
 	var data T
-	err := json.Unmarshal(ReadFixture(file), &data)
+	dec := json.NewDecoder(bytes.NewReader(ReadFixture(file)))
+	dec.DisallowUnknownFields()
+	err := dec.Decode(&data)
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +37,9 @@ func MustGetTestData[T any](file string) *T {
 
 // MustUnmarshalFromFile reads testdata and unmarshals it to the given type, panicking if an error occurs.
 func MustUnmarshalFromFile(file string, out any) {
-	err := json.Unmarshal(ReadFixture(file), out)
+	dec := json.NewDecoder(bytes.NewReader(ReadFixture(file)))
+	dec.DisallowUnknownFields()
+	err := dec.Decode(out)
 	if err != nil {
 		panic(err)
 	}
