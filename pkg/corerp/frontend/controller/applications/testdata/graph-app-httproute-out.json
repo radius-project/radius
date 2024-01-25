@@ -1,0 +1,47 @@
+[
+    {
+        "connections": [
+            {
+                "direction": "Outbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-ctnr",
+        "name": "sql-ctnr",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    },
+    {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
+        "name": "sql-db",
+        "provisioningState": "Succeeded",
+        "type": "Applications.Datastores/sqlDatabases"
+    },
+    {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-ctnr"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/sql-rte",
+        "name": "sql-rte",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/httpRoutes"
+    },
+    {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/sql-app-ctnr",
+        "name": "sql-app-ctnr",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    }
+]

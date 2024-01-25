@@ -19,6 +19,8 @@ package applications
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -29,7 +31,13 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+var (
+	// ErrInvalidSource reprents the error when the source is not a valid resource ID or URL.
+	ErrInvalidSource = errors.New("source is not a valid resource ID or URL")
 )
 
 const (
@@ -208,11 +216,11 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		resources = append(resources, resource)
 
 		// Application-scoped resources are by definition "in" the application
-		resourcesByIDInApplication[*resource.ID] = true
+		resourcesByIDInApplication[to.String(resource.ID)] = true
 	}
 
 	for _, resource := range environmentResources {
-		_, found := resourcesByIDInApplication[*resource.ID]
+		_, found := resourcesByIDInApplication[to.String(resource.ID)]
 		if found {
 			// Appears in both application and environment lists, avoid duplicates.
 			continue
@@ -221,7 +229,7 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		// This is an environment-scoped resource. We need to process the connections
 		// to determine if it's part of the application.
 		resources = append(resources, resource)
-		resourcesByIDInApplication[*resource.ID] = false
+		resourcesByIDInApplication[to.String(resource.ID)] = false
 	}
 
 	// Next we need to process each entry in the resources list and build up the application graph.
@@ -240,11 +248,11 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 			applicationGraphResource.ProvisioningState = &state
 		}
 
-		connections := connectionsFromAPIData(resource)                     // Outbound connections based on 'connections'
+		connections := connectionsFromAPIData(resource, resources)          // Outbound connections based on 'connections'
 		connections = append(connections, providesFromAPIData(resource)...) // Inbound connections based on 'provides'
 
 		sort.Slice(connections, func(i, j int) bool {
-			return *connections[i].ID < *connections[j].ID
+			return to.String(connections[i].ID) < to.String(connections[j].ID)
 		})
 
 		applicationGraphResource.Connections = connections
@@ -275,8 +283,8 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 	// First process add resources we *know* are in the application to the queue. As we explore the graph we'll
 	// visit resources outside the application if necessary.
 	for _, entry := range applicationGraphResourcesByID {
-		if resourcesByIDInApplication[*entry.ID] {
-			queue = append(queue, *entry.ID)
+		if resourcesByIDInApplication[to.String(entry.ID)] {
+			queue = append(queue, to.String(entry.ID))
 		}
 	}
 
@@ -357,7 +365,7 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		// Print connections in stable order.
 		sort.Slice(entry.Connections, func(i, j int) bool {
 			// Connections are guaranteed to have a name.
-			return *entry.Connections[i].ID < *entry.Connections[j].ID
+			return to.String(entry.Connections[i].ID) < to.String(entry.Connections[j].ID)
 		})
 
 		graph.Resources = append(graph.Resources, &entry)
@@ -372,29 +380,21 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 		return nil // Invalid resource ID, skip
 	}
 
-	appName := application.Name()
-	appType := application.Type()
-	provisioningState := string(v1.ProvisioningStateSucceeded)
-
-	return &corerpv20231001preview.ApplicationGraphResource{ID: &id,
-		Name:              &appName,
-		Type:              &appType,
-		ProvisioningState: &provisioningState,
+	return &corerpv20231001preview.ApplicationGraphResource{
+		ID:                to.Ptr(id),
+		Name:              to.Ptr(application.Name()),
+		Type:              to.Ptr(application.Type()),
+		ProvisioningState: to.Ptr(string(v1.ProvisioningStateSucceeded)),
 	}
-
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
 func outputResourceEntryFromID(id resources.ID) corerpv20231001preview.ApplicationGraphOutputResource {
-	orID := id.String()
-	orName := id.Name()
-	orType := id.Type()
-	entry := corerpv20231001preview.ApplicationGraphOutputResource{ID: &orID,
-		Name: &orName,
-		Type: &orType,
+	return corerpv20231001preview.ApplicationGraphOutputResource{
+		ID:   to.Ptr(id.String()),
+		Name: to.Ptr(id.Name()),
+		Type: to.Ptr(id.Type()),
 	}
-
-	return entry
 }
 
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
@@ -447,13 +447,13 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 
 	// Produce a stable output
 	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].Type != entries[j].Type {
-			return *entries[i].Type < *entries[j].Type
+		if to.String(entries[i].Type) != to.String(entries[j].Type) {
+			return to.String(entries[i].Type) < to.String(entries[j].Type)
 		}
-		if entries[i].Name != entries[j].Name {
-			return *entries[i].Name < *entries[j].Name
+		if to.String(entries[i].Name) != to.String(entries[j].Name) {
+			return to.String(entries[i].Name) < to.String(entries[j].Name)
 		}
-		return *entries[i].ID < *entries[j].ID
+		return to.String(entries[i].ID) < to.String(entries[j].ID)
 
 	})
 
@@ -464,7 +464,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 // For example if the resource is an 'Applications.Core/container' then this function can find it's connections
 // to other resources like databases. Conversely if the resource is a database then this function
 // will not find any connections (because they are inbound). Inbound connections are processed later.
-func connectionsFromAPIData(resource generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
+func connectionsFromAPIData(resource generated.GenericResource, allResources []generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
 	// We need to access the connections in a weakly-typed way since the data type we're
 	// working with is a property bag.
 	//
@@ -497,19 +497,55 @@ func connectionsFromAPIData(resource generated.GenericResource) []*corerpv202310
 		data := corerpv20231001preview.ConnectionProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {
+			sourceID, _ := findSourceResource(to.String(data.Source), allResources)
+
 			entries = append(entries, &corerpv20231001preview.ApplicationGraphConnection{
-				ID:        data.Source,
-				Direction: &dir,
+				ID:        to.Ptr(sourceID),
+				Direction: to.Ptr(dir),
 			})
 		}
 	}
 
 	// Produce a stable output
 	sort.Slice(entries, func(i, j int) bool {
-		return *entries[i].ID < *entries[j].ID
+		return to.String(entries[i].ID) < to.String(entries[j].ID)
 	})
 
 	return entries
+}
+
+// findSourceResource looks up resource id by using source string by the following steps:
+// 1. Immediately return the resource ID if the source is a valid resource ID.
+// 2. Parse the hostname from source and look up the hostname in the resource list if the source is a valid URL.
+// 3. Otherwise, return the original source string with error.
+func findSourceResource(source string, allResources []generated.GenericResource) (string, error) {
+	// 1. Return the resource id if the source is a valid resource ID
+	id, err := resources.Parse(source)
+	if err == nil && id.IsResource() {
+		return id.String(), nil
+	}
+
+	// 2. Parse hostname from source and look up hostname in resource list.
+	orig := source
+
+	// Add "//" to source to enable url.Parse to parse source correctly if the scheme is not given.
+	if !strings.Contains(source, "//") {
+		source = "//" + source
+	}
+
+	sourceURL, err := url.Parse(source)
+	if err == nil {
+		// Linear search resource name in resource list.
+		for _, resource := range allResources {
+			if to.String(resource.Name) == sourceURL.Hostname() {
+				return to.String(resource.ID), nil
+			}
+		}
+		// Fall back to original source string if not found.
+	}
+
+	// 3. Return the original source string with false boolean value.
+	return orig, ErrInvalidSource
 }
 
 // providesFromAPIData is specifically to support HTTPRoute.
@@ -550,19 +586,20 @@ func providesFromAPIData(resource generated.GenericResource) []*corerpv20231001p
 		data := corerpv20231001preview.ContainerPortProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {
-			if *data.Provides == "" {
+			if to.String(data.Provides) == "" {
 				continue
 			}
+
 			entries = append(entries, &corerpv20231001preview.ApplicationGraphConnection{
 				ID:        data.Provides,
-				Direction: &dir,
+				Direction: to.Ptr(dir),
 			})
 		}
 	}
 
 	// Produce a stable output
 	sort.Slice(entries, func(i, j int) bool {
-		return *entries[i].ID < *entries[j].ID
+		return to.String(entries[i].ID) < to.String(entries[j].ID)
 	})
 
 	return entries
