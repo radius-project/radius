@@ -18,8 +18,6 @@ package applications
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -175,8 +173,6 @@ func Test_computeGraph(t *testing.T) {
 			testutil.MustUnmarshalFromFile(tt.expectedDataFile, &expected)
 
 			got := computeGraph(tt.applicationName, appResource, envResource)
-			arr, _ := json.Marshal(got)
-			fmt.Println(string(arr))
 			require.ElementsMatch(t, expected, got.Resources)
 		})
 	}
