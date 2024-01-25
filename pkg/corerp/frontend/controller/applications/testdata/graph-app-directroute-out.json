@@ -2,7 +2,7 @@
     {
         "connections": [
             {
-                "direction": "Inbound",
+                "direction": "Outbound",
                 "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp"
             }
         ],
@@ -13,7 +13,12 @@
         "type": "Applications.Core/containers"
     },
     {
-        "connections": [],
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend"
+            }
+        ],
         "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
         "name": "backendapp",
         "outputResources": [],

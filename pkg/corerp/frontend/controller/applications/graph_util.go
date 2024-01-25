@@ -295,7 +295,7 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 		entry := applicationGraphResourcesByID[id]
 
 		for _, connection := range entry.Connections {
-			otherID := *connection.ID
+			otherID := to.String(connection.ID)
 			direction := connection.Direction
 
 			// For each connection let's make sure the destination is also part of the application graph. This handles
@@ -328,11 +328,10 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 			//id is the source from which the connections in connectionsBySource go out
 			if *direction == corerpv20231001preview.DirectionOutbound { // we are dealing with a relation formed by "connection"
 				connectionsBySource[id] = append(connectionsBySource[id], *connection)
-				dir := corerpv20231001preview.DirectionInbound
 				//otherID is the destination to the connections in connectionsByDestination
 				connectionInbound := corerpv20231001preview.ApplicationGraphConnection{
-					ID:        &id,
-					Direction: &dir, //Direction is set with respect to Resource defining this connection
+					ID:        to.Ptr(id),
+					Direction: to.Ptr(corerpv20231001preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
 			} else {
@@ -493,7 +492,7 @@ func connectionsFromAPIData(resource generated.GenericResource, allResources []g
 	// If we encounter an error processing this data, just skip "invalid" connection entry.
 	entries := []*corerpv20231001preview.ApplicationGraphConnection{}
 	for _, connection := range connections {
-		dir := corerpv20231001preview.DirectionInbound
+		dir := corerpv20231001preview.DirectionOutbound
 		data := corerpv20231001preview.ConnectionProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {
@@ -582,7 +581,7 @@ func providesFromAPIData(resource generated.GenericResource) []*corerpv20231001p
 	// If we encounter an error processing this data, just skip "invalid" connection entry.
 	entries := []*corerpv20231001preview.ApplicationGraphConnection{}
 	for _, connection := range connections {
-		dir := corerpv20231001preview.DirectionOutbound
+		dir := corerpv20231001preview.DirectionInbound
 		data := corerpv20231001preview.ContainerPortProperties{}
 		err := toStronglyTypedData(connection, &data)
 		if err == nil {

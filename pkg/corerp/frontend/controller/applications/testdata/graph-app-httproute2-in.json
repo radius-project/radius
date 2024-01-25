@@ -1,0 +1,72 @@
+[
+    {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-back-rte-simple1",
+        "name": "http-back-rte-simple1",
+        "properties": {
+            "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+            "provisioningState": "Succeeded"
+        },
+        "type": "Applications.Core/httpRoutes"
+    },
+    {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/http-front-ctnr-simple1",
+        "name": "http-front-ctnr-simple1",
+        "properties": {
+            "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+            "containers": {
+                "image": "magpie:latest",
+                "ports": {
+                    "web": {
+                        "port": 8080
+                    }
+                },
+                "readinessProbe": {
+                    "kind": "httpGet",
+                    "path": "/healthz",
+                    "containerPort": 8080
+                }
+            },
+            "connections": {
+                "backend": {
+                    "source": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-back-rte-simple1"
+                }
+            },
+            "provisioningState": "Succeeded",
+            "status": {
+                "outputResources": {
+                    "id": "/some/thing/else",
+                    "localId": "something"
+                }
+            }
+        },
+        "type": "Applications.Core/containers"
+    },
+    {
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/http-back-ctnr-simple1",
+        "name": "http-back-ctnr-simple1",
+        "properties": {
+            "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+            "container": {
+                "ports": {
+                    "web": {
+                        "port": 8080,
+                        "provides": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-back-rte-simple1"
+                    }
+                },
+                "readinessProbe": {
+                    "kind": "httpGet",
+                    "path": "/healthz",
+                    "containerPort": 8080
+                }
+            },
+            "provisioningState": "Succeeded",
+            "status": {
+                "outputResources": {
+                    "id": "/some/thing/else",
+                    "localId": "something"
+                }
+            }
+        },
+        "type": "Applications.Core/containers"
+    }
+]
