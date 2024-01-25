@@ -19,6 +19,7 @@ package applications
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/url"
 	"sort"
 	"strings"
@@ -32,6 +33,11 @@ import (
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+var (
+	// ErrInvalidSource reprents the error when the source is not a valid resource ID or URL.
+	ErrInvalidSource = errors.New("source is not a valid resource ID or URL")
 )
 
 const (
@@ -511,12 +517,12 @@ func connectionsFromAPIData(resource generated.GenericResource, allResources []g
 // findSourceResource looks up resource id by using source string by the following steps:
 // 1. Immediately return the resource ID if the source is a valid resource ID.
 // 2. Parse the hostname from source and look up the hostname in the resource list if the source is a valid URL.
-// 3. Otherwise, return the original source string with false boolean value.
-func findSourceResource(source string, allResources []generated.GenericResource) (string, bool) {
+// 3. Otherwise, return the original source string with error.
+func findSourceResource(source string, allResources []generated.GenericResource) (string, error) {
 	// 1. Return the resource id if the source is a valid resource ID
 	id, err := resources.Parse(source)
 	if err == nil && id.IsResource() {
-		return id.String(), true
+		return id.String(), nil
 	}
 
 	// 2. Parse hostname from source and look up hostname in resource list.
@@ -529,15 +535,17 @@ func findSourceResource(source string, allResources []generated.GenericResource)
 
 	sourceURL, err := url.Parse(source)
 	if err == nil {
+		// Linear search resource name in resource list.
 		for _, resource := range allResources {
 			if to.String(resource.Name) == sourceURL.Hostname() {
-				return to.String(resource.ID), true
+				return to.String(resource.ID), nil
 			}
 		}
+		// Fall back to original source string if not found.
 	}
 
 	// 3. Return the original source string with false boolean value.
-	return orig, false
+	return orig, ErrInvalidSource
 }
 
 // providesFromAPIData is specifically to support HTTPRoute.

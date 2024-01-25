@@ -178,35 +178,35 @@ func TestFindSourceResource(t *testing.T) {
 		resourceDataFile string
 
 		parsedSource string
-		ok           bool
+		wantErr      error
 	}{
 		{
 			name:             "valid source ID",
 			source:           "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
 			resourceDataFile: "graph-app-directroute-in.json",
 			parsedSource:     "/planes/radius/local/resourcegroups/default/providers/Applications.Datastores/sqlDatabases/sql-db",
-			ok:               true,
+			wantErr:          nil,
 		},
 		{
 			name:             "invalid source",
 			source:           "invalid",
 			resourceDataFile: "graph-app-directroute-in.json",
 			parsedSource:     "invalid",
-			ok:               false,
+			wantErr:          ErrInvalidSource,
 		},
 		{
 			name:             "direct route without scheme",
 			source:           "backendapp:8080",
 			resourceDataFile: "graph-app-directroute-in.json",
 			parsedSource:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
-			ok:               true,
+			wantErr:          nil,
 		},
 		{
 			name:             "direct route with scheme",
 			source:           "http://backendapp:8080",
 			resourceDataFile: "graph-app-directroute-in.json",
 			parsedSource:     "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
-			ok:               true,
+			wantErr:          nil,
 		},
 	}
 
@@ -214,9 +214,9 @@ func TestFindSourceResource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resources := []generated.GenericResource{}
 			testutil.MustUnmarshalFromFile(tc.resourceDataFile, &resources)
-			parsedSource, ok := findSourceResource(tc.source, resources)
+			parsedSource, err := findSourceResource(tc.source, resources)
 			require.Equal(t, tc.parsedSource, parsedSource)
-			require.Equal(t, tc.ok, ok)
+			require.ErrorIs(t, err, tc.wantErr)
 		})
 	}
 }
