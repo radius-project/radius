@@ -508,18 +508,18 @@ func connectionsFromAPIData(resource generated.GenericResource, allResources []g
 	return entries
 }
 
-// findSourceResource finds resource id by using source string by the following criteria:
-// 1. It immediately returns return the resource ID if the source is a resource ID.
-// 2. Parse the hostname and look up the hostname from the resource list if the source is an URL.
+// findSourceResource looks up resource id by using source string by the following steps:
+// 1. Immediately return the resource ID if the source is a valid resource ID.
+// 2. Parse the hostname from source and look up the hostname in the resource list if the source is a valid URL.
 // 3. Otherwise, return the original source string with false boolean value.
 func findSourceResource(source string, allResources []generated.GenericResource) (string, bool) {
-	// 1. Return if the source is a resource ID
+	// 1. Return the resource id if the source is a valid resource ID
 	id, err := resources.Parse(source)
 	if err == nil && id.IsResource() {
 		return id.String(), true
 	}
 
-	// 2. Parse hostname from source and look up hostname from resource list.
+	// 2. Parse hostname from source and look up hostname in resource list.
 	orig := source
 
 	// Add "//" to source to enable url.Parse to parse source correctly if the scheme is not given.
