@@ -18,6 +18,8 @@ package applications
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -141,6 +143,13 @@ func Test_computeGraph(t *testing.T) {
 			expectedDataFile:    "graph-app-httproute-out.json",
 		},
 		{
+			name:                "using httproute 2",
+			applicationName:     "myapp",
+			appResourceDataFile: "graph-app-httproute2-in.json",
+			envResourceDataFile: "",
+			expectedDataFile:    "graph-app-httproute2-out.json",
+		},
+		{
 			name:                "direct route",
 			applicationName:     "myapp",
 			appResourceDataFile: "graph-app-directroute-in.json",
@@ -166,6 +175,8 @@ func Test_computeGraph(t *testing.T) {
 			testutil.MustUnmarshalFromFile(tt.expectedDataFile, &expected)
 
 			got := computeGraph(tt.applicationName, appResource, envResource)
+			arr, _ := json.Marshal(got)
+			fmt.Println(string(arr))
 			require.ElementsMatch(t, expected, got.Resources)
 		})
 	}

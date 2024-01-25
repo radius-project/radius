@@ -1,0 +1,41 @@
+[
+    {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/http-front-ctnr-simple1"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-back-rte-simple1",
+        "name": "http-back-rte-simple1",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/httpRoutes"
+    },
+    {
+        "connections": [
+            {
+                "direction": "Outbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-back-rte-simple1"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/http-front-ctnr-simple1",
+        "name": "http-front-ctnr-simple1",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    },
+    {
+        "connections": [
+            {
+                "direction": "Inbound",
+                "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/httpRoutes/http-back-rte-simple1"
+            }
+        ],
+        "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/http-back-ctnr-simple1",
+        "name": "http-back-ctnr-simple1",
+        "outputResources": [],
+        "provisioningState": "Succeeded",
+        "type": "Applications.Core/containers"
+    }
+]

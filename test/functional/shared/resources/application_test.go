@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"testing"
 
@@ -252,6 +253,7 @@ func Test_ApplicationGraph(t *testing.T) {
 				require.NoError(t, err)
 				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple1", map[string]any{}, nil)
 				require.NoError(t, err)
+				arr, _ := json.Marshal(res)
 
 				sort.Slice(expectedGraphResp.ApplicationGraphResponse.Resources, func(i, j int) bool {
 					return *expectedGraphResp.ApplicationGraphResponse.Resources[i].ID < *expectedGraphResp.ApplicationGraphResponse.Resources[j].ID
@@ -269,7 +271,7 @@ func Test_ApplicationGraph(t *testing.T) {
 					return *res.ApplicationGraphResponse.Resources[i].ID < *res.ApplicationGraphResponse.Resources[j].ID
 				})
 
-				require.Equal(t, expectedGraphResp, res)
+				require.Equal(t, expectedGraphResp, res, "actual: %s", string(arr))
 			},
 		},
 	})
