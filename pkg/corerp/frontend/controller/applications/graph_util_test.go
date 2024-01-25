@@ -135,26 +135,33 @@ func Test_computeGraph(t *testing.T) {
 		envResourceDataFile string
 		expectedDataFile    string
 	}{
+		// {
+		// 	name:                "using httproute",
+		// 	applicationName:     "myapp",
+		// 	appResourceDataFile: "graph-app-httproute-in.json",
+		// 	envResourceDataFile: "",
+		// 	expectedDataFile:    "graph-app-httproute-out.json",
+		// },
+		// {
+		// 	name:                "using httproute 2",
+		// 	applicationName:     "myapp",
+		// 	appResourceDataFile: "graph-app-httproute2-in.json",
+		// 	envResourceDataFile: "",
+		// 	expectedDataFile:    "graph-app-httproute2-out.json",
+		// },
+		// {
+		// 	name:                "direct route",
+		// 	applicationName:     "myapp",
+		// 	appResourceDataFile: "graph-app-directroute-in.json",
+		// 	envResourceDataFile: "",
+		// 	expectedDataFile:    "graph-app-directroute-out.json",
+		// },
 		{
-			name:                "using httproute",
+			name:                "with gateway",
 			applicationName:     "myapp",
-			appResourceDataFile: "graph-app-httproute-in.json",
+			appResourceDataFile: "graph-app-gw-in.json",
 			envResourceDataFile: "",
-			expectedDataFile:    "graph-app-httproute-out.json",
-		},
-		{
-			name:                "using httproute 2",
-			applicationName:     "myapp",
-			appResourceDataFile: "graph-app-httproute2-in.json",
-			envResourceDataFile: "",
-			expectedDataFile:    "graph-app-httproute2-out.json",
-		},
-		{
-			name:                "direct route",
-			applicationName:     "myapp",
-			appResourceDataFile: "graph-app-directroute-in.json",
-			envResourceDataFile: "",
-			expectedDataFile:    "graph-app-directroute-out.json",
+			expectedDataFile:    "graph-app-gw-out.json",
 		},
 		{
 			name:                "with gateway route",

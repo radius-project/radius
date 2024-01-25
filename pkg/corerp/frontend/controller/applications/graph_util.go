@@ -42,6 +42,7 @@ var (
 
 const (
 	connectionsPath = "/properties/connections"
+	routesPath      = "/properties/routes"
 	portsPath       = "/properties/container/ports"
 )
 
@@ -248,8 +249,9 @@ func computeGraph(applicationName string, applicationResources []generated.Gener
 			applicationGraphResource.ProvisioningState = &state
 		}
 
-		connections := connectionsFromAPIData(resource, resources)          // Outbound connections based on 'connections'
-		connections = append(connections, providesFromAPIData(resource)...) // Inbound connections based on 'provides'
+		connections := connectionsFromAPIData(resource, resources)                       // Outbound connections based on 'connections'
+		connections = append(connections, routesPathFromAPIData(resource, resources)...) // Outbound connections based on 'routes'
+		connections = append(connections, providesFromAPIData(resource)...)              // Inbound connections based on 'provides'
 
 		sort.Slice(connections, func(i, j int) bool {
 			return to.String(connections[i].ID) < to.String(connections[j].ID)
@@ -454,6 +456,56 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 		}
 		return to.String(entries[i].ID) < to.String(entries[j].ID)
 
+	})
+
+	return entries
+}
+
+func routesPathFromAPIData(resource generated.GenericResource, allResources []generated.GenericResource) []*corerpv20231001preview.ApplicationGraphConnection {
+	// We need to access the connections in a weakly-typed way since the data type we're
+	// working with is a property bag.
+	//
+	// Any Radius resource type that supports connections uses the following property path to return them.
+	p, err := jsonpointer.New(routesPath)
+	if err != nil {
+		// This should never fail since we're hard-coding the path.
+		panic("parsing JSON pointer should not fail: " + err.Error())
+	}
+
+	raw, _, err := p.Get(&resource)
+	if err != nil {
+		// Not found, this is fine.
+		return []*corerpv20231001preview.ApplicationGraphConnection{}
+	}
+
+	routes, ok := raw.([]any)
+	if !ok {
+		// Not a map of objects, this is fine.
+		return []*corerpv20231001preview.ApplicationGraphConnection{}
+	}
+
+	// The data is returned as a map of JSON objects. We need to convert each object from a map[string]any
+	// to the strongly-typed format we understand.
+	//
+	// If we encounter an error processing this data, just skip "invalid" connection entry.
+	entries := []*corerpv20231001preview.ApplicationGraphConnection{}
+	for _, r := range routes {
+		dir := corerpv20231001preview.DirectionOutbound
+		data := &corerpv20231001preview.GatewayRoute{}
+		err := toStronglyTypedData(r, data)
+		if err == nil {
+			sourceID, _ := findSourceResource(to.String(data.Destination), allResources)
+
+			entries = append(entries, &corerpv20231001preview.ApplicationGraphConnection{
+				ID:        to.Ptr(sourceID),
+				Direction: to.Ptr(dir),
+			})
+		}
+	}
+
+	// Produce a stable output
+	sort.Slice(entries, func(i, j int) bool {
+		return to.String(entries[i].ID) < to.String(entries[j].ID)
 	})
 
 	return entries
