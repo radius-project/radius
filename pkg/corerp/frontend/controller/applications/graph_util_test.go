@@ -18,8 +18,6 @@ package applications
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -135,33 +133,26 @@ func Test_computeGraph(t *testing.T) {
 		envResourceDataFile string
 		expectedDataFile    string
 	}{
-		// {
-		// 	name:                "using httproute",
-		// 	applicationName:     "myapp",
-		// 	appResourceDataFile: "graph-app-httproute-in.json",
-		// 	envResourceDataFile: "",
-		// 	expectedDataFile:    "graph-app-httproute-out.json",
-		// },
-		// {
-		// 	name:                "using httproute 2",
-		// 	applicationName:     "myapp",
-		// 	appResourceDataFile: "graph-app-httproute2-in.json",
-		// 	envResourceDataFile: "",
-		// 	expectedDataFile:    "graph-app-httproute2-out.json",
-		// },
-		// {
-		// 	name:                "direct route",
-		// 	applicationName:     "myapp",
-		// 	appResourceDataFile: "graph-app-directroute-in.json",
-		// 	envResourceDataFile: "",
-		// 	expectedDataFile:    "graph-app-directroute-out.json",
-		// },
 		{
-			name:                "with gateway",
+			name:                "using httproute without inbound resource",
 			applicationName:     "myapp",
-			appResourceDataFile: "graph-app-gw-in.json",
+			appResourceDataFile: "graph-app-httproute-in.json",
 			envResourceDataFile: "",
-			expectedDataFile:    "graph-app-gw-out.json",
+			expectedDataFile:    "graph-app-httproute-out.json",
+		},
+		{
+			name:                "using httproute with inbound resource",
+			applicationName:     "myapp",
+			appResourceDataFile: "graph-app-httproute2-in.json",
+			envResourceDataFile: "",
+			expectedDataFile:    "graph-app-httproute2-out.json",
+		},
+		{
+			name:                "direct route",
+			applicationName:     "myapp",
+			appResourceDataFile: "graph-app-directroute-in.json",
+			envResourceDataFile: "",
+			expectedDataFile:    "graph-app-directroute-out.json",
 		},
 		{
 			name:                "with gateway route",
@@ -189,8 +180,6 @@ func Test_computeGraph(t *testing.T) {
 			testutil.MustUnmarshalFromFile(tt.expectedDataFile, &expected)
 
 			got := computeGraph(tt.applicationName, appResource, envResource)
-			arr, _ := json.Marshal(got)
-			fmt.Println(string(arr))
 			require.ElementsMatch(t, expected, got.Resources)
 		})
 	}
